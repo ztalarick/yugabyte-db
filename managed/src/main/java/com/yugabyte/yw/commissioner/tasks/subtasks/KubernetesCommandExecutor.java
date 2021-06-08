@@ -94,9 +94,8 @@ public class KubernetesCommandExecutor extends UniverseTaskBase {
   private final play.Environment environment;
 
   @Inject
-  public KubernetesCommandExecutor(KubernetesManager kubernetesManager,
-                                   Application application,
-                                   Environment environment) {
+  public KubernetesCommandExecutor(
+      KubernetesManager kubernetesManager, Application application, Environment environment) {
     this.kubernetesManager = kubernetesManager;
     this.application = application;
     this.environment = environment;

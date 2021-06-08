@@ -36,6 +36,7 @@ public class AlertConfigurationWriter {
   public static final Logger LOG = LoggerFactory.getLogger(AlertConfigurationWriter.class);
 
   private static final int MIN_CONFIG_SYNC_INTERVAL_SEC = 15;
+
   @VisibleForTesting
   static final String CONFIG_SYNC_INTERVAL_PARAM = "yb.alert.config_sync_interval_sec";
 
@@ -74,9 +75,11 @@ public class AlertConfigurationWriter {
   private void initialize() {
     int configSyncPeriodSec = configFactory.globalRuntimeConf().getInt(CONFIG_SYNC_INTERVAL_PARAM);
     if (configSyncPeriodSec < MIN_CONFIG_SYNC_INTERVAL_SEC) {
-      LOG.warn("Alert config sync interval in runtime config is set to {}," +
-          " which less than {} seconds. Using minimal value",
-          configSyncPeriodSec, MIN_CONFIG_SYNC_INTERVAL_SEC);
+      LOG.warn(
+          "Alert config sync interval in runtime config is set to {},"
+              + " which less than {} seconds. Using minimal value",
+          configSyncPeriodSec,
+          MIN_CONFIG_SYNC_INTERVAL_SEC);
       configSyncPeriodSec = MIN_CONFIG_SYNC_INTERVAL_SEC;
     }
     this.actorSystem

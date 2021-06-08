@@ -44,8 +44,7 @@ import static com.yugabyte.yw.common.Util.writeJsonFile;
 public class SwamperHelper {
   public static final Logger LOG = LoggerFactory.getLogger(SwamperHelper.class);
 
-  @VisibleForTesting
-  static final String ALERT_CONFIG_FILE_PREFIX = "yugaware.ad.";
+  @VisibleForTesting static final String ALERT_CONFIG_FILE_PREFIX = "yugaware.ad.";
   private static final Pattern ALERT_CONFIG_FILE_PATTERN =
       Pattern.compile(
           "^yugaware\\.ad\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"

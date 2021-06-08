@@ -122,7 +122,6 @@ public class AlertConfigurationWriterTest extends FakeDBApplication {
     // Called once after startup
     verify(queryHelper, times(1)).postManagementCommand("reload");
 
-
     configurationWriter.syncDefinitions();
 
     verify(swamperHelper, never()).writeAlertDefinition(any());

@@ -51,7 +51,7 @@ public class FakeDBApplication extends WithApplication {
   public YamlWrapper mockYamlWrapper = mock(YamlWrapper.class);
   public QueryAlerts mockQueryAlerts = mock(QueryAlerts.class);
   public AlertConfigurationWriter mockAlertConfigurationWriter =
-    mock(AlertConfigurationWriter.class);
+      mock(AlertConfigurationWriter.class);
   public Executors mockExecutors = mock(Executors.class);
   public ShellProcessHandler mockShellProcessHandler = mock(ShellProcessHandler.class);
   public TableManager mockTableManager = mock(TableManager.class);

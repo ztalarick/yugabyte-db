@@ -71,8 +71,8 @@ public class SessionControllerTest {
             .overrides(bind(CallbackController.class).toInstance(mockCallbackController))
             .overrides(bind(PlaySessionStore.class).toInstance(mockSessionStore))
             .overrides(bind(QueryAlerts.class).toInstance(mockQueryAlerts))
-            .overrides(bind(AlertConfigurationWriter.class)
-                .toInstance(mockAlertConfigurationWriter))
+            .overrides(
+                bind(AlertConfigurationWriter.class).toInstance(mockAlertConfigurationWriter))
             .build();
     Helpers.start(app);
   }

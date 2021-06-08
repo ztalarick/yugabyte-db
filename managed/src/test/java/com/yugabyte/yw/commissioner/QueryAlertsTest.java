@@ -89,8 +89,7 @@ public class QueryAlertsTest extends FakeDBApplication {
   public void testProcessAlertDefinitions_ReplacesParameterInQueryAndCreatesAlert() {
     ArrayList<Entry> queryHelperResult = new ArrayList<>();
     queryHelperResult.add(mock(MetricQueryResponse.Entry.class));
-    when(queryHelper.queryDirect("query < 1"))
-      .thenReturn(queryHelperResult);
+    when(queryHelper.queryDirect("query < 1")).thenReturn(queryHelperResult);
     assertEquals(0, Alert.list(customer.uuid).size());
     queryAlerts.processAlertDefinitions(customer.uuid);
     assertEquals(1, Alert.list(customer.uuid).size());
@@ -114,8 +113,7 @@ public class QueryAlertsTest extends FakeDBApplication {
       State alertState, int activeAlertsCount, boolean alertReused) {
     ArrayList<Entry> queryHelperResult = new ArrayList<>();
     queryHelperResult.add(mock(MetricQueryResponse.Entry.class));
-    when(queryHelper.queryDirect("query < 1"))
-      .thenReturn(queryHelperResult);
+    when(queryHelper.queryDirect("query < 1")).thenReturn(queryHelperResult);
     Alert alert =
         Alert.create(
             customer.uuid,

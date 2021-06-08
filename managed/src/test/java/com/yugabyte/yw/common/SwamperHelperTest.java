@@ -185,7 +185,7 @@ public class SwamperHelperTest extends FakeDBApplication {
     UUID definition2Uuid = UUID.randomUUID();
     String configFilePath = generateRulesFileName(definitionUuid.toString());
     String configFilePath2 = generateRulesFileName(definition2Uuid.toString());
-    String wrongFilePath = generateRulesFileName( "blablabla");
+    String wrongFilePath = generateRulesFileName("blablabla");
 
     new File(configFilePath).createNewFile();
     new File(configFilePath2).createNewFile();
