@@ -282,6 +282,7 @@ DECLARE_int32(client_read_write_timeout_ms);
 DECLARE_bool(consistent_restore);
 DECLARE_int32(rocksdb_level0_slowdown_writes_trigger);
 DECLARE_int32(rocksdb_level0_stop_writes_trigger);
+DECLARE_uint64(rocksdb_max_file_size_for_compaction);
 DECLARE_int64(apply_intents_task_injected_delay_ms);
 
 using namespace std::placeholders;
@@ -575,6 +576,15 @@ auto MakeMemTableFlushFilterFactory(const F& f) {
   return std::make_shared<MemTableFlushFilterFactoryType>(f);
 }
 
+template <class F>
+auto MakeMaxFileSizeWithTableTTLFunction(const F& f) {
+  // Trick to get type of max_file_size_for_compaction field.
+  typedef typename decltype(
+      static_cast<rocksdb::Options*>(nullptr)->max_file_size_for_compaction)::element_type
+      MaxFileSizeWithTableTTLFunction;
+  return std::make_shared<MaxFileSizeWithTableTTLFunction>(f);
+}
+
 Result<bool> Tablet::IntentsDbFlushFilter(const rocksdb::MemTable& memtable) {
   VLOG_WITH_PREFIX(4) << __func__;
 
@@ -684,6 +694,16 @@ Status Tablet::OpenKeyValueTablet() {
     rocksdb_options.compaction_file_filter_factory =
         std::make_shared<docdb::DocDBCompactionFileFilterFactory>(retention_policy_, clock());
   }
+
+  // Use a function that checks the table TTL before returning a value for max file size
+  // for compactions.
+  rocksdb_options.max_file_size_for_compaction = MakeMaxFileSizeWithTableTTLFunction([this] {
+    if (FLAGS_rocksdb_max_file_size_for_compaction > 0 &&
+        retention_policy_->GetRetentionDirective().table_ttl != docdb::Value::kMaxTtl) {
+      return FLAGS_rocksdb_max_file_size_for_compaction;
+    }
+    return std::numeric_limits<uint64_t>::max();
+  });
 
   rocksdb_options.disable_auto_compactions = true;
   rocksdb_options.level0_slowdown_writes_trigger = std::numeric_limits<int>::max();
@@ -2429,24 +2449,26 @@ Result<PgsqlBackfillSpecPB> QueryPostgresToDoBackfill(
 }
 
 struct BackfillParams {
-  explicit BackfillParams(const CoarseTimePoint deadline) {
-    batch_size = GetAtomicFlag(&FLAGS_backfill_index_write_batch_size);
-    rate_per_sec = GetAtomicFlag(&FLAGS_backfill_index_rate_rows_per_sec);
+  explicit BackfillParams(const CoarseTimePoint deadline)
+      : start_time(CoarseMonoClock::Now()),
+        rate_per_sec(GetAtomicFlag(&FLAGS_backfill_index_rate_rows_per_sec)),
+        batch_size(GetAtomicFlag(&FLAGS_backfill_index_write_batch_size)) {
     auto grace_margin_ms = GetAtomicFlag(&FLAGS_backfill_index_timeout_grace_margin_ms);
     if (grace_margin_ms < 0) {
       // We need: grace_margin_ms >= 1000 * batch_size / rate_per_sec;
       // By default, we will set it to twice the minimum value + 1s.
       grace_margin_ms = (rate_per_sec > 0 ? 1000 * (1 + 2.0 * batch_size / rate_per_sec) : 1000);
-      YB_LOG_EVERY_N(INFO, 100000) << "Using grace margin of " << grace_margin_ms << "ms";
+      YB_LOG_EVERY_N_SECS(INFO, 10)
+          << "Using grace margin of " << grace_margin_ms << "ms, original deadline: "
+          << MonoDelta(deadline - start_time);
     }
     modified_deadline = deadline - grace_margin_ms * 1ms;
-    start_time = CoarseMonoClock::Now();
   }
 
   CoarseTimePoint start_time;
-  CoarseTimePoint modified_deadline;
   size_t rate_per_sec;
   size_t batch_size;
+  CoarseTimePoint modified_deadline;
 };
 
 // Slow down before the next batch to throttle the rate of processing.
