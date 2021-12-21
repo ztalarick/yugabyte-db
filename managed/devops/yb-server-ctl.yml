@@ -14,6 +14,9 @@
   vars:
     script_to_run: "{{ yb_home_dir | default('/home/yugabyte') }}/bin/yb-server-ctl.sh"
   tasks:
+#    - name: Pause for 10 minutes to allow me to check whether directory exists
+#      pause:
+#        minutes: 10
     - name: Call the ctl script with appropriate args
       shell: "{{ script_to_run }} {{ process }} {{ command }}"
       when: process != "thirdparty" and process != "platform-services"

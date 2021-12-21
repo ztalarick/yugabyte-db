@@ -465,7 +465,7 @@ class ProvisionInstancesMethod(AbstractInstancesMethod):
         ansible = self.cloud.setup_ansible(args)
         if (args.install_python):
             self.extra_vars["install_python"] = True
-        ansible.run("preprovision.yml", self.extra_vars, host_info)
+#         ansible.run("preprovision.yml", self.extra_vars, host_info)
 
         if not args.disable_custom_ssh and use_default_port:
             ansible.run("use_custom_ssh_port.yml", self.extra_vars, host_info)
@@ -847,14 +847,15 @@ class ConfigureInstancesMethod(AbstractInstancesMethod):
                         args.itest_s3_package_path,
                         args.search_pattern, time.time() - start_time))
                 else:
-                    scp_to_tmp(
-                        args.package,
-                        self.extra_vars["private_ip"],
-                        self.extra_vars["ssh_user"],
-                        self.extra_vars["ssh_port"],
-                        args.private_key_file)
-                    logging.info("[app] Copying package {} to {} took {:.3f} sec".format(
-                        args.package, args.search_pattern, time.time() - start_time))
+                  logging.info("Passing the else statement")
+#                     scp_to_tmp(
+#                         args.package,
+#                         self.extra_vars["private_ip"],
+#                         self.extra_vars["ssh_user"],
+#                         self.extra_vars["ssh_port"],
+#                         args.private_key_file)
+#                     logging.info("[app] Copying package {} to {} took {:.3f} sec".format(
+#                         args.package, args.search_pattern, time.time() - start_time))
 
         logging.info("Configuring Instance: {}".format(args.search_pattern))
         ssh_options = {

@@ -16,6 +16,7 @@
     tmp_package_location: "{{ yb_software_dir }}/{{ package_folder_or_tmp }}/{{ package_name }}"
     remote_tmp_package: "/tmp/{{ package_name }}"
 
+# skipped
 - name: Download package | Download "{{ package_name }}" from AWS S3
   command:
     argv:
@@ -31,18 +32,18 @@
 
 - name: Download package | Create credentials file and download "{{ package_name }}" from GCS
   block:
-    - name: Download package | Create GCS credentials file
+    - name: Download package | Create GCS credentials file # skipped
       tempfile:
         path: "{{ yb_home_dir }}"
       register: gcs_credentials_json_file
-    - name: Download package | Copy GCS credentials to file
+    - name: Download package | Copy GCS credentials to file # skipped
       template:
         src: gcs_credentials_json.j2
         dest: "{{ gcs_credentials_json_file.path }}"
         owner: "{{ user_name }}"
         group: "{{ user_name }}"
         mode: 0600
-    - name: Download package | Download "{{ package_name }} from GCS
+    - name: Download package | Download "{{ package_name }} from GCS # skipped
       command:
         argv:
           - "gsutil"
@@ -53,14 +54,15 @@
           - "{{ remote_tmp_package }}"
         creates: "{{ remote_tmp_package }}"
   always:
-    - name: Download package | Cleanup GCS credentials file
+    - name: Download package | Cleanup GCS credentials file # skipped
       when: gcs_credentials_json_file is defined and gcs_credentials_json_file.path != ""
       file:
         path: "{{ gcs_credentials_json_file.path }}"
         state: absent
   when: gcs_package_path is defined
 
-- name: Download package | Download "{{ package_name }}" from a HTTP(S) link
+# skipped
+- name: Download package | Download "{{ package_name }}" from a HTTP(S) link # skipped
   get_url:
     url: "{{ http_package_path }}"
     dest: "{{ remote_tmp_package }}"
@@ -131,3 +133,8 @@
   tags:
     - download-software
   when: is_yugabyte_package
+
+#- name: Display all variables/facts known for a host
+#  debug:
+#    msg: The variables are {{ vars }}
+#  tags: debug_info

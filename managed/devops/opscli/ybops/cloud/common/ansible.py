@@ -68,7 +68,12 @@ class AnsibleProcess(object):
             host_info: A dictionary of host level attributes which is empty for localhost.
         """
 
+        logging.info('\n\n\n\n\n\n')
+        logging.info("printing something")
+        logging.info('\n\n\n\n\n\n')
+
         playbook_args = self.playbook_args
+        logging.info(playbook_args)
         vars = extra_vars.copy()
         tags = vars.pop("tags", None)
         skip_tags = vars.pop("skip_tags", None)
@@ -82,6 +87,8 @@ class AnsibleProcess(object):
         ssh_key_file = vars.pop("private_key_file", None)
 
         playbook_args.update(vars)
+
+        logging.info(playbook_args)
 
         if self.can_ssh:
             playbook_args.update({

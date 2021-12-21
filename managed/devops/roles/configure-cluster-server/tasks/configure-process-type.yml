@@ -3,14 +3,14 @@
       - yb_process_type is defined
       - systemd_option is defined
 
-- name: Setup | Create config directory for {{ yb_process_type }}
-  file:
-    path: "{{ yb_conf_dir }}"
-    state: directory
-    mode: 0755
-    owner: "{{ user_name }}"
-    group: "{{ user_name }}"
-
+#- name: Setup | Create config directory for {{ yb_process_type }}
+#  file:
+#    path: "{{ yb_conf_dir }}"
+#    state: directory
+#    mode: 0755
+#    owner: "{{ user_name }}"
+#    group: "{{ user_name }}"
+#
 - set_fact:
     _mount_points: "{{ mount_points.split(',') }}"
   when: _mount_points is not defined
@@ -35,13 +35,13 @@
     group: "{{ user_name }}"
     state: link
 
-# Remove existing gflags present in conf file
-- name: Configure | Remove {{ yb_process_type }} gflags
-  file:
-    path: "{{ yb_conf_file }}"
-    state: absent
-  tags:
-    - override_gflags
+## Remove existing gflags present in conf file
+#- name: Configure | Remove {{ yb_process_type }} gflags
+#  file:
+#    path: "{{ yb_conf_file }}"
+#    state: absent
+#  tags:
+#    - override_gflags
 
 # Set the gflags in conf file
 # gflags has greater precedence over extra_gflags
@@ -55,66 +55,71 @@
   tags:
     - override_gflags
 
-# Cronjob approach for starting yb-master and yb-tserver
-- name: Setup cron to check liveness of {{ yb_process_type }}
-  cron:
-    name: "Check liveness of {{ yb_process_type }}"
-    minute: "*/1"
-    user: "{{ user_name }}"
-    job: >
-      {{ yb_bin_dir }}/yb-server-ctl.sh {{ yb_process_type }} cron-check ||
-      {{ yb_bin_dir }}/yb-server-ctl.sh {{ yb_process_type }} start
-  register: cron_result
-  failed_when:
-    - cron_result is failed
-    - cloud_type != "onprem"
-  when: not systemd_option
+## Cronjob approach for starting yb-master and yb-tserver
+#- name: Setup cron to check liveness of {{ yb_process_type }}
+#  cron:
+#    name: "Check liveness of {{ yb_process_type }}"
+#    minute: "*/1"
+#    user: "{{ user_name }}"
+#    job: >
+#      {{ yb_bin_dir }}/yb-server-ctl.sh {{ yb_process_type }} cron-check ||
+#      {{ yb_bin_dir }}/yb-server-ctl.sh {{ yb_process_type }} start
+#  register: cron_result
+#  failed_when:
+#    - cron_result is failed
+#    - cloud_type != "onprem"
+#  when: not systemd_option
+#
+#- block:
+#  # Remove old cron jobs and its tasks that start master and tserver
+#  - name: Remove old cron job that starts master (for upgrades)
+#    cron:
+#      name: "Check liveness of master"
+#      user: "yugabyte"
+#      state: absent
+#
+#  - name: Remove old cron job that starts tserver (for upgrades)
+#    cron:
+#      name: "Check liveness of tserver"
+#      user: "yugabyte"
+#      state: absent
+#
+#  - name: Stop exsisting running master
+#    shell:
+#      cmd: "sudo systemctl stop yb-master"
+#
+#  - name: Stop exsisting running tserver
+#    shell:
+#      cmd: "sudo systemctl stop yb-tserver"
+#
+#  # Systemd daemon-reload for yb-master and yb-tserver service files
+#  - name: Perform daemon-reload for the new services
+#    shell:
+#      cmd: "sudo systemctl daemon-reload"
+#
+#  # Enabling master and tserver using systemd services
+#  - name: Run yb-master.service to start the master
+#    shell:
+#      cmd: "sudo systemctl enable yb-master"
+#
+#  - name: Run yb-tserver.service to start the tserver
+#    shell:
+#      cmd: "sudo systemctl enable yb-tserver"
+#
+#  # Starting master and tserver using systemd services
+#  - name: Run yb-master.service to start the master
+#    shell:
+#      cmd: "sudo systemctl start yb-master"
+#
+#  - name: Run yb-tserver.service to start the tserver
+#    shell:
+#      cmd: "sudo systemctl start yb-tserver"
+#  tags:
+#    - override_gflags
+#    - systemd_upgrade
+#  when: systemd_option
 
-- block:
-  # Remove old cron jobs and its tasks that start master and tserver
-  - name: Remove old cron job that starts master (for upgrades)
-    cron:
-      name: "Check liveness of master"
-      user: "yugabyte"
-      state: absent
-
-  - name: Remove old cron job that starts tserver (for upgrades)
-    cron:
-      name: "Check liveness of tserver"
-      user: "yugabyte"
-      state: absent
-
-  - name: Stop exsisting running master
-    shell:
-      cmd: "sudo systemctl stop yb-master"
-
-  - name: Stop exsisting running tserver
-    shell:
-      cmd: "sudo systemctl stop yb-tserver"
-
-  # Systemd daemon-reload for yb-master and yb-tserver service files
-  - name: Perform daemon-reload for the new services
-    shell:
-      cmd: "sudo systemctl daemon-reload"
-
-  # Enabling master and tserver using systemd services
-  - name: Run yb-master.service to start the master
-    shell:
-      cmd: "sudo systemctl enable yb-master"
-
-  - name: Run yb-tserver.service to start the tserver
-    shell:
-      cmd: "sudo systemctl enable yb-tserver"
-
-  # Starting master and tserver using systemd services
-  - name: Run yb-master.service to start the master
-    shell:
-      cmd: "sudo systemctl start yb-master"
-
-  - name: Run yb-tserver.service to start the tserver
-    shell:
-      cmd: "sudo systemctl start yb-tserver"
-  tags:
-    - override_gflags
-    - systemd_upgrade
-  when: systemd_option
+#- name: Display all variables/facts known for a host
+#  debug:
+#    msg: The variables are {{ vars }}
+#  tags: debug_info

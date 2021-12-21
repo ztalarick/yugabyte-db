@@ -16,8 +16,8 @@
       - mount_points is defined
       - systemd_option is defined
 
-- name: Prepare host
-  include: "prepare-configure-server.yml"
+#- name: Prepare host
+#  include: "prepare-configure-server.yml"
 
 - name: "Set up {{ yb_process_type }}"
   include: "configure-process-type.yml"

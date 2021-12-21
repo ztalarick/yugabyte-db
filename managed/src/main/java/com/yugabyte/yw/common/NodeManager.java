@@ -1140,6 +1140,7 @@ public class NodeManager extends DevopsBase {
     Universe universe = Universe.getOrBadRequest(universeUUID);
     Config runtimeConfig = runtimeConfigFactory.forUniverse(universe);
 
+    // [Akshat] experiment with these flags
     envVars.put("ANSIBLE_STRATEGY", runtimeConfig.getString("yb.ansible.strategy"));
     envVars.put(
         "ANSIBLE_TIMEOUT", Integer.toString(runtimeConfig.getInt("yb.ansible.conn_timeout_secs")));

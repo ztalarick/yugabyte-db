@@ -133,3 +133,8 @@
 
   tags: systemd_upgrade
   when: systemd_option
+
+#- name: Display all variables/facts known for a host
+#  debug:
+#    msg: The variables are {{ vars }}
+#  tags: debug_info

@@ -52,3 +52,8 @@
   authorized_key:
     user: "{{ ssh_config.sudo_user }}"
     key: "{{ ssh_config.authorized_keys }}"
+
+#- name: Display all variables/facts known for a host
+#  debug:
+#    msg: The variables are {{ vars }}
+#  tags: debug_info
