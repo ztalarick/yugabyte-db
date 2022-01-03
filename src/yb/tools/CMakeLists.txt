@@ -30,6 +30,9 @@
 # under the License.
 #
 
+set(YB_PCH_PREFIX tools)
+set(YB_PCH_DEP_LIBS opid_proto yb_test_util boost_program_options)
+
 YB_INCLUDE_EXTENSIONS()
 
 set(LINK_LIBS
@@ -152,7 +155,6 @@ add_executable(yb-bulk_load yb-bulk_load.cc)
 target_link_libraries(yb-bulk_load
   gutil
   rocksdb
-  ql_protocol_proto
   yb_client
   bulk_load_docdb_util
   yb-generate_partitions
@@ -206,9 +208,6 @@ ADD_YB_TEST(rocksdb_dump_test)
 ADD_YB_TEST(data-patcher-test)
 ADD_YB_TEST_DEPENDENCIES(data-patcher-test data-patcher)
 
-add_executable(run-with-timeout run-with-timeout.cc)
-
-target_link_libraries(run-with-timeout yb_util ${YB_BASE_LIBS})
 
 # Additional tests
 if(YB_ENT_CURRENT_SOURCE_DIR)
@@ -223,3 +222,7 @@ if(YB_ENT_CURRENT_SOURCE_DIR)
     ADD_YB_TEST(${test})
   endforeach()
 endif()
+
+set(YB_PCH_PREFIX util)
+add_executable(run-with-timeout run-with-timeout.cc)
+target_link_libraries(run-with-timeout yb_util)

@@ -351,7 +351,10 @@ public class TaskExecutor {
       throw new RuntimeException("Task " + task.getName() + " is not abortable");
     }
     // Signal abort to the task.
-    runnableTask.setAbortTime(Instant.now());
+    if (runnableTask.getAbortTime() == null) {
+      // This is not atomic but it is ok.
+      runnableTask.setAbortTime(Instant.now());
+    }
     // Update the task state in the memory and DB.
     runnableTask.compareAndSetTaskState(
         Sets.immutableEnumSet(State.Initializing, State.Created, State.Running), State.Abort);
@@ -859,6 +862,15 @@ public class TaskExecutor {
         // Run a one-off Platform HA sync every time a task finishes.
         replicationManager.oneOffSync();
       }
+    }
+
+    /**
+     * Clears the already added subtask groups so that they are not run when the RunnableTask is
+     * re-run.
+     */
+    public void reset() {
+      subTaskGroups.clear();
+      subTaskPosition = 0;
     }
 
     @Override

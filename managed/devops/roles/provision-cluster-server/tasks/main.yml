@@ -13,6 +13,7 @@
       - use_chrony is defined
       - mount_points is defined
       - systemd_option is defined
+      - pg_max_mem_mb is defined
 
 # - name: Do we need chrony?
 #   set_fact:

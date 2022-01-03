@@ -100,6 +100,7 @@ GET     /customers/:cUUID/kms_configs/:configUUID                              c
 GET     /customers/:cUUID/kms_configs                                          com.yugabyte.yw.controllers.EncryptionAtRestController.listKMSConfigs(cUUID: java.util.UUID)
 POST    /customers/:cUUID/kms_configs/:kmsProvider                             com.yugabyte.yw.controllers.EncryptionAtRestController.createKMSConfig(cUUID: java.util.UUID, kmsProvider: String)
 DELETE  /customers/:cUUID/kms_configs/:configUUID                              com.yugabyte.yw.controllers.EncryptionAtRestController.deleteKMSConfig(cUUID: java.util.UUID, configUUID: java.util.UUID)
+POST    /customers/:cUUID/kms_configs/:configUUID/edit                         com.yugabyte.yw.controllers.EncryptionAtRestController.editKMSConfig(cUUID: java.util.UUID, configUUID: java.util.UUID)
 
 # KMS History API
 GET     /customers/:cUUID/universes/:uniUUID/kms                               com.yugabyte.yw.controllers.EncryptionAtRestController.getKeyRefHistory(cUUID: java.util.UUID, uniUUID: java.util.UUID)
@@ -279,6 +280,7 @@ DELETE  /customers/:cUUID/universes/:uniUUID/tables/:tableUUID                 c
 PUT     /customers/:cUUID/universes/:uniUUID/tables/:tableUUID/bulk_import     com.yugabyte.yw.controllers.TablesController.bulkImport(cUUID: java.util.UUID, uniUUID: java.util.UUID, tableUUID: java.util.UUID)
 PUT     /customers/:cUUID/universes/:uniUUID/tables/:tableUUID/create_backup   com.yugabyte.yw.controllers.TablesController.createBackup(cUUID: java.util.UUID, uniUUID: java.util.UUID, tableUUID: java.util.UUID)
 PUT     /customers/:cUUID/universes/:uniUUID/multi_table_backup                com.yugabyte.yw.controllers.TablesController.createMultiTableBackup(cUUID: java.util.UUID, uniUUID: java.util.UUID)
+POST    /customers/:cUUID/backups                                              com.yugabyte.yw.controllers.TablesController.createBackupYb(cUUID: java.util.UUID)
 GET     /customers/:cUUID/universes/:uniUUID/backups                           com.yugabyte.yw.controllers.BackupsController.list(cUUID: java.util.UUID, uniUUID: java.util.UUID)
 GET     /customers/:cUUID/universes/:uniUUID/backups/tasks/:tUUID              com.yugabyte.yw.controllers.BackupsController.fetchBackupsByTaskUUID(cUUID: java.util.UUID, uniUUID: java.util.UUID, tUUID: java.util.UUID)
 POST    /customers/:cUUID/universes/:uniUUID/backups/restore                   com.yugabyte.yw.controllers.BackupsController.restore(cUUID: java.util.UUID, uniUUID: java.util.UUID)
@@ -291,6 +293,7 @@ GET    /customers/:cUUID/tasks_list                                            c
 GET    /customers/:cUUID/tasks/:tUUID                                          com.yugabyte.yw.controllers.CustomerTaskController.taskStatus(cUUID: java.util.UUID, tUUID: java.util.UUID)
 POST   /customers/:cUUID/tasks/:tUUID                                          com.yugabyte.yw.controllers.CustomerTaskController.retryTask(cUUID: java.util.UUID, tUUID: java.util.UUID)
 POST   /customers/:cUUID/tasks/:tUUID/retry                                    com.yugabyte.yw.controllers.CustomerTaskController.retryTask(cUUID: java.util.UUID, tUUID: java.util.UUID)
+POST   /customers/:cUUID/tasks/:tUUID/abort                                    com.yugabyte.yw.controllers.CustomerTaskController.abortTask(cUUID: java.util.UUID, tUUID: java.util.UUID)
 GET    /customers/:cUUID/universes/:uniUUID/tasks                              com.yugabyte.yw.controllers.CustomerTaskController.universeTasks(cUUID: java.util.UUID, uniUUID: java.util.UUID)
 GET    /customers/:cUUID/tasks/:tUUID/failed                                   com.yugabyte.yw.controllers.CustomerTaskController.failedSubtasks(cUUID: java.util.UUID, tUUID: java.util.UUID)
 

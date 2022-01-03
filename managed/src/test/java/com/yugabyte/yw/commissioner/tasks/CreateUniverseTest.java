@@ -14,12 +14,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableList;
-import com.yugabyte.yw.commissioner.tasks.params.NodeTaskParams;
-import com.yugabyte.yw.common.NodeManager;
 import com.yugabyte.yw.common.ShellResponse;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.Cluster;
-import com.yugabyte.yw.models.NodeInstance;
 import com.yugabyte.yw.models.TaskInfo;
 import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.helpers.NodeDetails;
@@ -35,7 +32,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.yb.client.ChangeMasterClusterConfigResponse;
 import org.yb.client.GetMasterClusterConfigResponse;
 import org.yb.client.ListTabletServersResponse;
-import org.yb.master.Master;
+import org.yb.master.CatalogEntityInfo;
 
 @RunWith(MockitoJUnitRunner.class)
 public class CreateUniverseTest extends UniverseModifyBaseTest {
@@ -47,9 +44,9 @@ public class CreateUniverseTest extends UniverseModifyBaseTest {
           TaskType.AnsibleUpdateNodeInfo,
           TaskType.AnsibleSetupServer,
           TaskType.AnsibleConfigureServers,
+          TaskType.AnsibleConfigureServers, // GFlags
+          TaskType.AnsibleConfigureServers, // GFlags
           TaskType.SetNodeStatus,
-          TaskType.AnsibleConfigureServers, // GFlags
-          TaskType.AnsibleConfigureServers, // GFlags
           TaskType.AnsibleClusterServerCtl, // master
           TaskType.WaitForServer,
           TaskType.AnsibleClusterServerCtl, // tserver
@@ -59,14 +56,13 @@ public class CreateUniverseTest extends UniverseModifyBaseTest {
           TaskType.UpdatePlacementInfo,
           TaskType.WaitForTServerHeartBeats,
           TaskType.SwamperTargetsFileUpdate,
+          TaskType.CreateTable,
           TaskType.CreateAlertDefinitions,
           TaskType.ChangeAdminPassword,
           TaskType.UniverseUpdateSucceeded);
 
   private static final List<TaskType> UNIVERSE_CREATE_TASK_RETRY_SEQUENCE =
       ImmutableList.of(
-          TaskType.AnsibleConfigureServers, // GFlags
-          TaskType.AnsibleConfigureServers, // GFlags
           TaskType.AnsibleClusterServerCtl, // master
           TaskType.WaitForServer,
           TaskType.AnsibleClusterServerCtl, // tserver
@@ -76,6 +72,7 @@ public class CreateUniverseTest extends UniverseModifyBaseTest {
           TaskType.UpdatePlacementInfo,
           TaskType.WaitForTServerHeartBeats,
           TaskType.SwamperTargetsFileUpdate,
+          TaskType.CreateTable,
           TaskType.CreateAlertDefinitions,
           TaskType.ChangeAdminPassword,
           TaskType.UniverseUpdateSucceeded);
@@ -97,8 +94,8 @@ public class CreateUniverseTest extends UniverseModifyBaseTest {
   public void setUp() {
     super.setUp();
 
-    Master.SysClusterConfigEntryPB.Builder configBuilder =
-        Master.SysClusterConfigEntryPB.newBuilder().setVersion(1);
+    CatalogEntityInfo.SysClusterConfigEntryPB.Builder configBuilder =
+        CatalogEntityInfo.SysClusterConfigEntryPB.newBuilder().setVersion(1);
     GetMasterClusterConfigResponse mockConfigResponse =
         new GetMasterClusterConfigResponse(1111, "", configBuilder.build(), null);
     ChangeMasterClusterConfigResponse mockMasterChangeConfigResponse =
@@ -128,6 +125,10 @@ public class CreateUniverseTest extends UniverseModifyBaseTest {
             })
         .when(mockYsqlQueryExecutor)
         .validateAdminPassword(any(), any());
+    ShellResponse successResponse = new ShellResponse();
+    successResponse.message = "Command output:\nCREATE TABLE";
+    when(mockNodeUniverseManager.runYsqlCommand(any(), any(), any(), (any())))
+        .thenReturn(successResponse);
   }
 
   private TaskInfo submitTask(UniverseDefinitionTaskParams taskParams) {
