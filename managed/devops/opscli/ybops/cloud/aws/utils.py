@@ -844,7 +844,7 @@ def get_device_names(instance_type, num_volumes):
 
 
 def is_next_gen(instance_type):
-    return instance_type.startswith(("c3.", "c4.", "c5.", "m4.", "r4.", "m6g.", "t2.", "c6g."))
+    return instance_type.startswith(("c3.", "c4.", "c5.", "m4.", "r4.", "m6g.", "t2.", "c6g.", "t3."))
 
 
 def is_nvme(instance_type):
@@ -986,6 +986,19 @@ def create_instance(args):
             }
             tag_dicts.append(resources_tag_dict)
     vars["TagSpecifications"] = tag_dicts
+    # Reference: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2.html#EC2.Subnet.create_instances
+    # 'CreditSpecification': {
+    #         'CpuCredits': 'string'
+    #     }
+    #
+    # Todo: Read https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances-how-to.html
+
+    # Todo: Probably switch to using some global config of list of instances to use "standard" for
+    if args.instance_type == "t3.small":
+        vars["CreditSpecification"] = {
+            "CpuCredits": 'standard'
+        }
+
     # TODO: user_data > templates/cloud_init.yml.j2, still needed?
     logging.info("[app] About to create AWS VM {}. ".format(args.search_pattern))
     instance_ids = client.create_instances(**vars)
