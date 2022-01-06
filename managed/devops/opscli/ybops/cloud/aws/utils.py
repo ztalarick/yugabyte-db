@@ -844,7 +844,7 @@ def get_device_names(instance_type, num_volumes):
 
 
 def is_next_gen(instance_type):
-    return instance_type.startswith(("c3.", "c4.", "c5.", "m4.", "r4.", "m6g.", "t2.", "c6g.", "t3."))
+    return instance_type.startswith(("c3.", "c4.", "c5.", "m4.", "r4.", "m6g.", "t2.", "c6g.", "t3.", "t4g."))
 
 
 def is_nvme(instance_type):
@@ -906,7 +906,7 @@ def create_instance(args):
 
     ebs = {
         "DeleteOnTermination": args.auto_delete_boot_disk,
-        "VolumeSize": args.boot_disk_size_gb,
+        "VolumeSize": 10,
         "VolumeType": "gp2"
     }
 
@@ -995,6 +995,11 @@ def create_instance(args):
 
     # Todo: Probably switch to using some global config of list of instances to use "standard" for
     if args.instance_type == "t3.small":
+        vars["CreditSpecification"] = {
+            "CpuCredits": 'standard'
+        }
+
+    if args.instance_type == "t4g.small":
         vars["CreditSpecification"] = {
             "CpuCredits": 'standard'
         }
