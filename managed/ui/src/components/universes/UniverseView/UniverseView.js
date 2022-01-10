@@ -137,7 +137,7 @@ export const UniverseView = (props) => {
   const [sortField, setSortField] = useState('Universe Name');
   const [sortOrder, setSortOrder] = useState(order.asc.value);
   const [universePendingTasks, setUniversePendingTasks] = useState({});
-  const [pageSize, setPageSize] = useState(4);
+  const [pageSize, setPageSize] = useState(20);
   const [activePage, setActivePage] = useState(1);
   const [curView, setCurView] = useState(view.LIST);
   const [curStatusFilter, setCurStatusFilter] = useState([]);
