@@ -60,19 +60,19 @@ public class VaultEARServiceUtilTest extends FakeDBApplication {
   public static final String jsonString =
       "{"
           + "\""
-          + HashicorpVaultConfigParam.HC_VAULT_ADDRESS
+          + HashicorpVaultConfigParams.HC_VAULT_ADDRESS
           + "\":\""
           + vaultAddr
           + "\",\""
-          + HashicorpVaultConfigParam.HC_VAULT_TOKEN
+          + HashicorpVaultConfigParams.HC_VAULT_TOKEN
           + "\":\""
           + vaultToken
           + "\",\""
-          + HashicorpVaultConfigParam.HC_VAULT_ENGINE
+          + HashicorpVaultConfigParams.HC_VAULT_ENGINE
           + "\":\""
           + sEngine
           + "\",\""
-          + HashicorpVaultConfigParam.HC_VAULT_MOUNT_PATH
+          + HashicorpVaultConfigParams.HC_VAULT_MOUNT_PATH
           + "\":\""
           + mountPath
           + "\""
@@ -140,8 +140,8 @@ public class VaultEARServiceUtilTest extends FakeDBApplication {
 
     HashicorpEARServiceUtil.updateAuthConfigObj(testUniverseID, testConfigID, transitEngine, cfg);
 
-    JsonNode ttl = cfg.get(HashicorpVaultConfigParam.HC_VAULT_TTL);
-    JsonNode ttlExpiry = cfg.get(HashicorpVaultConfigParam.HC_VAULT_TTL_EXPIRY);
+    JsonNode ttl = cfg.get(HashicorpVaultConfigParams.HC_VAULT_TTL);
+    JsonNode ttlExpiry = cfg.get(HashicorpVaultConfigParams.HC_VAULT_TTL_EXPIRY);
     assertNotNull(ttl);
     assertNotNull(ttlExpiry);
     assertEquals(0L, (long) Long.valueOf(ttl.asText()));
@@ -159,8 +159,8 @@ public class VaultEARServiceUtilTest extends FakeDBApplication {
     when(vAccessor.getTokenExpiryFromVault()).thenThrow(NullPointerException.class);
     transitEngine = new VaultTransit(vAccessor, mountPath, KeyType.CMK);
     HashicorpEARServiceUtil.updateAuthConfigObj(testUniverseID, testConfigID, transitEngine, cfg);
-    JsonNode ttl = cfg.get(HashicorpVaultConfigParam.HC_VAULT_TTL);
-    JsonNode ttlExpiry = cfg.get(HashicorpVaultConfigParam.HC_VAULT_TTL_EXPIRY);
+    JsonNode ttl = cfg.get(HashicorpVaultConfigParams.HC_VAULT_TTL);
+    JsonNode ttlExpiry = cfg.get(HashicorpVaultConfigParams.HC_VAULT_TTL_EXPIRY);
     assertNull(ttl);
     assertNull(ttlExpiry);
   }

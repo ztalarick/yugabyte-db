@@ -13,24 +13,22 @@ package com.yugabyte.yw.common.certmgmt;
 import java.util.Date;
 import java.util.UUID;
 
-import com.yugabyte.yw.models.CertificateInfo;
+/** Provides interface to manage certificates */
+public abstract class CertificateProviderInterface {
 
-/** TODO */
-public interface CertificateProviderInterface {
-  /*
-    public UUID createRootCA(String nodePrefix, UUID customerUUID, String storagePath);
+  CertificateCustomInfo.CertConfigType certConfigType;
+  public UUID caCertUUID;
 
-    public CertificateDetails createSignedCertificate( UUID rootCA, String storagePath,
-    String username, Date certStart, Date certExpiry, String certFileName, String certKeyName);
+  public CertificateProviderInterface(CertificateCustomInfo.CertConfigType type, UUID pCACertUUID) {
+    certConfigType = type;
+    caCertUUID = pCACertUUID;
+  }
 
-    public CertificateDetails createNodeToNodeCertificate( UUID rootCA, String storagePath,
-    String username, Date certStart, Date certExpiry);
-
-    public CertificateDetails createClientToNodeCertificate( UUID rootCA, String storagePath,
-    String username, Date certStart, Date certExpiry);
-  */
-
-  public String getCertPEM(CertificateInfo cert);
-
-  public String getKeyPEM(CertificateInfo cert);
+  public abstract CertificateDetails createCertificate(
+      String storagePath,
+      String username,
+      Date certStart,
+      Date certExpiry,
+      String certFileName,
+      String certKeyName);
 }

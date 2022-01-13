@@ -3,7 +3,7 @@
 package com.yugabyte.yw.forms;
 
 import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
-import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParam;
+import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParams;
 import play.data.validation.Constraints;
 
 /**
@@ -45,5 +45,5 @@ public class CertificateParams {
 
   public CustomServerCertParams customSrvCertParams;
 
-  public HashicorpVaultConfigParam hcVaultCertParams;
+  public HashicorpVaultConfigParams hcVaultCertParams;
 }

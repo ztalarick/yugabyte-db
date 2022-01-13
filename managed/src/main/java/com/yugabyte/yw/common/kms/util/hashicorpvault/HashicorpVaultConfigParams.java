@@ -12,12 +12,15 @@
 package com.yugabyte.yw.common.kms.util.hashicorpvault;
 
 /** Represents params for Hashicorp Vault config (EncryptionAtTransit) */
-public class HashicorpVaultConfigParam {
+public class HashicorpVaultConfigParams {
 
   public static final String HC_VAULT_TOKEN = "HC_VAULT_TOKEN";
   public static final String HC_VAULT_ADDRESS = "HC_VAULT_ADDRESS";
   public static final String HC_VAULT_ENGINE = "HC_VAULT_ENGINE";
   public static final String HC_VAULT_MOUNT_PATH = "HC_VAULT_MOUNT_PATH";
+
+  public static final String HC_VAULT_PKI_ROLE = "HC_VAULT_PKI_ROLE";
+
   public static final String HC_VAULT_TTL = "HC_VAULT_TTL";
   public static final String HC_VAULT_TTL_EXPIRY = "HC_VAULT_TTL_EXPIRY";
 
@@ -25,4 +28,7 @@ public class HashicorpVaultConfigParam {
   public String vaultToken;
   public String engine;
   public String mountPath;
+  public String role;
+  public long ttl;
+  public long ttl_expiry;
 }

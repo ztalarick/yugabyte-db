@@ -171,6 +171,121 @@ public class UniverseCRUDHandler {
     }
   }
 
+  /**
+   * Creates RootCA certificate if not provided and creates client certificate.
+   *
+   * @param customer
+   * @param taskParams
+   * @param primaryCluster
+   */
+  public void CheckForCertificates(Customer customer, UniverseDefinitionTaskParams taskParams) {
+
+    Cluster primaryCluster = taskParams.getPrimaryCluster();
+
+    if (primaryCluster.userIntent.enableNodeToNodeEncrypt) {
+
+      /*if (??? == CertConfigType.HashicorpVaultPKI) {
+        // we don't need to create root certificate for this type.
+        // TODO: fetch the certificate from the vault and validate it and assign it to taskParams.rootCA)
+        taskParams.rootCA = fetch cert from vault
+        checkValidRootCA(taskParams.rootCA);
+        return ;
+      }*/
+
+      if (taskParams.rootCA != null) {
+        CertificateInfo cert = CertificateInfo.get(taskParams.rootCA);
+
+        if (cert.certType == CertConfigType.CustomServerCert) {
+          throw new PlatformServiceException(
+              BAD_REQUEST,
+              "CustomServerCert are only supported for Client to Server Communication.");
+        }
+
+        if (cert.certType == CertConfigType.CustomCertHostPath) {
+          if (!taskParams
+              .getPrimaryCluster()
+              .userIntent
+              .providerType
+              .equals(Common.CloudType.onprem)) {
+            throw new PlatformServiceException(
+                BAD_REQUEST,
+                "CustomCertHostPath certificates are only supported for onprem providers.");
+          }
+        }
+      } else { // taskParams.rootCA == null
+        // create self signed rootCA in case it is not provided by the user.
+        taskParams.rootCA =
+            CertificateHelper.createRootCA(
+                taskParams.nodePrefix, customer.uuid, appConfig.getString("yb.storage.path"));
+      }
+      checkValidRootCA(taskParams.rootCA);
+    }
+
+    if (primaryCluster.userIntent.enableClientToNodeEncrypt) {
+
+      /*if (??? == CertConfigType.HashicorpVaultPKI) {
+        // we don't need to create root certificate for this type.
+        // we should fetch the certificate from the vault and validate it
+
+        checkValidRootCA(taskParams.rootCA);
+        // TODO: do we still need to create client certificate? if not remove this block
+        return ;
+      }*/
+
+      if (taskParams.clientRootCA == null) {
+        if (taskParams.rootCA != null && taskParams.rootAndClientRootCASame) {
+          // Setting ClientRootCA to RootCA incase rootAndClientRootCA is true
+          taskParams.clientRootCA = taskParams.rootCA;
+        } else {
+          // create self signed clientRootCA in case it is not provided by the user
+          // and root and clientRoot CA needs to be different
+          taskParams.clientRootCA =
+              CertificateHelper.createClientRootCA(
+                  taskParams.nodePrefix, customer.uuid, appConfig.getString("yb.storage.path"));
+        }
+      }
+
+      CertificateInfo cert = CertificateInfo.get(taskParams.clientRootCA);
+      if (cert.certType == CertConfigType.CustomCertHostPath) {
+        if (!taskParams
+            .getPrimaryCluster()
+            .userIntent
+            .providerType
+            .equals(Common.CloudType.onprem)) {
+          throw new PlatformServiceException(
+              BAD_REQUEST,
+              "CustomCertHostPath certificates are only supported for onprem providers.");
+        }
+        checkValidRootCA(taskParams.rootCA);
+      }
+
+      // Setting rootCA to ClientRootCA in case node to node encryption is disabled.
+      // This is necessary to set to ensure backward compatibity as existing parts of
+      // codebase (kubernetes) uses rootCA for Client to Node Encryption
+      if (taskParams.rootCA == null && taskParams.rootAndClientRootCASame) {
+        taskParams.rootCA = taskParams.clientRootCA;
+      }
+
+      // Generate client certs if rootAndClientRootCASame is true and rootCA is self-signed.
+      // This is there only for legacy support, no need if rootCA and clientRootCA are different.
+      if (taskParams.rootAndClientRootCASame) {
+        CertificateInfo rootCert = CertificateInfo.get(taskParams.rootCA);
+        if (rootCert.certType == CertConfigType.SelfSigned) {
+          CertificateHelper.createClientCertificate(
+              taskParams.rootCA,
+              String.format(
+                  CertificateHelper.CERT_PATH,
+                  appConfig.getString("yb.storage.path"),
+                  customer.uuid.toString(),
+                  taskParams.rootCA.toString()),
+              CertificateHelper.DEFAULT_CLIENT,
+              null,
+              null);
+        }
+      }
+    }
+  }
+
   public UniverseResp createUniverse(Customer customer, UniverseDefinitionTaskParams taskParams) {
     LOG.info("Create for {}.", customer.uuid);
     // Get the user submitted form data.
@@ -299,90 +414,7 @@ public class UniverseCRUDHandler {
         }
       }
 
-      if (primaryCluster.userIntent.enableNodeToNodeEncrypt) {
-        // create self signed rootCA in case it is not provided by the user.
-        if (taskParams.rootCA == null) {
-          taskParams.rootCA =
-              CertificateHelper.createRootCA(
-                  taskParams.nodePrefix, customer.uuid, appConfig.getString("yb.storage.path"));
-        }
-
-        CertificateInfo cert = CertificateInfo.get(taskParams.rootCA);
-        if (cert.certType == CertConfigType.CustomServerCert) {
-          throw new PlatformServiceException(
-              BAD_REQUEST,
-              "CustomServerCert are only supported for Client to Server Communication.");
-        }
-
-        if (cert.certType == CertConfigType.CustomCertHostPath) {
-          if (!taskParams
-              .getPrimaryCluster()
-              .userIntent
-              .providerType
-              .equals(Common.CloudType.onprem)) {
-            throw new PlatformServiceException(
-                BAD_REQUEST,
-                "CustomCertHostPath certificates are only supported for onprem providers.");
-          }
-          checkValidRootCA(taskParams.rootCA);
-        }
-      }
-
-      if (primaryCluster.userIntent.enableClientToNodeEncrypt) {
-        if (taskParams.clientRootCA == null) {
-          if (taskParams.rootCA != null && taskParams.rootAndClientRootCASame) {
-            // Setting ClientRootCA to RootCA incase rootAndClientRootCA is true
-            taskParams.clientRootCA = taskParams.rootCA;
-          } else {
-            // create self signed clientRootCA in case it is not provided by the user
-            // and root and clientRoot CA needs to be different
-            taskParams.clientRootCA =
-                CertificateHelper.createClientRootCA(
-                    taskParams.nodePrefix, customer.uuid, appConfig.getString("yb.storage.path"));
-          }
-        }
-
-        CertificateInfo cert = CertificateInfo.get(taskParams.clientRootCA);
-        if (cert.certType == CertConfigType.CustomCertHostPath) {
-          if (!taskParams
-              .getPrimaryCluster()
-              .userIntent
-              .providerType
-              .equals(Common.CloudType.onprem)) {
-            throw new PlatformServiceException(
-                BAD_REQUEST,
-                "CustomCertHostPath certificates are only supported for onprem providers.");
-          }
-          checkValidRootCA(taskParams.rootCA);
-        }
-
-        // Setting rootCA to ClientRootCA in case node to node encryption is disabled.
-        // This is necessary to set to ensure backward compatibity as existing parts of
-        // codebase (kubernetes) uses rootCA for Client to Node Encryption
-        if (taskParams.rootCA == null && taskParams.rootAndClientRootCASame) {
-          taskParams.rootCA = taskParams.clientRootCA;
-        }
-
-        // Generate client certs if rootAndClientRootCASame is true and rootCA is self-signed.
-        // This is there only for legacy support, no need if rootCA and clientRootCA are different.
-        if (taskParams.rootAndClientRootCASame) {
-          CertificateInfo rootCert = CertificateInfo.get(taskParams.rootCA);
-          if (rootCert.certType == CertConfigType.SelfSigned) {
-            CertificateHelper.createClientCertificate(
-                taskParams.rootCA,
-                String.format(
-                    CertificateHelper.CERT_PATH,
-                    appConfig.getString("yb.storage.path"),
-                    customer.uuid.toString(),
-                    taskParams.rootCA.toString()),
-                CertificateHelper.DEFAULT_CLIENT,
-                null,
-                null);
-          } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
-            // TODO: impl
-          }
-        }
-      }
+      CheckForCertificates(customer, taskParams);
 
       if (primaryCluster.userIntent.enableNodeToNodeEncrypt
           || primaryCluster.userIntent.enableClientToNodeEncrypt) {

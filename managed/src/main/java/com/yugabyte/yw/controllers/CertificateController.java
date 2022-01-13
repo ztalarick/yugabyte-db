@@ -135,6 +135,7 @@ public class CertificateController extends AuthenticatedController {
     CertificateDetails result =
         CertificateHelper.createClientCertificate(
             rootCA, null, formData.get().username, certStart, certExpiry);
+
     auditService().createAuditEntry(ctx(), request(), Json.toJson(formData.data()));
     return PlatformResults.withData(result);
   }

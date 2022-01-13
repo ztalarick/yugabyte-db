@@ -463,12 +463,17 @@ public class CertificateInfo extends Model {
     CertificateInfo certInfo = getOrBadRequest(certUUID, customerUUID);
     if (certInfo.certType == CertConfigType.SelfSigned) {
       throw new PlatformServiceException(BAD_REQUEST, "Cannot edit self-signed cert.");
-    } else if (certInfo.certType == CertConfigType.HashicorpVaultPKI) {
-      // TODO: impl
     }
     if (certInfo.customCertInfo != null) {
       throw new PlatformServiceException(
           BAD_REQUEST, "Cannot edit pre-customized cert. Create a new one.");
+    }
+    if (certInfo.certType == CertConfigType.HashicorpVaultPKI) {
+      // TODO: impl
+      throw new PlatformServiceException(
+          BAD_REQUEST,
+          "Cannot edit cert config,"
+              + "Please create a new one and assign it to Cluster in settings");
     }
   }
 }
