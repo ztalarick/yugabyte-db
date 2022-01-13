@@ -15,8 +15,8 @@ import com.yugabyte.yw.commissioner.Commissioner;
 import com.yugabyte.yw.commissioner.Common;
 import com.yugabyte.yw.commissioner.tasks.PauseUniverse;
 import com.yugabyte.yw.commissioner.tasks.ResumeUniverse;
-import com.yugabyte.yw.common.CertificateHelper;
 import com.yugabyte.yw.common.Util;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
 import com.yugabyte.yw.forms.AlertConfigFormData;
@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.data.Form;
 import play.mvc.Http;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 
 public class UniverseActionsHandler {
   private static final Logger LOG = LoggerFactory.getLogger(UniverseActionsHandler.class);
@@ -155,16 +156,14 @@ public class UniverseActionsHandler {
     }
 
     if (requestParams.rootCA != null
-        && CertificateInfo.get(requestParams.rootCA).certType
-            == CertificateInfo.Type.CustomServerCert) {
+        && CertificateInfo.get(requestParams.rootCA).certType == CertConfigType.CustomServerCert) {
       throw new PlatformServiceException(
           Http.Status.BAD_REQUEST,
           "CustomServerCert are only supported for Client to Server Communication.");
     }
 
     if (requestParams.rootCA != null
-        && CertificateInfo.get(requestParams.rootCA).certType
-            == CertificateInfo.Type.CustomCertHostPath
+        && CertificateInfo.get(requestParams.rootCA).certType == CertConfigType.CustomCertHostPath
         && !userIntent.providerType.equals(Common.CloudType.onprem)) {
       throw new PlatformServiceException(
           Http.Status.BAD_REQUEST,
@@ -173,11 +172,15 @@ public class UniverseActionsHandler {
 
     if (requestParams.clientRootCA != null
         && CertificateInfo.get(requestParams.clientRootCA).certType
-            == CertificateInfo.Type.CustomCertHostPath
+            == CertConfigType.CustomCertHostPath
         && !userIntent.providerType.equals(Common.CloudType.onprem)) {
       throw new PlatformServiceException(
           Http.Status.BAD_REQUEST,
           "CustomCertHostPath certificates are only supported for on-prem providers.");
+    }
+    if (CertificateInfo.get(requestParams.clientRootCA).certType
+        == CertConfigType.HashicorpVaultPKI) {
+      // TODO: impl
     }
 
     if (requestParams.rootAndClientRootCASame != null
@@ -219,6 +222,7 @@ public class UniverseActionsHandler {
       taskParams.rootCA = universeDetails.rootCA;
       if (taskParams.rootCA == null) {
         // create self signed rootCA in case it is not provided by the user
+        LOG.info("_YD:create self signed rootCA as it is not provided by the user");
         taskParams.rootCA =
             requestParams.rootCA != null
                 ? requestParams.rootCA
@@ -263,17 +267,21 @@ public class UniverseActionsHandler {
 
       // If client encryption is enabled, generate the client cert file for each node.
       CertificateInfo cert = CertificateInfo.get(taskParams.rootCA);
-      if (taskParams.rootAndClientRootCASame && cert.certType == CertificateInfo.Type.SelfSigned) {
-        CertificateHelper.createClientCertificate(
-            taskParams.clientRootCA,
-            String.format(
-                CertificateHelper.CERT_PATH,
-                runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"),
-                customer.uuid.toString(),
-                taskParams.clientRootCA.toString()),
-            CertificateHelper.DEFAULT_CLIENT,
-            null,
-            null);
+      if (taskParams.rootAndClientRootCASame) {
+        if (cert.certType == CertConfigType.SelfSigned) {
+          CertificateHelper.createClientCertificate(
+              taskParams.clientRootCA,
+              String.format(
+                  CertificateHelper.CERT_PATH,
+                  runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"),
+                  customer.uuid.toString(),
+                  taskParams.clientRootCA.toString()),
+              CertificateHelper.DEFAULT_CLIENT,
+              null,
+              null);
+        } else if (cert.certType == CertConfigType.HashicorpVaultPKI) {
+          // TODO: impl
+        }
       }
     }
 

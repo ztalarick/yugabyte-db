@@ -35,6 +35,7 @@ import com.yugabyte.yw.commissioner.tasks.subtasks.InstanceActions;
 import com.yugabyte.yw.commissioner.tasks.subtasks.PauseServer;
 import com.yugabyte.yw.commissioner.tasks.subtasks.ReplaceRootVolume;
 import com.yugabyte.yw.commissioner.tasks.subtasks.ResumeServer;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
 import com.yugabyte.yw.forms.CertificateParams;
 import com.yugabyte.yw.forms.CertsRotateParams.CertRotationType;
@@ -44,7 +45,7 @@ import com.yugabyte.yw.forms.UniverseTaskParams;
 import com.yugabyte.yw.forms.UpgradeTaskParams;
 import com.yugabyte.yw.models.AccessKey;
 import com.yugabyte.yw.models.CertificateInfo;
-import com.yugabyte.yw.models.CertificateInfo.Type;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 import com.yugabyte.yw.models.InstanceType;
 import com.yugabyte.yw.models.NodeInstance;
 import com.yugabyte.yw.models.Provider;
@@ -346,6 +347,7 @@ public class NodeManager extends DevopsBase {
       boolean isClientRootCARequired,
       String nodeIP,
       String ybHomeDir) {
+    LOG.info("__YD:getCertificatePaths called");
     List<String> subcommandStrings = new ArrayList<>();
 
     String serverCertFile = String.format("node.%s.crt", nodeIP);
@@ -401,32 +403,38 @@ public class NodeManager extends DevopsBase {
           }
         case CustomCertHostPath:
           {
-            CertificateParams.CustomCertInfo customCertInfo = rootCert.getCustomCertInfo();
-            rootCertPath = customCertInfo.rootCertPath;
-            serverCertPath = customCertInfo.nodeCertPath;
-            serverKeyPath = customCertInfo.nodeKeyPath;
+            CertificateParams.CustomCertPathParams customCertPathParams =
+                rootCert.getCustomCertPathParams();
+            rootCertPath = customCertPathParams.rootCertPath;
+            serverCertPath = customCertPathParams.nodeCertPath;
+            serverKeyPath = customCertPathParams.nodeKeyPath;
             certsLocation = CERT_LOCATION_NODE;
             if (taskParam.rootAndClientRootCASame
                 && taskParam.enableClientToNodeEncrypt
-                && customCertInfo.clientCertPath != null
-                && !customCertInfo.clientCertPath.isEmpty()
-                && customCertInfo.clientKeyPath != null
-                && !customCertInfo.clientKeyPath.isEmpty()) {
+                && customCertPathParams.clientCertPath != null
+                && !customCertPathParams.clientCertPath.isEmpty()
+                && customCertPathParams.clientKeyPath != null
+                && !customCertPathParams.clientKeyPath.isEmpty()) {
               // These client certs are used for node to postgres communication
               // These are seprate from clientRoot certs which are used for server to client
               // communication These are not required anymore as this is not mandatory now and
               // can be removed
               // The code is still here to mantain backward compatibility
               subcommandStrings.add("--client_cert_path");
-              subcommandStrings.add(customCertInfo.clientCertPath);
+              subcommandStrings.add(customCertPathParams.clientCertPath);
               subcommandStrings.add("--client_key_path");
-              subcommandStrings.add(customCertInfo.clientKeyPath);
+              subcommandStrings.add(customCertPathParams.clientKeyPath);
             }
             break;
           }
         case CustomServerCert:
           {
             throw new RuntimeException("rootCA cannot be of type CustomServerCert.");
+          }
+        case HashicorpVaultPKI:
+          {
+            // TODO: impl create n2n certificates using vault and sign it.
+            // separate task is created for each node
           }
         default:
           {
@@ -485,10 +493,11 @@ public class NodeManager extends DevopsBase {
           }
         case CustomCertHostPath:
           {
-            CertificateParams.CustomCertInfo customCertInfo = clientRootCert.getCustomCertInfo();
-            rootCertPath = customCertInfo.rootCertPath;
-            serverCertPath = customCertInfo.nodeCertPath;
-            serverKeyPath = customCertInfo.nodeKeyPath;
+            CertificateParams.CustomCertPathParams customCertPathParams =
+                clientRootCert.getCustomCertPathParams();
+            rootCertPath = customCertPathParams.rootCertPath;
+            serverCertPath = customCertPathParams.nodeCertPath;
+            serverKeyPath = customCertPathParams.nodeKeyPath;
             certsLocation = CERT_LOCATION_NODE;
             break;
           }
@@ -501,6 +510,12 @@ public class NodeManager extends DevopsBase {
             serverKeyPath = customServerCertInfo.serverKey;
             certsLocation = CERT_LOCATION_PLATFORM;
             break;
+          }
+        case HashicorpVaultPKI:
+          {
+            // TODO: impl create n2c certificates using vault and sign it.
+            // separate task is created for each node
+
           }
         default:
           {
@@ -897,6 +912,8 @@ public class NodeManager extends DevopsBase {
                     taskParam,
                     node.cloudInfo.private_ip,
                     taskParam.getProvider().getYbHome()));
+            // TODO if certs are already created just extract path and don't create certs again
+
           }
           Map<String, String> gflags = new HashMap<>(taskParam.gflags);
           subcommand.add("--gflags");
@@ -948,19 +965,21 @@ public class NodeManager extends DevopsBase {
                 if (rootCert == null) {
                   throw new RuntimeException("Certificate is null: " + taskParam.rootCA);
                 }
-                if (rootCert.certType == Type.CustomServerCert) {
+                if (rootCert.certType == CertConfigType.CustomServerCert) {
                   throw new RuntimeException(
                       "Root certificate cannot be of type CustomServerCert.");
                 }
 
                 String rootCertPath = "";
                 String certsLocation = "";
-                if (rootCert.certType == Type.SelfSigned) {
+                if (rootCert.certType == CertConfigType.SelfSigned) {
                   rootCertPath = rootCert.certificate;
                   certsLocation = CERT_LOCATION_PLATFORM;
-                } else if (rootCert.certType == Type.CustomCertHostPath) {
-                  rootCertPath = rootCert.getCustomCertInfo().rootCertPath;
+                } else if (rootCert.certType == CertConfigType.CustomCertHostPath) {
+                  rootCertPath = rootCert.getCustomCertPathParams().rootCertPath;
                   certsLocation = CERT_LOCATION_NODE;
+                } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
+                  // TODO: impl
                 }
 
                 subcommand.add("--root_cert_path");

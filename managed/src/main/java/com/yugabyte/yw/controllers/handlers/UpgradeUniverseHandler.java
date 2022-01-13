@@ -9,6 +9,7 @@ import com.yugabyte.yw.commissioner.Common.CloudType;
 import com.yugabyte.yw.common.CertificateHelper;
 import com.yugabyte.yw.common.KubernetesManagerFactory;
 import com.yugabyte.yw.common.PlatformServiceException;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
 import com.yugabyte.yw.forms.CertsRotateParams;
 import com.yugabyte.yw.forms.GFlagsUpgradeParams;
@@ -24,6 +25,7 @@ import com.yugabyte.yw.models.CertificateInfo;
 import com.yugabyte.yw.models.Customer;
 import com.yugabyte.yw.models.CustomerTask;
 import com.yugabyte.yw.models.Universe;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 import com.yugabyte.yw.models.helpers.TaskType;
 import java.util.HashMap;
 import java.util.Map;
@@ -129,6 +131,7 @@ public class UpgradeUniverseHandler {
   }
 
   public UUID rotateCerts(CertsRotateParams requestParams, Customer customer, Universe universe) {
+    log.info("rotateCerts called");
     // Verify request params
     requestParams.verifyParams(universe);
     // Update request params with additional metadata for upgrade task
@@ -140,7 +143,7 @@ public class UpgradeUniverseHandler {
     // This is there only for legacy support, no need if rootCA and clientRootCA are different.
     if (userIntent.enableClientToNodeEncrypt && requestParams.rootAndClientRootCASame) {
       CertificateInfo rootCert = CertificateInfo.get(requestParams.rootCA);
-      if (rootCert.certType == CertificateInfo.Type.SelfSigned) {
+      if (rootCert.certType == CertConfigType.SelfSigned) {
         CertificateHelper.createClientCertificate(
             requestParams.rootCA,
             String.format(
@@ -151,6 +154,8 @@ public class UpgradeUniverseHandler {
             CertificateHelper.DEFAULT_CLIENT,
             null,
             null);
+      } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
+        // TODO: impl
       }
     }
 
@@ -226,7 +231,7 @@ public class UpgradeUniverseHandler {
       // This is there only for legacy support, no need if rootCA and clientRootCA are different.
       if (requestParams.rootAndClientRootCASame) {
         CertificateInfo cert = CertificateInfo.get(requestParams.rootCA);
-        if (cert.certType == CertificateInfo.Type.SelfSigned) {
+        if (cert.certType == CertConfigType.SelfSigned) {
           CertificateHelper.createClientCertificate(
               requestParams.rootCA,
               String.format(
@@ -237,6 +242,8 @@ public class UpgradeUniverseHandler {
               CertificateHelper.DEFAULT_CLIENT,
               null,
               null);
+        } else if (cert.certType == CertConfigType.HashicorpVaultPKI) {
+          // TODO: impl
         }
       }
     }

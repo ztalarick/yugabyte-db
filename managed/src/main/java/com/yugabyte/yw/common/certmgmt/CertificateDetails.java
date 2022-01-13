@@ -1,4 +1,4 @@
-package com.yugabyte.yw.common;
+package com.yugabyte.yw.common.certmgmt;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

@@ -112,10 +112,11 @@ public abstract class UpgradeTaskTest extends CommissionerBaseTest {
     // Create test certificate
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
-    CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
-    customCertInfo.rootCertPath = "rootCertPath";
-    customCertInfo.nodeCertPath = "nodeCertPath";
-    customCertInfo.nodeKeyPath = "nodeKeyPath";
+    CertificateParams.CustomCertPathParams customCertPathParams =
+    new CertificateParams.CustomCertPathParams();
+    customCertPathParams.rootCertPath = "rootCertPath";
+    customCertPathParams.nodeCertPath = "nodeCertPath";
+    customCertPathParams.nodeKeyPath = "nodeKeyPath";
     createTempFile("upgrade_task_test_ca.crt", CERT_CONTENTS);
     try {
       CertificateInfo.create(
@@ -125,7 +126,7 @@ public abstract class UpgradeTaskTest extends CommissionerBaseTest {
           date,
           date,
           TestHelper.TMP_PATH + "/upgrade_task_test_ca.crt",
-          customCertInfo);
+          customCertPathParams);
     } catch (IOException | NoSuchAlgorithmException ignored) {
     }
 

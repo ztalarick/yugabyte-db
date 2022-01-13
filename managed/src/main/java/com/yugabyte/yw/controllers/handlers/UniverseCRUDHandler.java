@@ -20,11 +20,11 @@ import com.yugabyte.yw.commissioner.Commissioner;
 import com.yugabyte.yw.commissioner.Common;
 import com.yugabyte.yw.commissioner.tasks.DestroyUniverse;
 import com.yugabyte.yw.commissioner.tasks.ReadOnlyClusterDelete;
-import com.yugabyte.yw.common.CertificateHelper;
 import com.yugabyte.yw.common.KubernetesManagerFactory;
 import com.yugabyte.yw.common.PlacementInfoUtil;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.Util;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
 import com.yugabyte.yw.common.kms.EncryptionAtRestManager;
 import com.yugabyte.yw.common.password.PasswordPolicyService;
@@ -47,6 +47,7 @@ import com.yugabyte.yw.models.Provider;
 import com.yugabyte.yw.models.Region;
 import com.yugabyte.yw.models.TaskInfo;
 import com.yugabyte.yw.models.Universe;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 import com.yugabyte.yw.models.helpers.NodeDetails;
 import com.yugabyte.yw.models.helpers.TaskType;
 import java.util.ArrayList;
@@ -307,13 +308,13 @@ public class UniverseCRUDHandler {
         }
 
         CertificateInfo cert = CertificateInfo.get(taskParams.rootCA);
-        if (cert.certType == CertificateInfo.Type.CustomServerCert) {
+        if (cert.certType == CertConfigType.CustomServerCert) {
           throw new PlatformServiceException(
               BAD_REQUEST,
               "CustomServerCert are only supported for Client to Server Communication.");
         }
 
-        if (cert.certType == CertificateInfo.Type.CustomCertHostPath) {
+        if (cert.certType == CertConfigType.CustomCertHostPath) {
           if (!taskParams
               .getPrimaryCluster()
               .userIntent
@@ -342,7 +343,7 @@ public class UniverseCRUDHandler {
         }
 
         CertificateInfo cert = CertificateInfo.get(taskParams.clientRootCA);
-        if (cert.certType == CertificateInfo.Type.CustomCertHostPath) {
+        if (cert.certType == CertConfigType.CustomCertHostPath) {
           if (!taskParams
               .getPrimaryCluster()
               .userIntent
@@ -366,7 +367,7 @@ public class UniverseCRUDHandler {
         // This is there only for legacy support, no need if rootCA and clientRootCA are different.
         if (taskParams.rootAndClientRootCASame) {
           CertificateInfo rootCert = CertificateInfo.get(taskParams.rootCA);
-          if (rootCert.certType == CertificateInfo.Type.SelfSigned) {
+          if (rootCert.certType == CertConfigType.SelfSigned) {
             CertificateHelper.createClientCertificate(
                 taskParams.rootCA,
                 String.format(
@@ -377,6 +378,8 @@ public class UniverseCRUDHandler {
                 CertificateHelper.DEFAULT_CLIENT,
                 null,
                 null);
+          } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
+            // TODO: impl
           }
         }
       }
@@ -967,12 +970,12 @@ public class UniverseCRUDHandler {
               BAD_REQUEST, "Certs can only be rotated for onprem." + taskParams.taskType);
         }
         CertificateInfo cert = CertificateInfo.get(taskParams.certUUID);
-        if (cert.certType != CertificateInfo.Type.CustomCertHostPath) {
+        if (cert.certType != CertConfigType.CustomCertHostPath) {
           throw new PlatformServiceException(
               BAD_REQUEST, "Need a custom cert. Cannot use self-signed." + taskParams.taskType);
         }
         cert = CertificateInfo.get(universe.getUniverseDetails().rootCA);
-        if (cert.certType != CertificateInfo.Type.CustomCertHostPath) {
+        if (cert.certType != CertConfigType.CustomCertHostPath) {
           throw new PlatformServiceException(
               BAD_REQUEST, "Only custom certs can be rotated." + taskParams.taskType);
         }

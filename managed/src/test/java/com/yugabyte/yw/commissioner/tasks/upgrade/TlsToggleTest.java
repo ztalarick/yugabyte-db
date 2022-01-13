@@ -21,14 +21,15 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.net.HostAndPort;
 import com.yugabyte.yw.commissioner.tasks.UniverseDefinitionTaskBase.ServerType;
-import com.yugabyte.yw.common.CertificateHelper;
 import com.yugabyte.yw.common.TestHelper;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.utils.Pair;
 import com.yugabyte.yw.forms.TlsToggleParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.UserIntent;
 import com.yugabyte.yw.forms.UpgradeTaskParams.UpgradeOption;
 import com.yugabyte.yw.models.CertificateInfo;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 import com.yugabyte.yw.models.TaskInfo;
 import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.helpers.PlacementInfo;
@@ -225,7 +226,7 @@ public class TlsToggleTest extends UpgradeTaskTest {
         new Date(),
         "privateKey",
         TestHelper.TMP_PATH + "/tls_toggle_test_ca.crt",
-        CertificateInfo.Type.SelfSigned);
+        CertConfigType.SelfSigned);
 
     CertificateInfo.create(
         clientRootCA,
@@ -235,7 +236,7 @@ public class TlsToggleTest extends UpgradeTaskTest {
         new Date(),
         "privateKey",
         TestHelper.TMP_PATH + "/tls_toggle_test_ca.crt",
-        CertificateInfo.Type.SelfSigned);
+        CertConfigType.SelfSigned);
 
     defaultUniverse =
         Universe.saveDetails(

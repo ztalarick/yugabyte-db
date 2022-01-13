@@ -2,15 +2,16 @@ package com.yugabyte.yw.controllers;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.inject.Inject;
-import com.yugabyte.yw.common.CertificateDetails;
-import com.yugabyte.yw.common.CertificateHelper;
 import com.yugabyte.yw.common.PlatformServiceException;
+import com.yugabyte.yw.common.certmgmt.CertificateDetails;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
 import com.yugabyte.yw.forms.CertificateParams;
 import com.yugabyte.yw.forms.ClientCertParams;
 import com.yugabyte.yw.forms.PlatformResults;
 import com.yugabyte.yw.forms.PlatformResults.YBPError;
 import com.yugabyte.yw.forms.PlatformResults.YBPSuccess;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 import com.yugabyte.yw.models.CertificateInfo;
 import com.yugabyte.yw.models.Customer;
 import io.swagger.annotations.Api;
@@ -50,12 +51,13 @@ public class CertificateController extends AuthenticatedController {
     Date certStart = new Date(formData.get().certStart);
     Date certExpiry = new Date(formData.get().certExpiry);
     String label = formData.get().label;
-    CertificateInfo.Type certType = formData.get().certType;
+    CertConfigType certType = formData.get().certType;
     String certContent = formData.get().certContent;
     String keyContent = formData.get().keyContent;
-    CertificateParams.CustomCertInfo customCertInfo = formData.get().customCertInfo;
-    CertificateParams.CustomServerCertData customServerCertData =
-        formData.get().customServerCertData;
+    CertificateParams.CustomCertPathParams customCertPathParams =
+        formData.get().customCertPathParams;
+    CertificateParams.CustomServerCertParams customSrvCertParams =
+        formData.get().customSrvCertParams;
     switch (certType) {
       case SelfSigned:
         {
@@ -67,26 +69,30 @@ public class CertificateController extends AuthenticatedController {
         }
       case CustomCertHostPath:
         {
-          if (customCertInfo == null) {
+          if (customCertPathParams == null) {
             throw new PlatformServiceException(BAD_REQUEST, "Custom Cert Info must be provided.");
-          } else if (customCertInfo.nodeCertPath == null
-              || customCertInfo.nodeKeyPath == null
-              || customCertInfo.rootCertPath == null) {
+          } else if (customCertPathParams.nodeCertPath == null
+              || customCertPathParams.nodeKeyPath == null
+              || customCertPathParams.rootCertPath == null) {
             throw new PlatformServiceException(BAD_REQUEST, "Custom Cert Paths can't be empty.");
           }
           break;
         }
       case CustomServerCert:
         {
-          if (customServerCertData == null) {
+          if (customSrvCertParams == null) {
             throw new PlatformServiceException(
                 BAD_REQUEST, "Custom Server Cert Info must be provided.");
-          } else if (customServerCertData.serverCertContent == null
-              || customServerCertData.serverKeyContent == null) {
+          } else if (customSrvCertParams.serverCertContent == null
+              || customSrvCertParams.serverKeyContent == null) {
             throw new PlatformServiceException(
                 BAD_REQUEST, "Custom Server Cert and Key content can't be empty.");
           }
           break;
+        }
+      case HashicorpVaultPKI:
+        {
+          // TODO: impl
         }
       default:
         {
@@ -104,8 +110,8 @@ public class CertificateController extends AuthenticatedController {
             certStart,
             certExpiry,
             certType,
-            customCertInfo,
-            customServerCertData);
+            customCertPathParams,
+            customSrvCertParams);
     auditService().createAuditEntry(ctx(), request(), Json.toJson(formData.data()));
     return PlatformResults.withData(certUUID);
   }
@@ -186,8 +192,9 @@ public class CertificateController extends AuthenticatedController {
     Form<CertificateParams> formData = formFactory.getFormDataOrBadRequest(CertificateParams.class);
     Customer.getOrBadRequest(customerUUID);
     CertificateInfo certificate = CertificateInfo.getOrBadRequest(rootCA, customerUUID);
-    CertificateParams.CustomCertInfo customCertInfo = formData.get().customCertInfo;
-    certificate.setCustomCertInfo(customCertInfo, rootCA, customerUUID);
+    CertificateParams.CustomCertPathParams customCertPathParams =
+        formData.get().customCertPathParams;
+    certificate.setCustomCertPathParams(customCertPathParams, rootCA, customerUUID);
     return PlatformResults.withData(certificate);
   }
 }

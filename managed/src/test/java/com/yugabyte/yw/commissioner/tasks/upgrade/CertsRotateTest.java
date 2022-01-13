@@ -17,8 +17,8 @@ import static org.mockito.Mockito.verify;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.yugabyte.yw.commissioner.tasks.UniverseDefinitionTaskBase.ServerType;
-import com.yugabyte.yw.common.CertificateHelper;
 import com.yugabyte.yw.common.TestHelper;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.forms.CertsRotateParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.UserIntent;
@@ -46,6 +46,7 @@ import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 
 @RunWith(JUnitParamsRunner.class)
 public class CertsRotateTest extends UpgradeTaskTest {
@@ -222,7 +223,7 @@ public class CertsRotateTest extends UpgradeTaskTest {
         new Date(),
         "privateKey",
         TestHelper.TMP_PATH + "/cert_rotate_test_ca.crt",
-        CertificateInfo.Type.SelfSigned);
+        CertConfigType.SelfSigned);
 
     CertificateInfo.create(
         clientRootCA,
@@ -232,7 +233,7 @@ public class CertsRotateTest extends UpgradeTaskTest {
         new Date(),
         "privateKey",
         TestHelper.TMP_PATH + "/cert_rotate_test_ca.crt",
-        CertificateInfo.Type.SelfSigned);
+        CertConfigType.SelfSigned);
 
     defaultUniverse =
         Universe.saveDetails(
@@ -282,7 +283,7 @@ public class CertsRotateTest extends UpgradeTaskTest {
           new Date(),
           "privateKey",
           TestHelper.TMP_PATH + "/cert_rotate_test_ca.crt",
-          CertificateInfo.Type.SelfSigned);
+          CertConfigType.SelfSigned);
     }
     if (rotateClientRootCA) {
       taskParams.clientRootCA = UUID.randomUUID();
@@ -294,7 +295,7 @@ public class CertsRotateTest extends UpgradeTaskTest {
           new Date(),
           "privateKey",
           TestHelper.TMP_PATH + "/cert_rotate_test_ca.crt",
-          CertificateInfo.Type.SelfSigned);
+          CertConfigType.SelfSigned);
     }
     if (rotateRootCA && rotateClientRootCA && rootAndClientRootCASame) {
       taskParams.clientRootCA = taskParams.rootCA;

@@ -1609,8 +1609,8 @@
         "customCertInfo" : {
           "$ref" : "#/definitions/CustomCertInfo"
         },
-        "customServerCertData" : {
-          "$ref" : "#/definitions/CustomServerCertData"
+        "customSrvCertParams" : {
+          "$ref" : "#/definitions/CustomServerCertParams"
         },
         "keyContent" : {
           "type" : "string"
@@ -1619,7 +1619,7 @@
           "type" : "string"
         }
       },
-      "required" : [ "certContent", "certExpiry", "certStart", "certType", "customCertInfo", "customServerCertData", "keyContent", "label" ],
+      "required" : [ "certContent", "certExpiry", "certStart", "certType", "customCertInfo", "customSrvCertParams", "keyContent", "label" ],
       "type" : "object"
     },
     "ClientCertParams" : {
@@ -1875,7 +1875,7 @@
       "required" : [ "clientCertPath", "clientKeyPath", "nodeCertPath", "nodeKeyPath", "rootCertPath" ],
       "type" : "object"
     },
-    "CustomServerCertData" : {
+    "CustomServerCertParams" : {
       "properties" : {
         "serverCertContent" : {
           "type" : "string"
