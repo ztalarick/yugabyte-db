@@ -2,30 +2,34 @@ import { Field } from 'formik';
 import React, { useState } from 'react';
 import { Col, Row } from 'react-bootstrap';
 import { YBModalForm } from '../../common/forms';
-import {
-  YBControlledSelectWithLabel,
-  YBFormInput,
-  YBToggle
-} from '../../common/forms/fields';
+import { YBControlledSelectWithLabel, YBFormInput, YBToggle } from '../../common/forms/fields';
+import { isNonAvailable } from '../../../utils/LayoutUtils';
 import * as Yup from 'yup';
 
 import './AddDestinationChannelForm.scss';
 
 export const AddDestinationChannelForm = (props) => {
-  const { visible, onHide, onError, defaultChannel } = props;
+  const { customer, visible, onHide, onError, defaultChannel } = props;
   const [channelType, setChannelType] = useState(defaultChannel);
   const [customSMTP, setCustomSMTP] = useState(props.customSmtp ? props.customSmtp : false);
   const [defaultRecipients, setDefaultRecipients] = useState(
     props.defaultRecipients ? props.defaultRecipients : false
-    );
-    
-  // TODO: Add option for pagerDuty once API is avaialable
+  );
+  const isReadOnly = isNonAvailable(
+    customer.data.features, 'alert.channels.actions');
+
   const channelTypeList = [
     <option key={1} value="email">
       Email
     </option>,
     <option key={2} value="slack">
       Slack
+    </option>,
+    <option key={3} value="pagerduty">
+      PagerDuty
+    </option>,
+    <option key={4} value="webhook">
+      WebHook
     </option>
   ];
   /**
@@ -52,7 +56,7 @@ export const AddDestinationChannelForm = (props) => {
       case 'slack':
         payload['name'] = values['slack_name'];
         payload['params']['channelType'] = 'Slack';
-        payload['params']['webhookUrl'] = values.webhookURL;
+        payload['params']['webhookUrl'] = values.webhookURLSlack;
         payload['params']['username'] = values['slack_name'];
         break;
       case 'email':
@@ -70,6 +74,17 @@ export const AddDestinationChannelForm = (props) => {
         } else {
           payload['params']['defaultSmtpSettings'] = true;
         }
+        break;
+      case 'pagerduty':
+        payload['name'] = values['pagerDuty_name'];
+        payload['params']['channelType'] = 'PagerDuty';
+        payload['params']['apiKey'] = values.apiKey;
+        payload['params']['routingKey'] = values.routingKey;
+        break;
+      case 'webhook':
+        payload['name'] = values['webHook_name'];
+        payload['params']['channelType'] = 'WebHook';
+        payload['params']['webhookUrl'] = values.webhookURL;
         break;
       default:
         break;
@@ -126,12 +141,23 @@ export const AddDestinationChannelForm = (props) => {
 
   const validationSchemaSlack = Yup.object().shape({
     slack_name: Yup.string().required('Slack name is Required'),
+    webhookURLSlack: Yup.string().required('Web hook Url is Required')
+  });
+
+  const validationSchemaPagerDuty = Yup.object().shape({
+    pagerDuty_name: Yup.string().required('Name is Required'),
+    apiKey: Yup.string().required('API Key is Required'),
+    routingKey: Yup.string().required('Integration Key is Required')
+  });
+
+  const validationSchemaWebHook = Yup.object().shape({
+    webHook_name: Yup.string().required('Name is Required'),
     webhookURL: Yup.string().required('Web hook Url is Required')
   });
 
   const getChannelForm = () => {
     switch (channelType) {
-      case 'pagerDuty':
+      case 'pagerduty':
         return (
           <>
             <Row>
@@ -142,17 +168,60 @@ export const AddDestinationChannelForm = (props) => {
                   label="Name"
                   placeholder="Enter channel name"
                   component={YBFormInput}
+                  disabled={isReadOnly}
                 />
               </Col>
             </Row>
             <Row>
               <Col lg={12}>
                 <Field
-                  name="serviceKey"
+                  name="apiKey"
+                  type="text"
+                  label="PagerDuty API Key"
+                  placeholder="Enter API key"
+                  component={YBFormInput}
+                  disabled={isReadOnly}
+                />
+              </Col>
+            </Row>
+            <Row>
+              <Col lg={12}>
+                <Field
+                  name="routingKey"
                   type="text"
                   label="PagerDuty Service Integration Key"
                   placeholder="Enter service integration key"
                   component={YBFormInput}
+                  disabled={isReadOnly}
+                />
+              </Col>
+            </Row>
+          </>
+        );
+      case 'webhook':
+        return (
+          <>
+            <Row>
+              <Col lg={12}>
+                <Field
+                  name="webHook_name"
+                  type="text"
+                  placeholder="Enter channel name"
+                  label="Name"
+                  component={YBFormInput}
+                  disabled={isReadOnly}
+                />
+              </Col>
+            </Row>
+            <Row>
+              <Col lg={12}>
+                <Field
+                  name="webhookURL"
+                  type="text"
+                  label="Webhook URL"
+                  placeholder="Enter webhook url"
+                  component={YBFormInput}
+                  disabled={isReadOnly}
                 />
               </Col>
             </Row>
@@ -169,17 +238,19 @@ export const AddDestinationChannelForm = (props) => {
                   placeholder="Enter username or channel name"
                   label="Name"
                   component={YBFormInput}
+                  disabled={isReadOnly}
                 />
               </Col>
             </Row>
             <Row>
               <Col lg={12}>
                 <Field
-                  name="webhookURL"
+                  name="webhookURLSlack"
                   type="text"
                   label="Slack Webhook URL"
                   placeholder="Enter webhook url"
                   component={YBFormInput}
+                  disabled={isReadOnly}
                 />
               </Col>
             </Row>
@@ -196,6 +267,7 @@ export const AddDestinationChannelForm = (props) => {
                   label="Name"
                   placeholder="Enter channel name"
                   component={YBFormInput}
+                  disabled={isReadOnly}
                 />
               </Col>
             </Row>
@@ -208,6 +280,7 @@ export const AddDestinationChannelForm = (props) => {
                         <YBToggle
                           onToggle={handleOnToggle}
                           name="defaultRecipients"
+                          isReadOnly={isReadOnly}
                           input={{
                             value: field.value,
                             onChange: field.onChange
@@ -226,8 +299,9 @@ export const AddDestinationChannelForm = (props) => {
                     name="emailIds"
                     type="text"
                     label="Emails"
-                    placeholder="Enter email addressess"
+                    placeholder="Enter email addresses"
                     component={YBFormInput}
+                    disabled={isReadOnly}
                   />
                 )}
               </Col>
@@ -241,6 +315,7 @@ export const AddDestinationChannelForm = (props) => {
                         <YBToggle
                           onToggle={handleOnToggle}
                           name="customSmtp"
+                          isReadOnly={isReadOnly}
                           input={{
                             value: field.value,
                             onChange: field.onChange
@@ -262,6 +337,7 @@ export const AddDestinationChannelForm = (props) => {
                       component={YBFormInput}
                       label="Server"
                       placeholder="SMTP server address"
+                      disabled={isReadOnly}
                     />
                     <Field
                       name="smtpData.smtpPort"
@@ -269,6 +345,7 @@ export const AddDestinationChannelForm = (props) => {
                       component={YBFormInput}
                       label="Port"
                       placeholder="SMTP server port"
+                      disabled={isReadOnly}
                     />
                     <Field
                       name="smtpData.emailFrom"
@@ -276,6 +353,7 @@ export const AddDestinationChannelForm = (props) => {
                       component={YBFormInput}
                       label="Email From"
                       placeholder="Send outgoing emails from"
+                      disabled={isReadOnly}
                     />
                     <Field
                       name="smtpData.smtpUsername"
@@ -283,6 +361,7 @@ export const AddDestinationChannelForm = (props) => {
                       component={YBFormInput}
                       label="Username"
                       placeholder="SMTP server username"
+                      disabled={isReadOnly}
                     />
                     <Field
                       name="smtpData.smtpPassword"
@@ -291,6 +370,7 @@ export const AddDestinationChannelForm = (props) => {
                       component={YBFormInput}
                       label="Password"
                       placeholder="SMTP server password"
+                      disabled={isReadOnly}
                     />
                     <Row>
                       <Col lg={6} className="noLeftPadding">
@@ -301,6 +381,7 @@ export const AddDestinationChannelForm = (props) => {
                                 <YBToggle
                                   onToggle={handleOnToggle}
                                   name="smtpData.useSSL"
+                                  isReadOnly={isReadOnly}
                                   input={{
                                     value: field.value,
                                     onChange: field.onChange
@@ -322,6 +403,7 @@ export const AddDestinationChannelForm = (props) => {
                                 <YBToggle
                                   onToggle={handleOnToggle}
                                   name="smtpData.useTLS"
+                                  isReadOnly={isReadOnly}
                                   input={{
                                     value: field.value,
                                     onChange: field.onChange
@@ -347,24 +429,32 @@ export const AddDestinationChannelForm = (props) => {
     }
   };
 
+  const title = isReadOnly ? 'Alert channel details' :
+    props.type === 'edit' ? 'Edit alert channel' : 'Create new alert channel';
+  const validationSchema =
+    channelType === 'email' ? validationSchemaEmail :
+    channelType === 'slack' ? validationSchemaSlack :
+    channelType === 'pagerduty' ? validationSchemaPagerDuty :
+    channelType === 'webhook' ? validationSchemaWebHook :
+    null;
   return (
     <YBModalForm
       formName="alertDestinationForm"
-      title={`${props.type === 'edit' ? 'Edit' : 'Create new'} alert channel`}
+      title={title}
       id="alert-destination-modal"
       visible={visible}
       onHide={onModalHide}
       initialValues={props.editValues || {}}
-      submitLabel={props.type === 'edit' ? 'Edit' : 'Create'}
-      validationSchema={channelType === 'email' ? validationSchemaEmail : validationSchemaSlack}
-      onFormSubmit={(values, { setSubmitting }) => {
+      submitLabel={props.type === 'edit' ? 'Save' : 'Create'}
+      validationSchema={validationSchema}
+      onFormSubmit={!isReadOnly ? (values, { setSubmitting }) => {
         const payload = {
           ...values,
           CHANNEL_TYPE: channelType
         };
 
         handleAddDestination(payload, setSubmitting);
-      }}
+      } : null}
     >
       <Row>
         <Row>
@@ -374,6 +464,7 @@ export const AddDestinationChannelForm = (props) => {
               name="CHANNEL_TYPE"
               options={channelTypeList}
               selectVal={channelType}
+              isReadOnly={isReadOnly}
               onInputChanged={handleChannelTypeChange}
             />
           </Col>

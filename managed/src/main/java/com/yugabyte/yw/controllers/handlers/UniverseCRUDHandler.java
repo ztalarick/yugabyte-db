@@ -78,6 +78,12 @@ public class UniverseCRUDHandler {
 
   @Inject UpgradeUniverseHandler upgradeUniverseHandler;
 
+  private static enum OpType {
+    CONFIGURE,
+    CREATE,
+    UPDATE
+  }
+
   /**
    * Function to Trim keys and values of the passed map.
    *
@@ -110,17 +116,57 @@ public class UniverseCRUDHandler {
             ? taskParams.getPrimaryCluster()
             : taskParams.getReadOnlyClusters().get(0);
     UniverseDefinitionTaskParams.UserIntent primaryIntent = c.userIntent;
+
+    checkGeoPartitioningParameters(customer, taskParams, OpType.CONFIGURE);
+
     primaryIntent.masterGFlags = trimFlags(primaryIntent.masterGFlags);
     primaryIntent.tserverGFlags = trimFlags(primaryIntent.tserverGFlags);
     if (StringUtils.isEmpty(primaryIntent.accessKeyCode)) {
       primaryIntent.accessKeyCode = appConfig.getString("yb.security.default.access.key");
     }
     if (PlacementInfoUtil.checkIfNodeParamsValid(taskParams, c)) {
-      PlacementInfoUtil.updateUniverseDefinition(taskParams, customer.getCustomerId(), c.uuid);
+      try {
+        PlacementInfoUtil.updateUniverseDefinition(taskParams, customer.getCustomerId(), c.uuid);
+      } catch (IllegalStateException | UnsupportedOperationException e) {
+        throw new PlatformServiceException(BAD_REQUEST, e.getMessage());
+      }
     } else {
       throw new PlatformServiceException(
           BAD_REQUEST,
           "Invalid Node/AZ combination for given instance type " + c.userIntent.instanceType);
+    }
+  }
+
+  private void checkGeoPartitioningParameters(
+      Customer customer, UniverseDefinitionTaskParams taskParams, OpType op) {
+
+    UUID defaultRegionUUID = PlacementInfoUtil.getDefaultRegion(taskParams);
+    if (defaultRegionUUID != null) {
+      UserIntent intent = taskParams.getPrimaryCluster().userIntent;
+      Region defaultRegion =
+          Region.getOrBadRequest(
+              customer.getUuid(), UUID.fromString(intent.provider), defaultRegionUUID);
+      if (!intent.regionList.contains(defaultRegionUUID)) {
+        throw new PlatformServiceException(
+            BAD_REQUEST, "Default region " + defaultRegion + " not in user region list.");
+      }
+
+      if (op == OpType.CREATE || op == OpType.UPDATE) {
+        int nodesInDefRegion =
+            (int)
+                taskParams
+                    .nodeDetailsSet
+                    .stream()
+                    .filter(n -> n.isActive() && defaultRegion.code.equals(n.cloudInfo.region))
+                    .count();
+        if (nodesInDefRegion < intent.replicationFactor) {
+          throw new PlatformServiceException(
+              BAD_REQUEST,
+              String.format(
+                  "Could not pick %d masters, only %d nodes available in default region %s.",
+                  intent.replicationFactor, nodesInDefRegion, defaultRegion.name));
+        }
+      }
     }
   }
 
@@ -154,11 +200,6 @@ public class UniverseCRUDHandler {
           == UniverseDefinitionTaskParams.ExposingServiceState.NONE) {
         c.userIntent.enableExposingService =
             UniverseDefinitionTaskParams.ExposingServiceState.UNEXPOSED;
-      }
-      if (c.userIntent.providerType.equals(Common.CloudType.onprem)) {
-        if (provider.getConfig().containsKey("USE_HOSTNAME")) {
-          c.userIntent.useHostname = Boolean.parseBoolean(provider.getConfig().get("USE_HOSTNAME"));
-        }
       }
 
       if (c.userIntent.providerType.equals(Common.CloudType.kubernetes)) {
@@ -221,6 +262,8 @@ public class UniverseCRUDHandler {
         throw new PlatformServiceException(BAD_REQUEST, e.getMessage());
       }
     }
+
+    checkGeoPartitioningParameters(customer, taskParams, OpType.CREATE);
 
     // Create a new universe. This makes sure that a universe of this name does not already exist
     // for this customer id.
@@ -408,6 +451,9 @@ public class UniverseCRUDHandler {
 
   private UUID updatePrimaryCluster(
       Customer customer, Universe u, UniverseDefinitionTaskParams taskParams) {
+
+    checkGeoPartitioningParameters(customer, taskParams, OpType.UPDATE);
+
     // Update Primary cluster
     Cluster primaryCluster = taskParams.getPrimaryCluster();
     TaskType taskType = TaskType.EditUniverse;
@@ -737,7 +783,7 @@ public class UniverseCRUDHandler {
     boolean isNamespaceSet = false;
     for (Region r : Region.getByProvider(providerToCheck.uuid)) {
       for (AvailabilityZone az : AvailabilityZone.getAZsForRegion(r.uuid)) {
-        if (az.getConfig().containsKey("KUBENAMESPACE")) {
+        if (az.getUnmaskedConfig().containsKey("KUBENAMESPACE")) {
           isNamespaceSet = true;
         }
       }
@@ -1065,33 +1111,40 @@ public class UniverseCRUDHandler {
     UniverseDefinitionTaskParams universeDetails = universe.getUniverseDetails();
     UserIntent userIntent = universeDetails.getPrimaryCluster().userIntent;
 
-    boolean tlsToggle =
-        ((taskParams.enableNodeToNodeEncrypt != null
-                && taskParams.enableNodeToNodeEncrypt != userIntent.enableNodeToNodeEncrypt)
-            || (taskParams.enableClientToNodeEncrypt != null
-                && taskParams.enableClientToNodeEncrypt != userIntent.enableClientToNodeEncrypt));
-    boolean certsRotate =
-        ((taskParams.rootCA != null && !taskParams.rootCA.equals(universeDetails.rootCA))
-                || (taskParams.clientRootCA != null
-                    && !taskParams.clientRootCA.equals(universeDetails.clientRootCA)))
-            || taskParams.createNewRootCA
-            || taskParams.createNewClientRootCA;
-
     if (taskParams.rootAndClientRootCASame == null) {
       throw new PlatformServiceException(
           Status.BAD_REQUEST, "rootAndClientRootCASame cannot be null.");
     }
 
+    boolean nodeToNodeChange =
+        taskParams.enableNodeToNodeEncrypt != null
+            && taskParams.enableNodeToNodeEncrypt != userIntent.enableNodeToNodeEncrypt;
+    boolean clientToNodeChange =
+        taskParams.enableClientToNodeEncrypt != null
+            && taskParams.enableClientToNodeEncrypt != userIntent.enableClientToNodeEncrypt;
+    boolean tlsToggle = (nodeToNodeChange || clientToNodeChange);
+
+    boolean rootCaChange =
+        taskParams.rootCA != null && !taskParams.rootCA.equals(universeDetails.rootCA);
+    boolean clientRootCaChange =
+        !taskParams.rootAndClientRootCASame
+            && taskParams.clientRootCA != null
+            && !taskParams.clientRootCA.equals(universeDetails.clientRootCA);
+    boolean certsRotate =
+        rootCaChange
+            || clientRootCaChange
+            || taskParams.createNewRootCA
+            || taskParams.createNewClientRootCA;
+
     if (tlsToggle && certsRotate) {
-      if ((universeDetails.rootCA == null && taskParams.rootCA != null)
-          || (universeDetails.rootCA == null && taskParams.createNewRootCA)
-          || (universeDetails.clientRootCA == null && taskParams.clientRootCA != null)
-          || (universeDetails.clientRootCA == null && taskParams.createNewClientRootCA)) {
-        certsRotate = false;
-      } else {
+      if (((rootCaChange || taskParams.createNewRootCA) && universeDetails.rootCA != null)
+          || ((clientRootCaChange || taskParams.createNewClientRootCA)
+              && universeDetails.clientRootCA != null)) {
         throw new PlatformServiceException(
             Status.BAD_REQUEST,
             "Cannot enable/disable TLS along with cert rotation. Perform them individually.");
+      } else {
+        certsRotate = false;
       }
     }
 

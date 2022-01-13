@@ -229,6 +229,25 @@ is_configure_mode_invocation() {
   return 1  # "false" return value in bash
 }
 
+check_compiler_exit_code() {
+  if [[ $compiler_exit_code -ne 0 ]]; then
+    if grep -Eq 'error: linker command failed with exit code [0-9]+ \(use -v to see invocation\)' \
+         "$stderr_path" || \
+       grep -Eq 'error: ld returned' "$stderr_path"; then
+      determine_compiler_cmdline
+      generate_build_debug_script rerun_failed_link_step "$determine_compiler_cmdline_rv -v"
+    fi
+
+    if grep -E ': undefined reference to ' "$stderr_path" >/dev/null; then
+      for library_path in "${input_files[@]}"; do
+        nm -gC "$library_path" | grep ParseGet
+      done
+    fi
+
+    exit "$compiler_exit_code"
+  fi
+}
+
 # -------------------------------------------------------------------------------------------------
 # Common setup for remote and local build.
 # We parse command-line arguments in both cases.
@@ -259,6 +278,7 @@ output_file=""
 input_files=()
 library_files=()
 compiling_pch=false
+yb_pch=false
 
 rpath_found=false
 num_output_files_found=0
@@ -298,6 +318,9 @@ while [[ $# -gt 0 ]]; do
     ;;
     c++-header)
       compiling_pch=true
+    ;;
+    -yb-pch)
+      yb_pch=true
     ;;
     -DYB_COMPILER_TYPE=*)
       compiler_type_from_cmd_line=${1#-DYB_COMPILER_TYPE=}
@@ -581,7 +604,8 @@ if [[ ! -x $compiler_executable ]]; then
 fi
 
 # We use ccache if it is available and YB_NO_CCACHE is not set.
-if command -v ccache >/dev/null && ! "$compiling_pch" && [[ -z ${YB_NO_CCACHE:-} ]]; then
+if [[ -z ${YB_NO_CCACHE:-} && ${YB_USE_PCH:-} != "1" && "${compiling_pch}" != "true" ]] &&
+   command -v ccache >/dev/null; then
   export CCACHE_CC="$compiler_executable"
   export CCACHE_SLOPPINESS="file_macro,pch_defines,time_macros"
   export CCACHE_BASEDIR=$YB_SRC_ROOT
@@ -689,7 +713,7 @@ if [[ $PWD == $BUILD_ROOT/postgres_build ||
       if [[ -d $include_dir ]]; then
         include_dir=$( cd "$include_dir" && pwd )
         if [[ $include_dir == $BUILD_ROOT/postgres_build/* ]]; then
-          rel_include_dir=${include_dir#$BUILD_ROOT/postgres_build/}
+          rel_include_dir=${include_dir#"${BUILD_ROOT}"/postgres_build/}
           updated_include_dir=$YB_SRC_ROOT/src/postgres/$rel_include_dir
           if [[ -d $updated_include_dir ]]; then
             new_cmd+=( -I"$updated_include_dir" )
@@ -699,7 +723,7 @@ if [[ $PWD == $BUILD_ROOT/postgres_build ||
       new_cmd+=( "$arg" )
     elif [[ -f $arg && $arg != "conftest.c" ]]; then
       file_path=$PWD/${arg#./}
-      rel_file_path=${file_path#$BUILD_ROOT/postgres_build/}
+      rel_file_path=${file_path#"${BUILD_ROOT}"/postgres_build/}
       updated_file_path=$YB_SRC_ROOT/src/postgres/$rel_file_path
       if [[ -f $updated_file_path ]] && cmp --quiet "$file_path" "$updated_file_path"; then
         new_cmd+=( "$updated_file_path" )
@@ -718,7 +742,7 @@ trap local_build_exit_handler EXIT
 
 if [[ ${YB_GENERATE_COMPILATION_CMD_FILES:-0} == "1" &&
       -n $output_file &&
-      $output_file == *.o ]]; then
+      ($output_file == *.o || $output_file == *.pch) ]]; then
   IFS=$'\n'
   echo "
 directory: $PWD
@@ -730,7 +754,116 @@ ${cmd[*]}
 fi
   unset IFS
 
-run_compiler_and_save_stderr "${cmd[@]}"
+# When -yb-pch is specified, we use it to generate precompiled header.
+if [[ "${yb_pch}" == "true" ]]; then
+  if [[ -n $output_file ]]; then
+    pch_cmd=( "$compiler_executable" )
+    skip_next=false
+    pch_file="${output_file%.cc.o}.h.pch"
+    # Replace original args with args required for compilation.
+    for arg in "${compiler_args[@]}"; do
+      if "$skip_next"; then
+        skip_next=false
+        continue
+      fi
+      case "$arg" in
+        -yb-pch)
+          pch_cmd+=( "-Xclang" "-emit-pch" "-fpch-instantiate-templates" "-fpch-codegen"
+                     "-fpch-debuginfo" "-c" )
+        ;;
+        -fpch-*|-x|c++-header)
+        ;;
+        -MT)
+          pch_cmd+=( "$arg" "$pch_file" )
+          skip_next=true
+        ;;
+        -o)
+          pch_cmd+=( "$arg" "$pch_file" )
+          skip_next=true
+        ;;
+        -c)
+          skip_next=true
+        ;;
+        *)
+          pch_cmd+=("$arg")
+        ;;
+      esac
+    done
+    run_compiler_and_save_stderr "${pch_cmd[@]}"
+    check_compiler_exit_code
+
+    codegen_cmd=( "$compiler_executable" )
+    for arg in "${compiler_args[@]}"; do
+      if "$skip_next"; then
+        skip_next=false
+        continue
+      fi
+      case $arg in
+        -yb-pch)
+          skip_next=true
+        ;;
+        -c)
+          codegen_cmd+=( "$arg" "$pch_file" )
+          skip_next=true
+        ;;
+        *)
+          codegen_cmd+=( "$arg" )
+        ;;
+      esac
+    done
+    run_compiler_and_save_stderr "${codegen_cmd[@]}"
+  else
+    new_cmd=( "$compiler_executable" )
+    skip_next=false
+    for arg in "${compiler_args[@]}"; do
+      if "$skip_next"; then
+        skip_next=false
+        continue
+      fi
+      case $arg in
+        -yb-pch)
+          skip_next=true
+        ;;
+        *)
+          new_cmd+=( "$arg" )
+        ;;
+      esac
+    done
+    run_compiler_and_save_stderr "${new_cmd[@]}"
+  fi
+else
+  if [[ -n $output_file ]]; then
+    run_compiler_and_save_stderr "${cmd[@]}"
+  else
+    # Have to patch compiler command line to make CLion happy while loading CMake project.
+    new_cmd=( "$compiler_executable" )
+    skip_next=false
+    for arg in "${compiler_args[@]}"; do
+      if "$skip_next"; then
+        if [[ "$arg" == "-Xclang" ]]; then
+          continue
+        fi
+
+        skip_next=false
+        if [[ "$arg" == -* ]]; then
+          new_cmd+=( "$arg" )
+        else
+          new_cmd+=( "-include" "-Xclang" "$arg" )
+        fi
+        continue
+      fi
+      case $arg in
+        -include)
+          skip_next=true
+        ;;
+        *)
+          new_cmd+=( "$arg" )
+        ;;
+      esac
+    done
+    run_compiler_and_save_stderr "${new_cmd[@]}"
+  fi
+fi
 
 # Skip printing some command lines commonly used by CMake for detecting compiler/linker version.
 # Extra output might break the version detection.
@@ -739,22 +872,7 @@ if [[ -n ${YB_SHOW_COMPILER_COMMAND_LINE:-} ]] &&
   show_compiler_command_line "$CYAN_COLOR"
 fi
 
-if [[ $compiler_exit_code -ne 0 ]]; then
-  if grep -Eq 'error: linker command failed with exit code [0-9]+ \(use -v to see invocation\)' \
-       "$stderr_path" || \
-     grep -Eq 'error: ld returned' "$stderr_path"; then
-    determine_compiler_cmdline
-    generate_build_debug_script rerun_failed_link_step "$determine_compiler_cmdline_rv -v"
-  fi
-
-  if grep -E ': undefined reference to ' "$stderr_path" >/dev/null; then
-    for library_path in "${input_files[@]}"; do
-      nm -gC "$library_path" | grep ParseGet
-    done
-  fi
-
-  exit "$compiler_exit_code"
-fi
+check_compiler_exit_code
 
 if grep -Eq 'ld: warning: directory not found for option' "$stderr_path"; then
   log "Linker failed to find a directory (probably a library directory) that should exist."

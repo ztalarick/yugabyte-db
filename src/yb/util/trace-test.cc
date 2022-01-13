@@ -34,15 +34,22 @@
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
-// Need to add rapidjson.h to the list of recognized third-party libraries in our linter.
 #include <rapidjson/rapidjson.h>  // NOLINT
 
-#include "yb/util/trace.h"
+#include "yb/gutil/casts.h"
+
 #include "yb/util/debug/trace_event.h"
 #include "yb/util/debug/trace_event_synthetic_delay.h"
 #include "yb/util/debug/trace_logging.h"
+#include "yb/util/status_log.h"
 #include "yb/util/stopwatch.h"
+#include "yb/util/test_macros.h"
 #include "yb/util/test_util.h"
+#include "yb/util/thread.h"
+#include "yb/util/trace.h"
+
+// Need to add rapidjson.h to the list of recognized third-party libraries in our linter.
+
 
 using yb::debug::TraceLog;
 using yb::debug::TraceResultBuffer;
@@ -100,9 +107,9 @@ TEST_F(TraceTest, TestAttach) {
   TRACE("this goes nowhere");
 
   EXPECT_EQ(XOutDigits(traceA->DumpToString(false)),
-            "XXXX XX:XX:XX.XXXXXX trace-test.cc:XX] hello from traceA\n");
+            "XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceA\n");
   EXPECT_EQ(XOutDigits(traceB->DumpToString(false)),
-            "XXXX XX:XX:XX.XXXXXX trace-test.cc:XX] hello from traceB\n");
+            "XXXX XX:XX:XX.XXXXXX trace-test.cc:XXX] hello from traceB\n");
 }
 
 TEST_F(TraceTest, TestChildTrace) {
@@ -291,7 +298,7 @@ TEST_F(TraceTest, TestStartAndStopCollection) {
     // We might also over-count by at most 1, because we could enable tracing
     // right in between creating a trace event and incrementing the counter.
     // But, we should never over-count by more than 1.
-    int expected_events_lowerbound = num_events_after - num_events_before - 1;
+    auto expected_events_lowerbound = num_events_after - num_events_before - 1;
     int captured_events = ParseAndReturnEventCount(trace_json);
     ASSERT_GE(captured_events, expected_events_lowerbound);
   }
@@ -362,9 +369,9 @@ class TraceEventCallbackTest : public YBTest {
     Value old_trace_parsed;
     old_trace_parsed = trace_parsed_;
     trace_parsed_.SetArray();
-    size_t old_trace_parsed_size = old_trace_parsed.Size();
+    auto old_trace_parsed_size = old_trace_parsed.Size();
 
-    for (size_t i = 0; i < old_trace_parsed_size; i++) {
+    for (rapidjson::SizeType i = 0; i < old_trace_parsed_size; i++) {
       Value value;
       value = old_trace_parsed[i];
       if (value.GetType() != rapidjson::kObjectType) {
@@ -387,8 +394,8 @@ class TraceEventCallbackTest : public YBTest {
     const Value& trace_parsed,
     const char* string_to_match) {
     // Scan all items
-    size_t trace_parsed_count = trace_parsed.Size();
-    for (size_t i = 0; i < trace_parsed_count; i++) {
+    auto trace_parsed_count = trace_parsed.Size();
+    for (rapidjson::SizeType i = 0; i < trace_parsed_count; i++) {
       const Value& value = trace_parsed[i];
       if (value.GetType() != rapidjson::kObjectType) {
         continue;
@@ -682,21 +689,21 @@ class TraceEventSyntheticDelayTest : public YBTest,
     MonoTime start = Now();
     { TRACE_EVENT_SYNTHETIC_DELAY("test.Delay"); }
     MonoTime end = Now();
-    return end.GetDeltaSince(start).ToMilliseconds();
+    return narrow_cast<int>(end.GetDeltaSince(start).ToMilliseconds());
   }
 
   int AsyncTestFunctionBegin() {
     MonoTime start = Now();
     { TRACE_EVENT_SYNTHETIC_DELAY_BEGIN("test.AsyncDelay"); }
     MonoTime end = Now();
-    return end.GetDeltaSince(start).ToMilliseconds();
+    return narrow_cast<int>(end.GetDeltaSince(start).ToMilliseconds());
   }
 
   int AsyncTestFunctionEnd() {
     MonoTime start = Now();
     { TRACE_EVENT_SYNTHETIC_DELAY_END("test.AsyncDelay"); }
     MonoTime end = Now();
-    return end.GetDeltaSince(start).ToMilliseconds();
+    return narrow_cast<int>(end.GetDeltaSince(start).ToMilliseconds());
   }
 
  private:

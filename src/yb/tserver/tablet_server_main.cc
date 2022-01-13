@@ -34,18 +34,22 @@
 #include <iostream>
 
 #include <boost/optional/optional.hpp>
-#include "yb/tserver/tserver_error.h"
 #include <glog/logging.h>
 
 #ifdef TCMALLOC_ENABLED
 #include <gperftools/malloc_extension.h>
 #endif
 
+#include "yb/consensus/log_util.h"
+
+#include "yb/encryption/header_manager_impl.h"
+#include "yb/encryption/encrypted_file_factory.h"
+#include "yb/encryption/universe_key_manager.h"
+
 #include "yb/yql/cql/cqlserver/cql_server.h"
 #include "yb/yql/pgwrapper/pg_wrapper.h"
 #include "yb/yql/redis/redisserver/redis_server.h"
 
-#include "yb/consensus/log_util.h"
 #include "yb/gutil/strings/substitute.h"
 #include "yb/master/call_home.h"
 #include "yb/rpc/io_thread_pool.h"
@@ -55,16 +59,15 @@
 #include "yb/tserver/factory.h"
 #include "yb/tserver/tablet_server.h"
 
-#include "yb/util/encrypted_file_factory.h"
 #include "yb/util/flags.h"
-#include "yb/util/header_manager_impl.h"
 #include "yb/util/init.h"
 #include "yb/util/logging.h"
 #include "yb/util/main_util.h"
+#include "yb/util/result.h"
 #include "yb/util/ulimit_util.h"
 #include "yb/util/size_literals.h"
 #include "yb/util/net/net_util.h"
-#include "yb/util/universe_key_manager.h"
+#include "yb/util/status_log.h"
 
 #include "yb/rocksutil/rocksdb_encrypted_file_factory.h"
 
@@ -194,8 +197,7 @@ int TabletServerMain(int argc, char** argv) {
 
   // Object that manages the universe key registry used for encrypting and decrypting data keys.
   // Copies are given to each Env.
-  std::shared_ptr<UniverseKeyManager> universe_key_manager =
-      std::make_unique<UniverseKeyManager>();
+  auto universe_key_manager = std::make_unique<encryption::UniverseKeyManager>();
   // Encrypted env for all non-rocksdb file i/o operations.
   std::unique_ptr<yb::Env> env =
       NewEncryptedEnv(DefaultHeaderManager(universe_key_manager.get()));

@@ -301,7 +301,6 @@ heap_create(const char *relname,
 		case RELKIND_VIEW:
 		case RELKIND_COMPOSITE_TYPE:
 		case RELKIND_FOREIGN_TABLE:
-		case RELKIND_PARTITIONED_TABLE:
 			create_storage = false;
 
 			/*
@@ -311,10 +310,11 @@ heap_create(const char *relname,
 			reltablespace = InvalidOid;
 			break;
 
+		case RELKIND_PARTITIONED_TABLE:
 		case RELKIND_PARTITIONED_INDEX:
 			/*
-			 * Preserve tablespace so that it's used as tablespace for indexes
-			 * on future partitions.
+			 * For partitioned tables and indexes, preserve tablespace so that
+			 * it's used as the tablespace for future partitions.
 			 */
 			create_storage = false;
 			break;
@@ -396,6 +396,15 @@ heap_create(const char *relname,
 		RelationOpenSmgr(rel);
 		RelationCreateStorage(rel->rd_node, relpersistence);
 	}
+
+	/*
+	 * If a tablespace is specified, removal of that tablespace is normally
+	 * protected by the existence of a physical file; but for Yugabyte relations
+	 * and relations with no files, add a pg_shdepend entry to account for that.
+	 */
+	if ((IsYBRelation(rel) || !create_storage) && reltablespace != InvalidOid)
+		recordDependencyOnTablespace(RelationRelationId, relid,
+									 reltablespace);
 
 	return rel;
 }
@@ -1502,8 +1511,6 @@ heap_create_with_catalog(const char *relname,
 			recordDependencyOnNewAcl(RelationRelationId, relid, 0, ownerid, relacl);
 
 			recordDependencyOnCurrentExtension(&myself, false);
-
-			recordDependencyOnTablespace(RelationRelationId, relid, reltablespace);
 
 			if (reloftypeid)
 			{

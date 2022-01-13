@@ -38,6 +38,13 @@ CREATE TABLESPACE z WITH (replica_placement='{"num_replicas":3, "placement_block
 -- describe command
 \db
 
+CREATE TABLEGROUP grp TABLESPACE x;
+-- Fail, not empty
+\set VERBOSITY terse \\ -- suppress dependency details.
+DROP TABLESPACE x;
+\set VERBOSITY default
+DROP TABLEGROUP grp;
+-- Should succeed, empty now
 DROP TABLESPACE x;
 DROP TABLESPACE y;
 
@@ -65,6 +72,16 @@ ALTER TABLESPACE regress_tblspace RESET (random_page_cost, effective_io_concurre
 
 -- create a schema we can use
 CREATE SCHEMA testschema;
+
+-- create a tablespace not satisfied by the cluster
+CREATE TABLESPACE invalid_tablespace WITH (replica_placement='{"num_replicas": 1, "placement_blocks":[{"cloud":"nonexistent","region":"nowhere","zone":"area51","min_num_replicas":1}]}');
+
+-- try using unsatisfiable tablespace
+CREATE TABLE testschema.foo (i int) TABLESPACE invalid_tablespace; -- fail
+CREATE TABLE testschema.foo (i int) TABLESPACE regress_tblspace;
+ALTER TABLE testschema.foo SET TABLESPACE invalid_tablespace; -- fail
+DROP TABLE testschema.foo;
+DROP TABLESPACE invalid_tablespace;
 
 -- try a table
 CREATE TABLE testschema.foo (i int) TABLESPACE regress_tblspace;
@@ -113,6 +130,33 @@ CREATE TABLE testschema.using_index3 (a int, UNIQUE(a) USING INDEX TABLESPACE re
 CREATE INDEX foo_idx on testschema.foo(i) TABLESPACE regress_tblspace;
 SELECT relname, spcname FROM pg_catalog.pg_tablespace t, pg_catalog.pg_class c
     where c.reltablespace = t.oid AND c.relname = 'foo_idx';
+
+-- partitioned table
+CREATE TABLE testschema.part (a int) PARTITION BY LIST (a);
+CREATE TABLE testschema.part12 PARTITION OF testschema.part FOR VALUES IN(1,2) PARTITION BY LIST (a) TABLESPACE regress_tblspace;
+CREATE TABLE testschema.part12_1 PARTITION OF testschema.part12 FOR VALUES IN (1);
+ALTER TABLE testschema.part12 SET TABLESPACE pg_default;
+CREATE TABLE testschema.part12_2 PARTITION OF testschema.part12 FOR VALUES IN (2);
+-- Ensure part12_1 defaulted to regress_tblspace and part12_2 defaulted to pg_default.
+SELECT relname, spcname FROM pg_catalog.pg_class c
+    LEFT JOIN pg_catalog.pg_tablespace t ON c.reltablespace = t.oid
+    where c.relname LIKE 'part%' order by relname;
+DROP TABLE testschema.part;
+
+-- temporary table
+-- Fail, cannot set tablespaces for temp tables
+CREATE TEMPORARY TABLE temptest (a INT) TABLESPACE regress_tblspace;
+CREATE TEMPORARY TABLE temptest (a INT);
+-- Fail, cannot set tablespaces for temp tables
+ALTER TABLE temptest SET TABLESPACE regress_tblspace;
+DROP TABLE temptest;
+
+-- Fail, cannot set tablespaces for temp tables
+CREATE TEMPORARY TABLE tempparttest (a int) PARTITION BY LIST (a) TABLESPACE regress_tblspace;
+CREATE TEMPORARY TABLE tempparttest (a int) PARTITION BY LIST (a);
+-- Fail, cannot set tablespaces for temp tables
+ALTER TABLE tempparttest SET TABLESPACE regress_tblspace;
+DROP TABLE tempparttest;
 
 -- partitioned index
 CREATE TABLE testschema.part (a int) PARTITION BY LIST (a);
@@ -235,9 +279,10 @@ DROP TABLE tab_nonkey;
 \c yugabyte
 DROP DATABASE colocation_test;
 
--- Fail, cannot set tablespaces for temp tables.
-CREATE TEMPORARY TABLE temptest (a INT) TABLESPACE x;
+-- Verify that tablespaces cannot be set on partitioned tables.
+CREATE TABLE list_partitioned (partkey char) PARTITION BY LIST(partkey) TABLESPACE x;
 -- Cleanup.
+DROP TABLE list_partitioned;
 DROP TABLESPACE x;
 
 /*
@@ -274,3 +319,5 @@ EXPLAIN (COSTS OFF) SELECT * FROM foo WHERE id = 5;
 DROP TABLE foo;
 DROP TABLESPACE far;
 DROP TABLESPACE near;
+DROP TABLESPACE regionlocal;
+DROP TABLESPACE cloudlocal;

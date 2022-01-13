@@ -11,21 +11,25 @@
 // under the License.
 //
 
+#include "yb/yql/pgwrapper/libpq_utils.h"
+
 #include <string>
 #include <utility>
 
 #include <boost/preprocessor/seq/for_each.hpp>
 
-#include "yb/yql/pgwrapper/libpq_utils.h"
-
 #include "yb/common/pgsql_error.h"
 
+#include "yb/gutil/casts.h"
 #include "yb/gutil/endian.h"
 
 #include "yb/util/enums.h"
+#include "yb/util/format.h"
 #include "yb/util/logging.h"
 #include "yb/util/monotime.h"
-
+#include "yb/util/net/net_util.h"
+#include "yb/util/status_format.h"
+#include "yb/util/status_log.h"
 
 using namespace std::literals;
 
@@ -208,6 +212,7 @@ void PGResultClear::operator()(PGresult* result) const {
 }
 
 Status PGConn::Execute(const std::string& command, bool show_query_in_error) {
+  VLOG(1) << __func__ << " " << command;
   PGResultPtr res(PQexec(impl_.get(), command.c_str()));
   auto status = PQresultStatus(res.get());
   if (ExecStatusType::PGRES_COMMAND_OK != status) {
@@ -240,6 +245,7 @@ Result<PGResultPtr> CheckResult(PGResultPtr result, const std::string& command) 
 }
 
 Result<PGResultPtr> PGConn::Fetch(const std::string& command) {
+  VLOG(1) << __func__ << " " << command;
   return CheckResult(
       PGResultPtr(simple_query_protocol_
           ? PQexec(impl_.get(), command.c_str())
@@ -350,7 +356,7 @@ bool PGConn::CopyFlushBuffer() {
   }
   ptrdiff_t len = copy_data_->pos - copy_data_->buffer;
   if (len) {
-    int res = PQputCopyData(impl_.get(), copy_data_->buffer, len);
+    int res = PQputCopyData(impl_.get(), copy_data_->buffer, narrow_cast<int>(len));
     if (res < 0) {
       copy_data_->error = STATUS_FORMAT(NetworkError, "Put copy data failed: $0", res);
       return false;
@@ -522,6 +528,10 @@ std::string PqEscapeIdentifier(const std::string& input) {
   output.insert(0, 1, '"');
   output.push_back('"');
   return output;
+}
+
+bool HasTryAgain(const Status& status) {
+  return status.ToString().find("Try again:") != std::string::npos;
 }
 
 } // namespace pgwrapper

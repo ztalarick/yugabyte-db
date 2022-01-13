@@ -1420,7 +1420,10 @@ ProcessUtilitySlow(ParseState *pstate,
 												   stmt->relation->relname)));
 						}
 						list_free(inheritors);
+					}
 
+					if (get_rel_relkind(relid) == RELKIND_PARTITIONED_TABLE)
+					{
 						/*
 						 * Transparently switch to nonconcurrent index build.
 						 */
@@ -2117,7 +2120,7 @@ AlterObjectTypeCommandTag(ObjectType objtype)
 		case OBJECT_TABCONSTRAINT:
 			tag = "ALTER TABLE";
 			break;
-		case OBJECT_TABLEGROUP:
+		case OBJECT_YBTABLEGROUP:
 			tag = "ALTER TABLEGROUP";
 			break;
 		case OBJECT_TABLESPACE:

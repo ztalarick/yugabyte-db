@@ -10,6 +10,8 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 
+#include "yb/yql/pggate/ybc_pggate.h"
+
 #include <algorithm>
 #include <string>
 
@@ -20,16 +22,16 @@
 #include "yb/common/common_flags.h"
 #include "yb/common/ql_value.h"
 #include "yb/common/ybc-internal.h"
+
 #include "yb/util/atomic.h"
+#include "yb/util/thread.h"
+#include "yb/util/yb_partition.h"
 
-#include "yb/yql/pggate/ybc_pggate.h"
-#include "yb/yql/pggate/pggate.h"
-#include "yb/yql/pggate/pggate_thread_local_vars.h"
-#include "yb/yql/pggate/pg_txn_manager.h"
-#include "yb/yql/pggate/pggate_flags.h"
 #include "yb/yql/pggate/pg_memctx.h"
-
 #include "yb/yql/pggate/pg_value.h"
+#include "yb/yql/pggate/pggate.h"
+#include "yb/yql/pggate/pggate_flags.h"
+#include "yb/yql/pggate/pggate_thread_local_vars.h"
 #include "yb/yql/pggate/ybc_pg_typedefs.h"
 
 DECLARE_bool(client_suppress_created_logs);
@@ -579,6 +581,15 @@ YBCStatus YBCPgDmlBindColumnCondIn(YBCPgStatement handle, int attr_num, int n_at
   return ToYBCStatus(pgapi->DmlBindColumnCondIn(handle, attr_num, n_attr_values, attr_values));
 }
 
+YBCStatus YBCPgDmlBindHashCodes(YBCPgStatement handle, bool start_valid,
+                                 bool start_inclusive, uint64_t start_hash_val,
+                                 bool end_valid, bool end_inclusive,
+                                 uint64_t end_hash_val) {
+  return ToYBCStatus(pgapi->DmlBindHashCode(handle, start_valid,
+                      start_inclusive, start_hash_val, end_valid,
+                      end_inclusive, end_hash_val));
+}
+
 YBCStatus YBCPgDmlBindTable(YBCPgStatement handle) {
   return ToYBCStatus(pgapi->DmlBindTable(handle));
 }
@@ -884,12 +895,16 @@ YBCStatus YBCPgRestartTransaction() {
   return ToYBCStatus(pgapi->RestartTransaction());
 }
 
+YBCStatus YBCPgMaybeResetTransactionReadPoint() {
+  return ToYBCStatus(pgapi->MaybeResetTransactionReadPoint());
+}
+
 YBCStatus YBCPgCommitTransaction() {
   return ToYBCStatus(pgapi->CommitTransaction());
 }
 
-YBCStatus YBCPgAbortTransaction() {
-  return ToYBCStatus(pgapi->AbortTransaction());
+void YBCPgAbortTransaction() {
+  pgapi->AbortTransaction();
 }
 
 YBCStatus YBCPgSetTransactionIsolationLevel(int isolation) {
@@ -900,6 +915,10 @@ YBCStatus YBCPgSetTransactionReadOnly(bool read_only) {
   return ToYBCStatus(pgapi->SetTransactionReadOnly(read_only));
 }
 
+YBCStatus YBCPgEnableFollowerReads(bool enable_follower_reads, int32_t staleness_ms) {
+  return ToYBCStatus(pgapi->EnableFollowerReads(enable_follower_reads, staleness_ms));
+}
+
 YBCStatus YBCPgSetTransactionDeferrable(bool deferrable) {
   return ToYBCStatus(pgapi->SetTransactionDeferrable(deferrable));
 }
@@ -908,8 +927,12 @@ YBCStatus YBCPgEnterSeparateDdlTxnMode() {
   return ToYBCStatus(pgapi->EnterSeparateDdlTxnMode());
 }
 
-YBCStatus YBCPgExitSeparateDdlTxnMode(bool success) {
-  return ToYBCStatus(pgapi->ExitSeparateDdlTxnMode(success));
+YBCStatus YBCPgExitSeparateDdlTxnMode() {
+  return ToYBCStatus(pgapi->ExitSeparateDdlTxnMode());
+}
+
+void YBCPgClearSeparateDdlTxnMode() {
+  pgapi->ClearSeparateDdlTxnMode();
 }
 
 YBCStatus YBCPgSetActiveSubTransaction(uint32_t id) {
@@ -918,6 +941,13 @@ YBCStatus YBCPgSetActiveSubTransaction(uint32_t id) {
 
 YBCStatus YBCPgRollbackSubTransaction(uint32_t id) {
   return ToYBCStatus(pgapi->RollbackSubTransaction(id));
+}
+
+//------------------------------------------------------------------------------------------------
+// System validation.
+//------------------------------------------------------------------------------------------------
+YBCStatus YBCPgValidatePlacement(const char *placement_info) {
+  return ToYBCStatus(pgapi->ValidatePlacement(placement_info));
 }
 
 // Referential Integrity Caching
@@ -1022,6 +1052,9 @@ bool YBCPgIsYugaByteEnabled() {
 }
 
 void YBCSetTimeout(int timeout_ms, void* extra) {
+  if (!pgapi) {
+    return;
+  }
   const auto default_client_timeout_ms =
       (FLAGS_ysql_client_read_write_timeout_ms < 0
            ? std::max(FLAGS_client_read_write_timeout_ms, 600000)
@@ -1039,7 +1072,7 @@ void YBCSetTimeout(int timeout_ms, void* extra) {
   pgapi->SetTimeout(timeout_ms);
 }
 
-YBCStatus YBCGetTabletServerHosts(YBCServerDescriptor **servers, int *count) {
+YBCStatus YBCGetTabletServerHosts(YBCServerDescriptor **servers, size_t *count) {
   const auto result = pgapi->ListTabletServers();
   if (!result.ok()) {
     return ToYBCStatus(result.status());

@@ -34,18 +34,25 @@
 
 #include <glog/logging.h>
 
-#include "yb/gutil/strings/substitute.h"
+#include "yb/common/wire_protocol.h"
+
+#include "yb/consensus/log_util.h"
+
+#include "yb/gutil/sysinfo.h"
+
 #include "yb/master/call_home.h"
 #include "yb/master/master.h"
-#include "yb/consensus/log_util.h"
+#include "yb/master/sys_catalog_initialization.h"
+
+#include "yb/server/total_mem_watcher.h"
+
 #include "yb/util/flags.h"
 #include "yb/util/init.h"
 #include "yb/util/logging.h"
 #include "yb/util/main_util.h"
+#include "yb/util/mem_tracker.h"
+#include "yb/util/result.h"
 #include "yb/util/ulimit_util.h"
-#include "yb/gutil/sysinfo.h"
-#include "yb/server/total_mem_watcher.h"
-#include "yb/util/net/net_util.h"
 
 DECLARE_bool(callhome_enabled);
 DECLARE_bool(evict_failed_followers);
@@ -85,8 +92,18 @@ static int MasterMain(int argc, char** argv) {
   }
 
   FLAGS_default_memory_limit_to_ram_ratio = 0.10;
-  // For masters we always want to fsync the WAL files.
-  FLAGS_durable_wal_write = true;
+
+  const char* use_durable_wal_write_by_default_env_var =
+      getenv("YB_MASTER_DURABLE_WAL_WRITE_BY_DEFAULT");
+  if (use_durable_wal_write_by_default_env_var &&
+      strcmp(use_durable_wal_write_by_default_env_var, "0") == 0) {
+    // Allow setting this flag to false by default by specifying
+    // the environment variable YB_MASTER_DURABLE_WAL_WRITE_BY_DEFAULT=0 (for use in tests).
+    FLAGS_durable_wal_write = false;
+  } else {
+    // For masters we always want to fsync the WAL files.
+    FLAGS_durable_wal_write = true;
+  }
 
   // A multi-node Master leader should not evict failed Master followers
   // because there is no-one to assign replacement servers in order to maintain

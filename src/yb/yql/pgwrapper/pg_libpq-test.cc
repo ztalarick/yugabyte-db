@@ -15,20 +15,30 @@
 #include <fstream>
 #include <thread>
 
+#include "yb/client/client_fwd.h"
+#include "yb/client/table_info.h"
+#include "yb/client/yb_table_name.h"
+
+#include "yb/common/common.pb.h"
+#include "yb/common/pgsql_error.h"
+#include "yb/common/schema.h"
+
+#include "yb/master/master_client.pb.h"
+#include "yb/master/master_defaults.h"
+
+#include "yb/util/async_util.h"
 #include "yb/util/barrier.h"
+#include "yb/util/metrics.h"
 #include "yb/util/monotime.h"
+#include "yb/util/path_util.h"
 #include "yb/util/random_util.h"
 #include "yb/util/scope_exit.h"
-#include "yb/util/size_literals.h"
+#include "yb/util/status_log.h"
+#include "yb/util/test_thread_holder.h"
+#include "yb/util/tsan_util.h"
 
 #include "yb/yql/pgwrapper/libpq_test_base.h"
 #include "yb/yql/pgwrapper/libpq_utils.h"
-
-#include "yb/client/client_fwd.h"
-#include "yb/common/common.pb.h"
-#include "yb/common/pgsql_error.h"
-#include "yb/master/catalog_manager.h"
-#include "yb/tserver/tserver.pb.h"
 
 using namespace std::literals;
 
@@ -233,7 +243,6 @@ TEST_F_EX(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(UriMd5), PgLibPqTestAuthMd5) {
 // The described prodecure is repeated multiple times to increase probability of catching bug,
 // w/o running test multiple times.
 TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(SerializableColoring)) {
-  static const std::string kTryAgain = "Try again.";
   constexpr auto kKeys = RegularBuildVsSanitizers(10, 20);
   constexpr auto kColors = 2;
   constexpr auto kIterations = 20;
@@ -251,7 +260,7 @@ TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(SerializableColoring)) {
 
     auto s = conn.Execute("DELETE FROM t");
     if (!s.ok()) {
-      ASSERT_STR_CONTAINS(s.ToString(), kTryAgain);
+      ASSERT_TRUE(HasTryAgain(s)) << s;
       continue;
     }
     for (int k = 0; k != kKeys; ++k) {
@@ -271,8 +280,7 @@ TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(SerializableColoring)) {
 
         auto res = connection.Fetch("SELECT * FROM t");
         if (!res.ok()) {
-          auto msg = res.status().message().ToBuffer();
-          ASSERT_STR_CONTAINS(res.status().ToString(), kTryAgain);
+          ASSERT_TRUE(HasTryAgain(res.status())) << res.status();
           return;
         }
         auto columns = PQnfields(res->get());
@@ -291,7 +299,7 @@ TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(SerializableColoring)) {
           if (!status.ok()) {
             auto msg = status.message().ToBuffer();
             // Missing metadata means that transaction was aborted and cleaned.
-            ASSERT_TRUE(msg.find("Try again.") != std::string::npos ||
+            ASSERT_TRUE(HasTryAgain(status) ||
                         msg.find("Missing metadata") != std::string::npos) << status;
             break;
           }
@@ -761,7 +769,7 @@ void PgLibPqTest::TestParallelCounter(IsolationLevel isolation) {
   // Make a counter for each thread and have each thread increment it
   std::vector<std::thread> threads;
   while (threads.size() != kThreads) {
-    int key = threads.size();
+    int key = narrow_cast<int>(threads.size());
     ASSERT_OK(conn.ExecuteFormat("INSERT INTO t (key, value) VALUES ($0, 0)", key));
 
     threads.emplace_back([this, key, isolation] {
@@ -1043,6 +1051,7 @@ TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(TestSystemTableRollback)) {
 }
 
 namespace {
+
 Result<master::TabletLocationsPB> GetColocatedTabletLocations(
     client::YBClient* client,
     std::string database_name,
@@ -1199,6 +1208,7 @@ TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(TableColocation)) {
           client->LookupTabletById(
               tablets_bar_index[i].tablet_id(),
               table_bar_index,
+              master::IncludeInactive::kFalse,
               CoarseMonoClock::Now() + 30s,
               [&, i](const Result<client::internal::RemoteTabletPtr>& result) {
                 tablet_founds[i] = result.ok();
@@ -1232,6 +1242,7 @@ TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(TableColocation)) {
         client->LookupTabletById(
             colocated_tablet_id,
             colocated_table,
+              master::IncludeInactive::kFalse,
             CoarseMonoClock::Now() + 30s,
             [&](const Result<client::internal::RemoteTabletPtr>& result) {
               tablet_found = result.ok();
@@ -1361,7 +1372,7 @@ Result<TableGroupInfo> SelectTableGroup(
       conn->FetchFormat("SELECT oid FROM pg_database WHERE datname=\'$0\'", database_name));
   const int database_oid = VERIFY_RESULT(GetInt32(res.get(), 0, 0));
   res = VERIFY_RESULT(
-      conn->FetchFormat("SELECT oid FROM pg_tablegroup WHERE grpname=\'$0\'", group_name));
+      conn->FetchFormat("SELECT oid FROM pg_yb_tablegroup WHERE grpname=\'$0\'", group_name));
   group_info.oid = VERIFY_RESULT(GetInt32(res.get(), 0, 0));
 
   group_info.id = GetPgsqlTablegroupId(database_oid, group_info.oid);
@@ -1484,6 +1495,7 @@ TEST_F_EX(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(ColocatedTablegroups),
           client->LookupTabletById(
               tablets_bar_index[i].tablet_id(),
               table_bar_index,
+              master::IncludeInactive::kFalse,
               CoarseMonoClock::Now() + 30s,
               [&, i](const Result<client::internal::RemoteTabletPtr>& result) {
                 tablet_founds[i] = result.ok();
@@ -1512,6 +1524,7 @@ TEST_F_EX(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(ColocatedTablegroups),
         client->LookupTabletById(
             tablegroup_alt.tablet_id,
             tablegroup_alt.table,
+            master::IncludeInactive::kFalse,
             CoarseMonoClock::Now() + 30s,
             [&](const Result<client::internal::RemoteTabletPtr>& result) {
               alt_tablet_found = result.ok();
@@ -1555,6 +1568,7 @@ TEST_F_EX(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(ColocatedTablegroups),
         client->LookupTabletById(
             tablegroup.tablet_id,
             tablegroup.table,
+            master::IncludeInactive::kFalse,
             CoarseMonoClock::Now() + 30s,
             [&](const Result<client::internal::RemoteTabletPtr>& result) {
               orig_tablet_found = result.ok();
@@ -1573,6 +1587,7 @@ TEST_F_EX(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(ColocatedTablegroups),
         client->LookupTabletById(
             tablegroup_alt.tablet_id,
             tablegroup_alt.table,
+            master::IncludeInactive::kFalse,
             CoarseMonoClock::Now() + 30s,
             [&](const Result<client::internal::RemoteTabletPtr>& result) {
               second_tablet_found = result.ok();
@@ -1654,7 +1669,7 @@ TEST_F_EX(PgLibPqTest,
           PgLibPqTestSmallTSTimeout) {
   const std::string kDatabaseName = "co";
   const auto kTimeout = 60s;
-  const int starting_num_tablet_servers = cluster_->num_tablet_servers();
+  const auto starting_num_tablet_servers = cluster_->num_tablet_servers();
   ExternalMiniClusterOptions opts;
   std::map<std::string, int> ts_loads;
   static const int tserver_unresponsive_timeout_ms = 8000;
@@ -1748,7 +1763,7 @@ TEST_F_EX(PgLibPqTest,
 TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(LoadBalanceMultipleColocatedDB)) {
   constexpr int kNumDatabases = 3;
   const auto kTimeout = 60s;
-  const int starting_num_tablet_servers = cluster_->num_tablet_servers();
+  const size_t starting_num_tablet_servers = cluster_->num_tablet_servers();
   const std::string kDatabasePrefix = "co";
   std::map<std::string, int> ts_loads;
 
@@ -2153,7 +2168,7 @@ TEST_F_EX(PgLibPqTest,
   // server.
   for (int i = 0; i < cluster_->num_tablet_servers(); ++i) {
     ExternalTabletServer* ts = cluster_->tablet_server(i);
-    const string pg_pid_file = JoinPathSegments(ts->GetDataDir(), "pg_data",
+    const string pg_pid_file = JoinPathSegments(ts->GetRootDir(), "pg_data",
                                                 "postmaster.pid");
 
     LOG(INFO) << "pg_pid_file: " << pg_pid_file;
@@ -2278,7 +2293,7 @@ class CoordinatedRunner {
 
 bool RetryableError(const Status& status) {
   const auto msg = status.message().ToBuffer();
-  const std::string expected_errors[] = {"Try Again",
+  const std::string expected_errors[] = {"Try again",
                                          "Catalog Version Mismatch",
                                          "Restart read required at",
                                          "schema version mismatch for table"};
@@ -2316,6 +2331,37 @@ TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(PagingReadRestart)) {
   std::this_thread::sleep_for(10s);
   runner.Stop();
   ASSERT_FALSE(runner.HasError());
+}
+
+TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(CollationRangePresplit)) {
+  const string kDatabaseName ="yugabyte";
+  auto client = ASSERT_RESULT(cluster_->CreateClient());
+
+  auto conn = ASSERT_RESULT(ConnectToDB(kDatabaseName));
+  ASSERT_OK(conn.Execute("CREATE TABLE collrange(a text COLLATE \"en-US-x-icu\", "
+                         "PRIMARY KEY(a ASC)) SPLIT AT VALUES (('100'), ('200'))"));
+
+  google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
+  auto table_id = ASSERT_RESULT(GetTableIdByTableName(client.get(), kDatabaseName, "collrange"));
+
+  // Validate that number of tablets created is 3.
+  ASSERT_OK(client->GetTabletsFromTableId(table_id, 0, &tablets));
+  ASSERT_EQ(tablets.size(), 3);
+  // Partition key length of plain encoded '100' or '200'.
+  const size_t partition_key_length = 7;
+  // When a text value is collation encoded, we need at least 3 extra bytes.
+  const size_t min_collation_extra_bytes = 3;
+  for (const auto& tablet : tablets) {
+    ASSERT_TRUE(tablet.has_partition());
+    auto partition_start = tablet.partition().partition_key_start();
+    auto partition_end = tablet.partition().partition_key_end();
+    LOG(INFO) << "partition_start: " << b2a_hex(partition_start)
+              << ", partition_end: " << b2a_hex(partition_end);
+    ASSERT_TRUE(partition_start.empty() ||
+                partition_start.size() >= partition_key_length + min_collation_extra_bytes);
+    ASSERT_TRUE(partition_end.empty() ||
+                partition_end.size() >= partition_key_length + min_collation_extra_bytes);
+  }
 }
 
 } // namespace pgwrapper

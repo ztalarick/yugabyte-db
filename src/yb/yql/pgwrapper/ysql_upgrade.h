@@ -15,11 +15,10 @@
 #ifndef YB_YQL_PGWRAPPER_YSQL_UPGRADE_H
 #define YB_YQL_PGWRAPPER_YSQL_UPGRADE_H
 
-#include <libpq-fe.h>
+#include "libpq-fe.h" // NOLINT
 
-#include "yb/util/pg_util.h"
+#include "yb/util/net/net_util.h"
 
-#include "yb/yql/pgwrapper/pg_wrapper.h"
 #include "yb/yql/pgwrapper/libpq_utils.h"
 
 namespace yb {
@@ -52,7 +51,7 @@ class YsqlUpgradeHelper {
   // Migrate a given database to the next version, updating it in the given database entry.
   CHECKED_STATUS MigrateOnce(DatabaseEntry* db_entry);
 
-  const HostPort& ysql_proxy_addr_;
+  const HostPort ysql_proxy_addr_;
 
   const uint64_t ysql_auth_key_;
 

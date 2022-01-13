@@ -104,7 +104,7 @@ public class AddNodeToUniverse extends UniverseDefinitionTaskBase {
         String instanceType = currentNode.cloudInfo.instance_type;
 
         Map<String, NodeInstance> nodeMap = NodeInstance.pickNodes(onpremAzToNodes, instanceType);
-        currentNode.nodeUuid = nodeMap.get(currentNode.nodeName).nodeUuid;
+        currentNode.nodeUuid = nodeMap.get(currentNode.nodeName).getNodeUuid();
       }
 
       String preflightStatus = null;
@@ -116,7 +116,8 @@ public class AddNodeToUniverse extends UniverseDefinitionTaskBase {
       if (preflightStatus != null) {
         Map<String, String> failedNodes =
             Collections.singletonMap(currentNode.nodeName, preflightStatus);
-        createFailedPrecheckTask(failedNodes).setSubTaskGroupType(SubTaskGroupType.PreflightChecks);
+        createFailedPrecheckTask(failedNodes, true)
+            .setSubTaskGroupType(SubTaskGroupType.PreflightChecks);
         errorString = "Preflight checks failed.";
       } else {
         // Update Node State to being added.
@@ -137,9 +138,6 @@ public class AddNodeToUniverse extends UniverseDefinitionTaskBase {
         createConfigureServerTasks(node, true /* isShell */)
             .setSubTaskGroupType(SubTaskGroupType.InstallingSoftware);
 
-        // Set default gflags
-        addDefaultGFlags(cluster.userIntent);
-
         // All necessary nodes are created. Data moving will coming soon.
         createSetNodeStateTasks(node, NodeDetails.NodeState.ToJoinCluster)
             .setSubTaskGroupType(SubTaskGroupType.Provisioning);
@@ -151,8 +149,9 @@ public class AddNodeToUniverse extends UniverseDefinitionTaskBase {
               "Bringing up master for under replicated universe {} ({})",
               universe.universeUUID,
               universe.name);
+
           // Set gflags for master.
-          createGFlagsOverrideTasks(node, ServerType.MASTER);
+          createGFlagsOverrideTasks(node, ServerType.MASTER, true /* isShell */);
 
           // Start a shell master process.
           createStartMasterTasks(node).setSubTaskGroupType(SubTaskGroupType.StartingNodeProcesses);
@@ -192,7 +191,8 @@ public class AddNodeToUniverse extends UniverseDefinitionTaskBase {
 
         // Clear the host from master's blacklist.
         if (currentNode.state == NodeState.Removed) {
-          createModifyBlackListTask(Arrays.asList(currentNode), false /* isAdd */)
+          createModifyBlackListTask(
+                  Arrays.asList(currentNode), false /* isAdd */, false /* isLeaderBlacklist */)
               .setSubTaskGroupType(SubTaskGroupType.ConfigureUniverse);
         }
 

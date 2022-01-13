@@ -234,6 +234,14 @@ public class Backup extends Model {
         .collect(Collectors.toList());
   }
 
+  public static List<Backup> fetchBackupToDeleteByUniverseUUID(
+      UUID customerUUID, UUID universeUUID) {
+    return fetchByUniverseUUID(customerUUID, universeUUID)
+        .stream()
+        .filter(b -> b.backupInfo.actionType == BackupTableParams.ActionType.CREATE)
+        .collect(Collectors.toList());
+  }
+
   @Deprecated
   public static Backup get(UUID customerUUID, UUID backupUUID) {
     return find.query().where().idEq(backupUUID).eq("customer_uuid", customerUUID).findOne();
@@ -283,8 +291,8 @@ public class Backup extends Model {
     if ((this.state == BackupState.InProgress && this.state != newState)
         || (this.state == BackupState.Completed && newState == BackupState.Deleted)
         || (this.state == BackupState.Completed && newState == BackupState.FailedToDelete)
-        || (this.state == BackupState.Failed && newState == BackupState.FailedToDelete)
-        || (this.state == BackupState.Failed && newState == BackupState.Deleted)) {
+        || (this.state == BackupState.Failed && newState == BackupState.Deleted)
+        || (this.state == BackupState.Failed && newState == BackupState.FailedToDelete)) {
       this.state = newState;
       save();
     } else {
@@ -302,6 +310,34 @@ public class Backup extends Model {
         .eq("state", BackupState.InProgress)
         .endOr()
         .findList();
+  }
+
+  public static List<Backup> findAllFinishedBackupsWithCustomerConfig(UUID customerConfigUUID) {
+    List<Backup> backupList =
+        find.query()
+            .where()
+            .or()
+            .eq("state", BackupState.Failed)
+            .eq("state", BackupState.Completed)
+            .endOr()
+            .findList();
+    backupList =
+        backupList
+            .stream()
+            .filter(b -> b.backupInfo.actionType == BackupTableParams.ActionType.CREATE)
+            .filter(b -> b.getBackupInfo().storageConfigUUID.equals(customerConfigUUID))
+            .collect(Collectors.toList());
+    return backupList;
+  }
+
+  public static boolean findIfBackupsRunningWithCustomerConfig(UUID customerConfigUUID) {
+    List<Backup> backupList = find.query().where().eq("state", BackupState.InProgress).findList();
+    backupList =
+        backupList
+            .stream()
+            .filter(b -> b.getBackupInfo().storageConfigUUID.equals(customerConfigUUID))
+            .collect(Collectors.toList());
+    return backupList.size() != 0;
   }
 
   public static Set<Universe> getAssociatedUniverses(UUID customerUUID, UUID configUUID) {
@@ -345,5 +381,14 @@ public class Backup extends Model {
       }
     }
     return universes;
+  }
+
+  public static List<Backup> fetchAllBackupsByScheduleUUID(UUID customerUUID, UUID scheduleUUID) {
+    return find.query()
+        .where()
+        .eq("customer_uuid", customerUUID)
+        .eq("schedule_uuid", scheduleUUID)
+        .eq("state", BackupState.Completed)
+        .findList();
   }
 }

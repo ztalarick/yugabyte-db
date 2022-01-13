@@ -30,29 +30,39 @@
 // under the License.
 //
 
-#include "yb/tserver/ts_tablet_manager.h"
-
-#include <string>
+#include <memory>
 #include <set>
+#include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
-#include <gflags/gflags.h>
 
+#include "yb/common/common.pb.h"
+#include "yb/common/index.h"
 #include "yb/common/partition.h"
 #include "yb/common/schema.h"
-#include "yb/consensus/consensus_round.h"
+
 #include "yb/consensus/consensus.pb.h"
+#include "yb/consensus/consensus_round.h"
 #include "yb/consensus/metadata.pb.h"
 #include "yb/consensus/raft_consensus.h"
+
 #include "yb/fs/fs_manager.h"
-#include "yb/master/master.pb.h"
+
+#include "yb/master/master_heartbeat.pb.h"
+
+#include "yb/tablet/tablet-harness.h"
+#include "yb/tablet/tablet.h"
+#include "yb/tablet/tablet_metadata.h"
 #include "yb/tablet/tablet_peer.h"
-#include "yb/tablet/tablet-test-util.h"
+
 #include "yb/tserver/mini_tablet_server.h"
-#include "yb/tserver/tablet_server.h"
 #include "yb/tserver/tablet_memory_manager.h"
-#include "yb/util/test_util.h"
+#include "yb/tserver/tablet_server.h"
+#include "yb/tserver/ts_tablet_manager.h"
+
 #include "yb/util/format.h"
+#include "yb/util/test_util.h"
 
 #define ASSERT_REPORT_HAS_UPDATED_TABLET(report, tablet_id) \
   ASSERT_NO_FATALS(AssertReportHasUpdatedTablet(report, tablet_id))
@@ -303,8 +313,8 @@ TEST_F(TsTabletManagerTest, TestProperBackgroundFlushOnStartup) {
   }
 }
 
-static void AssertMonotonicReportSeqno(int64_t* report_seqno,
-                                       const TabletReportPB &report) {
+static void AssertMonotonicReportSeqno(int32_t* report_seqno,
+                                       const TabletReportPB& report) {
   ASSERT_LT(*report_seqno, report.sequence_number());
   *report_seqno = report.sequence_number();
 }
@@ -346,7 +356,7 @@ static void CopyReportToUpdates(const TabletReportPB& req, TabletReportUpdatesPB
 TEST_F(TsTabletManagerTest, TestTabletReports) {
   TabletReportPB report;
   TabletReportUpdatesPB updates;
-  int64_t seqno = -1;
+  int32_t seqno = -1;
 
   // Generate a tablet report before any tablets are loaded. Should be empty.
   tablet_manager_->StartFullTabletReport(&report);
@@ -431,7 +441,7 @@ TEST_F(TsTabletManagerTest, TestTabletReports) {
 TEST_F(TsTabletManagerTest, TestTabletReportLimit) {
   TabletReportPB report;
   TabletReportUpdatesPB updates;
-  int64_t seqno = -1;
+  int32_t seqno = -1;
 
   // Generate a tablet report before any tablets are loaded. Should be empty.
   tablet_manager_->StartFullTabletReport(&report);

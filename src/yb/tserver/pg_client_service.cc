@@ -13,26 +13,34 @@
 
 #include "yb/tserver/pg_client_service.h"
 
-#include <boost/multi_index_container.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index_container.hpp>
 
 #include "yb/client/client.h"
+#include "yb/client/schema.h"
 #include "yb/client/table.h"
 #include "yb/client/table_creator.h"
 #include "yb/client/tablet_server.h"
 
+#include "yb/common/partition.h"
 #include "yb/common/pg_types.h"
+#include "yb/common/wire_protocol.h"
 
-#include "yb/master/master.proxy.h"
+#include "yb/master/master_admin.proxy.h"
 
 #include "yb/rpc/rpc_context.h"
+#include "yb/rpc/rpc_controller.h"
 #include "yb/rpc/scheduler.h"
 
 #include "yb/tserver/pg_client_session.h"
 
 #include "yb/util/net/net_util.h"
+#include "yb/util/result.h"
+#include "yb/util/status_format.h"
+#include "yb/util/status_log.h"
+#include "yb/util/status.h"
 
 using namespace std::literals;
 
@@ -136,8 +144,8 @@ class PgClientServiceImpl::Impl {
       const PgOpenTableRequestPB& req, PgOpenTableResponsePB* resp, rpc::RpcContext* context) {
     client::YBTablePtr table;
     RETURN_NOT_OK(client().OpenTable(req.table_id(), &table, resp->mutable_info()));
-    RSTATUS_DCHECK_EQ(
-        table->table_type(), client::YBTableType::PGSQL_TABLE_TYPE, RuntimeError,
+    RSTATUS_DCHECK(
+        table->table_type() == client::YBTableType::PGSQL_TABLE_TYPE, RuntimeError,
         "Wrong table type");
 
     auto partitions = table->GetVersionedPartitions();
@@ -163,7 +171,7 @@ class PgClientServiceImpl::Impl {
       const PgIsInitDbDoneRequestPB& req, PgIsInitDbDoneResponsePB* resp,
       rpc::RpcContext* context) {
     HostPort master_leader_host_port = client().GetMasterLeaderAddress();
-    auto proxy = std::make_shared<master::MasterServiceProxy>(
+    auto proxy = std::make_shared<master::MasterAdminProxy>(
         &client().proxy_cache(), master_leader_host_port);
     rpc::RpcController rpc;
     master::IsInitDbDoneRequestPB master_req;
@@ -273,6 +281,24 @@ class PgClientServiceImpl::Impl {
       server.ToPB(resp->mutable_servers()->Add());
     }
     return Status::OK();
+  }
+
+  CHECKED_STATUS ValidatePlacement(
+      const PgValidatePlacementRequestPB& req, PgValidatePlacementResponsePB* resp,
+      rpc::RpcContext* context) {
+    master::ReplicationInfoPB replication_info;
+    master::PlacementInfoPB* live_replicas = replication_info.mutable_live_replicas();
+
+    for (const auto& block : req.placement_infos()) {
+      auto pb = live_replicas->add_placement_blocks();
+      pb->mutable_cloud_info()->set_placement_cloud(block.cloud());
+      pb->mutable_cloud_info()->set_placement_region(block.region());
+      pb->mutable_cloud_info()->set_placement_zone(block.zone());
+      pb->set_min_num_replicas(block.min_num_replicas());
+    }
+    live_replicas->set_num_replicas(req.num_replicas());
+
+    return client().ValidateReplicationInfo(replication_info);
   }
 
   #define PG_CLIENT_SESSION_METHOD_FORWARD(r, data, method) \

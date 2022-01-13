@@ -12,7 +12,6 @@ import json
 import logging
 import os
 import socket
-import time
 
 import boto3
 from botocore.exceptions import ClientError
@@ -28,8 +27,7 @@ from ybops.cloud.aws.utils import (ROOT_VOLUME_LABEL, AwsBootstrapClient, YbVpcC
                                    query_vpc, update_disk)
 from ybops.cloud.common.cloud import AbstractCloud
 from ybops.common.exceptions import YBOpsRuntimeError
-from ybops.utils import (DEFAULT_SSH_PORT, DEFAULT_SSH_USER, format_rsa_key, get_datafile_path,
-                         is_valid_ip_address, remote_exec_command, scp_to_tmp, validated_key_file)
+from ybops.utils import (format_rsa_key, is_valid_ip_address, validated_key_file)
 
 
 class AwsCloud(AbstractCloud):
@@ -42,6 +40,8 @@ class AwsCloud(AbstractCloud):
 
     def __init__(self):
         super(AwsCloud, self).__init__("aws")
+        self._wait_for_startup_script_command = \
+            "until test -e /var/lib/cloud/instance/boot-finished ; do sleep 1 ; done"
 
     def add_subcommands(self):
         """Override to setup the cloud-specific instances of the subcommands.
@@ -249,7 +249,7 @@ class AwsCloud(AbstractCloud):
         elif metadata_type in ["role"]:
             # Arg timeout is in MS.
             fetcher = InstanceMetadataFetcher(
-                timeout=1000 * self.METADATA_API_TIMEOUT_SECONDS, num_attempts=2)
+                timeout=self.METADATA_API_TIMEOUT_SECONDS, num_attempts=2)
             c = fetcher.retrieve_iam_role_credentials()
             # This will return None in case of no assigned role on the instance.
             return c.get("role_name")
@@ -327,6 +327,9 @@ class AwsCloud(AbstractCloud):
                 server_tags = [t["Value"] for t in data["Tags"] if t["Key"] == "yb-server-type"]
                 name_tags = [t["Value"] for t in data["Tags"] if t["Key"] == "Name"]
                 launched_by_tags = [t["Value"] for t in data["Tags"] if t["Key"] == "launched-by"]
+                node_uuid_tags = [t["Value"] for t in data["Tags"] if t["Key"] == "node-uuid"]
+                universe_uuid_tags = [t["Value"] for t in data["Tags"]
+                                      if t["Key"] == "universe-uuid"]
 
             disks = data.get("BlockDeviceMappings")
             root_vol = next(disk for disk in disks if disk.get("DeviceName") == ROOT_VOLUME_LABEL)
@@ -360,6 +363,8 @@ class AwsCloud(AbstractCloud):
                 instance_type=data["InstanceType"],
                 server_type=server_tags[0] if server_tags else None,
                 launched_by=launched_by_tags[0] if launched_by_tags else None,
+                node_uuid=node_uuid_tags[0] if node_uuid_tags else None,
+                universe_uuid=universe_uuid_tags[0] if universe_uuid_tags else None,
                 vpc=data["VpcId"],
                 root_volume=root_vol["Ebs"]["VolumeId"]
             )
@@ -488,3 +493,14 @@ class AwsCloud(AbstractCloud):
             logging.error(e)
         finally:
             sock.close()
+
+    def get_console_output(self, args):
+        instance = self.get_host_info(args)
+
+        try:
+            ec2 = boto3.client('ec2', region_name=instance['region'])
+            return ec2.get_console_output(InstanceId=instance['id'], Latest=True).get('Output', '')
+        except ClientError:
+            logging.exception('Failed to get console output from {}'.format(args.search_pattern))
+
+        return ''

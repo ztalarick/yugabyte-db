@@ -1,14 +1,17 @@
+// Copyright (c) YugaByte, Inc.
 package com.yugabyte.yw.models;
 
 import static play.mvc.Http.Status.BAD_REQUEST;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.forms.XClusterConfigCreateFormData;
-import com.yugabyte.yw.forms.XClusterConfigEditFormData;
 import io.ebean.Finder;
 import io.ebean.Model;
+import io.ebean.annotation.DbEnumValue;
+import io.ebean.annotation.Transactional;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import java.util.Date;
@@ -27,10 +30,9 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import play.db.ebean.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Table(
     uniqueConstraints =
         @UniqueConstraint(
@@ -41,8 +43,6 @@ import play.db.ebean.Transactional;
 @Entity
 @ApiModel(description = "xcluster config object")
 public class XClusterConfig extends Model {
-
-  public static final Logger LOG = LoggerFactory.getLogger(XClusterConfig.class);
 
   private static final Finder<UUID, XClusterConfig> find =
       new Finder<UUID, XClusterConfig>(XClusterConfig.class) {};
@@ -67,8 +67,28 @@ public class XClusterConfig extends Model {
   public UUID targetUniverseUUID;
 
   @Column(name = "status")
-  @ApiModelProperty(value = "Status", allowableValues = "Init, Running, Paused, Failed")
-  public String status;
+  @ApiModelProperty(value = "Status", allowableValues = "Init, Running, Updating, Paused, Failed")
+  public XClusterConfigStatusType status;
+
+  public enum XClusterConfigStatusType {
+    Init("Init"),
+    Running("Running"),
+    Updating("Updating"),
+    Paused("Paused"),
+    Failed("Failed");
+
+    private String status;
+
+    XClusterConfigStatusType(String status) {
+      this.status = status;
+    }
+
+    @Override
+    @DbEnumValue
+    public String toString() {
+      return this.status;
+    }
+  }
 
   @Column(name = "create_time")
   @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
@@ -87,7 +107,7 @@ public class XClusterConfig extends Model {
   @JsonProperty
   @ApiModelProperty(value = "Source Universe table IDs")
   public Set<String> getTables() {
-    return this.tables.stream().map(table -> table.tableID).collect(Collectors.toSet());
+    return this.tables.stream().map(table -> table.getTableID()).collect(Collectors.toSet());
   }
 
   @JsonProperty
@@ -100,28 +120,31 @@ public class XClusterConfig extends Model {
         });
   }
 
-  @Transactional
-  public static XClusterConfig create(XClusterConfigCreateFormData formData) {
-    XClusterConfig relationship = new XClusterConfig();
-    relationship.uuid = UUID.randomUUID();
-    relationship.name = formData.name;
-    relationship.sourceUniverseUUID = formData.sourceUniverseUUID;
-    relationship.targetUniverseUUID = formData.targetUniverseUUID;
-    relationship.status = "Init";
-    relationship.createTime = new Date();
-    relationship.modifyTime = new Date();
-    relationship.setTables(formData.tables);
-    relationship.save();
-    return relationship;
+  @JsonIgnore
+  public String getReplicationGroupName() {
+    return this.sourceUniverseUUID + "_" + this.name;
   }
 
   @Transactional
-  public void updateFrom(XClusterConfigEditFormData formData) {
-    this.name = formData.name;
-    this.status = formData.status;
+  public static XClusterConfig create(
+      XClusterConfigCreateFormData formData, XClusterConfigStatusType status) {
+    XClusterConfig xClusterConfig = new XClusterConfig();
+    xClusterConfig.uuid = UUID.randomUUID();
+    xClusterConfig.name = formData.name;
+    xClusterConfig.sourceUniverseUUID = formData.sourceUniverseUUID;
+    xClusterConfig.targetUniverseUUID = formData.targetUniverseUUID;
+    xClusterConfig.status = status;
+    xClusterConfig.createTime = new Date();
+    xClusterConfig.modifyTime = new Date();
+    xClusterConfig.setTables(formData.tables);
+    xClusterConfig.save();
+    return xClusterConfig;
+  }
+
+  @Override
+  public void update() {
     this.modifyTime = new Date();
-    this.setTables(formData.tables);
-    this.update();
+    super.update();
   }
 
   public static XClusterConfig getValidConfigOrBadRequest(
@@ -136,14 +159,14 @@ public class XClusterConfig extends Model {
         .orElseThrow(
             () ->
                 new PlatformServiceException(
-                    BAD_REQUEST, "Cannot find xcluster config " + xClusterConfigUUID));
+                    BAD_REQUEST, "Cannot find XClusterConfig " + xClusterConfigUUID));
   }
 
   public static Optional<XClusterConfig> maybeGet(UUID xClusterConfigUUID) {
     XClusterConfig xClusterConfig =
         find.query().fetch("tables", "tableID").where().eq("uuid", xClusterConfigUUID).findOne();
     if (xClusterConfig == null) {
-      LOG.info("Cannot find xcluster config {}", xClusterConfigUUID);
+      log.info("Cannot find XClusterConfig {}", xClusterConfigUUID);
       return Optional.empty();
     }
     return Optional.of(xClusterConfig);
@@ -175,6 +198,17 @@ public class XClusterConfig extends Model {
         .findList();
   }
 
+  public static XClusterConfig getByNameSourceTarget(
+      String name, UUID sourceUniverseUUID, UUID targetUniverseUUID) {
+    return find.query()
+        .fetch("tables", "tableID")
+        .where()
+        .eq("config_name", name)
+        .eq("source_universe_uuid", sourceUniverseUUID)
+        .eq("target_universe_uuid", targetUniverseUUID)
+        .findOne();
+  }
+
   private static void checkXClusterConfigInCustomer(
       XClusterConfig xClusterConfig, Customer customer) {
     if (!customer.getUniverseUUIDs().contains(xClusterConfig.sourceUniverseUUID)
@@ -182,7 +216,7 @@ public class XClusterConfig extends Model {
       throw new PlatformServiceException(
           BAD_REQUEST,
           String.format(
-              "XCluster config UUID: %s doesn't belong " + "to Customer UUID: %s",
+              "XClusterConfig %s doesn't belong to Customer %s",
               xClusterConfig.uuid, customer.uuid));
     }
   }

@@ -6,11 +6,11 @@ import static play.mvc.Http.Status.BAD_REQUEST;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.net.HostAndPort;
 import com.yugabyte.yw.commissioner.tasks.UniverseDefinitionTaskBase.ServerType;
+import com.yugabyte.yw.commissioner.tasks.UniverseDefinitionTaskBase.PortType;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.password.RedactingService;
 import com.yugabyte.yw.common.services.YBClientService;
@@ -28,23 +28,20 @@ import io.ebean.SqlUpdate;
 import io.ebean.annotation.DbJson;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
@@ -95,7 +92,7 @@ public class Universe extends Model {
   // Tracks when the universe was created.
   @Constraints.Required
   @Column(nullable = false)
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
   public Date creationDate;
 
   // The universe name.
@@ -134,14 +131,6 @@ public class Universe extends Model {
 
   @Transient private UniverseDefinitionTaskParams universeDetails;
 
-  @OneToMany(mappedBy = "sourceUniverse", cascade = CascadeType.ALL)
-  @JsonManagedReference
-  public Set<AsyncReplicationRelationship> sourceAsyncReplicationRelationships;
-
-  @OneToMany(mappedBy = "targetUniverse", cascade = CascadeType.ALL)
-  @JsonManagedReference
-  public Set<AsyncReplicationRelationship> targetAsyncReplicationRelationships;
-
   public void setUniverseDetails(UniverseDefinitionTaskParams details) {
     universeDetails = details;
   }
@@ -157,6 +146,19 @@ public class Universe extends Model {
   public void resetVersion() {
     this.version = -1;
     this.update();
+  }
+
+  @JsonIgnore
+  public List<String> getVersions() {
+    if (null == universeDetails || null == universeDetails.clusters) {
+      return new ArrayList<>();
+    }
+    return universeDetails
+        .clusters
+        .stream()
+        .filter(c -> c != null && c.userIntent != null)
+        .map(c -> c.userIntent.ybSoftwareVersion)
+        .collect(Collectors.toList());
   }
 
   public static final Finder<UUID, Universe> find = new Finder<UUID, Universe>(Universe.class) {};
@@ -253,7 +255,7 @@ public class Universe extends Model {
     // Find the universe.
     Universe universe = find.byId(universeUUID);
     if (universe == null) {
-      LOG.info("Cannot find universe {}", universeUUID);
+      LOG.trace("Cannot find universe {}", universeUUID);
       return Optional.empty();
     }
 
@@ -559,7 +561,17 @@ public class Universe extends Model {
     if (mastersQueryable && !verifyMastersAreQueryable(masters)) {
       return "";
     }
-    return getHostPortsString(masters, ServerType.MASTER);
+    return getHostPortsString(masters, ServerType.MASTER, PortType.RPC);
+  }
+
+  /**
+   * Returns a comma separated list of <privateIp:tserverHTTPPort> for all tservers of this
+   * universe.
+   *
+   * @return a comma separated string of 'host:port'.
+   */
+  public String getTserverHTTPAddresses() {
+    return getHostPortsString(getTServers(), ServerType.TSERVER, PortType.HTTP);
   }
 
   /**
@@ -600,7 +612,7 @@ public class Universe extends Model {
    * @return a comma separated string of 'host:port'.
    */
   public String getYQLServerAddresses() {
-    return getHostPortsString(getYqlServers(), ServerType.YQLSERVER);
+    return getHostPortsString(getYqlServers(), ServerType.YQLSERVER, PortType.RPC);
   }
 
   /**
@@ -610,7 +622,7 @@ public class Universe extends Model {
    * @return a comma separated string of 'host:port'.
    */
   public String getYSQLServerAddresses() {
-    return getHostPortsString(getYsqlServers(), ServerType.YSQLSERVER);
+    return getHostPortsString(getYsqlServers(), ServerType.YSQLSERVER, PortType.RPC);
   }
 
   /**
@@ -620,30 +632,58 @@ public class Universe extends Model {
    * @return a comma separated string of 'host:port'.
    */
   public String getRedisServerAddresses() {
-    return getHostPortsString(getRedisServers(), ServerType.REDISSERVER);
+    return getHostPortsString(getRedisServers(), ServerType.REDISSERVER, PortType.RPC);
+  }
+
+  // Helper API to return port number based on port type.
+  private static int selectPort(PortType portType, int rpcPort, int httpPort) {
+    if (portType != PortType.HTTP && portType != PortType.RPC) {
+      throw new IllegalArgumentException("Unexpected port type " + portType);
+    }
+    int port = 0;
+    switch (portType) {
+      case RPC:
+        port = rpcPort;
+        break;
+      case HTTP:
+        port = httpPort;
+        break;
+    }
+    return port;
   }
 
   // Helper API to create the based on the server type.
-  private String getHostPortsString(List<NodeDetails> serverNodes, ServerType type) {
+  private String getHostPortsString(
+      List<NodeDetails> serverNodes, ServerType type, PortType portType) {
     StringBuilder servers = new StringBuilder();
     for (NodeDetails node : serverNodes) {
       if (node.cloudInfo.private_ip != null) {
         int port = 0;
         switch (type) {
           case YQLSERVER:
-            if (node.isYqlServer) port = node.yqlServerRpcPort;
+            if (node.isYqlServer) {
+              port = selectPort(portType, node.yqlServerRpcPort, node.yqlServerHttpPort);
+            }
             break;
           case YSQLSERVER:
-            if (node.isYsqlServer) port = node.ysqlServerRpcPort;
+            if (node.isYsqlServer) {
+              port = selectPort(portType, node.ysqlServerRpcPort, node.ysqlServerHttpPort);
+            }
             break;
           case TSERVER:
-            if (node.isTserver) port = node.tserverRpcPort;
+            if (node.isTserver) {
+              port = selectPort(portType, node.tserverRpcPort, node.tserverHttpPort);
+            }
             break;
           case MASTER:
-            if (node.isMaster) port = node.masterRpcPort;
+            if (node.isMaster) {
+              port = selectPort(portType, node.masterRpcPort, node.masterHttpPort);
+            }
             break;
           case REDISSERVER:
-            if (node.isRedisServer) port = node.redisServerRpcPort;
+            if (node.isRedisServer) {
+              port = selectPort(portType, node.redisServerRpcPort, node.redisServerHttpPort);
+            }
             break;
           default:
             throw new IllegalArgumentException("Unexpected server type " + type);

@@ -8,8 +8,8 @@ import static com.yugabyte.yw.common.AssertHelper.assertBadRequest;
 import static com.yugabyte.yw.common.AssertHelper.assertErrorNodeValue;
 import static com.yugabyte.yw.common.AssertHelper.assertForbidden;
 import static com.yugabyte.yw.common.AssertHelper.assertOk;
-import static com.yugabyte.yw.common.AssertHelper.assertValue;
 import static com.yugabyte.yw.common.AssertHelper.assertPlatformException;
+import static com.yugabyte.yw.common.AssertHelper.assertValue;
 import static com.yugabyte.yw.common.ModelFactory.createUniverse;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -62,6 +62,7 @@ import com.yugabyte.yw.models.CustomerTask;
 import com.yugabyte.yw.models.Schedule;
 import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.Users;
+import com.yugabyte.yw.models.extended.UserWithFeatures;
 import com.yugabyte.yw.models.helpers.ColumnDetails;
 import com.yugabyte.yw.models.helpers.TaskType;
 import java.io.IOException;
@@ -77,20 +78,21 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Matchers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yb.ColumnSchema;
-import org.yb.Common.TableType;
+import org.yb.CommonTypes.TableType;
 import org.yb.Schema;
 import org.yb.Type;
 import org.yb.client.GetTableSchemaResponse;
 import org.yb.client.ListTablesResponse;
 import org.yb.client.YBClient;
-import org.yb.master.Master;
-import org.yb.master.Master.ListTablesResponsePB.TableInfo;
-import org.yb.master.Master.RelationType;
+import org.yb.master.MasterDdlOuterClass.ListTablesResponsePB.TableInfo;
+import org.yb.master.MasterTypes;
+import org.yb.master.MasterTypes.RelationType;
 import play.libs.Json;
 import play.mvc.Http;
 import play.mvc.Result;
@@ -141,14 +143,14 @@ public class TablesControllerTest extends FakeDBApplication {
     TableInfo ti1 =
         TableInfo.newBuilder()
             .setName("Table1")
-            .setNamespace(Master.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
             .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
             .setTableType(TableType.REDIS_TABLE_TYPE)
             .build();
     TableInfo ti2 =
         TableInfo.newBuilder()
             .setName("Table2")
-            .setNamespace(Master.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
             .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
             .setTableType(TableType.YQL_TABLE_TYPE)
             .build();
@@ -156,7 +158,7 @@ public class TablesControllerTest extends FakeDBApplication {
     TableInfo ti3 =
         TableInfo.newBuilder()
             .setName("Table3")
-            .setNamespace(Master.NamespaceIdentifierPB.newBuilder().setName("system"))
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("system"))
             .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
             .setTableType(TableType.YQL_TABLE_TYPE)
             .setRelationType(RelationType.SYSTEM_TABLE_RELATION)
@@ -553,7 +555,6 @@ public class TablesControllerTest extends FakeDBApplication {
     JsonNode resultJson = Json.parse(contentAsString(result));
     assertEquals(BAD_REQUEST, result.status());
     assertErrorNodeValue(resultJson, "storageConfigUUID", "This field is required");
-    assertErrorNodeValue(resultJson, "actionType", "This field is required");
     assertAuditEntry(0, customer.uuid);
   }
 
@@ -691,6 +692,7 @@ public class TablesControllerTest extends FakeDBApplication {
   }
 
   @Test
+  @Ignore
   public void testCreateBackupOnDisabledTableFails() {
     Customer customer = ModelFactory.testCustomer();
     Users user = ModelFactory.testUser(customer);
@@ -784,7 +786,8 @@ public class TablesControllerTest extends FakeDBApplication {
   }
 
   @Test
-  public void testCreateMultiBackup() {
+  @Ignore
+  public void testCreateMultiBackup() throws Exception {
     Customer customer = ModelFactory.testCustomer();
     Users user = ModelFactory.testUser(customer);
     Universe universe = ModelFactory.createUniverse(customer.getCustomerId());
@@ -852,7 +855,7 @@ public class TablesControllerTest extends FakeDBApplication {
   }
 
   @Test
-  public void testCreateMultiBackupScheduleCron() {
+  public void testCreateMultiBackupScheduleCronNoTables() {
     Customer customer = ModelFactory.testCustomer();
     Users user = ModelFactory.testUser(customer);
     Universe universe = ModelFactory.createUniverse(customer.getCustomerId());
@@ -867,20 +870,19 @@ public class TablesControllerTest extends FakeDBApplication {
     bodyJson.put("actionType", "CREATE");
     bodyJson.put("storageConfigUUID", customerConfig.configUUID.toString());
     bodyJson.put("cronExpression", "5 * * * *");
+    bodyJson.put("keyspace", "$$$Default");
 
     Result result =
-        FakeApiHelper.doRequestWithAuthTokenAndBody("PUT", url, user.createAuthToken(), bodyJson);
-    assertOk(result);
-    JsonNode resultJson = Json.parse(contentAsString(result));
-    UUID scheduleUUID = UUID.fromString(resultJson.path("scheduleUUID").asText());
-    Schedule schedule = Schedule.getOrBadRequest(scheduleUUID);
-    assertNotNull(schedule);
-    assertEquals(schedule.getCronExpression(), "5 * * * *");
-    assertAuditEntry(1, customer.uuid);
+        assertPlatformException(
+            () ->
+                FakeApiHelper.doRequestWithAuthTokenAndBody(
+                    "PUT", url, user.createAuthToken(), bodyJson));
+    String errMsg = "Cannot initiate backup with empty Keyspace";
+    assertBadRequest(result, errMsg);
   }
 
   @Test
-  public void testCreateMultiBackupScheduleFrequency() {
+  public void testCreateMultiBackupScheduleFrequencyEmptyKeyspace() {
     Customer customer = ModelFactory.testCustomer();
     Users user = ModelFactory.testUser(customer);
     Universe universe = ModelFactory.createUniverse(customer.getCustomerId());
@@ -895,16 +897,14 @@ public class TablesControllerTest extends FakeDBApplication {
     bodyJson.put("actionType", "CREATE");
     bodyJson.put("storageConfigUUID", customerConfig.configUUID.toString());
     bodyJson.put("schedulingFrequency", "6000");
+    bodyJson.put("keyspace", "$$$Default");
 
     Result result =
-        FakeApiHelper.doRequestWithAuthTokenAndBody("PUT", url, user.createAuthToken(), bodyJson);
-    assertOk(result);
-    JsonNode resultJson = Json.parse(contentAsString(result));
-    UUID scheduleUUID = UUID.fromString(resultJson.path("scheduleUUID").asText());
-    Schedule schedule = Schedule.getOrBadRequest(scheduleUUID);
-    assertNotNull(schedule);
-    assertEquals(schedule.getFrequency(), 6000);
-    assertAuditEntry(1, customer.uuid);
+        assertPlatformException(
+            () ->
+                FakeApiHelper.doRequestWithAuthTokenAndBody(
+                    "PUT", url, user.createAuthToken(), bodyJson));
+    assertBadRequest(result, "Cannot initiate backup with empty Keyspace");
   }
 
   @Test
@@ -912,7 +912,7 @@ public class TablesControllerTest extends FakeDBApplication {
     Customer customer = ModelFactory.testCustomer();
     Users user = ModelFactory.testUser(customer);
     Map<String, String> flashData = Collections.emptyMap();
-    Map<String, Object> argData = ImmutableMap.of("user", user);
+    Map<String, Object> argData = ImmutableMap.of("user", new UserWithFeatures().setUser(user));
     Http.Request request = mock(Http.Request.class);
     Long id = 2L;
     play.api.mvc.RequestHeader header = mock(play.api.mvc.RequestHeader.class);
@@ -976,21 +976,21 @@ public class TablesControllerTest extends FakeDBApplication {
     TableInfo ti1 =
         TableInfo.newBuilder()
             .setName("Table1")
-            .setNamespace(Master.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
             .setId(ByteString.copyFromUtf8(table1Uuid.toString()))
             .setTableType(TableType.YQL_TABLE_TYPE)
             .build();
     TableInfo ti2 =
         TableInfo.newBuilder()
             .setName("Table2")
-            .setNamespace(Master.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
             .setId(ByteString.copyFromUtf8(table2Uuid.toString()))
             .setTableType(TableType.YQL_TABLE_TYPE)
             .build();
     TableInfo ti3 =
         TableInfo.newBuilder()
             .setName("TableIndex")
-            .setNamespace(Master.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
             .setId(ByteString.copyFromUtf8(indexUuid.toString()))
             .setTableType(TableType.YQL_TABLE_TYPE)
             .setRelationType(RelationType.INDEX_TABLE_RELATION)
@@ -998,7 +998,7 @@ public class TablesControllerTest extends FakeDBApplication {
     TableInfo ti4 =
         TableInfo.newBuilder()
             .setName("TableYsql")
-            .setNamespace(Master.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
             .setId(ByteString.copyFromUtf8(ysqlUuid.toString()))
             .setTableType(TableType.PGSQL_TABLE_TYPE)
             .build();
