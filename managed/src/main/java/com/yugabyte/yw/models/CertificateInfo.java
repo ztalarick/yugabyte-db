@@ -14,8 +14,7 @@ import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.Util;
 import com.yugabyte.yw.common.Util.UniverseDetailSubset;
 import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
-import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.HashicorpVaultCertInfo;
-
+import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParams;
 import com.yugabyte.yw.forms.CertificateParams;
 import io.ebean.Finder;
 import io.ebean.Model;
@@ -166,6 +165,16 @@ public class CertificateInfo extends Model {
     return null;
   }
 
+  public HashicorpVaultConfigParams getCustomHCPKICertInfo() {
+    if (this.certType != CertConfigType.HashicorpVaultPKI) {
+      return null;
+    }
+    if (this.customCertInfo != null) {
+      return new HashicorpVaultConfigParams(this.customCertInfo);
+    }
+    return null;
+  }
+
   public static final Logger LOG = LoggerFactory.getLogger(CertificateInfo.class);
 
   public static CertificateInfo create(
@@ -238,29 +247,6 @@ public class CertificateInfo extends Model {
     return cert;
   }
 
-  public static CertificateInfo create(
-      UUID uuid,
-      UUID customerUUID,
-      String label,
-      Date startDate,
-      Date expiryDate,
-      String certificate,
-      HashicorpVaultCertInfo hcVaultInfo)
-      throws IOException, NoSuchAlgorithmException {
-    CertificateInfo cert = new CertificateInfo();
-    cert.uuid = uuid;
-    cert.customerUUID = customerUUID;
-    cert.label = label;
-    cert.startDate = startDate;
-    cert.expiryDate = expiryDate;
-    cert.certificate = certificate;
-    cert.certType = CertConfigType.CustomServerCert;
-    cert.customCertInfo = hcVaultInfo.getConfigJson();
-    cert.checksum = Util.getFileChecksum(certificate);
-    cert.save();
-    return cert;
-  }
-
   public static CertificateInfo createCopy(
       CertificateInfo certificateInfo, String label, String certFilePath)
       throws IOException, NoSuchAlgorithmException {
@@ -277,6 +263,22 @@ public class CertificateInfo extends Model {
     copy.customCertInfo = certificateInfo.customCertInfo;
     copy.save();
     return copy;
+  }
+
+  public CertificateInfo update(
+      Date sDate, Date eDate, String certPath, HashicorpVaultConfigParams params)
+      throws IOException, NoSuchAlgorithmException {
+
+    startDate = sDate;
+    expiryDate = eDate;
+    certificate = certPath;
+
+    JsonNode node = params.toJsonNode();
+    if (node != null) customCertInfo = node;
+
+    checksum = Util.getFileChecksum(certificate);
+    save();
+    return this;
   }
 
   public static boolean isTemporary(CertificateInfo certificateInfo) {
@@ -469,7 +471,6 @@ public class CertificateInfo extends Model {
           BAD_REQUEST, "Cannot edit pre-customized cert. Create a new one.");
     }
     if (certInfo.certType == CertConfigType.HashicorpVaultPKI) {
-      // TODO: impl
       throw new PlatformServiceException(
           BAD_REQUEST,
           "Cannot edit cert config,"

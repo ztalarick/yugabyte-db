@@ -110,6 +110,8 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import play.libs.Json;
 
+import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+
 @RunWith(JUnitParamsRunner.class)
 public class NodeManagerTest extends FakeDBApplication {
 
@@ -341,7 +343,18 @@ public class NodeManagerTest extends FakeDBApplication {
           }
         case HashicorpVaultPKI:
           {
-            // TODO: impl
+            rootCertPath = rootCert.certificate;
+            serverCertPath = "cert.crt";
+            serverKeyPath = "key.crt";
+            certsLocation = NodeManager.CERT_LOCATION_PLATFORM;
+
+            if (configureParams.rootAndClientRootCASame
+                && configureParams.enableClientToNodeEncrypt) {
+              expectedCommand.add("--client_cert_path");
+              expectedCommand.add(CertificateHelper.getClientCertFile(configureParams.rootCA));
+              expectedCommand.add("--client_key_path");
+              expectedCommand.add(CertificateHelper.getClientKeyFile(configureParams.rootCA));
+            }
             break;
           }
       }
@@ -403,7 +416,10 @@ public class NodeManagerTest extends FakeDBApplication {
           }
         case HashicorpVaultPKI:
           {
-            // TODO: impl
+            rootCertPath = clientRootCert.certificate;
+            serverCertPath = "cert.crt";
+            serverKeyPath = "%key.cert";
+            certsLocation = NodeManager.CERT_LOCATION_PLATFORM;
             break;
           }
       }
@@ -654,10 +670,10 @@ public class NodeManagerTest extends FakeDBApplication {
               .cloudInfo
               .private_ip);
     }
-    if (CertificateHelper.isRootCARequired(configureParams)) {
+    if (EncryptionAtTransitUtil.isRootCARequired(configureParams)) {
       gflags.put("certs_dir", certsDir);
     }
-    if (CertificateHelper.isClientRootCARequired(configureParams)) {
+    if (EncryptionAtTransitUtil.isClientRootCARequired(configureParams)) {
       gflags.put("certs_for_client_dir", certsForClientDir);
     }
     if (processType == ServerType.TSERVER.name()
@@ -869,10 +885,10 @@ public class NodeManagerTest extends FakeDBApplication {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", "true");
-              if (CertificateHelper.isRootCARequired(configureParams)) {
+              if (EncryptionAtTransitUtil.isRootCARequired(configureParams)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (CertificateHelper.isClientRootCARequired(configureParams)) {
+              if (EncryptionAtTransitUtil.isClientRootCARequired(configureParams)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             } else if (configureParams.nodeToNodeChange < 0) {
@@ -881,10 +897,10 @@ public class NodeManagerTest extends FakeDBApplication {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", allowInsecureString);
-              if (CertificateHelper.isRootCARequired(configureParams)) {
+              if (EncryptionAtTransitUtil.isRootCARequired(configureParams)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (CertificateHelper.isClientRootCARequired(configureParams)) {
+              if (EncryptionAtTransitUtil.isClientRootCARequired(configureParams)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             }
@@ -897,10 +913,10 @@ public class NodeManagerTest extends FakeDBApplication {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", allowInsecureString);
-              if (CertificateHelper.isRootCARequired(configureParams)) {
+              if (EncryptionAtTransitUtil.isRootCARequired(configureParams)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (CertificateHelper.isClientRootCARequired(configureParams)) {
+              if (EncryptionAtTransitUtil.isClientRootCARequired(configureParams)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             }
@@ -935,7 +951,7 @@ public class NodeManagerTest extends FakeDBApplication {
                   rootCertPath = rootCert.getCustomCertPathParams().rootCertPath;
                   certsLocation = NodeManager.CERT_LOCATION_NODE;
                 } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
-                  // TODO: impl
+                  rootCertPath = rootCert.certificate;
                 }
                 expectedCommand.add("--root_cert_path");
                 expectedCommand.add(rootCertPath);
@@ -2803,11 +2819,18 @@ public class NodeManagerTest extends FakeDBApplication {
           TestHelper.TMP_PATH + "/node_manager_test_ca.crt",
           CertConfigType.CustomServerCert);
     } else if (certType == CertConfigType.HashicorpVaultPKI) {
+<<<<<<< HEAD
       // TODO: impl
     } else {
       throw new IllegalArgumentException("Unknown type " + certType);
           TestHelper.TMP_PATH + "/ca.crt",
           CertConfigType.CustomServerCert);
+=======
+      // TODO: impl basically create CertificateInfo based on default vaules
+    }
+
+    return certUUID;
+>>>>>>> 7410db1bd3... [PLAT-2724]
   }
 
   @Test

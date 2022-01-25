@@ -521,10 +521,10 @@ public class CommonUtils {
    */
   public static String GetStackTraceHere() {
     String rVal;
-    rVal = "***Stack trace****:\n";
+    rVal = "***Stack trace Here****:\n";
     StackTraceElement[] elements = Thread.currentThread().getStackTrace();
     int depth = elements.length;
-    if (depth > 7) depth = 10; // limit stack trace length
+    if (depth > 10) depth = 10; // limit stack trace length
     for (int i = 2; i < depth; i++) {
       StackTraceElement s = elements[i];
       rVal += "\tat " + s.getClassName() + "." + s.getMethodName();

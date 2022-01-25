@@ -92,7 +92,7 @@ public class CertificateController extends AuthenticatedController {
         }
       case HashicorpVaultPKI:
         {
-          // TODO: impl
+          throw new PlatformServiceException(BAD_REQUEST, "Upload not supported for Hashicorp");
         }
       default:
         {

@@ -8,8 +8,13 @@
  * https://github.com/YugaByte/yugabyte-db/blob/master/licenses/
  *  POLYFORM-FREE-TRIAL-LICENSE-1.0.0.txt
  */
-package com.yugabyte.yw.common.certmgmt;
+package com.yugabyte.yw.common.certmgmt.providers;
 
+import static play.mvc.Http.Status.BAD_REQUEST;
+import static play.mvc.Http.Status.INTERNAL_SERVER_ERROR;
+import java.util.Collections;
+
+import java.io.File;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -20,7 +25,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import com.yugabyte.yw.common.PlatformServiceException;
+import com.yugabyte.yw.common.certmgmt.CertificateDetails;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
+import com.yugabyte.yw.models.CertificateInfo;
+import com.yugabyte.yw.models.helpers.CommonUtils;
 
 import org.apache.commons.validator.routines.InetAddressValidator;
 import org.bouncycastle.asn1.DERSequence;
@@ -35,6 +45,7 @@ import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -43,15 +54,26 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
+import org.flywaydb.play.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 /** */
 public class CertificateSelfSigned extends CertificateProviderInterface {
   public static final Logger LOG = LoggerFactory.getLogger(CertificateSelfSigned.class);
 
+  X509Certificate curCaCertificate;
+  KeyPair curKeyPair;
+
   public CertificateSelfSigned(UUID pCACertUUID) {
     super(CertConfigType.SelfSigned, pCACertUUID);
+  }
+
+  public CertificateSelfSigned(CertificateInfo rootCertConfigInfo) {
+    super(CertConfigType.SelfSigned, rootCertConfigInfo.uuid);
   }
 
   @Override
@@ -62,14 +84,89 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
       Date certExpiry,
       String certFileName,
       String certKeyName) {
+
+    UUID rootCA = caCertUUID;
+
     LOG.info("__YD:Creating certificate for {}", username);
-    return CertificateHelper.createSignedCertificate(
-        caCertUUID, storagePath, username, certStart, certExpiry, certFileName, certKeyName);
+    LOG.info(
+        "Creating signed certificate signed by root CA {} and user {} at path {}",
+        rootCA,
+        username,
+        storagePath);
+    LOG.info("Called from: {}", CommonUtils.GetStackTraceHere());
+    try {
+      // Add the security provider in case createSignedCertificate was never called.
+      KeyPair newCertKeyPair = CertificateHelper.getKeyPairObject();
+
+      Calendar cal = Calendar.getInstance();
+      if (certStart == null) {
+        certStart = cal.getTime();
+      }
+      if (certExpiry == null) {
+        cal.add(Calendar.YEAR, CertificateHelper.CERT_EXPIRY_IN_YEARS);
+        certExpiry = cal.getTime();
+      }
+
+      CertificateInfo certInfo = CertificateInfo.get(rootCA);
+      if (certInfo.privateKey == null) {
+        throw new PlatformServiceException(BAD_REQUEST, "Keyfile cannot be null!");
+      }
+      // The first entry will be the certificate that needs to sign the necessary certificate.
+      X509Certificate cer =
+          CertificateHelper.getX509CertificateCertObject(
+                  FileUtils.readFileToString(new File(certInfo.certificate)))
+              .get(0);
+      X500Name subject = new JcaX509CertificateHolder(cer).getSubject();
+      LOG.debug("Root CA Certificate is:: {}", CertificateHelper.getCertificateProperties(cer));
+
+      PrivateKey pk = null;
+      try {
+        pk =
+            CertificateHelper.getPrivateKey(
+                FileUtils.readFileToString(new File(certInfo.privateKey)));
+      } catch (Exception e) {
+        LOG.error(
+            "Unable to create certificate for username {} using root CA {}", username, rootCA, e);
+        throw new PlatformServiceException(BAD_REQUEST, "Could not create certificate");
+      }
+
+      X509Certificate newCert =
+          createAndSignCertificate(
+              username, subject, certStart, certExpiry, newCertKeyPair, cer, pk);
+      LOG.info(
+          "Created a certificate for username {} signed by root CA {} - {}.",
+          username,
+          rootCA,
+          CertificateHelper.getCertificateProperties(newCert));
+
+      certStart = newCert.getNotBefore();
+      certExpiry = newCert.getNotAfter();
+
+      return CertificateHelper.dumpNewCertsToFile(
+          storagePath, certFileName, certKeyName, newCert, newCertKeyPair.getPrivate());
+
+    } catch (Exception e) {
+      LOG.error(
+          "Unable to create certificate for username {} using root CA {}", username, rootCA, e);
+      throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Could not create certificate");
+    }
   }
 
-  public X509Certificate rootCertificateBuilder(
+  @Override
+  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
+    String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUID);
+    String keyPath = CertificateHelper.getCAKeyPath(storagePath, customerUUID, caCertUUID);
+
+    CertificateHelper.writeCertBundleToCertPath(
+        Collections.singletonList(curCaCertificate), certPath);
+    CertificateHelper.writeKeyFileContentToKeyPath(curKeyPair.getPrivate(), keyPath);
+    return new ImmutablePair<>(certPath, keyPath);
+  }
+
+  @Override
+  public X509Certificate generateRootCertificate(
       String certLabel, int certExpiryInYears, KeyPair keyPair) throws Exception {
-    LOG.debug("Called rootCertificateBuilder for: {}", certLabel);
+    LOG.debug("Called generateRootCertificate for: {}", certLabel);
     Calendar cal = Calendar.getInstance();
     Date certStart = cal.getTime();
     cal.add(Calendar.YEAR, certExpiryInYears);
@@ -100,23 +197,27 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
     JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
     converter.setProvider(new BouncyCastleProvider());
     X509Certificate x509 = converter.getCertificate(holder);
+
+    curCaCertificate = x509;
+    curKeyPair = keyPair;
+
     return x509;
   }
 
-  public X509Certificate certificateBuilderWithSigning(
+  public X509Certificate createAndSignCertificate(
       String username,
       X500Name subject,
       Date certStart,
       Date certExpiry,
-      KeyPair clientKeyPair,
+      KeyPair newCertKeyPair,
       X509Certificate caCert,
       PrivateKey pk)
       throws Exception {
-    LOG.debug("Called certificateBuilderWithSigning for: {}, {}", username, subject);
-    X500Name clientCertSubject = new X500Name(String.format("CN=%s", username));
-    BigInteger clientSerial = BigInteger.valueOf(System.currentTimeMillis());
+    LOG.debug("Called createAndSignCertificate for: {}, {}", username, subject);
+    X500Name newCertSubject = new X500Name(String.format("CN=%s", username));
+    BigInteger newCertSerial = BigInteger.valueOf(System.currentTimeMillis());
     PKCS10CertificationRequestBuilder p10Builder =
-        new JcaPKCS10CertificationRequestBuilder(clientCertSubject, clientKeyPair.getPublic());
+        new JcaPKCS10CertificationRequestBuilder(newCertSubject, newCertKeyPair.getPublic());
     ContentSigner csrContentSigner =
         new JcaContentSignerBuilder(CertificateHelper.SIGNATURE_ALGO).build(pk);
     PKCS10CertificationRequest csr = p10Builder.build(csrContentSigner);
@@ -128,26 +229,26 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
                 | KeyUsage.keyEncipherment
                 | KeyUsage.keyCertSign);
 
-    X509v3CertificateBuilder clientCertBuilder =
+    X509v3CertificateBuilder newCertBuilder =
         new X509v3CertificateBuilder(
             subject,
-            clientSerial,
+            newCertSerial,
             certStart,
             certExpiry,
             csr.getSubject(),
             csr.getSubjectPublicKeyInfo());
-    JcaX509ExtensionUtils clientCertExtUtils = new JcaX509ExtensionUtils();
-    clientCertBuilder.addExtension(
+    JcaX509ExtensionUtils newCertExtUtils = new JcaX509ExtensionUtils();
+    newCertBuilder.addExtension(
         Extension.basicConstraints, true, new BasicConstraints(false).toASN1Primitive());
-    clientCertBuilder.addExtension(
+    newCertBuilder.addExtension(
         Extension.authorityKeyIdentifier,
         false,
-        clientCertExtUtils.createAuthorityKeyIdentifier(caCert));
-    clientCertBuilder.addExtension(
+        newCertExtUtils.createAuthorityKeyIdentifier(caCert));
+    newCertBuilder.addExtension(
         Extension.subjectKeyIdentifier,
         false,
-        clientCertExtUtils.createSubjectKeyIdentifier(csr.getSubjectPublicKeyInfo()));
-    clientCertBuilder.addExtension(Extension.keyUsage, false, keyUsage.toASN1Primitive());
+        newCertExtUtils.createSubjectKeyIdentifier(csr.getSubjectPublicKeyInfo()));
+    newCertBuilder.addExtension(Extension.keyUsage, false, keyUsage.toASN1Primitive());
 
     InetAddressValidator ipAddressValidator = InetAddressValidator.getInstance();
     if (ipAddressValidator.isValid(username)) {
@@ -155,17 +256,17 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
       altNames.add(new GeneralName(GeneralName.iPAddress, username));
       GeneralNames subjectAltNames =
           GeneralNames.getInstance(new DERSequence(altNames.toArray(new GeneralName[] {})));
-      clientCertBuilder.addExtension(Extension.subjectAlternativeName, false, subjectAltNames);
+      newCertBuilder.addExtension(Extension.subjectAlternativeName, false, subjectAltNames);
     }
 
-    X509CertificateHolder clientCertHolder = clientCertBuilder.build(csrContentSigner);
-    X509Certificate clientCert =
+    X509CertificateHolder newCertHolder = newCertBuilder.build(csrContentSigner);
+    X509Certificate newCert =
         new JcaX509CertificateConverter()
             .setProvider(new BouncyCastleProvider())
-            .getCertificate(clientCertHolder);
+            .getCertificate(newCertHolder);
 
-    clientCert.verify(caCert.getPublicKey(), "BC");
+    newCert.verify(caCert.getPublicKey(), "BC");
 
-    return clientCert;
+    return newCert;
   }
 }

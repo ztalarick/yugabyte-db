@@ -129,21 +129,33 @@ public class UpgradeUniverseHandler {
         customer,
         universe);
   }
-
+  /**
+   * Called when TLS CONFIG is toggeled.
+   *
+   * @param requestParams
+   * @param customer
+   * @param universe
+   * @return
+   */
   public UUID rotateCerts(CertsRotateParams requestParams, Customer customer, Universe universe) {
-    log.info("rotateCerts called");
+    log.info(
+        "_YD:rotateCerts called with rootCA: {}",
+        (requestParams.rootCA != null) ? requestParams.rootCA.toString() : "NULL");
     // Verify request params
     requestParams.verifyParams(universe);
     // Update request params with additional metadata for upgrade task
     requestParams.universeUUID = universe.universeUUID;
     requestParams.expectedUniverseVersion = universe.version;
 
+    CertificateHelper.ManipulateRootCA(requestParams);
+
     UserIntent userIntent = universe.getUniverseDetails().getPrimaryCluster().userIntent;
     // Generate client certs if rootAndClientRootCASame is true and rootCA is self-signed.
     // This is there only for legacy support, no need if rootCA and clientRootCA are different.
     if (userIntent.enableClientToNodeEncrypt && requestParams.rootAndClientRootCASame) {
       CertificateInfo rootCert = CertificateInfo.get(requestParams.rootCA);
-      if (rootCert.certType == CertConfigType.SelfSigned) {
+      if (rootCert.certType == CertConfigType.SelfSigned
+          || rootCert.certType == CertConfigType.HashicorpVaultPKI) {
         CertificateHelper.createClientCertificate(
             requestParams.rootCA,
             String.format(
@@ -154,8 +166,6 @@ public class UpgradeUniverseHandler {
             CertificateHelper.DEFAULT_CLIENT,
             null,
             null);
-      } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
-        // TODO: impl
       }
     }
 
@@ -163,6 +173,14 @@ public class UpgradeUniverseHandler {
         TaskType.CertsRotate, CustomerTask.TaskType.CertsRotate, requestParams, customer, universe);
   }
 
+  /**
+   * Enable/Disable TLS on Cluster
+   *
+   * @param requestParams
+   * @param customer
+   * @param universe
+   * @return
+   */
   public UUID toggleTls(TlsToggleParams requestParams, Customer customer, Universe universe) {
     UniverseDefinitionTaskParams universeDetails = universe.getUniverseDetails();
     UserIntent userIntent = universeDetails.getPrimaryCluster().userIntent;
@@ -172,6 +190,9 @@ public class UpgradeUniverseHandler {
     // Update request params with additional metadata for upgrade task
     requestParams.universeUUID = universe.universeUUID;
     requestParams.expectedUniverseVersion = universe.version;
+
+    CertificateHelper.ManipulateRootCA2(requestParams);
+
     if (requestParams.rootAndClientRootCASame == null) {
       requestParams.rootAndClientRootCASame = universeDetails.rootAndClientRootCASame;
     }
@@ -193,7 +214,10 @@ public class UpgradeUniverseHandler {
         }
       } else {
         // If certificate already present then use the same as upgrade cannot rotate certs
-        requestParams.rootCA = universeDetails.rootCA;
+        // TODO: breaking changes for testing.
+        // requestParams.rootCA = universeDetails.rootCA;
+        requestParams.rootCA = UUID.fromString("15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+        log.info("_YD:218 Request params: RootCA: {}", requestParams.rootCA.toString());
       }
     }
 
@@ -217,7 +241,10 @@ public class UpgradeUniverseHandler {
           }
         }
       } else {
-        requestParams.clientRootCA = universeDetails.clientRootCA;
+        // TODO: breaking changes for testing.
+        // requestParams.clientRootCA = universeDetails.clientRootCA;
+        requestParams.clientRootCA = UUID.fromString("15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+        log.info("_YD:245 Request params: ClienRootCA: {}", requestParams.clientRootCA.toString());
       }
 
       // Setting rootCA to ClientRootCA in case node to node encryption is disabled.
@@ -231,7 +258,8 @@ public class UpgradeUniverseHandler {
       // This is there only for legacy support, no need if rootCA and clientRootCA are different.
       if (requestParams.rootAndClientRootCASame) {
         CertificateInfo cert = CertificateInfo.get(requestParams.rootCA);
-        if (cert.certType == CertConfigType.SelfSigned) {
+        if (cert.certType == CertConfigType.SelfSigned
+            || cert.certType == CertConfigType.HashicorpVaultPKI) {
           CertificateHelper.createClientCertificate(
               requestParams.rootCA,
               String.format(
@@ -242,8 +270,6 @@ public class UpgradeUniverseHandler {
               CertificateHelper.DEFAULT_CLIENT,
               null,
               null);
-        } else if (cert.certType == CertConfigType.HashicorpVaultPKI) {
-          // TODO: impl
         }
       }
     }

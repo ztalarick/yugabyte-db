@@ -398,6 +398,7 @@ public class CertificateHelperTest extends FakeDBApplication {
           null,
           customSrvCertParams);
     } catch (Exception e) {
+
       assertEquals(
           "Certificate with CN = CA for YugabyteDB" + " has invalid start/end dates.",
           e.getMessage());

@@ -70,6 +70,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.validator.routines.InetAddressValidator;
@@ -322,6 +324,17 @@ public class NodeManager extends DevopsBase {
     return null;
   }
 
+  /**
+   * Creats certificates if not present. Called from various places like - when node is added to
+   * universe
+   *
+   * @param config
+   * @param userIntent
+   * @param taskParam
+   * @param nodeIP
+   * @param ybHomeDir
+   * @return
+   */
   private List<String> getCertificatePaths(
       Config config,
       UserIntent userIntent,
@@ -332,8 +345,8 @@ public class NodeManager extends DevopsBase {
         config,
         userIntent,
         taskParam,
-        CertificateHelper.isRootCARequired(taskParam),
-        CertificateHelper.isClientRootCARequired(taskParam),
+        EncryptionAtTransitUtil.isRootCARequired(taskParam),
+        EncryptionAtTransitUtil.isClientRootCARequired(taskParam),
         nodeIP,
         ybHomeDir);
   }
@@ -366,6 +379,7 @@ public class NodeManager extends DevopsBase {
 
       switch (rootCert.certType) {
         case SelfSigned:
+        case HashicorpVaultPKI:
           {
             try {
               // Creating a temp directory to save Server Cert and Key from Root for the node
@@ -430,12 +444,6 @@ public class NodeManager extends DevopsBase {
         case CustomServerCert:
           {
             throw new RuntimeException("rootCA cannot be of type CustomServerCert.");
-          }
-        case HashicorpVaultPKI:
-          {
-            // TODO: impl create n2n certificates using vault and sign it.
-            // separate task is created for each node
-
           }
         default:
           {
@@ -514,9 +522,28 @@ public class NodeManager extends DevopsBase {
           }
         case HashicorpVaultPKI:
           {
-            // TODO: impl create n2c certificates using vault and sign it.
-            // separate task is created for each node
-
+            try {
+              // Creating a temp directory to save c2n Server Cert and Key from Root for the node
+              Path tempStorageDirectory =
+                  Files.createTempDirectory(String.format("HCVaultPKI%s", taskParam.clientRootCA))
+                      .toAbsolutePath();
+              CertificateHelper.createServerCertificate(
+                  taskParam.clientRootCA,
+                  tempStorageDirectory.toString(),
+                  nodeIP,
+                  null,
+                  null,
+                  serverCertFile,
+                  serverKeyFile);
+              rootCertPath = clientRootCert.certificate;
+              serverCertPath = String.format("%s/%s", tempStorageDirectory, serverCertFile);
+              serverKeyPath = String.format("%s/%s", tempStorageDirectory, serverKeyFile);
+              certsLocation = CERT_LOCATION_PLATFORM;
+            } catch (IOException e) {
+              LOG.error(e.getMessage(), e);
+              throw new RuntimeException(e);
+            }
+            break;
           }
         default:
           {
@@ -583,10 +610,10 @@ public class NodeManager extends DevopsBase {
     if (taskParam.enableClientToNodeEncrypt || taskParam.enableNodeToNodeEncrypt) {
       gflags.put("cert_node_filename", node.cloudInfo.private_ip);
     }
-    if (CertificateHelper.isRootCARequired(taskParam)) {
+    if (EncryptionAtTransitUtil.isRootCARequired(taskParam)) {
       gflags.put("certs_dir", certsDir);
     }
-    if (CertificateHelper.isClientRootCARequired(taskParam)) {
+    if (EncryptionAtTransitUtil.isClientRootCARequired(taskParam)) {
       gflags.put("certs_for_client_dir", certsForClientDir);
     }
     return gflags;
@@ -905,6 +932,9 @@ public class NodeManager extends DevopsBase {
             subcommand.add(processType.toLowerCase());
           }
 
+          /*
+          // TODO: PLAT-2782 see if certs are already created
+          // if yes, just extract path and don't create certs again
           if ((taskParam.enableNodeToNodeEncrypt || taskParam.enableClientToNodeEncrypt)) {
             subcommand.addAll(
                 getCertificatePaths(
@@ -913,9 +943,8 @@ public class NodeManager extends DevopsBase {
                     taskParam,
                     node.cloudInfo.private_ip,
                     taskParam.getProvider().getYbHome()));
-            // TODO if certs are already created just extract path and don't create certs again
+          } */
 
-          }
           Map<String, String> gflags = new HashMap<>(taskParam.gflags);
           subcommand.add("--gflags");
           subcommand.add(Json.stringify(Json.toJson(gflags)));
@@ -980,7 +1009,8 @@ public class NodeManager extends DevopsBase {
                   rootCertPath = rootCert.getCustomCertPathParams().rootCertPath;
                   certsLocation = CERT_LOCATION_NODE;
                 } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
-                  // TODO: impl
+                  rootCertPath = rootCert.certificate;
+                  certsLocation = CERT_LOCATION_PLATFORM;
                 }
 
                 subcommand.add("--root_cert_path");
@@ -1055,10 +1085,10 @@ public class NodeManager extends DevopsBase {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", "true");
-              if (CertificateHelper.isRootCARequired(taskParam)) {
+              if (EncryptionAtTransitUtil.isRootCARequired(taskParam)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (CertificateHelper.isClientRootCARequired(taskParam)) {
+              if (EncryptionAtTransitUtil.isClientRootCARequired(taskParam)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             } else if (taskParam.nodeToNodeChange < 0) {
@@ -1067,10 +1097,10 @@ public class NodeManager extends DevopsBase {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", allowInsecureString);
-              if (CertificateHelper.isRootCARequired(taskParam)) {
+              if (EncryptionAtTransitUtil.isRootCARequired(taskParam)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (CertificateHelper.isClientRootCARequired(taskParam)) {
+              if (EncryptionAtTransitUtil.isClientRootCARequired(taskParam)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             }
@@ -1090,10 +1120,10 @@ public class NodeManager extends DevopsBase {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", allowInsecureString);
-              if (CertificateHelper.isRootCARequired(taskParam)) {
+              if (EncryptionAtTransitUtil.isRootCARequired(taskParam)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (CertificateHelper.isClientRootCARequired(taskParam)) {
+              if (EncryptionAtTransitUtil.isClientRootCARequired(taskParam)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             } else {

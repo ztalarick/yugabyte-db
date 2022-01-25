@@ -9,7 +9,6 @@ public class CertificateDetails {
   @JsonProperty(CertificateHelper.CLIENT_KEY)
   String key;
 
-  // TODO: remove this method after code restructure
   public String getCertInfo() {
     return crt;
   }

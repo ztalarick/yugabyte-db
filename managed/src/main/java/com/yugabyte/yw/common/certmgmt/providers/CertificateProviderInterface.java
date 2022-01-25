@@ -8,10 +8,18 @@
  * https://github.com/YugaByte/yugabyte-db/blob/master/licenses/
  *  POLYFORM-FREE-TRIAL-LICENSE-1.0.0.txt
  */
-package com.yugabyte.yw.common.certmgmt;
+package com.yugabyte.yw.common.certmgmt.providers;
 
+import java.security.KeyPair;
+import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.UUID;
+
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo;
+import com.yugabyte.yw.common.certmgmt.CertificateDetails;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 /** Provides interface to manage certificates */
 public abstract class CertificateProviderInterface {
@@ -24,6 +32,9 @@ public abstract class CertificateProviderInterface {
     caCertUUID = pCACertUUID;
   }
 
+  public abstract X509Certificate generateRootCertificate(
+      String certLabel, int certExpiryInYears, KeyPair keyPair) throws Exception;
+
   public abstract CertificateDetails createCertificate(
       String storagePath,
       String username,
@@ -31,4 +42,6 @@ public abstract class CertificateProviderInterface {
       Date certExpiry,
       String certFileName,
       String certKeyName);
+
+  public abstract Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID);
 }

@@ -12,6 +12,7 @@ import com.yugabyte.yw.models.CertificateInfo;
 import com.yugabyte.yw.models.Universe;
 import java.util.UUID;
 import play.mvc.Http.Status;
+import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonDeserialize(converter = CertsRotateParams.Converter.class)
@@ -67,12 +68,12 @@ public class CertsRotateParams extends UpgradeTaskParams {
     }
 
     boolean isRootCARequired =
-        CertificateHelper.isRootCARequired(
+        EncryptionAtTransitUtil.isRootCARequired(
             userIntent.enableNodeToNodeEncrypt,
             userIntent.enableClientToNodeEncrypt,
             rootAndClientRootCASame);
     boolean isClientRootCARequired =
-        CertificateHelper.isClientRootCARequired(
+        EncryptionAtTransitUtil.isClientRootCARequired(
             userIntent.enableNodeToNodeEncrypt,
             userIntent.enableClientToNodeEncrypt,
             rootAndClientRootCASame);
@@ -141,7 +142,7 @@ public class CertsRotateParams extends UpgradeTaskParams {
               Status.BAD_REQUEST, "rootCA cannot be of type CustomServerCert.");
         case HashicorpVaultPKI:
           {
-            // TODO: impl
+            // TODO: no changes are required, remove TODO, kept for review.
             break;
           }
       }
@@ -208,7 +209,7 @@ public class CertsRotateParams extends UpgradeTaskParams {
           break;
         case HashicorpVaultPKI:
           {
-            // TODO: impl
+            // TODO: no changes are required, remove TODO, kept for review.
             break;
           }
       }

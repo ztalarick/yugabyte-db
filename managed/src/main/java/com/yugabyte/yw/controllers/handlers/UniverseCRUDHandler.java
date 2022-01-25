@@ -10,6 +10,7 @@
 
 package com.yugabyte.yw.controllers.handlers;
 
+import static org.mockito.ArgumentMatchers.nullable;
 import static play.mvc.Http.Status.BAD_REQUEST;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -48,10 +49,12 @@ import com.yugabyte.yw.models.Region;
 import com.yugabyte.yw.models.TaskInfo;
 import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
+import com.yugabyte.yw.common.certmgmt.providers.VaultPKI;
 import com.yugabyte.yw.models.helpers.NodeDetails;
 import com.yugabyte.yw.models.helpers.TaskType;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +64,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.mvc.Http;
 import play.mvc.Http.Status;
+import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
 
 public class UniverseCRUDHandler {
 
@@ -171,6 +175,41 @@ public class UniverseCRUDHandler {
     }
   }
 
+  public void CheckForHashicorpVaultCertificates(
+      Customer customer, UniverseDefinitionTaskParams taskParams) {
+    Cluster primaryCluster = taskParams.getPrimaryCluster();
+    CertificateInfo certInfo = null;
+
+    try {
+
+      if (primaryCluster.userIntent.enableNodeToNodeEncrypt) {
+        if (taskParams.rootCA != null) certInfo = CertificateInfo.get(taskParams.rootCA);
+
+        if (certInfo != null && certInfo.certType == CertConfigType.HashicorpVaultPKI) {
+          VaultPKI certProvider = VaultPKI.getVaultPKIInstance(certInfo);
+          // we don't need to create root certificate for this type just fetch and store
+          certProvider.dumpCACertBundle(appConfig.getString("yb.storage.path"), customer.uuid);
+          checkValidRootCA(taskParams.rootCA);
+        }
+      }
+
+      if (primaryCluster.userIntent.enableClientToNodeEncrypt) {
+
+        if (taskParams.clientRootCA != null) certInfo = CertificateInfo.get(taskParams.rootCA);
+
+        if (certInfo != null && certInfo.certType == CertConfigType.HashicorpVaultPKI) {
+          VaultPKI certProvider = VaultPKI.getVaultPKIInstance(certInfo);
+          // getCertificateProviderInstance(certInfo);
+          // we don't need to create root certificate for this type just fetch and store
+          certProvider.dumpCACertBundle(appConfig.getString("yb.storage.path"), customer.uuid);
+          checkValidRootCA(taskParams.rootCA);
+        }
+      }
+    } catch (Exception e) {
+      String message = "Exception occured while processing request. - " + e.getMessage();
+      throw new PlatformServiceException(BAD_REQUEST, message);
+    }
+  }
   /**
    * Creates RootCA certificate if not provided and creates client certificate.
    *
@@ -181,19 +220,15 @@ public class UniverseCRUDHandler {
   public void CheckForCertificates(Customer customer, UniverseDefinitionTaskParams taskParams) {
 
     Cluster primaryCluster = taskParams.getPrimaryCluster();
+    CertificateInfo cert = null;
+
+    // check for hashicorp ca certificate, both n2n and n2c.
+    CheckForHashicorpVaultCertificates(customer, taskParams);
 
     if (primaryCluster.userIntent.enableNodeToNodeEncrypt) {
 
-      /*if (??? == CertConfigType.HashicorpVaultPKI) {
-        // we don't need to create root certificate for this type.
-        // TODO: fetch the certificate from the vault and validate it and assign it to taskParams.rootCA)
-        taskParams.rootCA = fetch cert from vault
-        checkValidRootCA(taskParams.rootCA);
-        return ;
-      }*/
-
       if (taskParams.rootCA != null) {
-        CertificateInfo cert = CertificateInfo.get(taskParams.rootCA);
+        cert = CertificateInfo.get(taskParams.rootCA);
 
         if (cert.certType == CertConfigType.CustomServerCert) {
           throw new PlatformServiceException(
@@ -212,7 +247,7 @@ public class UniverseCRUDHandler {
                 "CustomCertHostPath certificates are only supported for onprem providers.");
           }
         }
-      } else { // taskParams.rootCA == null
+      } else {
         // create self signed rootCA in case it is not provided by the user.
         taskParams.rootCA =
             CertificateHelper.createRootCA(
@@ -222,15 +257,6 @@ public class UniverseCRUDHandler {
     }
 
     if (primaryCluster.userIntent.enableClientToNodeEncrypt) {
-
-      /*if (??? == CertConfigType.HashicorpVaultPKI) {
-        // we don't need to create root certificate for this type.
-        // we should fetch the certificate from the vault and validate it
-
-        checkValidRootCA(taskParams.rootCA);
-        // TODO: do we still need to create client certificate? if not remove this block
-        return ;
-      }*/
 
       if (taskParams.clientRootCA == null) {
         if (taskParams.rootCA != null && taskParams.rootAndClientRootCASame) {
@@ -245,7 +271,7 @@ public class UniverseCRUDHandler {
         }
       }
 
-      CertificateInfo cert = CertificateInfo.get(taskParams.clientRootCA);
+      cert = CertificateInfo.get(taskParams.clientRootCA);
       if (cert.certType == CertConfigType.CustomCertHostPath) {
         if (!taskParams
             .getPrimaryCluster()
@@ -270,7 +296,8 @@ public class UniverseCRUDHandler {
       // This is there only for legacy support, no need if rootCA and clientRootCA are different.
       if (taskParams.rootAndClientRootCASame) {
         CertificateInfo rootCert = CertificateInfo.get(taskParams.rootCA);
-        if (rootCert.certType == CertConfigType.SelfSigned) {
+        if (rootCert.certType == CertConfigType.SelfSigned
+            || rootCert.certType == CertConfigType.HashicorpVaultPKI) {
           CertificateHelper.createClientCertificate(
               taskParams.rootCA,
               String.format(
@@ -414,6 +441,7 @@ public class UniverseCRUDHandler {
         }
       }
 
+      CertificateHelper.ManipulateRootCA4(taskParams);
       CheckForCertificates(customer, taskParams);
 
       if (primaryCluster.userIntent.enableNodeToNodeEncrypt
@@ -1190,12 +1218,12 @@ public class UniverseCRUDHandler {
 
     if (tlsToggle) {
       boolean isRootCA =
-          CertificateHelper.isRootCARequired(
+          EncryptionAtTransitUtil.isRootCARequired(
               taskParams.enableNodeToNodeEncrypt,
               taskParams.enableClientToNodeEncrypt,
               taskParams.rootAndClientRootCASame);
       boolean isClientRootCA =
-          CertificateHelper.isClientRootCARequired(
+          EncryptionAtTransitUtil.isClientRootCARequired(
               taskParams.enableNodeToNodeEncrypt,
               taskParams.enableClientToNodeEncrypt,
               taskParams.rootAndClientRootCASame);
@@ -1220,12 +1248,12 @@ public class UniverseCRUDHandler {
 
     if (certsRotate) {
       boolean isRootCA =
-          CertificateHelper.isRootCARequired(
+          EncryptionAtTransitUtil.isRootCARequired(
               userIntent.enableNodeToNodeEncrypt,
               userIntent.enableClientToNodeEncrypt,
               taskParams.rootAndClientRootCASame);
       boolean isClientRootCA =
-          CertificateHelper.isClientRootCARequired(
+          EncryptionAtTransitUtil.isClientRootCARequired(
               userIntent.enableNodeToNodeEncrypt,
               userIntent.enableClientToNodeEncrypt,
               taskParams.rootAndClientRootCASame);

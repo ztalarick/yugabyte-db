@@ -8,7 +8,7 @@
  * https://github.com/YugaByte/yugabyte-db/blob/master/licenses/
  *  POLYFORM-FREE-TRIAL-LICENSE-1.0.0.txt
  */
-package com.yugabyte.yw.common.kms.util.hashicorpvault;
+package com.yugabyte.yw.common.certmgmt;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -19,24 +19,20 @@ import static org.mockito.Mockito.when;
 
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import com.yugabyte.yw.common.ApiUtils;
 import com.yugabyte.yw.common.FakeDBApplication;
-import com.yugabyte.yw.common.ModelFactory;
 import com.yugabyte.yw.common.TestUtils;
-import com.yugabyte.yw.common.certmgmt.CertificateDetails;
-import com.yugabyte.yw.common.certmgmt.CertificateHelper;
-import com.yugabyte.yw.common.certmgmt.CertificateProviderInterface;
-import com.yugabyte.yw.common.kms.util.hashicorpvault.VaultPKI.VaultOperationsForCert;
-import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
-import com.yugabyte.yw.models.Universe;
-import com.yugabyte.yw.models.helpers.PlacementInfo;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import javax.xml.transform.Result;
+import com.yugabyte.yw.common.certmgmt.providers.CertificateProviderInterface;
+import com.yugabyte.yw.common.certmgmt.providers.VaultPKI;
+import com.yugabyte.yw.common.certmgmt.providers.VaultPKI.VaultOperationsForCert;
+import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParams;
+import com.yugabyte.yw.common.kms.util.hashicorpvault.VaultAccessor;
+import com.yugabyte.yw.common.kms.util.hashicorpvault.VaultEARServiceUtilTest;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -44,8 +40,6 @@ import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import play.libs.Json;
 
 @RunWith(MockitoJUnitRunner.class)
 public class VaultPKITest extends FakeDBApplication {
@@ -123,20 +117,17 @@ public class VaultPKITest extends FakeDBApplication {
     if (MOCK_RUN == true) return;
 
     // Simulates CertificateController.getClientCert
-
-    // Calendar cal = Calendar.getInstance();
-    // Date certStart = cal.getTime();
-
     CertificateProviderInterface certProvider = VaultPKI.getVaultPKIInstance(caUUID, params);
     CertificateDetails cDetails =
-        certProvider.createCertificate(
-            null, username, new Date(), new Date(), certPath, certKeyPath);
+        certProvider.createCertificate(null, username, null, null, certPath, certKeyPath);
 
     // LOG.info("Client Cert is: {}", cDetails.getCertInfo());
     // LOG.info("Client Cert key is: {}", cDetails.getKeyInfo());
     // assertTrue(false);
 
-    X509Certificate cert = CertificateHelper.convertStringToX509Cert(cDetails.getCertInfo());
+    // X509Certificate cert = CertificateHelper.convertStringToX509Cert(cDetails.getCertInfo());
+    X509Certificate cert = CertificateHelper.convertStringToX509Cert(cDetails.crt);
+
     LOG.info(CertificateHelper.getCertificateProperties(cert));
 
     assertEquals("CN=" + username, cert.getSubjectDN().toString());
@@ -155,53 +146,24 @@ public class VaultPKITest extends FakeDBApplication {
     cert.verify(k, "BC");
   }
 
-  /*
-    // TODO: remove, not required task creation test
-    private UUID prepareUniverseForClientCert(
-      boolean enableNodeToNodeEncrypt, boolean enableClientToNodeEncrypt, UUID rootCA) {
-    UUID universeUUID = ModelFactory.createUniverse(customerUUID).universeUUID;
-    Universe.saveDetails(universeUUID, ApiUtils.mockUniverseUpdater());
-    // Update current TLS params
-    Universe.saveDetails(
-        universeUUID,
-        universe -> {
-          UniverseDefinitionTaskParams universeDetails = universe.getUniverseDetails();
-          PlacementInfo placementInfo = universeDetails.getPrimaryCluster().placementInfo;
-          UniverseDefinitionTaskParams.UserIntent userIntent =
-              universeDetails.getPrimaryCluster().userIntent;
-          userIntent.providerType = Common.CloudType.aws;
-          userIntent.enableNodeToNodeEncrypt = enableNodeToNodeEncrypt;
-          userIntent.enableClientToNodeEncrypt = enableClientToNodeEncrypt;
-          universeDetails.rootCA = rootCA;
-          universeDetails.clientCA = rootCA;
-          universeDetails.upsertPrimaryCluster(userIntent, placementInfo);
-          universe.setUniverseDetails(universeDetails);
-        });
-    return universeUUID;
+  @Test
+  public void TestCertificateDates() throws Exception {
+
+    // if (MOCK_RUN == true) return;
+
+    Date certStart = Calendar.getInstance().getTime();
+    Calendar calEnd = Calendar.getInstance();
+    calEnd.add(Calendar.YEAR, CertificateHelper.CERT_EXPIRY_IN_YEARS);
+    Date certExpiry = calEnd.getTime();
+
+    CertificateProviderInterface certProvider = VaultPKI.getVaultPKIInstance(caUUID, params);
+    CertificateDetails cDetails =
+        certProvider.createCertificate(
+            null, username, certStart, certExpiry, certPath, certKeyPath);
+    X509Certificate cert = CertificateHelper.convertStringToX509Cert(cDetails.crt);
+    LOG.info("Start Date: {} and {}", certStart.toString(), cert.getNotBefore());
+    // assertTrue(certStart.equals(cert.getNotBefore()));
+    // assertTrue(certEnd.equals(cert.getNotAfter()));
+
   }
-  private ObjectNode prepareRequestBodyForAPIgetClientCert(
-    boolean enableNodeToNodeEncrypt, boolean enableClientToNodeEncrypt, UUID rootCA) {
-  return Json.newObject()
-      .put("enableNodeToNodeEncrypt", enableNodeToNodeEncrypt)
-      .put("enableClientToNodeEncrypt", enableClientToNodeEncrypt)
-      .put("rootCA", rootCA != null ? rootCA.toString() : "");
-  }
-
-    @Test
-    public void testAPIgetClientCert() {
-      UUID fakeTaskUUID = UUID.randomUUID();
-      when(mockCommissioner.submit(any(), any())).thenReturn(fakeTaskUUID);
-      UUID universeUUID = prepareUniverseForClientCert(true, true, caUUID);
-
-      String url = "/api/customers/" + customer.uuid + "/universes/" + universeUUID + "/toggle_tls";
-      ObjectNode bodyJson = prepareRequestBodyForAPIgetClientCert(true, true, caUUID);
-      Result result =
-          assertPlatformException(
-              () -> doRequestWithAuthTokenAndBody("POST", url, authToken, bodyJson));
-      assertBadRequest(result, "No valid rootCA");
-
-      assertNull(CustomerTask.find.query().where().eq("task_uuid", fakeTaskUUID).findOne());
-      assertAuditEntry(0, customer.uuid);
-    }
-    */
 }

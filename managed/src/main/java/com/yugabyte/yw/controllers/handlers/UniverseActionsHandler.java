@@ -178,10 +178,6 @@ public class UniverseActionsHandler {
           Http.Status.BAD_REQUEST,
           "CustomCertHostPath certificates are only supported for on-prem providers.");
     }
-    if (CertificateInfo.get(requestParams.clientRootCA).certType
-        == CertConfigType.HashicorpVaultPKI) {
-      // TODO: impl
-    }
 
     if (requestParams.rootAndClientRootCASame != null
         && requestParams.rootAndClientRootCASame
@@ -268,7 +264,8 @@ public class UniverseActionsHandler {
       // If client encryption is enabled, generate the client cert file for each node.
       CertificateInfo cert = CertificateInfo.get(taskParams.rootCA);
       if (taskParams.rootAndClientRootCASame) {
-        if (cert.certType == CertConfigType.SelfSigned) {
+        if (cert.certType == CertConfigType.SelfSigned
+            || cert.certType == CertConfigType.HashicorpVaultPKI) {
           CertificateHelper.createClientCertificate(
               taskParams.clientRootCA,
               String.format(
@@ -279,8 +276,6 @@ public class UniverseActionsHandler {
               CertificateHelper.DEFAULT_CLIENT,
               null,
               null);
-        } else if (cert.certType == CertConfigType.HashicorpVaultPKI) {
-          // TODO: impl
         }
       }
     }
