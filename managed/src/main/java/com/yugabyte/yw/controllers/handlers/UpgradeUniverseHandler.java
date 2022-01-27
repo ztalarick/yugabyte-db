@@ -139,7 +139,7 @@ public class UpgradeUniverseHandler {
    */
   public UUID rotateCerts(CertsRotateParams requestParams, Customer customer, Universe universe) {
     log.info(
-        "_YD:rotateCerts called with rootCA: {}",
+        "rotateCerts called with rootCA: {}",
         (requestParams.rootCA != null) ? requestParams.rootCA.toString() : "NULL");
     // Verify request params
     requestParams.verifyParams(universe);

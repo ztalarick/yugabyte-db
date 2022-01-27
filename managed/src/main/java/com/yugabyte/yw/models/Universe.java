@@ -558,7 +558,7 @@ public class Universe extends Model {
     if (details.getPrimaryCluster().userIntent.enableNodeToNodeEncrypt) {
       // This means there must be a root CA associated with it.
       LOG.info(
-          "_YD:Returning from getCertificateNodetoNode {}",
+          "Returning from getCertificateNodetoNode {}",
           CertificateInfo.get(details.rootCA).certificate);
       return CertificateInfo.get(details.rootCA).certificate;
     }
@@ -576,12 +576,12 @@ public class Universe extends Model {
       // This means there must be a root CA associated with it.
       if (details.rootAndClientRootCASame) {
         LOG.info(
-            "_YD:Returning getCertificateClientToNode {}",
+            "Returning getCertificateClientToNode {}",
             CertificateInfo.get(details.rootCA).certificate);
         return CertificateInfo.get(details.rootCA).certificate;
       }
       LOG.info(
-          "_YD:Returning getCertificateClientToNode {}",
+          "Returning getCertificateClientToNode {}",
           CertificateInfo.get(details.clientRootCA).certificate);
       return CertificateInfo.get(details.clientRootCA).certificate;
     }

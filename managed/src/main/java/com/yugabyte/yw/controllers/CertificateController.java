@@ -1,11 +1,14 @@
 package com.yugabyte.yw.controllers;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.api.client.util.Strings;
 import com.google.inject.Inject;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.certmgmt.CertificateDetails;
 import com.yugabyte.yw.common.certmgmt.CertificateHelper;
+import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
+import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParams;
 import com.yugabyte.yw.forms.CertificateParams;
 import com.yugabyte.yw.forms.ClientCertParams;
 import com.yugabyte.yw.forms.PlatformResults;
@@ -58,6 +61,9 @@ public class CertificateController extends AuthenticatedController {
         formData.get().customCertPathParams;
     CertificateParams.CustomServerCertParams customSrvCertParams =
         formData.get().customSrvCertParams;
+
+    HashicorpVaultConfigParams hcVaultParams = formData.get().hcVaultCertParams;
+
     switch (certType) {
       case SelfSigned:
         {
@@ -92,7 +98,25 @@ public class CertificateController extends AuthenticatedController {
         }
       case HashicorpVaultPKI:
         {
-          throw new PlatformServiceException(BAD_REQUEST, "Upload not supported for Hashicorp");
+          if (hcVaultParams == null) {
+            throw new PlatformServiceException(
+                BAD_REQUEST, "Hashicorp Vault PKI Info must be provided.");
+          }
+          try {
+            // TODO: confirm that this is the correct location for this action.
+            UUID certUUID =
+                EncryptionAtTransitUtil.createHashicorpCAConfig(
+                    customerUUID,
+                    label,
+                    runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"),
+                    hcVaultParams);
+            auditService().createAuditEntry(ctx(), request(), Json.toJson(formData.data()));
+            return PlatformResults.withData(certUUID);
+
+          } catch (Exception e) {
+            String message = "Hashicorp Vault PKI exception" + e.getMessage();
+            throw new PlatformServiceException(BAD_REQUEST, message);
+          }
         }
       default:
         {
@@ -146,6 +170,13 @@ public class CertificateController extends AuthenticatedController {
     Customer.getOrBadRequest(customerUUID);
     CertificateInfo.getOrBadRequest(rootCA, customerUUID);
 
+    CertificateInfo info = CertificateInfo.get(rootCA);
+
+    if (info.certType == CertConfigType.HashicorpVaultPKI) {
+      EncryptionAtTransitUtil.fetchLatestCertForHashicorpPKI(
+          info, runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"));
+    }
+
     String certContents = CertificateHelper.getCertPEMFileContents(rootCA);
     auditService().createAuditEntry(ctx(), request());
     ObjectNode result = Json.newObject();
@@ -185,6 +216,53 @@ public class CertificateController extends AuthenticatedController {
     CertificateInfo.delete(reqCertUUID, customerUUID);
     auditService().createAuditEntry(ctx(), request());
     LOG.info("Successfully deleted the certificate:" + reqCertUUID);
+    return YBPSuccess.empty();
+  }
+
+  @ApiOperation(
+      value = "Edit TLS certificate config details",
+      response = YBPSuccess.class,
+      nickname = "editCertificate")
+  public Result edit(UUID customerUUID, UUID reqCertUUID) {
+    Customer.getOrBadRequest(customerUUID);
+    Form<CertificateParams> formData = formFactory.getFormDataOrBadRequest(CertificateParams.class);
+
+    CertConfigType certType = formData.get().certType;
+    CertificateInfo info = CertificateInfo.get(reqCertUUID);
+
+    if (certType != CertConfigType.HashicorpVaultPKI
+        || info.certType != CertConfigType.HashicorpVaultPKI) {
+      throw new PlatformServiceException(
+          BAD_REQUEST, "Certificate Config does not support Edit option");
+    } else {
+      HashicorpVaultConfigParams formParams = formData.get().hcVaultCertParams;
+      HashicorpVaultConfigParams configParams = info.getCustomHCPKICertInfo();
+
+      if (Strings.isNullOrEmpty(formParams.vaultToken)) {
+        throw new PlatformServiceException(BAD_REQUEST, "Certificate Config not changed");
+      }
+
+      if (Strings.isNullOrEmpty(formParams.engine)) {
+        formParams.engine = configParams.engine;
+      }
+      if (Strings.isNullOrEmpty(formParams.vaultAddr)) {
+        formParams.vaultAddr = configParams.vaultAddr;
+      }
+      if (Strings.isNullOrEmpty(formParams.mountPath)) {
+        formParams.mountPath = configParams.mountPath;
+      }
+      if (Strings.isNullOrEmpty(formParams.role)) {
+        formParams.role = configParams.role;
+      }
+
+      EncryptionAtTransitUtil.editEATHashicorpConfig(
+          reqCertUUID,
+          customerUUID,
+          runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"),
+          formParams);
+    }
+    auditService().createAuditEntry(ctx(), request());
+    LOG.info("Successfully edited the certificate information:" + reqCertUUID);
     return YBPSuccess.empty();
   }
 

@@ -1080,9 +1080,9 @@ public abstract class UniverseDefinitionTaskBase extends UniverseTaskBase {
     UserIntent userIntent = cluster.userIntent;
     Boolean rootAndClientRootCASame = taskParams().rootAndClientRootCASame;
     Boolean rootCARequired =
-        CertificateHelper.isRootCARequired(userIntent, rootAndClientRootCASame);
+    EncryptionAtTransitUtil.isRootCARequired(userIntent, rootAndClientRootCASame);
     Boolean clientRootCARequired =
-        CertificateHelper.isClientRootCARequired(userIntent, rootAndClientRootCASame);
+    EncryptionAtTransitUtil.isClientRootCARequired(userIntent, rootAndClientRootCASame);
 
     for (NodeDetails currentNode : nodesToProvision) {
       String preflightStatus =

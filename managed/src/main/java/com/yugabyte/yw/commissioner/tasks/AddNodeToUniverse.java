@@ -17,7 +17,8 @@ import com.yugabyte.yw.commissioner.Common.CloudType;
 import com.yugabyte.yw.commissioner.SubTaskGroupQueue;
 import com.yugabyte.yw.commissioner.UserTaskDetails.SubTaskGroupType;
 import com.yugabyte.yw.commissioner.tasks.params.NodeTaskParams;
-import com.yugabyte.yw.common.CertificateHelper;
+import com.yugabyte.yw.common.certmgmt.CertificateHelper;
+import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
 import com.yugabyte.yw.common.DnsManager;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.Cluster;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.UserIntent;
@@ -115,8 +116,8 @@ public class AddNodeToUniverse extends UniverseDefinitionTaskBase {
             performPreflightCheck(
                 cluster,
                 currentNode,
-                CertificateHelper.isRootCARequired(taskParams()) ? taskParams().rootCA : null,
-                CertificateHelper.isClientRootCARequired(taskParams())
+                EncryptionAtTransitUtil.isRootCARequired(taskParams()) ? taskParams().rootCA : null,
+                EncryptionAtTransitUtil.isClientRootCARequired(taskParams())
                     ? taskParams().clientRootCA
                     : null);
       }

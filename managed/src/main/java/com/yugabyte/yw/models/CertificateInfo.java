@@ -247,6 +247,30 @@ public class CertificateInfo extends Model {
     return cert;
   }
 
+  public static CertificateInfo create(
+      UUID uuid,
+      UUID customerUUID,
+      String label,
+      Date startDate,
+      Date expiryDate,
+      String certificate,
+      HashicorpVaultConfigParams params)
+      throws IOException, NoSuchAlgorithmException {
+    CertificateInfo cert = new CertificateInfo();
+    cert.uuid = uuid;
+    cert.customerUUID = customerUUID;
+    cert.label = label;
+    cert.startDate = startDate;
+    cert.expiryDate = expiryDate;
+    cert.certificate = certificate;
+    cert.certType = CertConfigType.HashicorpVaultPKI;
+    JsonNode node = params.toJsonNode();
+    if (node != null) cert.customCertInfo = node;
+    cert.checksum = Util.getFileChecksum(certificate);
+    cert.save();
+    return cert;
+  }
+
   public static CertificateInfo createCopy(
       CertificateInfo certificateInfo, String label, String certFilePath)
       throws IOException, NoSuchAlgorithmException {
@@ -268,6 +292,8 @@ public class CertificateInfo extends Model {
   public CertificateInfo update(
       Date sDate, Date eDate, String certPath, HashicorpVaultConfigParams params)
       throws IOException, NoSuchAlgorithmException {
+
+    LOG.info("Updating uuid: {} with Path:{}", uuid.toString(), certPath);
 
     startDate = sDate;
     expiryDate = eDate;

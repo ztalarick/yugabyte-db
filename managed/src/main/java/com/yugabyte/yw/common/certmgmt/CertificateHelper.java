@@ -37,6 +37,7 @@ import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 import com.yugabyte.yw.common.certmgmt.providers.CertificateProviderInterface;
 import com.yugabyte.yw.common.certmgmt.providers.CertificateSelfSigned;
+import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParams;
 import com.yugabyte.yw.forms.CertificateParams;
 import com.yugabyte.yw.forms.CertsRotateParams;
 import com.yugabyte.yw.forms.TlsToggleParams;
@@ -101,10 +102,18 @@ public class CertificateHelper {
     // hardcoded config of Hashicorp as workaround of UI changes (replace yb-admin-demo1)
     LOG.info("__YD:Called from: {}", CommonUtils.GetStackTraceHere());
 
+    // yb-admin-demo1 to HCPKI4jan
     if (requestParams.rootCA == null) return;
     if (requestParams.rootCA.equals(UUID.fromString("c2a8bcc1-4d64-4ec1-9bbb-20a551d7342a"))) {
-      LOG.info("__YD: 1 Changing the rootCA cert uuid to 15cca09a-ffcc-4769-9b1a-21e6b79657b6");
       requestParams.rootCA = UUID.fromString("15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+      LOG.info("__YD: 1 Changing the rootCA cert uuid to {}", requestParams.rootCA.toString());
+      if (requestParams.clientRootCA != null) requestParams.clientRootCA = requestParams.rootCA;
+    }
+
+    // yb-admin-ydhawale-aws to p24jan
+    if (requestParams.rootCA.equals(UUID.fromString("fefa2cd5-8f03-450e-968c-0a183032f9b1"))) {
+      requestParams.rootCA = UUID.fromString("46ec71b8-4f8a-4f78-a11d-052507722484");
+      LOG.info("__YD: 2 Changing the rootCA cert uuid to {}", requestParams.rootCA.toString());
       if (requestParams.clientRootCA != null) requestParams.clientRootCA = requestParams.rootCA;
     }
   }
@@ -116,8 +125,14 @@ public class CertificateHelper {
 
     if (requestParams.rootCA == null) return;
     if (requestParams.rootCA.equals(UUID.fromString("c2a8bcc1-4d64-4ec1-9bbb-20a551d7342a"))) {
-      LOG.info("_YD: 2 Changing the rootCA cert uuid to 15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+      LOG.info("_YD: 3 Changing the rootCA cert uuid to 15cca09a-ffcc-4769-9b1a-21e6b79657b6");
       requestParams.rootCA = UUID.fromString("15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+      if (requestParams.clientRootCA != null) requestParams.clientRootCA = requestParams.rootCA;
+    }
+    // yb-admin-ydhawale-aws to p24jan
+    if (requestParams.rootCA.equals(UUID.fromString("fefa2cd5-8f03-450e-968c-0a183032f9b1"))) {
+      requestParams.rootCA = UUID.fromString("46ec71b8-4f8a-4f78-a11d-052507722484");
+      LOG.info("__YD: 4 Changing the rootCA cert uuid to {}", requestParams.rootCA.toString());
       if (requestParams.clientRootCA != null) requestParams.clientRootCA = requestParams.rootCA;
     }
   }
@@ -129,8 +144,15 @@ public class CertificateHelper {
 
     if (requestParams.rootCA == null) return;
     if (requestParams.rootCA.equals(UUID.fromString("c2a8bcc1-4d64-4ec1-9bbb-20a551d7342a"))) {
-      LOG.info("_YD: 3 Changing the rootCA cert uuid to 15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+      LOG.info("_YD: 5 Changing the rootCA cert uuid to 15cca09a-ffcc-4769-9b1a-21e6b79657b6");
       requestParams.rootCA = UUID.fromString("15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+      if (requestParams.clientRootCA != null) requestParams.clientRootCA = requestParams.rootCA;
+    }
+
+    // yb-admin-ydhawale-aws to p24jan
+    if (requestParams.rootCA.equals(UUID.fromString("fefa2cd5-8f03-450e-968c-0a183032f9b1"))) {
+      requestParams.rootCA = UUID.fromString("46ec71b8-4f8a-4f78-a11d-052507722484");
+      LOG.info("__YD: 6 Changing the rootCA cert uuid to {}", requestParams.rootCA.toString());
       if (requestParams.clientRootCA != null) requestParams.clientRootCA = requestParams.rootCA;
     }
   }
@@ -142,8 +164,15 @@ public class CertificateHelper {
 
     if (requestParams.rootCA == null) return;
     if (requestParams.rootCA.equals(UUID.fromString("c2a8bcc1-4d64-4ec1-9bbb-20a551d7342a"))) {
-      LOG.info("_YD: 4 Changing the rootCA cert uuid to 15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+      LOG.info("_YD: 7 Changing the rootCA cert uuid to 15cca09a-ffcc-4769-9b1a-21e6b79657b6");
       requestParams.rootCA = UUID.fromString("15cca09a-ffcc-4769-9b1a-21e6b79657b6");
+      if (requestParams.clientRootCA != null) requestParams.clientRootCA = requestParams.rootCA;
+    }
+
+    // yb-admin-ydhawale-aws to p24jan
+    if (requestParams.rootCA.equals(UUID.fromString("fefa2cd5-8f03-450e-968c-0a183032f9b1"))) {
+      requestParams.rootCA = UUID.fromString("46ec71b8-4f8a-4f78-a11d-052507722484");
+      LOG.info("__YD: 8 Changing the rootCA cert uuid to {}", requestParams.rootCA.toString());
       if (requestParams.clientRootCA != null) requestParams.clientRootCA = requestParams.rootCA;
     }
   }
@@ -184,6 +213,7 @@ public class CertificateHelper {
   }
 
   public static UUID createRootCA(String nodePrefix, UUID customerUUID, String storagePath) {
+    LOG.info("Creating root certificate for {}", nodePrefix);
     LOG.info(
         "_YD:Creating root certificate for {} from: {}",
         nodePrefix,
@@ -208,8 +238,8 @@ public class CertificateHelper {
           rootCA_UUID,
           certType,
           customerUUID,
-          location.getKey(),
-          location.getValue());
+          location.getLeft(),
+          location.getRight());
 
       CertificateInfo cert =
           CertificateInfo.create(
@@ -218,8 +248,8 @@ public class CertificateHelper {
               certLabel,
               certStart,
               certExpiry,
-              location.getValue(),
-              location.getKey(),
+              location.getRight(),
+              location.getLeft(),
               certType);
 
       LOG.info("Created Root CA for universe {}.", certLabel);
@@ -230,8 +260,28 @@ public class CertificateHelper {
     }
   }
 
+  public static UUID CreateConfigInfoDBEntry(
+      UUID configUUID,
+      UUID customerUUID,
+      String label,
+      X509Certificate x509,
+      String certPath,
+      String keyPath,
+      HashicorpVaultConfigParams hcVaultParams)
+      throws Exception {
+    Date certStart = x509.getNotBefore();
+    Date certExpiry = x509.getNotAfter();
+
+    CertificateInfo cert =
+        CertificateInfo.create(
+            configUUID, customerUUID, label, certStart, certExpiry, certPath, hcVaultParams);
+    LOG.info("Created Root CA for universe {}.", label);
+
+    return cert.uuid;
+  }
+
   public static UUID createClientRootCA(String nodePrefix, UUID customerUUID, String storagePath) {
-    LOG.info("_YD:Creating a client root certificate for {}", nodePrefix);
+    LOG.info("Creating a client root certificate for {}", nodePrefix);
     return createRootCA(nodePrefix + CLIENT_NODE_SUFFIX, customerUUID, storagePath);
   }
 
@@ -254,7 +304,7 @@ public class CertificateHelper {
         writeCertFileContentToCertPath(clientCert, clientCertPath);
         writeKeyFileContentToKeyPath(pKey, clientKeyPath);
         LOG.info(
-            "__YD:Dumping certificate {} at Path {}",
+            "Dumping certificate {} at Path {}",
             clientCert.getSubjectDN().toString(),
             clientCertPath);
 
@@ -270,7 +320,7 @@ public class CertificateHelper {
         certKeyWriter.flush();
         certificateDetails.crt = certWriter.toString();
         certificateDetails.key = keyWriter.toString();
-        LOG.info("__YD:Returning certificate {} as Strings", clientCert.getSubjectDN().toString());
+        LOG.info("Returning certificate {} as Strings", clientCert.getSubjectDN().toString());
       }
     } finally {
       if (certificateWriter != null) {
@@ -285,7 +335,7 @@ public class CertificateHelper {
 
   public static CertificateDetails createClientCertificate(
       UUID rootCA, String storagePath, String username, Date certStart, Date certExpiry) {
-    LOG.info("__YD:Creating client certificate for {}", username);
+    LOG.info("Creating client certificate for {}", username);
 
     CertificateInfo rootCertConfigInfo = CertificateInfo.get(rootCA);
     CertificateProviderInterface certProvider =
@@ -308,7 +358,7 @@ public class CertificateHelper {
       Date certExpiry,
       String certFileName,
       String certKeyName) {
-    LOG.info("__YD:Creating server certificate for {}", username);
+    LOG.info("Creating server certificate for {}", username);
 
     CertificateInfo rootCertConfigInfo = CertificateInfo.get(rootCA);
     CertificateProviderInterface certProvider =
@@ -362,8 +412,8 @@ public class CertificateHelper {
       List<X509Certificate> x509CACerts = getX509CertificateCertObject(certContent);
 
       Pair<Date, Date> dates = extractDatesFromCertBundle(x509CACerts);
-      certStart = dates.getKey();
-      certExpiry = dates.getValue();
+      certStart = dates.getLeft();
+      certExpiry = dates.getRight();
 
       // Verify the uploaded cert is a verified cert chain.
       verifyCertValidity(x509CACerts);
@@ -666,8 +716,10 @@ public class CertificateHelper {
     File certfile = new File(certPath);
     // Create directory to store the certFile.
     certfile.getParentFile().mkdirs();
+    LOG.info("Dumpting certs at path: {}", certPath);
     try (JcaPEMWriter certWriter = new JcaPEMWriter(new FileWriter(certfile))) {
       for (X509Certificate cert : certs) {
+        LOG.info(getCertificateProperties(cert));
         certWriter.writeObject(cert);
         certWriter.flush();
       }

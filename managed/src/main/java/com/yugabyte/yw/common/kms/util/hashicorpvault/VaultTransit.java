@@ -162,7 +162,7 @@ public class VaultTransit extends VaultSecretEngineBase {
   public Map<byte[], byte[]> reWrapString(String engineKey, ArrayList<byte[]> dataList)
       throws VaultException {
 
-    LOG.debug("_YD:reWrapString called, entries : {}", dataList.size());
+    LOG.debug("reWrapString called, entries : {}", dataList.size());
     final String path = buildPath(VaultOperations.RERWAP, engineKey);
 
     final Map<String, Object> mapToWrite = new HashMap<>();

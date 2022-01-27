@@ -218,7 +218,7 @@ public class UniverseActionsHandler {
       taskParams.rootCA = universeDetails.rootCA;
       if (taskParams.rootCA == null) {
         // create self signed rootCA in case it is not provided by the user
-        LOG.info("_YD:create self signed rootCA as it is not provided by the user");
+        LOG.info("create self signed rootCA as it is not provided by the user");
         taskParams.rootCA =
             requestParams.rootCA != null
                 ? requestParams.rootCA

@@ -360,7 +360,7 @@ public class NodeManager extends DevopsBase {
       boolean isClientRootCARequired,
       String nodeIP,
       String ybHomeDir) {
-    LOG.info("__YD:getCertificatePaths called");
+    LOG.info("getCertificatePaths called");
     List<String> subcommandStrings = new ArrayList<>();
 
     String serverCertFile = String.format("node.%s.crt", nodeIP);
@@ -1733,12 +1733,12 @@ public class NodeManager extends DevopsBase {
     }
     CertificateInfo rootCert = CertificateInfo.get(rootCA);
     // checking only certs with CustomCertHostPath type, CustomServerCert is not used for onprem
-    if (rootCert.certType != CertificateInfo.Type.CustomCertHostPath) {
+    if (rootCert.certType != CertConfigType.CustomCertHostPath) {
       return;
     }
     String suffix = isClient ? "_client_to_server" : "";
 
-    CertificateParams.CustomCertInfo customCertInfo = rootCert.getCustomCertInfo();
+    CertificateParams.CustomCertPathParams customCertInfo = rootCert.getCustomCertPathParams();
 
     commandArgs.add(String.format("--root_cert_path%s", suffix));
     commandArgs.add(customCertInfo.rootCertPath);

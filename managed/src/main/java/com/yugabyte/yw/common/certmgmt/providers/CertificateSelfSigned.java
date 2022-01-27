@@ -87,7 +87,6 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
 
     UUID rootCA = caCertUUID;
 
-    LOG.info("__YD:Creating certificate for {}", username);
     LOG.info(
         "Creating signed certificate signed by root CA {} and user {} at path {}",
         rootCA,
@@ -156,6 +155,7 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
   public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
     String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUID);
     String keyPath = CertificateHelper.getCAKeyPath(storagePath, customerUUID, caCertUUID);
+    LOG.info("Dumping CA certs @{}", certPath);
 
     CertificateHelper.writeCertBundleToCertPath(
         Collections.singletonList(curCaCertificate), certPath);

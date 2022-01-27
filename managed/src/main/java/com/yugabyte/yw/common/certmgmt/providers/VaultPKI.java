@@ -30,6 +30,7 @@ import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.certmgmt.CertificateDetails;
 import com.yugabyte.yw.common.certmgmt.CertificateHelper;
+import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
 import com.yugabyte.yw.models.CertificateInfo;
 import com.yugabyte.yw.models.helpers.CommonUtils;
 
@@ -116,11 +117,19 @@ public class VaultPKI extends CertificateProviderInterface {
     return obj;
   }
 
+  public static VaultPKI validateVaultConfigParams(HashicorpVaultConfigParams configInfo)
+      throws Exception {
+    VaultAccessor vObj =
+        VaultAccessor.buildVaultAccessor(configInfo.vaultAddr, configInfo.vaultToken);
+    VaultPKI obj = new VaultPKI(null, vObj, configInfo);
+    return obj;
+  }
+
   @Override
   public X509Certificate generateRootCertificate(
       String certLabel, int certExpiryInYears, KeyPair keyPair) throws Exception {
     LOG.debug("Called generateRootCertificate for: {}", certLabel);
-    // LOG.info("Called from: {}", CommonUtils.GetStackTraceHere());
+    LOG.info("Called from: {}", CommonUtils.GetStackTraceHere());
 
     return getCACertificateFromVault();
   }
@@ -133,8 +142,8 @@ public class VaultPKI extends CertificateProviderInterface {
       Date certExpiry,
       String certFileName,
       String newCertKeyStrName) {
-    LOG.info("__YD:Creating certificate for {}, CA:", username, caCertUUID.toString());
-    LOG.info("Called from: {}", CommonUtils.GetStackTraceHere());
+    LOG.info("Creating certificate for {}, CA:", username, caCertUUID.toString());
+    LOG.info("_YD:Called from: {}", CommonUtils.GetStackTraceHere());
 
     InetAddressValidator ipAddressValidator = InetAddressValidator.getInstance();
     final Map<String, Object> input = new HashMap<>();
@@ -169,8 +178,19 @@ public class VaultPKI extends CertificateProviderInterface {
       certObj.verify(issueCAcert.getPublicKey(), "BC");
 
       // for client certificate: later it is read using CertificateHelper.getClientCertFile
-      return CertificateHelper.dumpNewCertsToFile(
-          storagePath, certFileName, newCertKeyStrName, certObj, pKeyObj);
+      CertificateDetails details =
+          CertificateHelper.dumpNewCertsToFile(
+              storagePath, certFileName, newCertKeyStrName, certObj, pKeyObj);
+
+      if (false) {
+        // TODO: remove this block, updating the root ca information here
+        //  after config support from ui, this can be removed. see: createHashicorpCAConfig
+        storagePath = "/opt/yugaware/";
+        UUID custUUID = CertificateInfo.get(caCertUUID).customerUUID;
+        EncryptionAtTransitUtil.editEATHashicorpConfig(caCertUUID, custUUID, storagePath, params);
+      }
+
+      return details;
 
     } catch (Exception e) {
       LOG.error("Unable to create certificate for {} using rootCA {}", username, caCertUUID, e);
@@ -182,15 +202,13 @@ public class VaultPKI extends CertificateProviderInterface {
   public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
     try {
       String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUID);
+      LOG.info("Dumping CA certs @{}", certPath);
 
       List<X509Certificate> list = new ArrayList<X509Certificate>();
       list.add(getCACertificateFromVault());
 
       CertificateHelper.writeCertBundleToCertPath(list, certPath);
       CertificateInfo rootCertConfigInfo = CertificateInfo.get(caCertUUID);
-
-      Pair<Date, Date> dates = CertificateHelper.extractDatesFromCertBundle(list);
-      rootCertConfigInfo.update(dates.getKey(), dates.getValue(), certPath, params);
 
       if (!CertificateInfo.isCertificateValid(caCertUUID)) {
         String errMsg =
@@ -209,7 +227,7 @@ public class VaultPKI extends CertificateProviderInterface {
   }
 
   public X509Certificate getCACertificateFromVault() throws Exception {
-    LOG.info("__YD:getting CA certificate for {}", caCertUUID.toString());
+    LOG.info("getting CA certificate for {}", caCertUUID.toString());
 
     String path =
         params.mountPath
