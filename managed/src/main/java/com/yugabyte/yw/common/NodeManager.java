@@ -70,7 +70,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -345,8 +345,8 @@ public class NodeManager extends DevopsBase {
         config,
         userIntent,
         taskParam,
-        EncryptionAtTransitUtil.isRootCARequired(taskParam),
-        EncryptionAtTransitUtil.isClientRootCARequired(taskParam),
+        EncryptionInTransitUtil.isRootCARequired(taskParam),
+        EncryptionInTransitUtil.isClientRootCARequired(taskParam),
         nodeIP,
         ybHomeDir);
   }
@@ -610,10 +610,10 @@ public class NodeManager extends DevopsBase {
     if (taskParam.enableClientToNodeEncrypt || taskParam.enableNodeToNodeEncrypt) {
       gflags.put("cert_node_filename", node.cloudInfo.private_ip);
     }
-    if (EncryptionAtTransitUtil.isRootCARequired(taskParam)) {
+    if (EncryptionInTransitUtil.isRootCARequired(taskParam)) {
       gflags.put("certs_dir", certsDir);
     }
-    if (EncryptionAtTransitUtil.isClientRootCARequired(taskParam)) {
+    if (EncryptionInTransitUtil.isClientRootCARequired(taskParam)) {
       gflags.put("certs_for_client_dir", certsForClientDir);
     }
     return gflags;
@@ -1085,10 +1085,10 @@ public class NodeManager extends DevopsBase {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", "true");
-              if (EncryptionAtTransitUtil.isRootCARequired(taskParam)) {
+              if (EncryptionInTransitUtil.isRootCARequired(taskParam)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (EncryptionAtTransitUtil.isClientRootCARequired(taskParam)) {
+              if (EncryptionInTransitUtil.isClientRootCARequired(taskParam)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             } else if (taskParam.nodeToNodeChange < 0) {
@@ -1097,10 +1097,10 @@ public class NodeManager extends DevopsBase {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", allowInsecureString);
-              if (EncryptionAtTransitUtil.isRootCARequired(taskParam)) {
+              if (EncryptionInTransitUtil.isRootCARequired(taskParam)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (EncryptionAtTransitUtil.isClientRootCARequired(taskParam)) {
+              if (EncryptionInTransitUtil.isClientRootCARequired(taskParam)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             }
@@ -1120,10 +1120,10 @@ public class NodeManager extends DevopsBase {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", allowInsecureString);
-              if (EncryptionAtTransitUtil.isRootCARequired(taskParam)) {
+              if (EncryptionInTransitUtil.isRootCARequired(taskParam)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (EncryptionAtTransitUtil.isClientRootCARequired(taskParam)) {
+              if (EncryptionInTransitUtil.isClientRootCARequired(taskParam)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             } else {

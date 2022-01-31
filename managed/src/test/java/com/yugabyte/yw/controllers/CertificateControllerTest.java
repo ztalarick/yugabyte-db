@@ -265,7 +265,7 @@ public class CertificateControllerTest extends FakeDBApplication {
         date,
         TestHelper.TMP_PATH + "/certificate_controller_test_ca.crt",
         emptyCustomCertPathParams);
-        CertificateParams.CustomCertPathParams customCertPathParams =
+    CertificateParams.CustomCertPathParams customCertPathParams =
         CertificateInfo.get(certUUID).getCustomCertPathParams();
     assertNull(customCertPathParams);
     ObjectNode bodyJson = Json.newObject();
@@ -291,7 +291,7 @@ public class CertificateControllerTest extends FakeDBApplication {
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
     CertificateParams.CustomCertPathParams customCertPathParams =
-    new CertificateParams.CustomCertPathParams();
+        new CertificateParams.CustomCertPathParams();
     customCertPathParams.rootCertPath = "rootCertPath";
     customCertPathParams.nodeCertPath = "nodeCertPath";
     customCertPathParams.nodeKeyPath = "nodeKeyPath";
@@ -304,7 +304,7 @@ public class CertificateControllerTest extends FakeDBApplication {
         date,
         TestHelper.TMP_PATH + "/certificate_controller_test_ca.crt",
         customCertPathParams);
-        customCertPathParams = CertificateInfo.get(certUUID).getCustomCertPathParams();
+    customCertPathParams = CertificateInfo.get(certUUID).getCustomCertPathParams();
     assertNotNull(customCertPathParams);
 
     ObjectNode bodyJson = Json.newObject();

@@ -110,7 +110,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import play.libs.Json;
 
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 
 @RunWith(JUnitParamsRunner.class)
 public class NodeManagerTest extends FakeDBApplication {
@@ -670,10 +670,10 @@ public class NodeManagerTest extends FakeDBApplication {
               .cloudInfo
               .private_ip);
     }
-    if (EncryptionAtTransitUtil.isRootCARequired(configureParams)) {
+    if (EncryptionInTransitUtil.isRootCARequired(configureParams)) {
       gflags.put("certs_dir", certsDir);
     }
-    if (EncryptionAtTransitUtil.isClientRootCARequired(configureParams)) {
+    if (EncryptionInTransitUtil.isClientRootCARequired(configureParams)) {
       gflags.put("certs_for_client_dir", certsForClientDir);
     }
     if (processType == ServerType.TSERVER.name()
@@ -885,10 +885,10 @@ public class NodeManagerTest extends FakeDBApplication {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", "true");
-              if (EncryptionAtTransitUtil.isRootCARequired(configureParams)) {
+              if (EncryptionInTransitUtil.isRootCARequired(configureParams)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (EncryptionAtTransitUtil.isClientRootCARequired(configureParams)) {
+              if (EncryptionInTransitUtil.isClientRootCARequired(configureParams)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             } else if (configureParams.nodeToNodeChange < 0) {
@@ -897,10 +897,10 @@ public class NodeManagerTest extends FakeDBApplication {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", allowInsecureString);
-              if (EncryptionAtTransitUtil.isRootCARequired(configureParams)) {
+              if (EncryptionInTransitUtil.isRootCARequired(configureParams)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (EncryptionAtTransitUtil.isClientRootCARequired(configureParams)) {
+              if (EncryptionInTransitUtil.isClientRootCARequired(configureParams)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             }
@@ -913,10 +913,10 @@ public class NodeManagerTest extends FakeDBApplication {
               gflags.put("use_node_to_node_encryption", nodeToNodeString);
               gflags.put("use_client_to_server_encryption", clientToNodeString);
               gflags.put("allow_insecure_connections", allowInsecureString);
-              if (EncryptionAtTransitUtil.isRootCARequired(configureParams)) {
+              if (EncryptionInTransitUtil.isRootCARequired(configureParams)) {
                 gflags.put("certs_dir", certsDir);
               }
-              if (EncryptionAtTransitUtil.isClientRootCARequired(configureParams)) {
+              if (EncryptionInTransitUtil.isClientRootCARequired(configureParams)) {
                 gflags.put("certs_for_client_dir", certsForClientDir);
               }
             }
@@ -2772,13 +2772,17 @@ public class NodeManagerTest extends FakeDBApplication {
     }
   }
 
-  private UUID createCertificate(CertConfigType certType, UUID customerUUID, String label)
+  private UUID createCertificateConfig(CertConfigType certType, UUID customerUUID, String label)
       throws IOException, NoSuchAlgorithmException {
     return createCertificate(certType, customerUUID, label, "", false).uuid;
   }
 
   private CertificateInfo createCertificate(
-    CertConfigType certType, UUID customerUUID, String label, String suffix, boolean createClientPaths)
+      CertConfigType certType,
+      UUID customerUUID,
+      String label,
+      String suffix,
+      boolean createClientPaths)
       throws IOException, NoSuchAlgorithmException {
     UUID certUUID = UUID.randomUUID();
     Calendar cal = Calendar.getInstance();
@@ -2821,14 +2825,14 @@ public class NodeManagerTest extends FakeDBApplication {
           CertConfigType.CustomServerCert);
     } else if (certType == CertConfigType.HashicorpVaultPKI) {
       return CertificateInfo.create(
-        certUUID,
-        customerUUID,
-        label,
-        today,
-        nextYear,
-        "privateKey",
-        TestHelper.TMP_PATH + "/ca.crt",
-        CertConfigType.HashicorpVaultPKI);
+          certUUID,
+          customerUUID,
+          label,
+          today,
+          nextYear,
+          "privateKey",
+          TestHelper.TMP_PATH + "/ca.crt",
+          CertConfigType.HashicorpVaultPKI);
     } else {
       throw new IllegalArgumentException("Unknown type " + certType);
     }
@@ -3156,7 +3160,7 @@ public class NodeManagerTest extends FakeDBApplication {
   public void testPrecheckNotCheckingSelfSignedCertificates()
       throws IOException, NoSuchAlgorithmException {
     UUID customerUUID = testData.get(0).provider.customerUUID;
-    UUID certificateUUID = createCertificate(CertConfigType.SelfSigned, customerUUID, "SS");
+    UUID certificateUUID = createCertificateConfig(CertConfigType.SelfSigned, customerUUID, "SS");
     List<String> cmds = createPrecheckCommandForCerts(certificateUUID, null);
     checkArguments(cmds, PRECHECK_CERT_PATHS); // Check no args
   }
@@ -3165,8 +3169,8 @@ public class NodeManagerTest extends FakeDBApplication {
   public void testPrecheckNotCheckingTwoSelfSignedCertificates()
       throws IOException, NoSuchAlgorithmException {
     UUID customerUUID = testData.get(0).provider.customerUUID;
-    UUID certificateUUID1 = createCertificate(CertConfigType.SelfSigned, customerUUID, "SS");
-    UUID certificateUUID2 = createCertificate(CertConfigType.SelfSigned, customerUUID, "SS");
+    UUID certificateUUID1 = createCertificateConfig(CertConfigType.SelfSigned, customerUUID, "SS");
+    UUID certificateUUID2 = createCertificateConfig(CertConfigType.SelfSigned, customerUUID, "SS");
     List<String> cmds = createPrecheckCommandForCerts(certificateUUID1, certificateUUID2);
     checkArguments(cmds, PRECHECK_CERT_PATHS); // Check no args
   }
@@ -3238,7 +3242,8 @@ public class NodeManagerTest extends FakeDBApplication {
   public void testPrecheckCheckBothCertificatesWithClientPaths()
       throws IOException, NoSuchAlgorithmException {
     UUID customerUUID = testData.get(0).provider.customerUUID;
-    CertificateInfo cert = createCertificate(CertConfigType.CustomCertHostPath, customerUUID, "CS", "", true);
+    CertificateInfo cert =
+        createCertificate(CertConfigType.CustomCertHostPath, customerUUID, "CS", "", true);
     CertificateInfo cert2 =
         createCertificate(CertConfigType.CustomCertHostPath, customerUUID, "CS", "", true);
     List<String> cmds = createPrecheckCommandForCerts(cert.uuid, cert2.uuid);

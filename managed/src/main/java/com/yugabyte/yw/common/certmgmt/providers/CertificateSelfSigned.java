@@ -112,7 +112,7 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
       }
       // The first entry will be the certificate that needs to sign the necessary certificate.
       X509Certificate cer =
-          CertificateHelper.getX509CertificateCertObject(
+          CertificateHelper.convertStringToX509CertList(
                   FileUtils.readFileToString(new File(certInfo.certificate)))
               .get(0);
       X500Name subject = new JcaX509CertificateHolder(cer).getSubject();

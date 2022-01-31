@@ -18,7 +18,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.yugabyte.yw.commissioner.tasks.UniverseDefinitionTaskBase.ServerType;
 import com.yugabyte.yw.common.TestHelper;
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 import com.yugabyte.yw.forms.CertsRotateParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.UserIntent;
@@ -247,12 +247,12 @@ public class CertsRotateTest extends UpgradeTaskTest {
               universeDetails.allowInsecure = true;
               universeDetails.rootAndClientRootCASame = rootAndClientRootCASame;
               universeDetails.rootCA = null;
-              if (EncryptionAtTransitUtil.isRootCARequired(
+              if (EncryptionInTransitUtil.isRootCARequired(
                   nodeToNode, clientToNode, rootAndClientRootCASame)) {
                 universeDetails.rootCA = rootCA;
               }
               universeDetails.clientRootCA = null;
-              if (EncryptionAtTransitUtil.isClientRootCARequired(
+              if (EncryptionInTransitUtil.isClientRootCARequired(
                   nodeToNode, clientToNode, rootAndClientRootCASame)) {
                 universeDetails.clientRootCA = clientRootCA;
               }
@@ -415,10 +415,10 @@ public class CertsRotateTest extends UpgradeTaskTest {
     }
 
     boolean isRootCARequired =
-        EncryptionAtTransitUtil.isRootCARequired(
+        EncryptionInTransitUtil.isRootCARequired(
             currentNodeToNode, currentClientToNode, rootAndClientRootCASame);
     boolean isClientRootCARequired =
-        EncryptionAtTransitUtil.isClientRootCARequired(
+        EncryptionInTransitUtil.isClientRootCARequired(
             currentNodeToNode, currentClientToNode, rootAndClientRootCASame);
 
     // Expected failure scenarios
@@ -579,10 +579,10 @@ public class CertsRotateTest extends UpgradeTaskTest {
     }
 
     boolean isRootCARequired =
-        EncryptionAtTransitUtil.isRootCARequired(
+        EncryptionInTransitUtil.isRootCARequired(
             currentNodeToNode, currentClientToNode, rootAndClientRootCASame);
     boolean isClientRootCARequired =
-        EncryptionAtTransitUtil.isClientRootCARequired(
+        EncryptionInTransitUtil.isClientRootCARequired(
             currentNodeToNode, currentClientToNode, rootAndClientRootCASame);
 
     // Expected failure scenarios

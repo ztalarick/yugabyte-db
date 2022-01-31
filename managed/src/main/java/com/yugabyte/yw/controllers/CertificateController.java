@@ -6,7 +6,7 @@ import com.google.inject.Inject;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.certmgmt.CertificateDetails;
 import com.yugabyte.yw.common.certmgmt.CertificateHelper;
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
 import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParams;
 import com.yugabyte.yw.forms.CertificateParams;
@@ -63,6 +63,8 @@ public class CertificateController extends AuthenticatedController {
         formData.get().customSrvCertParams;
 
     HashicorpVaultConfigParams hcVaultParams = formData.get().hcVaultCertParams;
+    // CertificateParams.CustomCertInfo customCertInfo = formData.get().customCertInfo;
+    // CertificateParams.CustomServerCertData customServerCertData = formData.get().customServerCertData;
 
     switch (certType) {
       case SelfSigned:
@@ -103,9 +105,8 @@ public class CertificateController extends AuthenticatedController {
                 BAD_REQUEST, "Hashicorp Vault PKI Info must be provided.");
           }
           try {
-            // TODO: confirm that this is the correct location for this action.
             UUID certUUID =
-                EncryptionAtTransitUtil.createHashicorpCAConfig(
+                EncryptionInTransitUtil.createHashicorpCAConfig(
                     customerUUID,
                     label,
                     runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"),
@@ -173,7 +174,7 @@ public class CertificateController extends AuthenticatedController {
     CertificateInfo info = CertificateInfo.get(rootCA);
 
     if (info.certType == CertConfigType.HashicorpVaultPKI) {
-      EncryptionAtTransitUtil.fetchLatestCertForHashicorpPKI(
+      EncryptionInTransitUtil.fetchLatestCertForHashicorpPKI(
           info, runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"));
     }
 
@@ -255,7 +256,7 @@ public class CertificateController extends AuthenticatedController {
         formParams.role = configParams.role;
       }
 
-      EncryptionAtTransitUtil.editEATHashicorpConfig(
+      EncryptionInTransitUtil.editEATHashicorpConfig(
           reqCertUUID,
           customerUUID,
           runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"),

@@ -21,7 +21,7 @@ import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForTServerHeartBeats;
 import com.yugabyte.yw.common.NodeManager;
 import com.yugabyte.yw.common.PlacementInfoUtil;
 import com.yugabyte.yw.common.PlacementInfoUtil.SelectMastersResult;
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 import com.yugabyte.yw.common.password.RedactingService;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.Cluster;
@@ -155,10 +155,10 @@ public abstract class UniverseDefinitionTaskBase extends UniverseTaskBase {
       if (cluster != null) {
         universeDetails.rootCA = null;
         universeDetails.clientRootCA = null;
-        if (EncryptionAtTransitUtil.isRootCARequired(taskParams)) {
+        if (EncryptionInTransitUtil.isRootCARequired(taskParams)) {
           universeDetails.rootCA = taskParams.rootCA;
         }
-        if (EncryptionAtTransitUtil.isClientRootCARequired(taskParams)) {
+        if (EncryptionInTransitUtil.isClientRootCARequired(taskParams)) {
           universeDetails.clientRootCA = taskParams.clientRootCA;
         }
         universeDetails.upsertPrimaryCluster(cluster.userIntent, cluster.placementInfo);
@@ -1080,9 +1080,9 @@ public abstract class UniverseDefinitionTaskBase extends UniverseTaskBase {
     UserIntent userIntent = cluster.userIntent;
     Boolean rootAndClientRootCASame = taskParams().rootAndClientRootCASame;
     Boolean rootCARequired =
-    EncryptionAtTransitUtil.isRootCARequired(userIntent, rootAndClientRootCASame);
+        EncryptionInTransitUtil.isRootCARequired(userIntent, rootAndClientRootCASame);
     Boolean clientRootCARequired =
-    EncryptionAtTransitUtil.isClientRootCARequired(userIntent, rootAndClientRootCASame);
+        EncryptionInTransitUtil.isClientRootCARequired(userIntent, rootAndClientRootCASame);
 
     for (NodeDetails currentNode : nodesToProvision) {
       String preflightStatus =

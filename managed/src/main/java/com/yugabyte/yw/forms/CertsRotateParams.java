@@ -12,7 +12,7 @@ import com.yugabyte.yw.models.CertificateInfo;
 import com.yugabyte.yw.models.Universe;
 import java.util.UUID;
 import play.mvc.Http.Status;
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonDeserialize(converter = CertsRotateParams.Converter.class)
@@ -68,12 +68,12 @@ public class CertsRotateParams extends UpgradeTaskParams {
     }
 
     boolean isRootCARequired =
-        EncryptionAtTransitUtil.isRootCARequired(
+        EncryptionInTransitUtil.isRootCARequired(
             userIntent.enableNodeToNodeEncrypt,
             userIntent.enableClientToNodeEncrypt,
             rootAndClientRootCASame);
     boolean isClientRootCARequired =
-        EncryptionAtTransitUtil.isClientRootCARequired(
+        EncryptionInTransitUtil.isClientRootCARequired(
             userIntent.enableNodeToNodeEncrypt,
             userIntent.enableClientToNodeEncrypt,
             rootAndClientRootCASame);

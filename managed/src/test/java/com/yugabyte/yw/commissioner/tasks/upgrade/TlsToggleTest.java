@@ -17,7 +17,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -252,12 +252,12 @@ public class TlsToggleTest extends UpgradeTaskTest {
               universeDetails.allowInsecure = true;
               universeDetails.rootAndClientRootCASame = rootAndClientRootCASame;
               universeDetails.rootCA = null;
-              if (EncryptionAtTransitUtil.isRootCARequired(
+              if (EncryptionInTransitUtil.isRootCARequired(
                   nodeToNode, clientToNode, rootAndClientRootCASame)) {
                 universeDetails.rootCA = rootCA;
               }
               universeDetails.clientRootCA = null;
-              if (EncryptionAtTransitUtil.isClientRootCARequired(
+              if (EncryptionInTransitUtil.isClientRootCARequired(
                   nodeToNode, clientToNode, rootAndClientRootCASame)) {
                 universeDetails.clientRootCA = clientRootCA;
               }
@@ -505,13 +505,13 @@ public class TlsToggleTest extends UpgradeTaskTest {
     verify(mockNodeManager, times(expectedValues.getSecond())).nodeCommand(any(), any());
 
     Universe universe = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
-    if (EncryptionAtTransitUtil.isRootCARequired(
+    if (EncryptionInTransitUtil.isRootCARequired(
         nodeToNode, clientToNode, rootAndClientRootCASame)) {
       assertEquals(rootCA, universe.getUniverseDetails().rootCA);
     } else {
       assertNull(universe.getUniverseDetails().rootCA);
     }
-    if (EncryptionAtTransitUtil.isClientRootCARequired(
+    if (EncryptionInTransitUtil.isClientRootCARequired(
         nodeToNode, clientToNode, rootAndClientRootCASame)) {
       assertEquals(clientRootCA, universe.getUniverseDetails().clientRootCA);
     } else {
@@ -641,13 +641,13 @@ public class TlsToggleTest extends UpgradeTaskTest {
     verify(mockNodeManager, times(expectedValues.getSecond())).nodeCommand(any(), any());
 
     Universe universe = Universe.getOrBadRequest(defaultUniverse.getUniverseUUID());
-    if (EncryptionAtTransitUtil.isRootCARequired(
+    if (EncryptionInTransitUtil.isRootCARequired(
         nodeToNode, clientToNode, rootAndClientRootCASame)) {
       assertEquals(rootCA, universe.getUniverseDetails().rootCA);
     } else {
       assertNull(universe.getUniverseDetails().rootCA);
     }
-    if (EncryptionAtTransitUtil.isClientRootCARequired(
+    if (EncryptionInTransitUtil.isClientRootCARequired(
         nodeToNode, clientToNode, rootAndClientRootCASame)) {
       assertEquals(clientRootCA, universe.getUniverseDetails().clientRootCA);
     } else {

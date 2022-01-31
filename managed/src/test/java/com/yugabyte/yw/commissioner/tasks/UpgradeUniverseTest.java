@@ -179,7 +179,7 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
     CertificateParams.CustomCertPathParams customCertPathParams =
-    new CertificateParams.CustomCertPathParams();
+        new CertificateParams.CustomCertPathParams();
     customCertPathParams.rootCertPath = "rootCertPath";
     customCertPathParams.nodeCertPath = "nodeCertPath";
     customCertPathParams.nodeKeyPath = "nodeKeyPath";
@@ -1795,11 +1795,11 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
     defaultUniverse.save();
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
-CertificateParams.CustomCertPathParams customCertPathParams =
-new CertificateParams.CustomCertPathParams();
-customCertPathParams.rootCertPath = "rootCertPath1";
-customCertPathParams.nodeCertPath = "nodeCertPath1";
-customCertPathParams.nodeKeyPath = "nodeKeyPath1";
+    CertificateParams.CustomCertPathParams customCertPathParams =
+        new CertificateParams.CustomCertPathParams();
+    customCertPathParams.rootCertPath = "rootCertPath1";
+    customCertPathParams.nodeCertPath = "nodeCertPath1";
+    customCertPathParams.nodeKeyPath = "nodeKeyPath1";
     createTempFile("upgrade_universe_test_ca2.crt", CERT_1_CONTENTS);
 
     try {
@@ -1841,7 +1841,7 @@ customCertPathParams.nodeKeyPath = "nodeKeyPath1";
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
     CertificateParams.CustomCertPathParams customCertPathParams =
-    new CertificateParams.CustomCertPathParams();
+        new CertificateParams.CustomCertPathParams();
     customCertPathParams.rootCertPath = "rootCertPath1";
     customCertPathParams.nodeCertPath = "nodeCertPath1";
     customCertPathParams.nodeKeyPath = "nodeKeyPath1";
@@ -1885,7 +1885,7 @@ customCertPathParams.nodeKeyPath = "nodeKeyPath1";
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
     CertificateParams.CustomCertPathParams customCertPathParams =
-    new CertificateParams.CustomCertPathParams();
+        new CertificateParams.CustomCertPathParams();
     customCertPathParams.rootCertPath = "rootCertPath1";
     customCertPathParams.nodeCertPath = "nodeCertPath1";
     customCertPathParams.nodeKeyPath = "nodeKeyPath1";

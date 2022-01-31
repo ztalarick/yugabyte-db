@@ -73,7 +73,6 @@ public class DestroyUniverseTest extends CommissionerBaseTest {
     try {
       certInfo =
           ModelFactory.createCertificateInfo(
-
               defaultCustomer.getUuid(), caFile, CertConfigType.SelfSigned);
     } catch (Exception e) {
 

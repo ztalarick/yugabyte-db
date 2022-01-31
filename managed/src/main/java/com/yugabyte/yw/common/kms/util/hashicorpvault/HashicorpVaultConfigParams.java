@@ -45,6 +45,16 @@ public class HashicorpVaultConfigParams {
 
   public HashicorpVaultConfigParams() {}
 
+  public HashicorpVaultConfigParams(HashicorpVaultConfigParams p2) {
+    vaultAddr = p2.vaultAddr;
+    vaultToken = p2.vaultToken;
+    engine = p2.engine;
+    mountPath = p2.mountPath;
+    role = p2.role;
+    ttl = p2.ttl;
+    ttl_expiry = p2.ttl_expiry;
+  }
+
   public HashicorpVaultConfigParams(JsonNode node) {
     ObjectMapper mapper = new ObjectMapper();
     Map<String, String> map =

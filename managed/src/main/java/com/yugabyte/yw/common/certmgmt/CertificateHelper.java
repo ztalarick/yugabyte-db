@@ -339,7 +339,7 @@ public class CertificateHelper {
 
     CertificateInfo rootCertConfigInfo = CertificateInfo.get(rootCA);
     CertificateProviderInterface certProvider =
-        EncryptionAtTransitUtil.getCertificateProviderInstance(rootCertConfigInfo);
+        EncryptionInTransitUtil.getCertificateProviderInstance(rootCertConfigInfo);
 
     return certProvider.createCertificate(
         storagePath,
@@ -362,7 +362,7 @@ public class CertificateHelper {
 
     CertificateInfo rootCertConfigInfo = CertificateInfo.get(rootCA);
     CertificateProviderInterface certProvider =
-        EncryptionAtTransitUtil.getCertificateProviderInstance(rootCertConfigInfo);
+        EncryptionInTransitUtil.getCertificateProviderInstance(rootCertConfigInfo);
 
     return certProvider.createCertificate(
         storagePath, username, certStart, certExpiry, certFileName, certKeyName);
@@ -409,7 +409,7 @@ public class CertificateHelper {
       UUID rootCA_UUID = UUID.randomUUID();
       String keyPath = null;
       CertificateInfo.CustomServerCertInfo customServerCertInfo = null;
-      List<X509Certificate> x509CACerts = getX509CertificateCertObject(certContent);
+      List<X509Certificate> x509CACerts = convertStringToX509CertList(certContent);
 
       Pair<Date, Date> dates = extractDatesFromCertBundle(x509CACerts);
       certStart = dates.getLeft();
@@ -426,7 +426,7 @@ public class CertificateHelper {
       } else if (certType == CertConfigType.CustomServerCert) {
         // Verify the upload Server Cert is a verified cert chain.
         List<X509Certificate> x509ServerCertificates =
-            getX509CertificateCertObject(customSrvCertParams.serverCertContent);
+            convertStringToX509CertList(customSrvCertParams.serverCertContent);
         // Verify that the uploaded server cert was signed by the uploaded CA cert
         List<X509Certificate> combinedArrayList = new ArrayList<>(x509ServerCertificates);
         combinedArrayList.addAll(x509CACerts);
@@ -451,7 +451,7 @@ public class CertificateHelper {
         // Not applicable
       }
       String certPath = getCACertPath(storagePath, customerUUID, rootCA_UUID);
-      writeCertBundleToCertPath(getX509CertificateCertObject(certContent), certPath);
+      writeCertBundleToCertPath(convertStringToX509CertList(certContent), certPath);
 
       CertificateInfo cert;
       switch (certType) {
@@ -609,20 +609,12 @@ public class CertificateHelper {
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public static List<X509Certificate> getX509CertificateCertObject(String certContent) {
-    try {
-      InputStream in = null;
-      byte[] certEntryBytes = certContent.getBytes();
-      in = new ByteArrayInputStream(certEntryBytes);
-      CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-      return (List<X509Certificate>) (List<?>) certFactory.generateCertificates(in);
-    } catch (CertificateException e) {
-      LOG.error(e.getMessage());
-      throw new RuntimeException("Unable to get cert Object");
-    }
-  }
-
+  /**
+   * return selected readable properties of certifiate in form of string (k:v)
+   *
+   * @param cert
+   * @return
+   */
   public static String getCertificateProperties(X509Certificate cert) {
 
     String san = "";
@@ -644,6 +636,21 @@ public class CertificateHelper {
 
     ret += String.format("\t serial:%s", cert.getSerialNumber().toString(16));
     return ret;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static List<X509Certificate> convertStringToX509CertList(String certContent) {
+    java.security.Security.addProvider(new BouncyCastleProvider());
+    try {
+      InputStream in = null;
+      byte[] certEntryBytes = certContent.getBytes();
+      in = new ByteArrayInputStream(certEntryBytes);
+      CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+      return (List<X509Certificate>) (List<?>) certFactory.generateCertificates(in);
+    } catch (CertificateException e) {
+      LOG.error(e.getMessage());
+      throw new RuntimeException("Unable to get cert Objects");
+    }
   }
 
   public static X509Certificate convertStringToX509Cert(String certificate) throws Exception {

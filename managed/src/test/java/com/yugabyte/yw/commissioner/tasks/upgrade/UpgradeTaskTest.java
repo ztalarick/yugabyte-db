@@ -113,7 +113,7 @@ public abstract class UpgradeTaskTest extends CommissionerBaseTest {
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
     CertificateParams.CustomCertPathParams customCertPathParams =
-    new CertificateParams.CustomCertPathParams();
+        new CertificateParams.CustomCertPathParams();
     customCertPathParams.rootCertPath = "rootCertPath";
     customCertPathParams.nodeCertPath = "nodeCertPath";
     customCertPathParams.nodeKeyPath = "nodeKeyPath";

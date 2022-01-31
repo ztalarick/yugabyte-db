@@ -17,7 +17,6 @@ import java.util.UUID;
 
 import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo;
 import com.yugabyte.yw.common.certmgmt.CertificateDetails;
-import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -32,9 +31,29 @@ public abstract class CertificateProviderInterface {
     caCertUUID = pCACertUUID;
   }
 
+  /**
+   * Generate/extract root CA certificate as per provider type
+   *
+   * @param certLabel
+   * @param certExpiryInYears
+   * @param keyPair
+   * @return X509 CA certificate
+   * @throws Exception
+   */
   public abstract X509Certificate generateRootCertificate(
       String certLabel, int certExpiryInYears, KeyPair keyPair) throws Exception;
 
+  /**
+   * Generate/issue end user certificate for client/node
+   *
+   * @param storagePath
+   * @param username
+   * @param certStart
+   * @param certExpiry
+   * @param certFileName
+   * @param certKeyName
+   * @return Certificate Details in Strings.
+   */
   public abstract CertificateDetails createCertificate(
       String storagePath,
       String username,
@@ -43,5 +62,13 @@ public abstract class CertificateProviderInterface {
       String certFileName,
       String certKeyName);
 
+  /**
+   * Dump the CA certificate in a file as per storagePath specified. This file is later used to read
+   * certificate information.
+   *
+   * @param storagePath
+   * @param customerUUID
+   * @return Paths where the CA information is stored.
+   */
   public abstract Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID);
 }

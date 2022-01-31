@@ -64,7 +64,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.mvc.Http;
 import play.mvc.Http.Status;
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 
 public class UniverseCRUDHandler {
 
@@ -1218,12 +1218,12 @@ public class UniverseCRUDHandler {
 
     if (tlsToggle) {
       boolean isRootCA =
-          EncryptionAtTransitUtil.isRootCARequired(
+          EncryptionInTransitUtil.isRootCARequired(
               taskParams.enableNodeToNodeEncrypt,
               taskParams.enableClientToNodeEncrypt,
               taskParams.rootAndClientRootCASame);
       boolean isClientRootCA =
-          EncryptionAtTransitUtil.isClientRootCARequired(
+          EncryptionInTransitUtil.isClientRootCARequired(
               taskParams.enableNodeToNodeEncrypt,
               taskParams.enableClientToNodeEncrypt,
               taskParams.rootAndClientRootCASame);
@@ -1248,12 +1248,12 @@ public class UniverseCRUDHandler {
 
     if (certsRotate) {
       boolean isRootCA =
-          EncryptionAtTransitUtil.isRootCARequired(
+          EncryptionInTransitUtil.isRootCARequired(
               userIntent.enableNodeToNodeEncrypt,
               userIntent.enableClientToNodeEncrypt,
               taskParams.rootAndClientRootCASame);
       boolean isClientRootCA =
-          EncryptionAtTransitUtil.isClientRootCARequired(
+          EncryptionInTransitUtil.isClientRootCARequired(
               userIntent.enableNodeToNodeEncrypt,
               userIntent.enableClientToNodeEncrypt,
               taskParams.rootAndClientRootCASame);

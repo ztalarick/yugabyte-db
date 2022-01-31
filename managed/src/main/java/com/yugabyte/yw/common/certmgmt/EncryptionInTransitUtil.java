@@ -17,6 +17,7 @@ import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.io.File;
 
 import com.google.api.client.util.Strings;
 import com.yugabyte.yw.commissioner.tasks.subtasks.AnsibleConfigureServers;
@@ -32,12 +33,12 @@ import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.UserIntent;
 import com.yugabyte.yw.models.CertificateInfo;
 
 import org.apache.commons.lang3.tuple.Pair;
-
+import org.flywaydb.play.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EncryptionAtTransitUtil {
-  public static final Logger LOG = LoggerFactory.getLogger(EncryptionAtTransitUtil.class);
+public class EncryptionInTransitUtil {
+  public static final Logger LOG = LoggerFactory.getLogger(EncryptionInTransitUtil.class);
 
   public static CertificateProviderInterface getCertificateProviderInstance(CertificateInfo info) {
     CertificateProviderInterface certProvider = null;
@@ -75,8 +76,9 @@ public class EncryptionAtTransitUtil {
         || Strings.isNullOrEmpty(hcVaultParams.engine)
         || Strings.isNullOrEmpty(hcVaultParams.mountPath)
         || Strings.isNullOrEmpty(hcVaultParams.role)) {
+      String message = String.format("Hashicorp Vault parameters provided are not valid - %s", hcVaultParams.toString());
       throw new PlatformServiceException(
-          BAD_REQUEST, "Hashicorp Vault parameters provided are not valid");
+          BAD_REQUEST, message);
     }
 
     UUID rootCA_UUID = UUID.randomUUID();
@@ -102,8 +104,10 @@ public class EncryptionAtTransitUtil {
       VaultPKI pkiObj = VaultPKI.validateVaultConfigParams(params);
 
       Pair<String, String> certPath = pkiObj.dumpCACertBundle(storagePath, customerUUID);
+
       List<X509Certificate> x509CACerts =
-          CertificateHelper.getX509CertificateCertObject(certPath.getLeft());
+          CertificateHelper.convertStringToX509CertList(
+              FileUtils.readFileToString(new File(certPath.getLeft())));
       Pair<Date, Date> dates = CertificateHelper.extractDatesFromCertBundle(x509CACerts);
       LOG.info("Updating table with ca certificate: {}", certPath.getKey());
       rootCertConfigInfo.update(dates.getLeft(), dates.getRight(), certPath.getKey(), params);
@@ -157,12 +161,12 @@ public class EncryptionAtTransitUtil {
   }
 
   public static boolean isClientRootCARequired(
-    UserIntent userIntent, boolean rootAndClientRootCASame) {
-  return isClientRootCARequired(
-      userIntent.enableNodeToNodeEncrypt,
-      userIntent.enableClientToNodeEncrypt,
-      rootAndClientRootCASame);
-}
+      UserIntent userIntent, boolean rootAndClientRootCASame) {
+    return isClientRootCARequired(
+        userIntent.enableNodeToNodeEncrypt,
+        userIntent.enableClientToNodeEncrypt,
+        rootAndClientRootCASame);
+  }
 
   public static boolean isClientRootCARequired(UniverseDefinitionTaskParams taskParams) {
     UserIntent userIntent = taskParams.getPrimaryCluster().userIntent;

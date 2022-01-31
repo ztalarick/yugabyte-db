@@ -11,11 +11,7 @@
 
 package com.yugabyte.yw.common.certmgmt.providers;
 
-import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParams;
-import com.yugabyte.yw.common.kms.util.hashicorpvault.VaultAccessor;
-
 import static play.mvc.Http.Status.BAD_REQUEST;
-import java.util.List;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -23,22 +19,27 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
-import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
+import com.google.api.client.util.Strings;
 import com.yugabyte.yw.common.PlatformServiceException;
+import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo.CertConfigType;
 import com.yugabyte.yw.common.certmgmt.CertificateDetails;
 import com.yugabyte.yw.common.certmgmt.CertificateHelper;
-import com.yugabyte.yw.common.certmgmt.EncryptionAtTransitUtil;
+import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
+import com.yugabyte.yw.common.kms.util.hashicorpvault.HashicorpVaultConfigParams;
+import com.yugabyte.yw.common.kms.util.hashicorpvault.VaultAccessor;
 import com.yugabyte.yw.models.CertificateInfo;
 import com.yugabyte.yw.models.helpers.CommonUtils;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.validator.routines.InetAddressValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import io.ebean.annotation.EnumValue;
 
@@ -48,15 +49,24 @@ import io.ebean.annotation.EnumValue;
 public class VaultPKI extends CertificateProviderInterface {
   public static final Logger LOG = LoggerFactory.getLogger(VaultPKI.class);
 
+  public static String ISSUE_FIELD_CERT = "certificate";
+  public static String ISSUE_FIELD_PRV_KEY = "private_key";
+  public static String ISSUE_FIELD_CA = "issuing_ca";
+  public static String ISSUE_FIELD_CA_CHAIN = "ca_chain";
+  public static String ISSUE_FIELD_SERIAL = "serial_number";
+
   public enum VaultOperationsForCert {
     @EnumValue("issue")
     ISSUE,
 
-    @EnumValue("certObj")
+    @EnumValue("cert")
     CERT,
 
     @EnumValue("cacert")
     CA_CERT,
+
+    @EnumValue("ca_chain")
+    CA_CHAIN,
 
     @EnumValue("crl")
     CRL;
@@ -67,6 +77,8 @@ public class VaultPKI extends CertificateProviderInterface {
           return "issue";
         case CA_CERT:
           return "ca";
+        case CA_CHAIN:
+          return "ca_chain";
         case CERT:
           return "cert";
         case CRL:
@@ -151,26 +163,36 @@ public class VaultPKI extends CertificateProviderInterface {
     input.put("common_name", username);
     if (ipAddressValidator.isValid(username)) input.put("ip_sans", username);
     // input.put("private_key_format", "pkcs8");
-    // TODO set cert duration
 
+    if (certStart != null && certExpiry != null) {
+      long diffInMillies = Math.abs(certExpiry.getTime() - certStart.getTime());
+      long ttlInHrs = TimeUnit.HOURS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+
+      if (ttlInHrs != 0) {
+        LOG.info("Setting up ttl as : {}", ttlInHrs);
+        String ttlString = String.format("%sh", Long.toString(ttlInHrs));
+        input.put("ttl", ttlString);
+      }
+    }
     try {
       String path = params.mountPath + VaultOperationsForCert.ISSUE.toString() + "/" + params.role;
       Map<String, String> result = vAccessor.writeAt(path, input);
 
-      // String certSerial = result.get("serial_number");
-
       // fetch certificate
-      String newCertPemStr = result.get("certificate");
+      String newCertPemStr = result.get(ISSUE_FIELD_CERT);
       curCertificateStr = newCertPemStr;
       X509Certificate certObj = CertificateHelper.convertStringToX509Cert(newCertPemStr);
       // fetch key
-      String newCertKeyStr = result.get("private_key");
+      String newCertKeyStr = result.get(ISSUE_FIELD_PRV_KEY);
       curKeyStr = newCertKeyStr;
       PrivateKey pKeyObj = CertificateHelper.convertStringToPrivateKey(newCertKeyStr);
       // fetch issue ca cert
-      String issuingCAStr = result.get("issuing_ca");
+      String issuingCAStr = result.get(ISSUE_FIELD_CA);
       curCaCertificateStr = issuingCAStr;
       X509Certificate issueCAcert = CertificateHelper.convertStringToX509Cert(issuingCAStr);
+
+      // String certSerial = result.get("ISSUE_FIELD_SERIAL");
+      // String caChain = result.get("ISSUE_FIELD_CA_CHAIN");
 
       LOG.debug("Issue CA is:: {}", CertificateHelper.getCertificateProperties(issueCAcert));
       LOG.debug("Certificate is:: {}", CertificateHelper.getCertificateProperties(certObj));
@@ -187,7 +209,7 @@ public class VaultPKI extends CertificateProviderInterface {
         //  after config support from ui, this can be removed. see: createHashicorpCAConfig
         storagePath = "/opt/yugaware/";
         UUID custUUID = CertificateInfo.get(caCertUUID).customerUUID;
-        EncryptionAtTransitUtil.editEATHashicorpConfig(caCertUUID, custUUID, storagePath, params);
+        EncryptionInTransitUtil.editEATHashicorpConfig(caCertUUID, custUUID, storagePath, params);
       }
 
       return details;
@@ -206,6 +228,7 @@ public class VaultPKI extends CertificateProviderInterface {
 
       List<X509Certificate> list = new ArrayList<X509Certificate>();
       list.add(getCACertificateFromVault());
+      list.addAll(getCAChainFromVault());
 
       CertificateHelper.writeCertBundleToCertPath(list, certPath);
       CertificateInfo rootCertConfigInfo = CertificateInfo.get(caCertUUID);
@@ -226,20 +249,62 @@ public class VaultPKI extends CertificateProviderInterface {
     }
   }
 
+  /**
+   * Returns <PKI_MOUNT_PATH>/ca/pem, a single certificate at CA
+   *
+   * @return
+   * @throws Exception
+   */
   public X509Certificate getCACertificateFromVault() throws Exception {
     LOG.info("getting CA certificate for {}", caCertUUID.toString());
 
+    // vault read pki/cert/ca or pki/ca/pem
     String path =
         params.mountPath
             + VaultOperationsForCert.CERT.toString()
             + "/"
             + VaultOperationsForCert.CA_CERT.toString();
-
-    // TODO: return ca_chain
-    String caCert = vAccessor.readAt(path, "certificate");
+    String caCert = vAccessor.readAt(path, ISSUE_FIELD_CERT);
     curCaCertificateStr = caCert;
 
     return CertificateHelper.convertStringToX509Cert(caCert);
+  }
+
+  /**
+   * Returns <PKI_MOUNT_PATH>/ca_chain, a single certificate at CA
+   *
+   * @return
+   * @throws Exception
+   */
+  public List<X509Certificate> getCAChainFromVault() throws Exception {
+    LOG.info("getting CA certificate for {}", caCertUUID.toString());
+
+    // vault read pki/ca_chain or pki/cert/ca_chain
+    String caCertChain = getCAChainFromVaultInString();
+
+    if (Strings.isNullOrEmpty(caCertChain)) {
+      LOG.debug("No certificate chain found for the CA");
+    } else {
+      curCaCertificateStr = caCertChain;
+      return CertificateHelper.convertStringToX509CertList(caCertChain);
+    }
+    return new ArrayList<X509Certificate>();
+  }
+
+  public String getCAChainFromVaultInString() throws Exception {
+    String path =
+        params.mountPath
+            + VaultOperationsForCert.CERT.toString()
+            + "/"
+            + VaultOperationsForCert.CA_CHAIN.toString();
+
+    // vault read pki/ca_chain or pki/cert/ca_chain
+    String caCertChain = vAccessor.readAt(path, ISSUE_FIELD_CERT);
+    caCertChain = caCertChain.replaceAll("^\"+|\"+$", "");
+    caCertChain = caCertChain.replace("\\n", System.lineSeparator());
+    LOG.debug("CAchain is: {}", caCertChain);
+
+    return caCertChain;
   }
 
   public String getCACertificate() throws Exception {
