@@ -111,8 +111,7 @@ public class EncryptionAtRestUtilTest extends FakeDBApplication {
       JsonNode unencryptedObj =
           EncryptionAtRestUtil.unmaskConfigData(uid, encryptedObj, KeyProvider.HASHICORP);
       assertNotNull(unencryptedObj);
-      // outData = om.writeValueAsString(unencryptedObj);
-
+      outData = om.writeValueAsString(unencryptedObj);
       assertEquals(jsonString, outData);
 
       assertEquals(

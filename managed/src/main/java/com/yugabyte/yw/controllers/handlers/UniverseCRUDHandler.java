@@ -185,7 +185,7 @@ public class UniverseCRUDHandler {
       if (primaryCluster.userIntent.enableNodeToNodeEncrypt) {
         if (taskParams.rootCA != null) certInfo = CertificateInfo.get(taskParams.rootCA);
 
-        if (certInfo != null && certInfo.certType == CertConfigType.HashicorpVaultPKI) {
+        if (certInfo != null && certInfo.certType == CertConfigType.HashicorpVault) {
           VaultPKI certProvider = VaultPKI.getVaultPKIInstance(certInfo);
           // we don't need to create root certificate for this type just fetch and store
           certProvider.dumpCACertBundle(appConfig.getString("yb.storage.path"), customer.uuid);
@@ -197,7 +197,7 @@ public class UniverseCRUDHandler {
 
         if (taskParams.clientRootCA != null) certInfo = CertificateInfo.get(taskParams.rootCA);
 
-        if (certInfo != null && certInfo.certType == CertConfigType.HashicorpVaultPKI) {
+        if (certInfo != null && certInfo.certType == CertConfigType.HashicorpVault) {
           VaultPKI certProvider = VaultPKI.getVaultPKIInstance(certInfo);
           // getCertificateProviderInstance(certInfo);
           // we don't need to create root certificate for this type just fetch and store
@@ -297,7 +297,7 @@ public class UniverseCRUDHandler {
       if (taskParams.rootAndClientRootCASame) {
         CertificateInfo rootCert = CertificateInfo.get(taskParams.rootCA);
         if (rootCert.certType == CertConfigType.SelfSigned
-            || rootCert.certType == CertConfigType.HashicorpVaultPKI) {
+            || rootCert.certType == CertConfigType.HashicorpVault) {
           CertificateHelper.createClientCertificate(
               taskParams.rootCA,
               String.format(

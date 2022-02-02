@@ -4,6 +4,7 @@ package com.yugabyte.yw.models;
 
 import static io.swagger.annotations.ApiModelProperty.AccessMode.READ_ONLY;
 import static io.swagger.annotations.ApiModelProperty.AccessMode.READ_WRITE;
+import static org.mockito.ArgumentMatchers.nullable;
 import static play.mvc.Http.Status.BAD_REQUEST;
 import static play.mvc.Http.Status.INTERNAL_SERVER_ERROR;
 
@@ -138,18 +139,18 @@ public class CertificateInfo extends Model {
   @DbJson
   public JsonNode customCertInfo;
 
-  public CertificateParams.CustomCertPathParams getCustomCertPathParams() {
+  public CertificateParams.CustomCertInfo getCustomCertPathParams() {
     if (this.certType != CertConfigType.CustomCertHostPath) {
       return null;
     }
     if (this.customCertInfo != null) {
-      return Json.fromJson(this.customCertInfo, CertificateParams.CustomCertPathParams.class);
+      return Json.fromJson(this.customCertInfo, CertificateParams.CustomCertInfo.class);
     }
     return null;
   }
 
   public void setCustomCertPathParams(
-      CertificateParams.CustomCertPathParams certInfo, UUID certUUID, UUID cudtomerUUID) {
+      CertificateParams.CustomCertInfo certInfo, UUID certUUID, UUID cudtomerUUID) {
     this.checkEditable(certUUID, customerUUID);
     this.customCertInfo = Json.toJson(certInfo);
     this.save();
@@ -166,7 +167,7 @@ public class CertificateInfo extends Model {
   }
 
   public HashicorpVaultConfigParams getCustomHCPKICertInfo() {
-    if (this.certType != CertConfigType.HashicorpVaultPKI) {
+    if (this.certType != CertConfigType.HashicorpVault) {
       return null;
     }
     if (this.customCertInfo != null) {
@@ -208,7 +209,7 @@ public class CertificateInfo extends Model {
       Date startDate,
       Date expiryDate,
       String certificate,
-      CertificateParams.CustomCertPathParams customCertPathParams)
+      CertificateParams.CustomCertInfo customCertInfo)
       throws IOException, NoSuchAlgorithmException {
     CertificateInfo cert = new CertificateInfo();
     cert.uuid = uuid;
@@ -218,7 +219,7 @@ public class CertificateInfo extends Model {
     cert.expiryDate = expiryDate;
     cert.certificate = certificate;
     cert.certType = CertConfigType.CustomCertHostPath;
-    cert.customCertInfo = Json.toJson(customCertPathParams);
+    cert.customCertInfo = Json.toJson(customCertInfo);
     cert.checksum = Util.getFileChecksum(certificate);
     cert.save();
     return cert;
@@ -263,7 +264,7 @@ public class CertificateInfo extends Model {
     cert.startDate = startDate;
     cert.expiryDate = expiryDate;
     cert.certificate = certificate;
-    cert.certType = CertConfigType.HashicorpVaultPKI;
+    cert.certType = CertConfigType.HashicorpVault;
     JsonNode node = params.toJsonNode();
     if (node != null) cert.customCertInfo = node;
     cert.checksum = Util.getFileChecksum(certificate);
@@ -295,8 +296,9 @@ public class CertificateInfo extends Model {
 
     LOG.info("Updating uuid: {} with Path:{}", uuid.toString(), certPath);
 
-    startDate = sDate;
-    expiryDate = eDate;
+    if (sDate != null) startDate = sDate;
+    if (eDate != null) expiryDate = eDate;
+
     certificate = certPath;
 
     JsonNode node = params.toJsonNode();
@@ -495,12 +497,6 @@ public class CertificateInfo extends Model {
     if (certInfo.customCertInfo != null) {
       throw new PlatformServiceException(
           BAD_REQUEST, "Cannot edit pre-customized cert. Create a new one.");
-    }
-    if (certInfo.certType == CertConfigType.HashicorpVaultPKI) {
-      throw new PlatformServiceException(
-          BAD_REQUEST,
-          "Cannot edit cert config,"
-              + "Please create a new one and assign it to Cluster in settings");
     }
   }
 }

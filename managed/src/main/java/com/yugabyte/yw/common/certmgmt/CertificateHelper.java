@@ -260,26 +260,6 @@ public class CertificateHelper {
     }
   }
 
-  public static UUID CreateConfigInfoDBEntry(
-      UUID configUUID,
-      UUID customerUUID,
-      String label,
-      X509Certificate x509,
-      String certPath,
-      String keyPath,
-      HashicorpVaultConfigParams hcVaultParams)
-      throws Exception {
-    Date certStart = x509.getNotBefore();
-    Date certExpiry = x509.getNotAfter();
-
-    CertificateInfo cert =
-        CertificateInfo.create(
-            configUUID, customerUUID, label, certStart, certExpiry, certPath, hcVaultParams);
-    LOG.info("Created Root CA for universe {}.", label);
-
-    return cert.uuid;
-  }
-
   public static UUID createClientRootCA(String nodePrefix, UUID customerUUID, String storagePath) {
     LOG.info("Creating a client root certificate for {}", nodePrefix);
     return createRootCA(nodePrefix + CLIENT_NODE_SUFFIX, customerUUID, storagePath);
@@ -399,8 +379,8 @@ public class CertificateHelper {
       Date certStart,
       Date certExpiry,
       CertConfigType certType,
-      CertificateParams.CustomCertPathParams customCertPathParams,
-      CertificateParams.CustomServerCertParams customSrvCertParams) {
+      CertificateParams.CustomCertInfo customCertInfo,
+      CertificateParams.CustomServerCertData customServerCertData) {
     LOG.debug("uploadRootCA: Label: {}, customerUUID: {}", label, customerUUID.toString());
     try {
       if (certContent == null) {
@@ -426,14 +406,14 @@ public class CertificateHelper {
       } else if (certType == CertConfigType.CustomServerCert) {
         // Verify the upload Server Cert is a verified cert chain.
         List<X509Certificate> x509ServerCertificates =
-            convertStringToX509CertList(customSrvCertParams.serverCertContent);
+            convertStringToX509CertList(customServerCertData.serverCertContent);
         // Verify that the uploaded server cert was signed by the uploaded CA cert
         List<X509Certificate> combinedArrayList = new ArrayList<>(x509ServerCertificates);
         combinedArrayList.addAll(x509CACerts);
         verifyCertValidity(combinedArrayList);
         // The first entry in the file should be the cert we want to use for generating server
         // certs.
-        verifyCertSignatureAndOrder(x509ServerCertificates, customSrvCertParams.serverKeyContent);
+        verifyCertSignatureAndOrder(x509ServerCertificates, customServerCertData.serverKeyContent);
         String serverCertPath =
             String.format(
                 "%s/certs/%s/%s/%s",
@@ -444,10 +424,10 @@ public class CertificateHelper {
                 storagePath, customerUUID.toString(), rootCA_UUID.toString(), SERVER_KEY);
         writeCertBundleToCertPath(x509ServerCertificates, serverCertPath);
         writeKeyFileContentToKeyPath(
-            getPrivateKey(customSrvCertParams.serverKeyContent), serverKeyPath);
+            getPrivateKey(customServerCertData.serverKeyContent), serverKeyPath);
         customServerCertInfo =
             new CertificateInfo.CustomServerCertInfo(serverCertPath, serverKeyPath);
-      } else if (certType == CertConfigType.HashicorpVaultPKI) {
+      } else if (certType == CertConfigType.HashicorpVault) {
         // Not applicable
       }
       String certPath = getCACertPath(storagePath, customerUUID, rootCA_UUID);
@@ -480,7 +460,7 @@ public class CertificateHelper {
                     certStart,
                     certExpiry,
                     certPath,
-                    customCertPathParams);
+                    customCertInfo);
             break;
           }
         case CustomServerCert:
@@ -496,7 +476,7 @@ public class CertificateHelper {
                     customServerCertInfo);
             break;
           }
-        case HashicorpVaultPKI:
+        case HashicorpVault:
           {
             // not applicable
           }
@@ -513,7 +493,7 @@ public class CertificateHelper {
           certType,
           certPath,
           String.valueOf(keyPath),
-          Json.toJson(customCertPathParams));
+          Json.toJson(customCertInfo));
       return cert.uuid;
     } catch (IOException | NoSuchAlgorithmException e) {
       LOG.error(

@@ -32,7 +32,7 @@ public class CertificateCustomInfo {
     @EnumValue("CustomServerCert")
     CustomServerCert,
 
-    @EnumValue("HashicorpVaultPKI")
-    HashicorpVaultPKI
+    @EnumValue("HashicorpVault")
+    HashicorpVault
   }
 }

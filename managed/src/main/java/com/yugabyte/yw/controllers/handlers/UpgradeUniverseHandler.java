@@ -154,7 +154,7 @@ public class UpgradeUniverseHandler {
     if (userIntent.enableClientToNodeEncrypt && requestParams.rootAndClientRootCASame) {
       CertificateInfo rootCert = CertificateInfo.get(requestParams.rootCA);
       if (rootCert.certType == CertConfigType.SelfSigned
-          || rootCert.certType == CertConfigType.HashicorpVaultPKI) {
+          || rootCert.certType == CertConfigType.HashicorpVault) {
         CertificateHelper.createClientCertificate(
             requestParams.rootCA,
             String.format(
@@ -258,7 +258,7 @@ public class UpgradeUniverseHandler {
       if (requestParams.rootAndClientRootCASame) {
         CertificateInfo cert = CertificateInfo.get(requestParams.rootCA);
         if (cert.certType == CertConfigType.SelfSigned
-            || cert.certType == CertConfigType.HashicorpVaultPKI) {
+            || cert.certType == CertConfigType.HashicorpVault) {
           CertificateHelper.createClientCertificate(
               requestParams.rootCA,
               String.format(

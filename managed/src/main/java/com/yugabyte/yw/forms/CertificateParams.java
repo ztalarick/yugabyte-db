@@ -27,7 +27,7 @@ public class CertificateParams {
    * This is used for params for custom cert path information (on prem) provided by user while
    * creating custom cert entry.
    */
-  public static class CustomCertPathParams {
+  public static class CustomCertInfo {
     public String nodeCertPath;
     public String nodeKeyPath;
     public String rootCertPath;
@@ -35,15 +35,15 @@ public class CertificateParams {
     public String clientKeyPath;
   }
 
-  public CustomCertPathParams customCertPathParams;
+  public CustomCertInfo customCertInfo;
 
   /** This is used for accepting custom server certificates for Node-to-client communication. */
-  public static class CustomServerCertParams {
+  public static class CustomServerCertData {
     public String serverCertContent;
     public String serverKeyContent;
   }
 
-  public CustomServerCertParams customSrvCertParams;
+  public CustomServerCertData customServerCertData;
 
   public HashicorpVaultConfigParams hcVaultCertParams;
 }

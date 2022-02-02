@@ -207,7 +207,7 @@ public class CertificateControllerTest extends FakeDBApplication {
     certJson.put("rootCertPath", "/tmp/rootCertPath");
     certJson.put("nodeCertPath", "/tmp/nodeCertPath");
     certJson.put("nodeKeyPath", "/tmp/nodeKeyPath");
-    bodyJson.put("customCertInfo", certJson);
+    bodyJson.set("customCertInfo", certJson);
 
     Result result = uploadCertificate(customer.uuid, bodyJson);
     JsonNode json = Json.parse(contentAsString(result));
@@ -235,7 +235,7 @@ public class CertificateControllerTest extends FakeDBApplication {
     ObjectNode certJson = Json.newObject();
     certJson.put("serverCertContent", server_cert_content);
     certJson.put("serverKeyContent", server_key_content);
-    bodyJson.put("customSrvCertParams", certJson);
+    bodyJson.put("customServerCertData", certJson);
 
     Result result = uploadCertificate(customer.uuid, bodyJson);
     JsonNode json = Json.parse(contentAsString(result));
@@ -256,7 +256,7 @@ public class CertificateControllerTest extends FakeDBApplication {
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
     createTempFile("certificate_controller_test_ca.crt", "test-cert");
-    CertificateParams.CustomCertPathParams emptyCustomCertPathParams = null;
+    CertificateParams.CustomCertInfo emptyCustomCertPathParams = null;
     CertificateInfo.create(
         certUUID,
         customer.uuid,
@@ -265,9 +265,9 @@ public class CertificateControllerTest extends FakeDBApplication {
         date,
         TestHelper.TMP_PATH + "/certificate_controller_test_ca.crt",
         emptyCustomCertPathParams);
-    CertificateParams.CustomCertPathParams customCertPathParams =
+    CertificateParams.CustomCertInfo customCertInfo =
         CertificateInfo.get(certUUID).getCustomCertPathParams();
-    assertNull(customCertPathParams);
+    assertNull(customCertInfo);
     ObjectNode bodyJson = Json.newObject();
     bodyJson.put("label", "test");
     bodyJson.put("certContent", "cert_test");
@@ -278,23 +278,22 @@ public class CertificateControllerTest extends FakeDBApplication {
     certJson.put("rootCertPath", "/tmp/rootCertPath");
     certJson.put("nodeCertPath", "/tmp/nodeCertPath");
     certJson.put("nodeKeyPath", "/tmp/nodeKeyPath");
-    bodyJson.put("customCertInfo", certJson);
+    bodyJson.set("customCertInfo", certJson);
 
     Result result = updateCertificate(customer.uuid, certUUID, bodyJson);
     assertEquals(OK, result.status());
-    customCertPathParams = CertificateInfo.get(certUUID).getCustomCertPathParams();
-    assertNotNull(customCertPathParams);
+    customCertInfo = CertificateInfo.get(certUUID).getCustomCertPathParams();
+    assertNotNull(customCertInfo);
   }
 
   @Test
   public void testUpdateCustomCertificateFailure() throws IOException, NoSuchAlgorithmException {
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
-    CertificateParams.CustomCertPathParams customCertPathParams =
-        new CertificateParams.CustomCertPathParams();
-    customCertPathParams.rootCertPath = "rootCertPath";
-    customCertPathParams.nodeCertPath = "nodeCertPath";
-    customCertPathParams.nodeKeyPath = "nodeKeyPath";
+    CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+    customCertInfo.rootCertPath = "rootCertPath";
+    customCertInfo.nodeCertPath = "nodeCertPath";
+    customCertInfo.nodeKeyPath = "nodeKeyPath";
     createTempFile("certificate_controller_test_ca.crt", "test-cert");
     CertificateInfo.create(
         certUUID,
@@ -303,9 +302,9 @@ public class CertificateControllerTest extends FakeDBApplication {
         date,
         date,
         TestHelper.TMP_PATH + "/certificate_controller_test_ca.crt",
-        customCertPathParams);
-    customCertPathParams = CertificateInfo.get(certUUID).getCustomCertPathParams();
-    assertNotNull(customCertPathParams);
+        customCertInfo);
+    customCertInfo = CertificateInfo.get(certUUID).getCustomCertPathParams();
+    assertNotNull(customCertInfo);
 
     ObjectNode bodyJson = Json.newObject();
     bodyJson.put("label", "test");

@@ -152,15 +152,22 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
   }
 
   @Override
-  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
-    String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUID);
-    String keyPath = CertificateHelper.getCAKeyPath(storagePath, customerUUID, caCertUUID);
+  public Pair<String, String> dumpCACertBundle(
+      String storagePath, UUID customerUUID, UUID caCertUUIDParam) {
+    // Do not make user of CertificateInfo here, it is passed as param
+    String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUIDParam);
+    String keyPath = CertificateHelper.getCAKeyPath(storagePath, customerUUID, caCertUUIDParam);
     LOG.info("Dumping CA certs @{}", certPath);
 
     CertificateHelper.writeCertBundleToCertPath(
         Collections.singletonList(curCaCertificate), certPath);
     CertificateHelper.writeKeyFileContentToKeyPath(curKeyPair.getPrivate(), keyPath);
     return new ImmutablePair<>(certPath, keyPath);
+  }
+
+  @Override
+  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
+    return dumpCACertBundle(storagePath, customerUUID, caCertUUID);
   }
 
   @Override

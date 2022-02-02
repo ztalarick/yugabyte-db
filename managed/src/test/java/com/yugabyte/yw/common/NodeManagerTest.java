@@ -318,22 +318,21 @@ public class NodeManagerTest extends FakeDBApplication {
           }
         case CustomCertHostPath:
           {
-            CertificateParams.CustomCertPathParams customCertPathParams =
-                rootCert.getCustomCertPathParams();
-            rootCertPath = customCertPathParams.rootCertPath;
-            serverCertPath = customCertPathParams.nodeCertPath;
-            serverKeyPath = customCertPathParams.nodeKeyPath;
+            CertificateParams.CustomCertInfo customCertInfo = rootCert.getCustomCertPathParams();
+            rootCertPath = customCertInfo.rootCertPath;
+            serverCertPath = customCertInfo.nodeCertPath;
+            serverKeyPath = customCertInfo.nodeKeyPath;
             certsLocation = NodeManager.CERT_LOCATION_NODE;
             if (configureParams.rootAndClientRootCASame
                 && configureParams.enableClientToNodeEncrypt
-                && customCertPathParams.clientCertPath != null
-                && !customCertPathParams.clientCertPath.isEmpty()
-                && customCertPathParams.clientKeyPath != null
-                && !customCertPathParams.clientKeyPath.isEmpty()) {
+                && customCertInfo.clientCertPath != null
+                && !customCertInfo.clientCertPath.isEmpty()
+                && customCertInfo.clientKeyPath != null
+                && !customCertInfo.clientKeyPath.isEmpty()) {
               expectedCommand.add("--client_cert_path");
-              expectedCommand.add(customCertPathParams.clientCertPath);
+              expectedCommand.add(customCertInfo.clientCertPath);
               expectedCommand.add("--client_key_path");
-              expectedCommand.add(customCertPathParams.clientKeyPath);
+              expectedCommand.add(customCertInfo.clientKeyPath);
             }
             break;
           }
@@ -341,7 +340,7 @@ public class NodeManagerTest extends FakeDBApplication {
           {
             throw new RuntimeException("rootCA cannot be of type CustomServerCert.");
           }
-        case HashicorpVaultPKI:
+        case HashicorpVault:
           {
             rootCertPath = rootCert.certificate;
             serverCertPath = "cert.crt";
@@ -397,11 +396,11 @@ public class NodeManagerTest extends FakeDBApplication {
           }
         case CustomCertHostPath:
           {
-            CertificateParams.CustomCertPathParams customCertPathParams =
+            CertificateParams.CustomCertInfo customCertInfo =
                 clientRootCert.getCustomCertPathParams();
-            rootCertPath = customCertPathParams.rootCertPath;
-            serverCertPath = customCertPathParams.nodeCertPath;
-            serverKeyPath = customCertPathParams.nodeKeyPath;
+            rootCertPath = customCertInfo.rootCertPath;
+            serverCertPath = customCertInfo.nodeCertPath;
+            serverKeyPath = customCertInfo.nodeKeyPath;
             certsLocation = NodeManager.CERT_LOCATION_NODE;
             break;
           }
@@ -414,7 +413,7 @@ public class NodeManagerTest extends FakeDBApplication {
             serverKeyPath = customServerCertInfo.serverKey;
             certsLocation = NodeManager.CERT_LOCATION_PLATFORM;
           }
-        case HashicorpVaultPKI:
+        case HashicorpVault:
           {
             rootCertPath = clientRootCert.certificate;
             serverCertPath = "cert.crt";
@@ -461,11 +460,10 @@ public class NodeManagerTest extends FakeDBApplication {
     Date nextYear = cal.getTime();
     UUID rootCAuuid = UUID.randomUUID();
     CertificateInfo cert;
-    CertificateParams.CustomCertPathParams customCertPathParams =
-        new CertificateParams.CustomCertPathParams();
-    customCertPathParams.rootCertPath = "/path/to/cert.crt";
-    customCertPathParams.nodeCertPath = "/path/to/rootcert.crt";
-    customCertPathParams.nodeKeyPath = "/path/to/nodecert.crt";
+    CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+    customCertInfo.rootCertPath = "/path/to/cert.crt";
+    customCertInfo.nodeCertPath = "/path/to/rootcert.crt";
+    customCertInfo.nodeKeyPath = "/path/to/nodecert.crt";
     if (t.privateKey == null) {
       cert =
           CertificateInfo.create(
@@ -475,7 +473,7 @@ public class NodeManagerTest extends FakeDBApplication {
               today,
               nextYear,
               TestHelper.TMP_PATH + "/node_manager_test_ca.crt",
-              customCertPathParams);
+              customCertInfo);
     } else {
       UUID certUUID =
           CertificateHelper.createRootCA("foobar", t.provider.customerUUID, TestHelper.TMP_PATH);
@@ -950,7 +948,7 @@ public class NodeManagerTest extends FakeDBApplication {
                 } else if (rootCert.certType == CertConfigType.CustomCertHostPath) {
                   rootCertPath = rootCert.getCustomCertPathParams().rootCertPath;
                   certsLocation = NodeManager.CERT_LOCATION_NODE;
-                } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
+                } else if (rootCert.certType == CertConfigType.HashicorpVault) {
                   rootCertPath = rootCert.certificate;
                   certsLocation = NodeManager.CERT_LOCATION_PLATFORM;
                 }
@@ -2796,14 +2794,13 @@ public class NodeManagerTest extends FakeDBApplication {
       certUUID = CertificateHelper.createRootCA("foobar", customerUUID, TestHelper.TMP_PATH);
       return CertificateInfo.get(certUUID);
     } else if (certType == CertConfigType.CustomCertHostPath) {
-      CertificateParams.CustomCertPathParams customCertPathParams =
-          new CertificateParams.CustomCertPathParams();
-      customCertPathParams.rootCertPath = String.format("/path/to/cert%s.crt", suffix);
-      customCertPathParams.nodeCertPath = String.format("/path/to/rootcert%s.crt", suffix);
-      customCertPathParams.nodeKeyPath = String.format("/path/to/nodecert%s.key", suffix);
+      CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+      customCertInfo.rootCertPath = String.format("/path/to/cert%s.crt", suffix);
+      customCertInfo.nodeCertPath = String.format("/path/to/rootcert%s.crt", suffix);
+      customCertInfo.nodeKeyPath = String.format("/path/to/nodecert%s.key", suffix);
       if (createClientPaths) {
-        customCertPathParams.clientCertPath = String.format("/path/to/clientcert%s.crt", suffix);
-        customCertPathParams.clientKeyPath = String.format("/path/to/nodecert%s.crt", suffix);
+        customCertInfo.clientCertPath = String.format("/path/to/clientcert%s.crt", suffix);
+        customCertInfo.clientKeyPath = String.format("/path/to/nodecert%s.crt", suffix);
       }
       return CertificateInfo.create(
           certUUID,
@@ -2812,7 +2809,7 @@ public class NodeManagerTest extends FakeDBApplication {
           today,
           nextYear,
           TestHelper.TMP_PATH + "/node_manager_test_ca.crt",
-          customCertPathParams);
+          customCertInfo);
     } else if (certType == CertConfigType.CustomServerCert) {
       return CertificateInfo.create(
           certUUID,
@@ -2823,7 +2820,7 @@ public class NodeManagerTest extends FakeDBApplication {
           "privateKey",
           TestHelper.TMP_PATH + "/node_manager_test_ca.crt",
           CertConfigType.CustomServerCert);
-    } else if (certType == CertConfigType.HashicorpVaultPKI) {
+    } else if (certType == CertConfigType.HashicorpVault) {
       return CertificateInfo.create(
           certUUID,
           customerUUID,
@@ -2831,8 +2828,8 @@ public class NodeManagerTest extends FakeDBApplication {
           today,
           nextYear,
           "privateKey",
-          TestHelper.TMP_PATH + "/ca.crt",
-          CertConfigType.HashicorpVaultPKI);
+          TestHelper.TMP_PATH + "/node_manager_test_ca.crt",
+          CertConfigType.HashicorpVault);
     } else {
       throw new IllegalArgumentException("Unknown type " + certType);
     }
@@ -2953,8 +2950,8 @@ public class NodeManagerTest extends FakeDBApplication {
     "APPEND_NEW_ROOT_CERT, CustomCertHostPath",
     "REMOVE_OLD_ROOT_CERT, SelfSigned",
     "REMOVE_OLD_ROOT_CERT, CustomCertHostPath",
-    "APPEND_NEW_ROOT_CERT, HashicorpVaultPKI",
-    "REMOVE_OLD_ROOT_CERT, HashicorpVaultPKI"
+    "APPEND_NEW_ROOT_CERT, HashicorpVault",
+    "REMOVE_OLD_ROOT_CERT, HashicorpVault"
   })
   @TestCaseName("testCertsRotateWithValidParams_Action:{0}_CertType:{1}")
   public void testCertsRotateWithValidParams(String action, String certType)

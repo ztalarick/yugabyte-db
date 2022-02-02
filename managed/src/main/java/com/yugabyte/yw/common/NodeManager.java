@@ -379,7 +379,7 @@ public class NodeManager extends DevopsBase {
 
       switch (rootCert.certType) {
         case SelfSigned:
-        case HashicorpVaultPKI:
+        case HashicorpVault:
           {
             try {
               // Creating a temp directory to save Server Cert and Key from Root for the node
@@ -417,27 +417,26 @@ public class NodeManager extends DevopsBase {
           }
         case CustomCertHostPath:
           {
-            CertificateParams.CustomCertPathParams customCertPathParams =
-                rootCert.getCustomCertPathParams();
-            rootCertPath = customCertPathParams.rootCertPath;
-            serverCertPath = customCertPathParams.nodeCertPath;
-            serverKeyPath = customCertPathParams.nodeKeyPath;
+            CertificateParams.CustomCertInfo customCertInfo = rootCert.getCustomCertPathParams();
+            rootCertPath = customCertInfo.rootCertPath;
+            serverCertPath = customCertInfo.nodeCertPath;
+            serverKeyPath = customCertInfo.nodeKeyPath;
             certsLocation = CERT_LOCATION_NODE;
             if (taskParam.rootAndClientRootCASame
                 && taskParam.enableClientToNodeEncrypt
-                && customCertPathParams.clientCertPath != null
-                && !customCertPathParams.clientCertPath.isEmpty()
-                && customCertPathParams.clientKeyPath != null
-                && !customCertPathParams.clientKeyPath.isEmpty()) {
+                && customCertInfo.clientCertPath != null
+                && !customCertInfo.clientCertPath.isEmpty()
+                && customCertInfo.clientKeyPath != null
+                && !customCertInfo.clientKeyPath.isEmpty()) {
               // These client certs are used for node to postgres communication
               // These are seprate from clientRoot certs which are used for server to client
               // communication These are not required anymore as this is not mandatory now and
               // can be removed
               // The code is still here to mantain backward compatibility
               subcommandStrings.add("--client_cert_path");
-              subcommandStrings.add(customCertPathParams.clientCertPath);
+              subcommandStrings.add(customCertInfo.clientCertPath);
               subcommandStrings.add("--client_key_path");
-              subcommandStrings.add(customCertPathParams.clientKeyPath);
+              subcommandStrings.add(customCertInfo.clientKeyPath);
             }
             break;
           }
@@ -502,11 +501,11 @@ public class NodeManager extends DevopsBase {
           }
         case CustomCertHostPath:
           {
-            CertificateParams.CustomCertPathParams customCertPathParams =
+            CertificateParams.CustomCertInfo customCertInfo =
                 clientRootCert.getCustomCertPathParams();
-            rootCertPath = customCertPathParams.rootCertPath;
-            serverCertPath = customCertPathParams.nodeCertPath;
-            serverKeyPath = customCertPathParams.nodeKeyPath;
+            rootCertPath = customCertInfo.rootCertPath;
+            serverCertPath = customCertInfo.nodeCertPath;
+            serverKeyPath = customCertInfo.nodeKeyPath;
             certsLocation = CERT_LOCATION_NODE;
             break;
           }
@@ -520,7 +519,7 @@ public class NodeManager extends DevopsBase {
             certsLocation = CERT_LOCATION_PLATFORM;
             break;
           }
-        case HashicorpVaultPKI:
+        case HashicorpVault:
           {
             try {
               // Creating a temp directory to save c2n Server Cert and Key from Root for the node
@@ -933,8 +932,8 @@ public class NodeManager extends DevopsBase {
           }
 
           /*
-          // TODO: PLAT-2782 see if certs are already created
-          // if yes, just extract path and don't create certs again
+          // PLAT-2782 skip this action in GFlags,
+            it was resulting in creating certificates multiple times.
           if ((taskParam.enableNodeToNodeEncrypt || taskParam.enableClientToNodeEncrypt)) {
             subcommand.addAll(
                 getCertificatePaths(
@@ -1008,7 +1007,7 @@ public class NodeManager extends DevopsBase {
                 } else if (rootCert.certType == CertConfigType.CustomCertHostPath) {
                   rootCertPath = rootCert.getCustomCertPathParams().rootCertPath;
                   certsLocation = CERT_LOCATION_NODE;
-                } else if (rootCert.certType == CertConfigType.HashicorpVaultPKI) {
+                } else if (rootCert.certType == CertConfigType.HashicorpVault) {
                   rootCertPath = rootCert.certificate;
                   certsLocation = CERT_LOCATION_PLATFORM;
                 }
@@ -1738,7 +1737,7 @@ public class NodeManager extends DevopsBase {
     }
     String suffix = isClient ? "_client_to_server" : "";
 
-    CertificateParams.CustomCertPathParams customCertInfo = rootCert.getCustomCertPathParams();
+    CertificateParams.CustomCertInfo customCertInfo = rootCert.getCustomCertPathParams();
 
     commandArgs.add(String.format("--root_cert_path%s", suffix));
     commandArgs.add(customCertInfo.rootCertPath);

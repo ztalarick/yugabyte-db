@@ -178,11 +178,10 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
     az3 = AvailabilityZone.createOrThrow(region, "az-3", "AZ 3", "subnet-3");
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
-    CertificateParams.CustomCertPathParams customCertPathParams =
-        new CertificateParams.CustomCertPathParams();
-    customCertPathParams.rootCertPath = "rootCertPath";
-    customCertPathParams.nodeCertPath = "nodeCertPath";
-    customCertPathParams.nodeKeyPath = "nodeKeyPath";
+    CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+    customCertInfo.rootCertPath = "rootCertPath";
+    customCertInfo.nodeCertPath = "nodeCertPath";
+    customCertInfo.nodeKeyPath = "nodeKeyPath";
     createTempFile("upgrade_universe_test_ca.crt", CERT_1_CONTENTS);
     try {
       CertificateInfo.create(
@@ -192,7 +191,7 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
           date,
           date,
           TestHelper.TMP_PATH + "/upgrade_universe_test_ca.crt",
-          customCertPathParams);
+          customCertInfo);
     } catch (IOException | NoSuchAlgorithmException e) {
     }
 
@@ -1795,11 +1794,10 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
     defaultUniverse.save();
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
-    CertificateParams.CustomCertPathParams customCertPathParams =
-        new CertificateParams.CustomCertPathParams();
-    customCertPathParams.rootCertPath = "rootCertPath1";
-    customCertPathParams.nodeCertPath = "nodeCertPath1";
-    customCertPathParams.nodeKeyPath = "nodeKeyPath1";
+    CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+    customCertInfo.rootCertPath = "rootCertPath1";
+    customCertInfo.nodeCertPath = "nodeCertPath1";
+    customCertInfo.nodeKeyPath = "nodeKeyPath1";
     createTempFile("upgrade_universe_test_ca2.crt", CERT_1_CONTENTS);
 
     try {
@@ -1810,7 +1808,7 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
           date,
           date,
           TestHelper.TMP_PATH + "/upgrade_universe_test_ca2.crt",
-          customCertPathParams);
+          customCertInfo);
     } catch (IOException | NoSuchAlgorithmException e) {
     }
     UpgradeUniverse.Params taskParams = new UpgradeUniverse.Params();
@@ -1840,11 +1838,10 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
     defaultUniverse.save();
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
-    CertificateParams.CustomCertPathParams customCertPathParams =
-        new CertificateParams.CustomCertPathParams();
-    customCertPathParams.rootCertPath = "rootCertPath1";
-    customCertPathParams.nodeCertPath = "nodeCertPath1";
-    customCertPathParams.nodeKeyPath = "nodeKeyPath1";
+    CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+    customCertInfo.rootCertPath = "rootCertPath1";
+    customCertInfo.nodeCertPath = "nodeCertPath1";
+    customCertInfo.nodeKeyPath = "nodeKeyPath1";
     createTempFile("upgrade_universe_test_ca2.crt", CERT_1_CONTENTS);
     try {
       CertificateInfo.create(
@@ -1854,7 +1851,7 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
           date,
           date,
           TestHelper.TMP_PATH + "/upgrade_universe_test_ca2.crt",
-          customCertPathParams);
+          customCertInfo);
     } catch (IOException | NoSuchAlgorithmException e) {
     }
     UpgradeUniverse.Params taskParams = new UpgradeUniverse.Params();
@@ -1884,11 +1881,10 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
     defaultUniverse.save();
     UUID certUUID = UUID.randomUUID();
     Date date = new Date();
-    CertificateParams.CustomCertPathParams customCertPathParams =
-        new CertificateParams.CustomCertPathParams();
-    customCertPathParams.rootCertPath = "rootCertPath1";
-    customCertPathParams.nodeCertPath = "nodeCertPath1";
-    customCertPathParams.nodeKeyPath = "nodeKeyPath1";
+    CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+    customCertInfo.rootCertPath = "rootCertPath1";
+    customCertInfo.nodeCertPath = "nodeCertPath1";
+    customCertInfo.nodeKeyPath = "nodeKeyPath1";
     createTempFile("upgrade_universe_test_ca2.crt", CERT_2_CONTENTS);
     try {
       CertificateInfo.create(
@@ -1898,7 +1894,7 @@ public class UpgradeUniverseTest extends CommissionerBaseTest {
           date,
           date,
           TestHelper.TMP_PATH + "/upgrade_universe_test_ca2.crt",
-          customCertPathParams);
+          customCertInfo);
     } catch (IOException | NoSuchAlgorithmException e) {
     }
     UpgradeUniverse.Params taskParams = new UpgradeUniverse.Params();

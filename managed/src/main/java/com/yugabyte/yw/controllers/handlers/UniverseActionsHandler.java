@@ -265,7 +265,7 @@ public class UniverseActionsHandler {
       CertificateInfo cert = CertificateInfo.get(taskParams.rootCA);
       if (taskParams.rootAndClientRootCASame) {
         if (cert.certType == CertConfigType.SelfSigned
-            || cert.certType == CertConfigType.HashicorpVaultPKI) {
+            || cert.certType == CertConfigType.HashicorpVault) {
           CertificateHelper.createClientCertificate(
               taskParams.clientRootCA,
               String.format(

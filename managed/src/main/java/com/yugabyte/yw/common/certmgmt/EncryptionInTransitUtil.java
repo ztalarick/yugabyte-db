@@ -44,7 +44,7 @@ public class EncryptionInTransitUtil {
     CertificateProviderInterface certProvider = null;
     try {
       switch (info.certType) {
-        case HashicorpVaultPKI:
+        case HashicorpVault:
           certProvider = VaultPKI.getVaultPKIInstance(info);
           break;
         case SelfSigned:
@@ -76,24 +76,41 @@ public class EncryptionInTransitUtil {
         || Strings.isNullOrEmpty(hcVaultParams.engine)
         || Strings.isNullOrEmpty(hcVaultParams.mountPath)
         || Strings.isNullOrEmpty(hcVaultParams.role)) {
-      String message = String.format("Hashicorp Vault parameters provided are not valid - %s", hcVaultParams.toString());
-      throw new PlatformServiceException(
-          BAD_REQUEST, message);
+      String message =
+          String.format(
+              "Hashicorp Vault parameters provided are not valid - %s", hcVaultParams.toString());
+      throw new PlatformServiceException(BAD_REQUEST, message);
     }
 
     UUID rootCA_UUID = UUID.randomUUID();
+    VaultPKI pkiObjValidator = VaultPKI.validateVaultConfigParams(hcVaultParams);
+    Pair<String, String> paths =
+        pkiObjValidator.dumpCACertBundle(storagePath, customerUUID, rootCA_UUID);
 
-    VaultPKI pkiObj = VaultPKI.validateVaultConfigParams(hcVaultParams);
-    Pair<String, String> paths = pkiObj.dumpCACertBundle(storagePath, customerUUID);
+    Pair<Date, Date> dates =
+        CertificateHelper.extractDatesFromCertBundle(
+            CertificateHelper.convertStringToX509CertList(
+                FileUtils.readFileToString(new File(paths.getLeft()))));
 
-    return CertificateHelper.CreateConfigInfoDBEntry(
-        rootCA_UUID,
-        customerUUID,
-        label,
-        pkiObj.generateRootCertificate(null, 4, null),
-        paths.getKey(),
-        null,
-        hcVaultParams);
+    CertificateInfo cert =
+        CertificateInfo.create(
+            rootCA_UUID,
+            customerUUID,
+            label,
+            dates.getLeft(),
+            dates.getRight(),
+            paths.getLeft(),
+            hcVaultParams);
+
+    LOG.info("Created Root CA for universe {}.", label);
+
+    if (!CertificateInfo.isCertificateValid(rootCA_UUID)) {
+      String errMsg =
+          String.format("The certificate %s needs info. Update the cert and retry.", label);
+      LOG.error(errMsg);
+      throw new PlatformServiceException(BAD_REQUEST, errMsg);
+    }
+    return cert.uuid;
   }
 
   public static void editEATHashicorpConfig(
@@ -110,7 +127,9 @@ public class EncryptionInTransitUtil {
               FileUtils.readFileToString(new File(certPath.getLeft())));
       Pair<Date, Date> dates = CertificateHelper.extractDatesFromCertBundle(x509CACerts);
       LOG.info("Updating table with ca certificate: {}", certPath.getKey());
+
       rootCertConfigInfo.update(dates.getLeft(), dates.getRight(), certPath.getKey(), params);
+
     } catch (Exception e) {
       throw new PlatformServiceException(
           BAD_REQUEST, "Error occured while attempting to change certificate config");

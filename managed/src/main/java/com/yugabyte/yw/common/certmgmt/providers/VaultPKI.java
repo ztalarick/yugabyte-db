@@ -97,14 +97,14 @@ public class VaultPKI extends CertificateProviderInterface {
   private String curKeyStr;
 
   public VaultPKI(UUID pCACertUUID) {
-    super(CertConfigType.HashicorpVaultPKI, pCACertUUID);
+    super(CertConfigType.HashicorpVault, pCACertUUID);
     curCaCertificateStr = "";
     curCertificateStr = "";
     curKeyStr = "";
   }
 
   public VaultPKI(UUID pCACertUUID, VaultAccessor vObj, HashicorpVaultConfigParams configInfo) {
-    super(CertConfigType.HashicorpVaultPKI, pCACertUUID);
+    super(CertConfigType.HashicorpVault, pCACertUUID);
     vAccessor = vObj;
     params = configInfo;
 
@@ -140,9 +140,6 @@ public class VaultPKI extends CertificateProviderInterface {
   @Override
   public X509Certificate generateRootCertificate(
       String certLabel, int certExpiryInYears, KeyPair keyPair) throws Exception {
-    LOG.debug("Called generateRootCertificate for: {}", certLabel);
-    LOG.info("Called from: {}", CommonUtils.GetStackTraceHere());
-
     return getCACertificateFromVault();
   }
 
@@ -200,19 +197,8 @@ public class VaultPKI extends CertificateProviderInterface {
       certObj.verify(issueCAcert.getPublicKey(), "BC");
 
       // for client certificate: later it is read using CertificateHelper.getClientCertFile
-      CertificateDetails details =
-          CertificateHelper.dumpNewCertsToFile(
-              storagePath, certFileName, newCertKeyStrName, certObj, pKeyObj);
-
-      if (false) {
-        // TODO: remove this block, updating the root ca information here
-        //  after config support from ui, this can be removed. see: createHashicorpCAConfig
-        storagePath = "/opt/yugaware/";
-        UUID custUUID = CertificateInfo.get(caCertUUID).customerUUID;
-        EncryptionInTransitUtil.editEATHashicorpConfig(caCertUUID, custUUID, storagePath, params);
-      }
-
-      return details;
+      return CertificateHelper.dumpNewCertsToFile(
+          storagePath, certFileName, newCertKeyStrName, certObj, pKeyObj);
 
     } catch (Exception e) {
       LOG.error("Unable to create certificate for {} using rootCA {}", username, caCertUUID, e);
@@ -221,32 +207,33 @@ public class VaultPKI extends CertificateProviderInterface {
   }
 
   @Override
-  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
+  public Pair<String, String> dumpCACertBundle(
+      String storagePath, UUID customerUUID, UUID caCertUUIDParam) {
+
+    // Do not make user of CertificateInfo here, it is passed as param
+    LOG.info("Dumping CA certificate for {}", customerUUID.toString());
     try {
-      String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUID);
-      LOG.info("Dumping CA certs @{}", certPath);
 
       List<X509Certificate> list = new ArrayList<X509Certificate>();
       list.add(getCACertificateFromVault());
       list.addAll(getCAChainFromVault());
+      LOG.info("Total certs in bundle: {}", list.size());
+
+      String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUIDParam);
+      LOG.info("Dumping CA certs @{}", certPath);
 
       CertificateHelper.writeCertBundleToCertPath(list, certPath);
-      CertificateInfo rootCertConfigInfo = CertificateInfo.get(caCertUUID);
-
-      if (!CertificateInfo.isCertificateValid(caCertUUID)) {
-        String errMsg =
-            String.format(
-                "The certificate %s needs info. Update the cert and retry.",
-                rootCertConfigInfo.label);
-        LOG.error(errMsg);
-        throw new PlatformServiceException(BAD_REQUEST, errMsg);
-      }
-
       return new ImmutablePair<>(certPath, "");
 
     } catch (Exception e) {
-      throw new RuntimeException("Hashicorp: Failed to extract Root CA Certificate");
+      throw new RuntimeException(
+          " Hashicorp: Failed to extract Root CA Certificate:" + e.getMessage());
     }
+  }
+
+  @Override
+  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
+    return dumpCACertBundle(storagePath, customerUUID, caCertUUID);
   }
 
   /**
@@ -256,7 +243,6 @@ public class VaultPKI extends CertificateProviderInterface {
    * @throws Exception
    */
   public X509Certificate getCACertificateFromVault() throws Exception {
-    LOG.info("getting CA certificate for {}", caCertUUID.toString());
 
     // vault read pki/cert/ca or pki/ca/pem
     String path =
@@ -277,8 +263,6 @@ public class VaultPKI extends CertificateProviderInterface {
    * @throws Exception
    */
   public List<X509Certificate> getCAChainFromVault() throws Exception {
-    LOG.info("getting CA certificate for {}", caCertUUID.toString());
-
     // vault read pki/ca_chain or pki/cert/ca_chain
     String caCertChain = getCAChainFromVaultInString();
 
@@ -302,7 +286,7 @@ public class VaultPKI extends CertificateProviderInterface {
     String caCertChain = vAccessor.readAt(path, ISSUE_FIELD_CERT);
     caCertChain = caCertChain.replaceAll("^\"+|\"+$", "");
     caCertChain = caCertChain.replace("\\n", System.lineSeparator());
-    LOG.debug("CAchain is: {}", caCertChain);
+    // LOG.debug("CAchain is: {}", caCertChain);
 
     return caCertChain;
   }

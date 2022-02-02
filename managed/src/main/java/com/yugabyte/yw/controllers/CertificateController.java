@@ -57,14 +57,11 @@ public class CertificateController extends AuthenticatedController {
     CertConfigType certType = formData.get().certType;
     String certContent = formData.get().certContent;
     String keyContent = formData.get().keyContent;
-    CertificateParams.CustomCertPathParams customCertPathParams =
-        formData.get().customCertPathParams;
-    CertificateParams.CustomServerCertParams customSrvCertParams =
-        formData.get().customSrvCertParams;
 
+    CertificateParams.CustomCertInfo customCertInfo = formData.get().customCertInfo;
+    CertificateParams.CustomServerCertData customServerCertData =
+        formData.get().customServerCertData;
     HashicorpVaultConfigParams hcVaultParams = formData.get().hcVaultCertParams;
-    // CertificateParams.CustomCertInfo customCertInfo = formData.get().customCertInfo;
-    // CertificateParams.CustomServerCertData customServerCertData = formData.get().customServerCertData;
 
     switch (certType) {
       case SelfSigned:
@@ -77,28 +74,28 @@ public class CertificateController extends AuthenticatedController {
         }
       case CustomCertHostPath:
         {
-          if (customCertPathParams == null) {
+          if (customCertInfo == null) {
             throw new PlatformServiceException(BAD_REQUEST, "Custom Cert Info must be provided.");
-          } else if (customCertPathParams.nodeCertPath == null
-              || customCertPathParams.nodeKeyPath == null
-              || customCertPathParams.rootCertPath == null) {
+          } else if (customCertInfo.nodeCertPath == null
+              || customCertInfo.nodeKeyPath == null
+              || customCertInfo.rootCertPath == null) {
             throw new PlatformServiceException(BAD_REQUEST, "Custom Cert Paths can't be empty.");
           }
           break;
         }
       case CustomServerCert:
         {
-          if (customSrvCertParams == null) {
+          if (customServerCertData == null) {
             throw new PlatformServiceException(
                 BAD_REQUEST, "Custom Server Cert Info must be provided.");
-          } else if (customSrvCertParams.serverCertContent == null
-              || customSrvCertParams.serverKeyContent == null) {
+          } else if (customServerCertData.serverCertContent == null
+              || customServerCertData.serverKeyContent == null) {
             throw new PlatformServiceException(
                 BAD_REQUEST, "Custom Server Cert and Key content can't be empty.");
           }
           break;
         }
-      case HashicorpVaultPKI:
+      case HashicorpVault:
         {
           if (hcVaultParams == null) {
             throw new PlatformServiceException(
@@ -135,8 +132,8 @@ public class CertificateController extends AuthenticatedController {
             certStart,
             certExpiry,
             certType,
-            customCertPathParams,
-            customSrvCertParams);
+            customCertInfo,
+            customServerCertData);
     auditService().createAuditEntry(ctx(), request(), Json.toJson(formData.data()));
     return PlatformResults.withData(certUUID);
   }
@@ -173,7 +170,7 @@ public class CertificateController extends AuthenticatedController {
 
     CertificateInfo info = CertificateInfo.get(rootCA);
 
-    if (info.certType == CertConfigType.HashicorpVaultPKI) {
+    if (info.certType == CertConfigType.HashicorpVault) {
       EncryptionInTransitUtil.fetchLatestCertForHashicorpPKI(
           info, runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"));
     }
@@ -231,8 +228,8 @@ public class CertificateController extends AuthenticatedController {
     CertConfigType certType = formData.get().certType;
     CertificateInfo info = CertificateInfo.get(reqCertUUID);
 
-    if (certType != CertConfigType.HashicorpVaultPKI
-        || info.certType != CertConfigType.HashicorpVaultPKI) {
+    if (certType != CertConfigType.HashicorpVault
+        || info.certType != CertConfigType.HashicorpVault) {
       throw new PlatformServiceException(
           BAD_REQUEST, "Certificate Config does not support Edit option");
     } else {
@@ -272,9 +269,8 @@ public class CertificateController extends AuthenticatedController {
     Form<CertificateParams> formData = formFactory.getFormDataOrBadRequest(CertificateParams.class);
     Customer.getOrBadRequest(customerUUID);
     CertificateInfo certificate = CertificateInfo.getOrBadRequest(rootCA, customerUUID);
-    CertificateParams.CustomCertPathParams customCertPathParams =
-        formData.get().customCertPathParams;
-    certificate.setCustomCertPathParams(customCertPathParams, rootCA, customerUUID);
+    CertificateParams.CustomCertInfo customCertInfo = formData.get().customCertInfo;
+    certificate.setCustomCertPathParams(customCertInfo, rootCA, customerUUID);
     return PlatformResults.withData(certificate);
   }
 }

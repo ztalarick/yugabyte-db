@@ -19,9 +19,12 @@ import com.yugabyte.yw.common.certmgmt.CertificateCustomInfo;
 import com.yugabyte.yw.common.certmgmt.CertificateDetails;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Provides interface to manage certificates */
 public abstract class CertificateProviderInterface {
+  public static final Logger LOG = LoggerFactory.getLogger(CertificateProviderInterface.class);
 
   CertificateCustomInfo.CertConfigType certConfigType;
   public UUID caCertUUID;
@@ -70,5 +73,8 @@ public abstract class CertificateProviderInterface {
    * @param customerUUID
    * @return Paths where the CA information is stored.
    */
+  public abstract Pair<String, String> dumpCACertBundle(
+      String storagePath, UUID customerUUID, UUID caCertUUIDParam);
+
   public abstract Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID);
 }

@@ -140,7 +140,7 @@ public class CertsRotateParams extends UpgradeTaskParams {
         case CustomServerCert:
           throw new PlatformServiceException(
               Status.BAD_REQUEST, "rootCA cannot be of type CustomServerCert.");
-        case HashicorpVaultPKI:
+        case HashicorpVault:
           {
             // TODO: no changes are required, remove TODO, kept for review.
             break;
@@ -207,7 +207,7 @@ public class CertsRotateParams extends UpgradeTaskParams {
             clientRootCARotationType = CertRotationType.RootCert;
           }
           break;
-        case HashicorpVaultPKI:
+        case HashicorpVault:
           {
             // TODO: no changes are required, remove TODO, kept for review.
             break;

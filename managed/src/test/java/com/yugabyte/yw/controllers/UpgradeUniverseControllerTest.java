@@ -972,11 +972,10 @@ public class UpgradeUniverseControllerTest extends WithApplication {
     if (onprem) {
       Date date = new Date();
 
-      CertificateParams.CustomCertPathParams customCertPathParams =
-          new CertificateParams.CustomCertPathParams();
-      customCertPathParams.rootCertPath = "rootCertPath";
-      customCertPathParams.nodeCertPath = "nodeCertPath";
-      customCertPathParams.nodeKeyPath = "nodeKeyPath";
+      CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+      customCertInfo.rootCertPath = "rootCertPath";
+      customCertInfo.nodeCertPath = "nodeCertPath";
+      customCertInfo.nodeKeyPath = "nodeKeyPath";
       CertificateInfo.create(
           rootCA,
           customer.uuid,
@@ -984,7 +983,7 @@ public class UpgradeUniverseControllerTest extends WithApplication {
           date,
           date,
           TestHelper.TMP_PATH + "/upgrade_universe_controller_test_ca.crt",
-          customCertPathParams);
+          customCertInfo);
     } else {
       createTempFile("upgrade_universe_controller_test_ca2.crt", cert2Contents);
       CertificateInfo.create(
@@ -1041,11 +1040,10 @@ public class UpgradeUniverseControllerTest extends WithApplication {
     if (onprem) {
       Date date = new Date();
 
-      CertificateParams.CustomCertPathParams customCertPathParams =
-          new CertificateParams.CustomCertPathParams();
-      customCertPathParams.rootCertPath = "rootCertPath1";
-      customCertPathParams.nodeCertPath = "nodeCertPath1";
-      customCertPathParams.nodeKeyPath = "nodeKeyPath1";
+      CertificateParams.CustomCertInfo customCertInfo = new CertificateParams.CustomCertInfo();
+      customCertInfo.rootCertPath = "rootCertPath1";
+      customCertInfo.nodeCertPath = "nodeCertPath1";
+      customCertInfo.nodeKeyPath = "nodeKeyPath1";
       CertificateInfo.create(
           rootCA,
           customer.uuid,
@@ -1053,7 +1051,7 @@ public class UpgradeUniverseControllerTest extends WithApplication {
           date,
           date,
           TestHelper.TMP_PATH + "/upgrade_universe_controller_test_ca2.crt",
-          customCertPathParams);
+          customCertInfo);
       return Json.newObject().put("rootCA", rootCA.toString());
     } else {
       createTempFile("upgrade_universe_controller_test_ca.crt", cert1Contents);

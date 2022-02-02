@@ -221,7 +221,8 @@ public class VaultPKITest extends FakeDBApplication {
        common_name="test.com Intermediate Authority" ttl=43800h \
        -format=json | jq -r '.data.csr' > pki_i.csr
           # *** dump output of above command in pki_i.csr
-      vault write $pki/root/sign-intermediate csr=@pki_i.csr format=pem_bundle ttl=43800h -format=json | jq -r .data.certificate > i_signed.pem
+      vault write $pki/root/sign-intermediate csr=@pki_i.csr format=pem_bundle ttl=43800h
+       -format=json | jq -r .data.certificate > i_signed.pem
           # also append ca of root PKI.
       cat i_signed.pem
         -----BEGIN CERTIFICATE-----

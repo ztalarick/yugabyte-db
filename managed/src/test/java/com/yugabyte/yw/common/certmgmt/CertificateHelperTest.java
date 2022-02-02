@@ -4,6 +4,7 @@ package com.yugabyte.yw.common.certmgmt;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.yugabyte.yw.common.FakeDBApplication;
@@ -380,10 +381,10 @@ public class CertificateHelperTest extends FakeDBApplication {
     Date certExpiry = cal.getTime();
     CertConfigType type = CertConfigType.CustomServerCert;
     String certContent = getRootCertContent();
-    CertificateParams.CustomServerCertParams customSrvCertParams =
-        new CertificateParams.CustomServerCertParams();
-    customSrvCertParams.serverCertContent = getServerCertContent();
-    customSrvCertParams.serverKeyContent = getServerKeyContent();
+    CertificateParams.CustomServerCertData customServerCertData =
+        new CertificateParams.CustomServerCertData();
+    customServerCertData.serverCertContent = getServerCertContent();
+    customServerCertData.serverKeyContent = getServerKeyContent();
 
     try {
       CertificateHelper.uploadRootCA(
@@ -396,7 +397,7 @@ public class CertificateHelperTest extends FakeDBApplication {
           certExpiry,
           type,
           null,
-          customSrvCertParams);
+          customServerCertData);
     } catch (Exception e) {
 
       assertEquals(
@@ -416,8 +417,9 @@ public class CertificateHelperTest extends FakeDBApplication {
     try {
       CertificateHelper.uploadRootCA(
           "test", c.uuid, "/tmp", "invalid_cert", null, certStart, certExpiry, type, null, null);
+      assertTrue(false);
     } catch (Exception e) {
-      assertEquals("Unable to get cert Object", e.getMessage());
+      assertEquals("Unable to get cert Objects", e.getMessage());
     }
   }
 
