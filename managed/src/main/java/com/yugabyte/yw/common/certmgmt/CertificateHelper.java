@@ -227,7 +227,7 @@ public class CertificateHelper {
       KeyPair keyPair = getKeyPairObject();
 
       CertificateSelfSigned obj = new CertificateSelfSigned(rootCA_UUID);
-      X509Certificate x509 = obj.generateRootCertificate(certLabel, CERT_EXPIRY_IN_YEARS, keyPair);
+      X509Certificate x509 = obj.generateCACertificate(certLabel, CERT_EXPIRY_IN_YEARS, keyPair);
       Pair<String, String> location = obj.dumpCACertBundle(storagePath, customerUUID);
       Date certStart = x509.getNotBefore();
       Date certExpiry = x509.getNotAfter();

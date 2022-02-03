@@ -97,6 +97,7 @@ public class VaultPKITest extends FakeDBApplication {
     result.put(VaultPKI.ISSUE_FIELD_CA, TestUtils.readResource("hashicorp/pki/issuing_ca.pem"));
 
     VaultAccessor vAccessor = mock(VaultAccessor.class);
+
     when(vAccessor.writeAt(any(), any())).thenReturn(result);
 
     VaultPKI pkiObj = new VaultPKI(caUUID, vAccessor, params);
@@ -267,6 +268,20 @@ public class VaultPKITest extends FakeDBApplication {
 
       assertNotNull(caCert);
       assertEquals(2, caChain.size());
+    }
+  }
+
+  @Test
+  public void testRoleFailure() {
+    if (MOCK_RUN == true) return;
+
+    HashicorpVaultConfigParams params2 = new HashicorpVaultConfigParams(params);
+    params2.role = "invalid_role";
+    try {
+      VaultPKI certProvider = VaultPKI.getVaultPKIInstance(caUUID, params2);
+      assertTrue(false);
+    } catch (Exception e) {
+      assertTrue(true);
     }
   }
 }

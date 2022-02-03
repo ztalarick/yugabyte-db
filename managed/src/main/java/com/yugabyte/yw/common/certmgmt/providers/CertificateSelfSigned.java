@@ -153,7 +153,7 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
 
   @Override
   public Pair<String, String> dumpCACertBundle(
-      String storagePath, UUID customerUUID, UUID caCertUUIDParam) {
+      String storagePath, UUID customerUUID, UUID caCertUUIDParam) throws Exception {
     // Do not make user of CertificateInfo here, it is passed as param
     String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUIDParam);
     String keyPath = CertificateHelper.getCAKeyPath(storagePath, customerUUID, caCertUUIDParam);
@@ -166,14 +166,15 @@ public class CertificateSelfSigned extends CertificateProviderInterface {
   }
 
   @Override
-  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
+  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID)
+      throws Exception {
     return dumpCACertBundle(storagePath, customerUUID, caCertUUID);
   }
 
   @Override
-  public X509Certificate generateRootCertificate(
+  public X509Certificate generateCACertificate(
       String certLabel, int certExpiryInYears, KeyPair keyPair) throws Exception {
-    LOG.debug("Called generateRootCertificate for: {}", certLabel);
+    LOG.debug("Called generateCACertificate for: {}", certLabel);
     Calendar cal = Calendar.getInstance();
     Date certStart = cal.getTime();
     cal.add(Calendar.YEAR, certExpiryInYears);

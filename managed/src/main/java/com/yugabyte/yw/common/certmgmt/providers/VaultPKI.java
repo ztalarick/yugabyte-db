@@ -69,7 +69,10 @@ public class VaultPKI extends CertificateProviderInterface {
     CA_CHAIN,
 
     @EnumValue("crl")
-    CRL;
+    CRL,
+
+    @EnumValue("roles")
+    ROLES;
 
     public String toString() {
       switch (this) {
@@ -83,6 +86,8 @@ public class VaultPKI extends CertificateProviderInterface {
           return "cert";
         case CRL:
           return "crl";
+        case ROLES:
+          return "roles";
         default:
           return null;
       }
@@ -113,11 +118,11 @@ public class VaultPKI extends CertificateProviderInterface {
     curKeyStr = "";
   }
 
-  public static VaultPKI getVaultPKIInstance(CertificateInfo rootCertConfigInfo) throws Exception {
+  public static VaultPKI getVaultPKIInstance(CertificateInfo caCertConfigInfo) throws Exception {
     // LOG.info("Called from: {}", CommonUtils.GetStackTraceHere());
 
-    HashicorpVaultConfigParams hcConfigInfo = rootCertConfigInfo.getCustomHCPKICertInfo();
-    return getVaultPKIInstance(rootCertConfigInfo.uuid, hcConfigInfo);
+    HashicorpVaultConfigParams hcConfigInfo = caCertConfigInfo.getCustomHCPKICertInfo();
+    return getVaultPKIInstance(caCertConfigInfo.uuid, hcConfigInfo);
   }
 
   public static VaultPKI getVaultPKIInstance(UUID uuid, HashicorpVaultConfigParams configInfo)
@@ -126,6 +131,7 @@ public class VaultPKI extends CertificateProviderInterface {
     VaultAccessor vObj =
         VaultAccessor.buildVaultAccessor(configInfo.vaultAddr, configInfo.vaultToken);
     VaultPKI obj = new VaultPKI(uuid, vObj, configInfo);
+    obj.validateRoleParam();
     return obj;
   }
 
@@ -134,11 +140,20 @@ public class VaultPKI extends CertificateProviderInterface {
     VaultAccessor vObj =
         VaultAccessor.buildVaultAccessor(configInfo.vaultAddr, configInfo.vaultToken);
     VaultPKI obj = new VaultPKI(null, vObj, configInfo);
+    obj.validateRoleParam();
     return obj;
   }
 
+  public void validateRoleParam() throws Exception {
+    String path = params.mountPath + VaultOperationsForCert.ROLES.toString() + "/" + params.role;
+
+    String allowIPSans = vAccessor.readAt(path, "allow_ip_sans");
+    if (Boolean.valueOf(allowIPSans) == false)
+      LOG.warn("IP Sans are not allowed with this role {}", params.role);
+  }
+
   @Override
-  public X509Certificate generateRootCertificate(
+  public X509Certificate generateCACertificate(
       String certLabel, int certExpiryInYears, KeyPair keyPair) throws Exception {
     return getCACertificateFromVault();
   }
@@ -201,38 +216,39 @@ public class VaultPKI extends CertificateProviderInterface {
           storagePath, certFileName, newCertKeyStrName, certObj, pKeyObj);
 
     } catch (Exception e) {
-      LOG.error("Unable to create certificate for {} using rootCA {}", username, caCertUUID, e);
+      LOG.error("Unable to create certificate for {} using CA {}", username, caCertUUID, e);
       throw new RuntimeException("Unable to get certificate from hashicorp Vault");
     }
   }
 
   @Override
   public Pair<String, String> dumpCACertBundle(
-      String storagePath, UUID customerUUID, UUID caCertUUIDParam) {
+      String storagePath, UUID customerUUID, UUID caCertUUIDParam) throws Exception {
 
     // Do not make user of CertificateInfo here, it is passed as param
+    List<X509Certificate> list = new ArrayList<X509Certificate>();
     LOG.info("Dumping CA certificate for {}", customerUUID.toString());
     try {
-
-      List<X509Certificate> list = new ArrayList<X509Certificate>();
       list.add(getCACertificateFromVault());
       list.addAll(getCAChainFromVault());
-      LOG.info("Total certs in bundle: {}", list.size());
-
+      LOG.info("Total certs in bundle: :{}", list.size());
+    } catch (Exception e) {
+      throw new Exception(" Hashicorp: Failed to extract CA Certificate:" + e.getMessage());
+    }
+    try {
       String certPath = CertificateHelper.getCACertPath(storagePath, customerUUID, caCertUUIDParam);
       LOG.info("Dumping CA certs @{}", certPath);
-
       CertificateHelper.writeCertBundleToCertPath(list, certPath);
       return new ImmutablePair<>(certPath, "");
 
     } catch (Exception e) {
-      throw new RuntimeException(
-          " Hashicorp: Failed to extract Root CA Certificate:" + e.getMessage());
+      throw new Exception(" Hashicorp: Failed to dump CA Certificate:" + e.getMessage());
     }
   }
 
   @Override
-  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID) {
+  public Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID)
+      throws Exception {
     return dumpCACertBundle(storagePath, customerUUID, caCertUUID);
   }
 

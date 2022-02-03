@@ -168,18 +168,22 @@ public class CertificateController extends AuthenticatedController {
     Customer.getOrBadRequest(customerUUID);
     CertificateInfo.getOrBadRequest(rootCA, customerUUID);
 
-    CertificateInfo info = CertificateInfo.get(rootCA);
+    try {
+      CertificateInfo info = CertificateInfo.get(rootCA);
 
-    if (info.certType == CertConfigType.HashicorpVault) {
-      EncryptionInTransitUtil.fetchLatestCertForHashicorpPKI(
-          info, runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"));
+      if (info.certType == CertConfigType.HashicorpVault) {
+        EncryptionInTransitUtil.fetchLatestCAForHashicorpPKI(
+            info, runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"));
+      }
+
+      String certContents = CertificateHelper.getCertPEMFileContents(rootCA);
+      auditService().createAuditEntry(ctx(), request());
+      ObjectNode result = Json.newObject();
+      result.put(CertificateHelper.ROOT_CERT, certContents);
+      return PlatformResults.withRawData(result);
+    } catch (Exception e) {
+      throw new PlatformServiceException(BAD_REQUEST, "Failed to extract certificate");
     }
-
-    String certContents = CertificateHelper.getCertPEMFileContents(rootCA);
-    auditService().createAuditEntry(ctx(), request());
-    ObjectNode result = Json.newObject();
-    result.put(CertificateHelper.ROOT_CERT, certContents);
-    return PlatformResults.withRawData(result);
   }
 
   @ApiOperation(
@@ -254,7 +258,7 @@ public class CertificateController extends AuthenticatedController {
       }
 
       EncryptionInTransitUtil.editEATHashicorpConfig(
-          reqCertUUID,
+          info.uuid,
           customerUUID,
           runtimeConfigFactory.staticApplicationConf().getString("yb.storage.path"),
           formParams);

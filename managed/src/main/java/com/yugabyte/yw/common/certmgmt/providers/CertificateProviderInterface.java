@@ -43,7 +43,7 @@ public abstract class CertificateProviderInterface {
    * @return X509 CA certificate
    * @throws Exception
    */
-  public abstract X509Certificate generateRootCertificate(
+  public abstract X509Certificate generateCACertificate(
       String certLabel, int certExpiryInYears, KeyPair keyPair) throws Exception;
 
   /**
@@ -74,7 +74,8 @@ public abstract class CertificateProviderInterface {
    * @return Paths where the CA information is stored.
    */
   public abstract Pair<String, String> dumpCACertBundle(
-      String storagePath, UUID customerUUID, UUID caCertUUIDParam);
+      String storagePath, UUID customerUUID, UUID caCertUUIDParam) throws Exception;
 
-  public abstract Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID);
+  public abstract Pair<String, String> dumpCACertBundle(String storagePath, UUID customerUUID)
+      throws Exception;
 }

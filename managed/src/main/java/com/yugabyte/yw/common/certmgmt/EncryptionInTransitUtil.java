@@ -62,7 +62,8 @@ public class EncryptionInTransitUtil {
     return certProvider;
   }
 
-  public static void fetchLatestCertForHashicorpPKI(CertificateInfo info, String storagePath) {
+  public static void fetchLatestCAForHashicorpPKI(CertificateInfo info, String storagePath)
+      throws Exception {
     UUID custUUID = info.customerUUID;
     CertificateProviderInterface provider = getCertificateProviderInstance(info);
     provider.dumpCACertBundle(storagePath, custUUID);
@@ -117,22 +118,26 @@ public class EncryptionInTransitUtil {
       UUID caCertUUID, UUID customerUUID, String storagePath, HashicorpVaultConfigParams params) {
 
     try {
+      VaultPKI pkiObjValidator = VaultPKI.validateVaultConfigParams(params);
+      // call dumpCACertBundle which take caCertUUID.
+      Pair<String, String> certPath =
+          pkiObjValidator.dumpCACertBundle(storagePath, customerUUID, caCertUUID);
+
+      Pair<Date, Date> dates =
+          CertificateHelper.extractDatesFromCertBundle(
+              CertificateHelper.convertStringToX509CertList(
+                  FileUtils.readFileToString(new File(certPath.getLeft()))));
+
+      LOG.info("Updating table with ca certificate: {}", certPath.getLeft());
+
       CertificateInfo rootCertConfigInfo = CertificateInfo.get(caCertUUID);
-      VaultPKI pkiObj = VaultPKI.validateVaultConfigParams(params);
-
-      Pair<String, String> certPath = pkiObj.dumpCACertBundle(storagePath, customerUUID);
-
-      List<X509Certificate> x509CACerts =
-          CertificateHelper.convertStringToX509CertList(
-              FileUtils.readFileToString(new File(certPath.getLeft())));
-      Pair<Date, Date> dates = CertificateHelper.extractDatesFromCertBundle(x509CACerts);
-      LOG.info("Updating table with ca certificate: {}", certPath.getKey());
-
-      rootCertConfigInfo.update(dates.getLeft(), dates.getRight(), certPath.getKey(), params);
+      rootCertConfigInfo.update(dates.getLeft(), dates.getRight(), certPath.getLeft(), params);
 
     } catch (Exception e) {
-      throw new PlatformServiceException(
-          BAD_REQUEST, "Error occured while attempting to change certificate config");
+      String message =
+          "Error occured while attempting to edit Hashicorp certificate config settings:"
+              + e.getMessage();
+      throw new PlatformServiceException(BAD_REQUEST, message);
     }
   }
 
