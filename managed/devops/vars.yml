@@ -1,0 +1,17 @@
+ssh_user: "centos"                                                                                   
+yb_server_ssh_user: "centos"                                                                         
+user_name: "yugabyte"                                                                                
+custom_ssh_port: 54422                                                                               
+cloud_type: "gcp"                                                                                    
+                                                                                                     
+node_exporter_user: "prometheus"                                                                     
+                                                                                                     
+local_package_path: "/opt/third-party"                                                               
+                                                                                                     
+mount_points: "/mnt/d0, "                                                                            
+                                                                                                     
+placement_cloud: "gcp"                                                                               
+placement_region: "us-west2"                                                                         
+placement_zone: "us-west2-a"                                                                         
+package: "/opt/yugabyte/releases/2.11.2.0-b22/yugabyte-2.11.2.0-b22-centos-x86_64.tar.gz"            
+s3_package_path: "s3://releases.yugabyte.com/2.11.2.0-b22/yugabyte-2.11.2.0-b22-centos-x86_64.tar.gz"
