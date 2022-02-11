@@ -9,7 +9,7 @@ variable "region" {
   default = "us-west-2"                                                                              
 }                                                                                                    
 
-variable "aws_profile {
+variable "aws_profile" {
   type    = string
   default = "yugadev-454529406029"
 }
