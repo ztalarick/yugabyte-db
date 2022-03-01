@@ -1,15 +1,4 @@
 # Todo: Make cloud_type dynamic when we come to GCP VM image phase.
-- name: Deploy 3rd-parties
-  shell:
-    cmd: >
-      ~/code/devops/bin/py_wrapper
-      ansible-playbook
-      ~/code/devops/docker/images/thirdparty-deps/dependencies.yml
-  environment:
-    yb_devops_home: "~/code/devops"
-    YB_MANAGED_DEVOPS_USE_PYTHON3: 1
-  become: yes
-  become_user: "{{ ansible_user_id }}"
 
 - name: "preprovision"
   import_playbook: preprovision.yml
