@@ -65,7 +65,7 @@ build {
   provisioner "ansible" {                                                                            
     playbook_file = "yb_custom_ami_builder.yml"    
     use_proxy = false                                                                                
-    ansible_env_vars = [ "ANSIBLE_CONFIG=ansible.cfg", "yb_devops_home=/code/yugabyte-db/managed/devops" ]
+    ansible_env_vars = [ "ANSIBLE_CONFIG=ansible.cfg", "yb_devops_home=~/code/yugabyte-db/managed/devops" ]
     extra_arguments = ["--tags", "yb-prebuilt-ami", "--extra-vars", "@vars.yml"]
   }                                                                                                  
 }
