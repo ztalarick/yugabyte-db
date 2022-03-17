@@ -1,5 +1,7 @@
 package com.yugabyte.yw.metrics;
 
+import static com.yugabyte.yw.models.MetricConfig.METRICS_CONFIG_PATH;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +39,6 @@ public class MetricGrafanaGen {
   public static final String TSERVER_STATUS_PANEL_TEMPLATE_PATH =
       "metric/grafana_tserver_status_template.json";
   public static final String GROUP_HEADER_TEMPLATE = "metric/group_header_template.json";
-  public static final String METRICS_CONFIG_PATH = "metrics.yml";
   public static int DEFAULT_RANGE_SECS = 300;
 
   public MetricGrafanaGen(Environment environment) {
