@@ -9,6 +9,11 @@ import static com.yugabyte.yw.forms.TableDefinitionTaskParams.createFromResponse
 import static io.swagger.annotations.ApiModelProperty.AccessMode.READ_ONLY;
 import static play.mvc.Http.Status.CONFLICT;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
@@ -18,9 +23,12 @@ import com.yugabyte.yw.commissioner.Common;
 import com.yugabyte.yw.commissioner.tasks.MultiTableBackup;
 import com.yugabyte.yw.commissioner.tasks.subtasks.DeleteTableFromUniverse;
 import com.yugabyte.yw.common.BackupUtil;
+import com.yugabyte.yw.common.NodeUniverseManager;
 import com.yugabyte.yw.common.PlatformServiceException;
+import com.yugabyte.yw.common.ShellResponse;
 import com.yugabyte.yw.common.customer.config.CustomerConfigService;
 import com.yugabyte.yw.common.services.YBClientService;
+import com.yugabyte.yw.common.utils.Pair;
 import com.yugabyte.yw.forms.BackupRequestParams;
 import com.yugabyte.yw.forms.BackupTableParams;
 import com.yugabyte.yw.forms.BulkImportParams;
@@ -28,6 +36,7 @@ import com.yugabyte.yw.forms.PlatformResults;
 import com.yugabyte.yw.forms.PlatformResults.YBPSuccess;
 import com.yugabyte.yw.forms.PlatformResults.YBPTask;
 import com.yugabyte.yw.forms.TableDefinitionTaskParams;
+import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.metrics.MetricQueryHelper;
 import com.yugabyte.yw.metrics.MetricQueryResponse;
 import com.yugabyte.yw.models.Audit;
@@ -39,8 +48,11 @@ import com.yugabyte.yw.models.Schedule;
 import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.CustomerConfig.ConfigState;
 import com.yugabyte.yw.models.helpers.ColumnDetails;
+import com.yugabyte.yw.models.helpers.NodeDetails;
 import com.yugabyte.yw.models.helpers.TableDetails;
 import com.yugabyte.yw.models.helpers.TaskType;
+import com.yugabyte.yw.models.helpers.NodeDetails.NodeState;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -50,20 +62,31 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Scanner;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.Builder;
+import lombok.extern.jackson.Jacksonized;
+import oshi.util.tuples.Triplet;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yb.CommonTypes.TableType;
 import org.yb.client.GetTableSchemaResponse;
 import org.yb.client.ListTablesResponse;
 import org.yb.client.YBClient;
+import org.yb.master.CatalogEntityInfo.PlacementBlockPB;
 import org.yb.master.MasterDdlOuterClass.ListTablesResponsePB.TableInfo;
 import org.yb.master.MasterTypes.RelationType;
 import play.data.Form;
@@ -84,16 +107,20 @@ public class TablesController extends AuthenticatedController {
 
   private final CustomerConfigService customerConfigService;
 
+  private final NodeUniverseManager nodeUniverseManager;
+
   @Inject
   public TablesController(
       Commissioner commissioner,
       YBClientService service,
       MetricQueryHelper metricQueryHelper,
-      CustomerConfigService customerConfigService) {
+      CustomerConfigService customerConfigService, 
+      NodeUniverseManager nodeUniverseManager) {
     this.commissioner = commissioner;
     this.ybService = service;
     this.metricQueryHelper = metricQueryHelper;
     this.customerConfigService = customerConfigService;
+    this.nodeUniverseManager = nodeUniverseManager;
   }
 
   @ApiOperation(
@@ -255,6 +282,7 @@ public class TablesController extends AuthenticatedController {
   }
 
   @ApiModel(description = "Table information response")
+  @Jacksonized
   @Builder
   static class TableInfoResp {
 
@@ -278,6 +306,13 @@ public class TablesController extends AuthenticatedController {
 
     @ApiModelProperty(value = "UI_ONLY", hidden = true)
     public final boolean isIndexTable;
+
+    @ApiModelProperty(value = "Table space")
+    public final String tableSpace;
+
+    @ApiModelProperty(value = "Partition Info")
+    public final List<TableInfoResp> partitionInfo;
+
   }
 
   @ApiOperation(
@@ -306,22 +341,8 @@ public class TablesController extends AuthenticatedController {
     List<TableInfo> tableInfoList = response.getTableInfoList();
     List<TableInfoResp> tableInfoRespList = new ArrayList<>(tableInfoList.size());
     for (TableInfo table : tableInfoList) {
-      String tableKeySpace = table.getNamespace().getName();
       if (!isSystemTable(table) || isSystemRedis(table)) {
-        String id = table.getId().toStringUtf8();
-        TableInfoResp.TableInfoRespBuilder builder =
-            TableInfoResp.builder()
-                .tableUUID(getUUIDRepresentation(id))
-                .keySpace(tableKeySpace)
-                .tableType(table.getTableType())
-                .tableName(table.getName())
-                .relationType(table.getRelationType())
-                .isIndexTable(table.getRelationType() == RelationType.INDEX_TABLE_RELATION);
-        Double tableSize = tableSizes.get(id);
-        if (tableSize != null) {
-          builder.sizeBytes(tableSize);
-        }
-        tableInfoRespList.add(builder.build());
+        tableInfoRespList.add(buildResponseFromTableInfo(table, tableSizes, null).build());
       }
     }
     return PlatformResults.withData(tableInfoRespList);
@@ -401,13 +422,13 @@ public class TablesController extends AuthenticatedController {
 
       return PlatformResults.withData(createFromResponse(universe, tableUUID, response));
     } catch (IllegalArgumentException e) {
-      LOG.error("Failed to get schema of table " + tableUUID + " in universe " + universeUUID, e);
-      throw new PlatformServiceException(BAD_REQUEST, e.getMessage());
+        LOG.error("Failed to get schema of table " + tableUUID + " in universe " + universeUUID, e);
+        throw new PlatformServiceException(BAD_REQUEST, e.getMessage());
     } catch (Exception e) {
-      LOG.error("Failed to get schema of table " + tableUUID + " in universe " + universeUUID, e);
-      throw new PlatformServiceException(INTERNAL_SERVER_ERROR, e.getMessage());
+        LOG.error("Failed to get schema of table " + tableUUID + " in universe " + universeUUID, e);
+        throw new PlatformServiceException(INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
-      ybService.closeClient(client, masterAddresses);
+        ybService.closeClient(client, masterAddresses);
     }
   }
 
@@ -797,5 +818,375 @@ public class TablesController extends AuthenticatedController {
       result.put(tableID, entry.values.get(0).getRight());
     }
     return result;
+  }
+
+  @ApiOperation(
+      value = "List all tables",
+      nickname = "getAllTables",
+      notes = "Get a list of all tables in the specified universe",
+      response = TableInfoResp.class,
+      responseContainer = "List")
+  public Result listTablesWithPartitionInfo(UUID customerUUID, UUID universeUUID) {
+    // Validate customer UUID
+    Customer.getOrBadRequest(customerUUID);
+    // Validate universe UUID
+    Universe universe = Universe.getOrBadRequest(universeUUID);
+
+    final String masterAddresses = universe.getMasterAddresses(true);
+    if (masterAddresses.isEmpty()) {
+      String errMsg = "Expected error. Masters are not currently queryable.";
+      LOG.warn(errMsg);
+      return ok(errMsg);
+    }
+
+    Map<String, Double> tableSizes = getTableSizesOrEmpty(universe);
+
+    String certificate = universe.getCertificateNodetoNode();
+    ListTablesResponse response = listTablesOrBadRequest(masterAddresses, certificate);
+    List<TableInfo> tableInfoList = response.getTableInfoList();
+
+    Map<String, List<TableInfo>> namespaces = tableInfoList.stream().collect(Collectors.groupingBy(x -> x.getNamespace().getName()));
+
+    Map<TablePartitionInfo, TableInfo> tablePartitionInfoToTableInfoMap = tableInfoList.stream()
+    .collect(Collectors.toMap(x -> new TablePartitionInfo(x.getName(), x.getNamespace().getName()), Function.identity()));
+
+    LOG.info("tablePartitionInfoToTableInfoMap {} ", tablePartitionInfoToTableInfoMap);
+
+    Map<TablePartitionInfo, List<TablePartitionInfo>> parentToPartitionMap = new HashMap<>();
+    for (String namespace : namespaces.keySet()) {
+      parentToPartitionMap.putAll(fetchTablePartitionInfo(universe, namespace));
+    }
+    LOG.info("parentToPartitionMap {}", parentToPartitionMap);
+
+    List<TableInfoResp> tableInfoRespList = new ArrayList<>(tableInfoList.size());
+    Set<UUID> includedTableUuids = new HashSet<>();
+
+    for (Map.Entry<TablePartitionInfo, List<TablePartitionInfo>> entry : parentToPartitionMap.entrySet()) {
+      LOG.info("entry key {}", entry.getKey());
+      TableInfo table = tablePartitionInfoToTableInfoMap.get(entry.getKey());
+      if (!isSystemTable(table) || isSystemRedis(table)) {
+        TableInfoResp.TableInfoRespBuilder parentBuilder = buildResponseFromTableInfo(table, tableSizes, entry.getKey());
+        List<TableInfoResp> childrenList = new ArrayList<>();
+        for (TablePartitionInfo childPartition : entry.getValue()) {
+          TableInfoResp.TableInfoRespBuilder childBuilder = buildResponseFromTableInfo(tablePartitionInfoToTableInfoMap.get(childPartition), tableSizes, childPartition);
+          childrenList.add(childBuilder.build());
+          includedTableUuids.add(childBuilder.tableUUID);
+        }
+        parentBuilder.partitionInfo(childrenList);
+        includedTableUuids.add(parentBuilder.tableUUID);
+        tableInfoRespList.add(parentBuilder.build());
+      }
+    }
+
+    for (TableInfo table : tableInfoList) {
+      if (!isSystemTable(table) || isSystemRedis(table)) {
+        String tableKeySpace = table.getNamespace().getName();
+        String id = table.getId().toStringUtf8();
+        if (!includedTableUuids.contains(getUUIDRepresentation(id))) {
+          tableInfoRespList.add(buildResponseFromTableInfo(table, tableSizes, null).build());
+        }
+      }
+    }
+
+    return PlatformResults.withData(tableInfoRespList);
+  }
+
+  private TableInfoResp.TableInfoRespBuilder buildResponseFromTableInfo(TableInfo table, Map<String, Double> tableSizes, TablePartitionInfo tpi) {
+        String id = table.getId().toStringUtf8();
+        String tableKeySpace = table.getNamespace().getName();
+        TableInfoResp.TableInfoRespBuilder builder =
+            TableInfoResp.builder()
+                .tableUUID(getUUIDRepresentation(id))
+                .keySpace(tableKeySpace)
+                .tableType(table.getTableType())
+                .tableName(table.getName())
+                .relationType(table.getRelationType())
+                .isIndexTable(table.getRelationType() == RelationType.INDEX_TABLE_RELATION);
+        Double tableSize = tableSizes.get(id);
+        if (tableSize != null) {
+          builder.sizeBytes(tableSize);
+        }
+        if (tpi != null) {
+          builder.tableSpace(tpi.tableSpace);
+        }
+        return builder;
+  }
+
+  private Map<TablePartitionInfo, List<TablePartitionInfo>> fetchTablePartitionInfo(Universe universe, String dbName) {
+    LOG.info("Fetching table partitions...");
+    NodeDetails randomTServer = getARandomTServer(universe);
+    Map<TablePartitionInfo, List<TablePartitionInfo>> parentToChildrenMap = new HashMap<>();
+    final String fetchPartitionDataQuery =
+                          "select jsonb_agg(res)"
+                            +" FROM"
+                              +" (select t.child_table, t.child_schema, pt.tablespace as child_tablespace, t.parent_table, t.parent_schema, pt_parent.tablespace as parent_tablespace "  
+                                +" FROM "
+                                  +" (SELECT nmsp_parent.nspname AS parent_schema, parent.relname AS parent_table, nmsp_child.nspname  AS child_schema, child.relname AS child_table "
+                                    +" FROM "
+                                    +"  pg_inherits JOIN pg_class parent "
+                                    +"    ON pg_inherits.inhparent = parent.oid "
+                                    +"  JOIN pg_class child "
+                                    +"  ON pg_inherits.inhrelid = child.oid "
+                                    +"  JOIN pg_namespace nmsp_parent  "
+                                    +"  ON nmsp_parent.oid  = parent.relnamespace "
+                                    +"  JOIN pg_namespace nmsp_child "
+                                    +"  ON nmsp_child.oid   = child.relnamespace) as t "
+                                    +" inner join pg_tables pt "
+                                    +"  on pt.schemaname = t.child_schema "
+                                    +"  and pt.tablename = t.child_table "
+                                    +" inner join pg_tables pt_parent "
+                                    +" on pt_parent.schemaname = t.parent_schema "
+                                    +" and pt_parent.tablename = t.parent_table) as res";
+    ShellResponse shellResponse = nodeUniverseManager.runYsqlCommand(randomTServer, universe, dbName, fetchPartitionDataQuery);
+    if (!shellResponse.isSuccess()) {
+      LOG.warn(
+          "Attempt to fetch table partition info for db {} via node {} failed, response {}:{}",
+          dbName, randomTServer.nodeName, shellResponse.code, shellResponse.message);
+          throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching Table Partition information");
+    }
+    String jsonData = extractJsonisedQueryResponse(shellResponse);
+    if (jsonData == null || jsonData.isEmpty())  {
+      return parentToChildrenMap;
+    }
+    try {
+      ObjectMapper objectMapper = new ObjectMapper();
+      List<TablePartitionInfo> partitionList = objectMapper.readValue(jsonData, new TypeReference<List<TablePartitionInfo>>(){});
+
+      for (TablePartitionInfo ti : partitionList) {
+        ti.namespace = dbName;
+        TablePartitionInfo parent = new TablePartitionInfo();
+        parent.schema = ti.parentSchema;
+        parent.table = ti.parentTable;
+        parent.tableSpace = ti.parentTableSpace;
+        parent.namespace = dbName;
+        if (!parentToChildrenMap.containsKey(parent)) {
+          parentToChildrenMap.put(parent, new ArrayList<>());
+        }
+        parentToChildrenMap.get(parent).add(ti);
+      }
+      LOG.info("parentToChildrenMap size {}", parentToChildrenMap.size());
+      return parentToChildrenMap;
+    } catch (Exception e) {
+        LOG.error("Error while parsing partition query response {}", jsonData, e);
+        throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching Table Partition information");
+    }
+
+  }
+
+  private NodeDetails getARandomTServer(Universe universe) {
+    UniverseDefinitionTaskParams.Cluster primaryCluster = universe.getUniverseDetails().getPrimaryCluster();
+    List<NodeDetails> tserverLiveNodes =
+        universe
+            .getUniverseDetails()
+            .getNodesInCluster(primaryCluster.uuid)
+            .stream()
+            .filter(nodeDetails -> nodeDetails.isTserver)
+            .filter(nodeDetails -> nodeDetails.state == NodeState.Live)
+            .collect(Collectors.toList());
+    return tserverLiveNodes.get(new Random().nextInt(tserverLiveNodes.size()));
+  }
+
+  private String extractJsonisedQueryResponse(ShellResponse shellResponse) {
+    String data = null;
+    if (shellResponse.message != null && !shellResponse.message.isEmpty() ){
+      LOG.info("Message = {}", shellResponse.message);
+      Scanner scanner = new Scanner(shellResponse.message);
+      int i = 0;
+      while (scanner.hasNextLine()) {
+        data = new String(scanner.nextLine());
+        if (i++ == 3) {
+          break;
+        }
+      }
+      scanner.close();
+    }
+    return data;
+  }
+
+  private static class TablePartitionInfo {
+      @JsonProperty("child_table")
+      public String table;
+
+      @JsonProperty("child_schema")
+      public String schema;
+
+      @JsonProperty("child_tablespace")
+      public String tableSpace;
+
+      @JsonProperty("parent_table")
+      public String parentTable;
+
+      @JsonProperty("parent_schema")
+      public String parentSchema;
+
+      @JsonProperty("parent_tablespace")
+      public String parentTableSpace;
+
+      @JsonProperty("namespace")
+      public String namespace;
+
+      public TablePartitionInfo(String table, String namespace) {
+        this.table = table;
+        this.namespace = namespace;
+      }
+
+      public TablePartitionInfo() {
+      }
+
+      @Override
+      public String toString() {
+        return "TablePartitionInfo [namespace=" + namespace + ", parentSchema=" + parentSchema + ", parentTable="
+            + parentTable + ", parentTableSpace=" + parentTableSpace + ", schema=" + schema + ", table=" + table
+            + ", tableSpace=" + tableSpace + "]";
+      }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((namespace == null) ? 0 : namespace.hashCode());
+        result = prime * result + ((table == null) ? 0 : table.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        TablePartitionInfo other = (TablePartitionInfo) obj;
+        if (namespace == null) {
+            if (other.namespace != null)
+                return false;
+        } else if (!namespace.equals(other.namespace))
+            return false;
+        if (table == null) {
+            if (other.table != null)
+                return false;
+        } else if (!table.equals(other.table))
+            return false;
+        return true;
+    }
+
+  }
+
+  @ApiOperation(
+      value = "List all tablespaces",
+      nickname = "getAllTableSpaces",
+      notes = "Get a list of all tablespaces of a give universe",
+      response = TableInfoResp.class,
+      responseContainer = "List")
+  public Result listTableSpaces(UUID customerUUID, UUID universeUUID) {
+    Customer.getOrBadRequest(customerUUID);
+    Universe universe = Universe.getOrBadRequest(universeUUID);
+
+    final String masterAddresses = universe.getMasterAddresses(true);
+    if (masterAddresses.isEmpty()) {
+      String errMsg = "Expected error. Masters are not currently queryable.";
+      LOG.warn(errMsg);
+      return ok(errMsg);
+    }
+
+    List<TableSpaceInfoResp> tableSpaceInfoRespList = new ArrayList<>();
+    LOG.info("Fetching table spaces...");
+    NodeDetails randomTServer = getARandomTServer(universe);
+    final String fetchTablespaceQuery = "select jsonb_agg(t) from (select spcname, spcoptions from pg_catalog.pg_tablespace) as t";
+    ShellResponse shellResponse = nodeUniverseManager.runYsqlCommand(randomTServer, universe, "postgres", fetchTablespaceQuery);
+    if (!shellResponse.isSuccess()) {
+      LOG.warn(
+          "Attempt to fetch tablespace info via node {} failed, response {}:{}",
+          randomTServer.nodeName, shellResponse.code, shellResponse.message);
+          throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
+    }
+    String jsonData = extractJsonisedQueryResponse(shellResponse);
+    if (jsonData == null || jsonData.isEmpty())  {
+      PlatformResults.withData(tableSpaceInfoRespList);
+    }
+
+    LOG.debug("jsonData {}", jsonData);
+    try {
+      ObjectMapper objectMapper = new ObjectMapper();
+      List<TableSpaceQueryResponse> tablespaceList = objectMapper.readValue(jsonData, new TypeReference<List<TableSpaceQueryResponse>>(){});
+      tableSpaceInfoRespList = tablespaceList.stream()
+                          .filter(x -> !x.tableSpaceName.startsWith("pg_"))
+                          .map(x -> parseToTableSpaceInfoResp(x))
+                          .collect(Collectors.toList());
+      return PlatformResults.withData(tableSpaceInfoRespList);
+    } catch (IOException ioe) {
+      LOG.error("Unable to parse fetchTablespaceQuery response {}", jsonData, ioe);
+      throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
+    }
+  }
+
+  private TableSpaceInfoResp parseToTableSpaceInfoResp(TableSpaceQueryResponse tablespace) {
+    TableSpaceInfoResp.TableSpaceInfoRespBuilder builder = TableSpaceInfoResp.builder();
+    builder.name(tablespace.tableSpaceName);
+    try {
+      ObjectMapper objectMapper = new ObjectMapper();
+      for (String optionStr : tablespace.tableSpaceOptions) {
+        if (optionStr.startsWith("replica_placement=")) {
+          optionStr = optionStr.replaceFirst("replica_placement=", "");
+          TableSpaceOptions option = objectMapper.readValue(optionStr, TableSpaceOptions.class);
+          builder
+          .numReplicas(option.numReplicas)
+          .placementBlocks(option.placementBlocks);
+        }
+      }
+      return builder.build();
+    } catch (IOException ioe) {
+      LOG.error("Unable to parse options fron fetchTablespaceQuery response {}", tablespace.tableSpaceOptions, ioe);
+      throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
+    }
+  }
+
+  @ApiModel(description = "Tablespace information response")
+  @Jacksonized
+  @Builder
+  static class TableSpaceInfoResp {
+
+    @ApiModelProperty(value = "Tablespace Name")
+    public String name;
+
+    @ApiModelProperty(value = "numReplicas")
+    public int numReplicas;
+
+    @ApiModelProperty(value = "placements")
+    public List<PlacementBlock> placementBlocks;
+  }
+
+  static class PlacementBlock {
+    @ApiModelProperty(value = "Cloud")
+    public String cloud;
+
+    @ApiModelProperty(value = "Region")
+    public String region;
+
+    @ApiModelProperty(value = "Zone")
+    public String zone;
+
+    @ApiModelProperty(value = "Minimum replicas")
+    @JsonAlias("min_num_replicas")
+    public int minNumReplicas;
+  }
+
+  private static class TableSpaceQueryResponse {
+    @JsonProperty("spcname")
+    public String tableSpaceName;
+
+    @JsonProperty("spcoptions")
+    public List<String> tableSpaceOptions;
+
+  }
+
+  static class TableSpaceOptions {
+    @JsonProperty("num_replicas")
+    public int numReplicas;
+
+    @JsonProperty("placement_blocks")
+    public List<PlacementBlock> placementBlocks;
+
   }
 }

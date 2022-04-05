@@ -20,6 +20,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyObject;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.eq;
@@ -49,10 +51,15 @@ import com.yugabyte.yw.common.BackupUtil;
 import com.yugabyte.yw.common.FakeApiHelper;
 import com.yugabyte.yw.common.FakeDBApplication;
 import com.yugabyte.yw.common.ModelFactory;
+import com.yugabyte.yw.common.NodeUniverseManager;
 import com.yugabyte.yw.common.PlatformServiceException;
+import com.yugabyte.yw.common.ShellResponse;
 import com.yugabyte.yw.common.audit.AuditService;
 import com.yugabyte.yw.common.customer.config.CustomerConfigService;
 import com.yugabyte.yw.common.services.YBClientService;
+import com.yugabyte.yw.controllers.TablesController.PlacementBlock;
+import com.yugabyte.yw.controllers.TablesController.TableInfoResp;
+import com.yugabyte.yw.controllers.TablesController.TableSpaceInfoResp;
 import com.yugabyte.yw.forms.BackupTableParams;
 import com.yugabyte.yw.forms.BulkImportParams;
 import com.yugabyte.yw.forms.TableDefinitionTaskParams;
@@ -65,6 +72,7 @@ import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.Users;
 import com.yugabyte.yw.models.extended.UserWithFeatures;
 import com.yugabyte.yw.models.helpers.ColumnDetails;
+import com.yugabyte.yw.models.helpers.NodeDetails;
 import com.yugabyte.yw.models.helpers.TaskType;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -77,11 +85,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.Ignore;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Matchers;
+import org.mockito.Mock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yb.ColumnSchema;
@@ -106,6 +119,7 @@ public class TablesControllerTest extends FakeDBApplication {
   private AuditService auditService;
   private ListTablesResponse mockListTablesResponse;
   private GetTableSchemaResponse mockSchemaResponse;
+  private NodeUniverseManager mockNodeUniverseManager;
 
   private Schema getFakeSchema() {
     List<ColumnSchema> columnSchemas = new LinkedList<>();
@@ -123,6 +137,7 @@ public class TablesControllerTest extends FakeDBApplication {
     mockService = mock(YBClientService.class);
     mockListTablesResponse = mock(ListTablesResponse.class);
     mockSchemaResponse = mock(GetTableSchemaResponse.class);
+    mockNodeUniverseManager = mock(NodeUniverseManager.class);
     when(mockService.getClient(any(), any())).thenReturn(mockClient);
 
     auditService = new AuditService();
@@ -131,7 +146,7 @@ public class TablesControllerTest extends FakeDBApplication {
     CustomerConfigService customerConfigService =
         app.injector().instanceOf(CustomerConfigService.class);
     tablesController =
-        new TablesController(commissioner, mockService, metricQueryHelper, customerConfigService);
+        new TablesController(commissioner, mockService, metricQueryHelper, customerConfigService, mockNodeUniverseManager);
     tablesController.setAuditService(auditService);
   }
 
@@ -1033,4 +1048,255 @@ public class TablesControllerTest extends FakeDBApplication {
 
     tablesController.validateTables(new ArrayList<>(), universe);
   }
+
+  @Test
+  public void testListTablesWithPartitionInfo() throws Exception {
+    List<TableInfo> tableInfoList = new ArrayList<>();
+    Set<String> tableNames = new HashSet<>();
+    TableInfo ti1 = TableInfo.newBuilder()
+            .setName("bank_transactions")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+    TableInfo ti2 = TableInfo.newBuilder()
+            .setName("bank_transactions_india")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+    TableInfo ti3 = TableInfo.newBuilder()
+            .setName("bank_transactions_eu")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("$$$Default"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+    // Create System type table, this will not be returned in response
+    TableInfo ti4 = TableInfo.newBuilder()
+            .setName("Table2")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("system"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .setRelationType(RelationType.SYSTEM_TABLE_RELATION)
+            .build();
+
+    tableInfoList.add(ti1);
+    tableInfoList.add(ti2);
+    tableInfoList.add(ti3);
+    tableInfoList.add(ti4);
+
+    tableNames.add("bank_transactions");
+    tableNames.add("bank_transactions_india");
+    tableNames.add("bank_transactions_eu");
+    tableNames.add("Table2");
+
+    when(mockListTablesResponse.getTableInfoList()).thenReturn(tableInfoList);
+    when(mockClient.getTablesList()).thenReturn(mockListTablesResponse);
+    Customer customer = ModelFactory.testCustomer();
+    Users user = ModelFactory.testUser(customer);
+    Universe u1 = createUniverse(customer.getCustomerId());
+    u1 = Universe.saveDetails(u1.universeUUID, ApiUtils.mockUniverseUpdater());
+    customer.addUniverseUUID(u1.universeUUID);
+    customer.save();
+
+    ShellResponse shellResponse = ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, SHELL_RESPONSE_MESSAGE_SINGLE_NAMESPACE); 
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), eq("$$$Default"), anyObject())).thenReturn(shellResponse);
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), eq("system"), anyObject()))
+            .thenReturn(ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, ""));
+
+    LOG.info("Created customer " + customer.uuid + " with universe " + u1.universeUUID);
+    Result r = tablesController.listTablesWithPartitionInfo(customer.uuid, u1.universeUUID);
+    JsonNode json = Json.parse(contentAsString(r));
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    LOG.debug("JSON respone {}", json.toString());
+    List<TableInfoResp> tableInfoRespList = objectMapper.readValue(json.toString(), new TypeReference<List<TableInfoResp>>(){});
+    LOG.debug("Fetched table list from universe, response: " + contentAsString(r));
+    assertEquals(OK, r.status());
+    Assert.assertEquals(1, tableInfoRespList.size());
+    TableInfoResp parent = tableInfoRespList.get(0);
+    Assert.assertEquals("bank_transactions", parent.tableName);
+    Assert.assertEquals("$$$Default", parent.keySpace);
+    Assert.assertEquals(2, parent.partitionInfo.size());
+    Assert.assertEquals(1, parent.partitionInfo.stream().filter(x -> "bank_transactions_india".equals(x.tableName)).collect(Collectors.toList()).size());
+    Assert.assertEquals(1, parent.partitionInfo.stream().filter(x -> "bank_transactions_eu".equals(x.tableName)).collect(Collectors.toList()).size());
+
+  }
+
+  @Test
+  public void testListTablesWithPartitionInfoMultipleDB() throws Exception {
+    List<TableInfo> tableInfoList = new ArrayList<>();
+    Set<String> tableNames = new HashSet<>();
+    TableInfo ti1 = TableInfo.newBuilder()
+            .setName("db1.table1")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("db1"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+    TableInfo ti2 = TableInfo.newBuilder()
+            .setName("db1.table1.partition1")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("db1"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+    TableInfo ti3 = TableInfo.newBuilder()
+            .setName("db1.table1.partition2")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("db1"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+
+    TableInfo ti4 = TableInfo.newBuilder()
+            .setName("db2.table1")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("db2"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+    TableInfo ti5 = TableInfo.newBuilder()
+            .setName("db2.table1.partition1")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("db2"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+    TableInfo ti6 = TableInfo.newBuilder()
+            .setName("db2.table2")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("db2"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+    TableInfo ti7 = TableInfo.newBuilder()
+            .setName("db3.table1")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("db3"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .build();
+
+    // Create System type table, this will not be returned in response
+    TableInfo ti8 = TableInfo.newBuilder()
+            .setName("Table1")
+            .setNamespace(MasterTypes.NamespaceIdentifierPB.newBuilder().setName("system"))
+            .setId(ByteString.copyFromUtf8(UUID.randomUUID().toString().replace("-", "")))
+            .setTableType(TableType.YQL_TABLE_TYPE)
+            .setRelationType(RelationType.SYSTEM_TABLE_RELATION)
+            .build();
+
+    tableInfoList.add(ti1);
+    tableInfoList.add(ti2);
+    tableInfoList.add(ti3);
+    tableInfoList.add(ti4);
+    tableInfoList.add(ti5);
+    tableInfoList.add(ti6);
+    tableInfoList.add(ti7);
+    tableInfoList.add(ti8);
+
+    tableNames.add("db1.table1");
+    tableNames.add("db1.table1.partition1");
+    tableNames.add("db1.table1.partition2");
+    tableNames.add("db2.table1");
+    tableNames.add("db2.table1.partition1");
+    tableNames.add("db2.table2");
+    tableNames.add("db3.table1");
+    tableNames.add("Table1");
+
+    when(mockListTablesResponse.getTableInfoList()).thenReturn(tableInfoList);
+    when(mockClient.getTablesList()).thenReturn(mockListTablesResponse);
+    Customer customer = ModelFactory.testCustomer();
+    Users user = ModelFactory.testUser(customer);
+    Universe u1 = createUniverse(customer.getCustomerId());
+    u1 = Universe.saveDetails(u1.universeUUID, ApiUtils.mockUniverseUpdater());
+    customer.addUniverseUUID(u1.universeUUID);
+    customer.save();
+
+    ShellResponse shellResponse1 = ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, SHELL_RESPONSE_MESSAGE_MULTIPLE_NAMESPACES_DB1);
+    ShellResponse shellResponse2 = ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, SHELL_RESPONSE_MESSAGE_MULTIPLE_NAMESPACES_DB2);
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), eq("db1"), anyObject())).thenReturn(shellResponse1);
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), eq("db2"), anyObject())).thenReturn(shellResponse2);
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), eq("db3"), anyObject()))
+            .thenReturn(ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, ""));
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), eq("system"), anyObject()))
+            .thenReturn(ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, ""));
+
+    LOG.info("Created customer " + customer.uuid + " with universe " + u1.universeUUID);
+    Result r = tablesController.listTablesWithPartitionInfo(customer.uuid, u1.universeUUID);
+    JsonNode json = Json.parse(contentAsString(r));
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    List<TableInfoResp> tableInfoRespList = objectMapper.readValue(json.toString(), new TypeReference<List<TableInfoResp>>(){});
+    assertEquals(OK, r.status());
+    Assert.assertEquals(4, tableInfoRespList.size());
+    List<TableInfoResp> db1 = tableInfoRespList.stream().filter(x -> "db1".equals(x.keySpace)).collect(Collectors.toList());
+    Assert.assertEquals(1, db1.size());
+    Assert.assertEquals("db1.table1", db1.get(0).tableName);
+    Assert.assertEquals(2, db1.get(0).partitionInfo.size());
+    Assert.assertEquals(1, db1.get(0).partitionInfo.stream().filter(x -> "db1.table1.partition1".equals(x.tableName)).collect(Collectors.toList()).size());
+    Assert.assertEquals(1, db1.get(0).partitionInfo.stream().filter(x -> "db1.table1.partition2".equals(x.tableName)).collect(Collectors.toList()).size());
+
+    List<TableInfoResp> db2 = tableInfoRespList.stream().filter(x -> "db2".equals(x.keySpace)).collect(Collectors.toList());
+    Assert.assertEquals(2, db2.size());
+    TableInfoResp db2_table1 = db2.stream().filter(x -> "db2.table1".equals(x.tableName)).collect(Collectors.toList()).get(0);
+    Assert.assertEquals(1, db2_table1.partitionInfo.size());
+    Assert.assertEquals("db2.table1.partition1", db2_table1.partitionInfo.get(0).tableName);
+
+    TableInfoResp db2_table2 = db2.stream().filter(x -> "db2.table2".equals(x.tableName)).collect(Collectors.toList()).get(0);
+    Assert.assertNull(db2_table2.partitionInfo);
+
+    List<TableInfoResp> db3 = tableInfoRespList.stream().filter(x -> "db3".equals(x.keySpace)).collect(Collectors.toList());
+    Assert.assertEquals(1, db3.size());
+    Assert.assertEquals("db3.table1", db3.get(0).tableName);
+    Assert.assertNull(db3.get(0).partitionInfo);
+  }
+
+  @Test
+  public void testListTableSpaces() throws Exception {
+    Customer customer = ModelFactory.testCustomer();
+    Users user = ModelFactory.testUser(customer);
+    Universe u1 = createUniverse(customer.getCustomerId());
+    u1 = Universe.saveDetails(u1.universeUUID, ApiUtils.mockUniverseUpdater());
+    customer.addUniverseUUID(u1.universeUUID);
+    customer.save();
+
+    ShellResponse shellResponse1 = ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, SHELL_RESPONSE_MESSAGE_TABLE_SPACES);
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), anyString(), anyObject())).thenReturn(shellResponse1);
+
+    Result r = tablesController.listTableSpaces(customer.uuid, u1.universeUUID);
+    assertEquals(OK, r.status());
+    JsonNode json = Json.parse(contentAsString(r));
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    List<TableSpaceInfoResp> tableSpaceInfoRespList = objectMapper.readValue(json.toString(), new TypeReference<List<TableSpaceInfoResp>>(){});
+    Assert.assertNotNull(tableSpaceInfoRespList);
+    Assert.assertEquals(4, tableSpaceInfoRespList.size());
+
+    Map<String, TableSpaceInfoResp> tableSpacesMap = tableSpaceInfoRespList.stream().collect(Collectors.toMap(x -> x.name, Function.identity()));
+
+    TableSpaceInfoResp ap_south_1_tablespace = tableSpacesMap.get("ap_south_1_tablespace");
+    TableSpaceInfoResp us_west_2_tablespace = tableSpacesMap.get("us_west_2_tablespace");
+    TableSpaceInfoResp us_west_1_tablespace = tableSpacesMap.get("us_west_1_tablespace");
+    TableSpaceInfoResp us_west_3_tablespace = tableSpacesMap.get("us_west_3_tablespace");
+    Assert.assertNotNull(ap_south_1_tablespace);
+    Assert.assertNotNull(us_west_2_tablespace);
+    Assert.assertNotNull(us_west_1_tablespace);
+    Assert.assertNotNull(us_west_3_tablespace);
+
+    Assert.assertEquals(3, ap_south_1_tablespace.numReplicas);
+    Assert.assertEquals(3, ap_south_1_tablespace.placementBlocks.size());
+    Map<String, PlacementBlock> ap_south_1_tablespace_zones = ap_south_1_tablespace.placementBlocks.stream().collect(Collectors.toMap(x -> x.zone, Function.identity()));
+    Assert.assertNotNull(ap_south_1_tablespace_zones.get("ap-south-1a"));
+    Assert.assertEquals("ap-south-1", ap_south_1_tablespace_zones.get("ap-south-1a").region);
+    Assert.assertEquals("aws", ap_south_1_tablespace_zones.get("ap-south-1a").cloud);
+    Assert.assertEquals(1, ap_south_1_tablespace_zones.get("ap-south-1a").minNumReplicas);
+
+    Assert.assertEquals(3, us_west_2_tablespace.numReplicas);
+    Assert.assertEquals(3, us_west_2_tablespace.placementBlocks.size());
+    Assert.assertEquals(1, us_west_1_tablespace.numReplicas);
+    Assert.assertEquals(1, us_west_1_tablespace.placementBlocks.size());
+    Assert.assertEquals(1, us_west_3_tablespace.numReplicas);
+    Assert.assertEquals(1, us_west_3_tablespace.placementBlocks.size());
+  
+  }
+
+  private final String SHELL_RESPONSE_MESSAGE_TABLE_SPACES = "\r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 jsonb_agg\r\n------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n [{\"spcname\": \"pg_default\", \"spcoptions\": null}, {\"spcname\": \"pg_global\", \"spcoptions\": null}, {\"spcname\": \"ap_south_1_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 3, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1a\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1b\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1c\\\",\\\"min_num_replicas\\\":1}]}\"]}, {\"spcname\": \"us_west_2_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 3, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2a\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2b\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2c\\\",\\\"min_num_replicas\\\":1}]}\"]}, {\"spcname\": \"us_west_1_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 1, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"gcp\\\",\\\"region\\\":\\\"us-west1\\\",\\\"zone\\\":\\\"us-west1-a\\\",\\\"min_num_replicas\\\":1}]\\n  }\"]}, {\"spcname\": \"us_west_3_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 1, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"gcp\\\",\\\"region\\\":\\\"us-west1\\\",\\\"zone\\\":\\\"us-west1-c\\\",\\\"min_num_replicas\\\":1}]\\n  }\"]}]";
+  private final String SHELL_RESPONSE_MESSAGE_SINGLE_NAMESPACE = "\r\n                                                                                                                                                                                                        jsonb_agg\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n [{\"child_table\": \"bank_transactions_eu\", \"child_schema\": \"public\", \"parent_table\": \"bank_transactions\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_1_tablespace\", \"parent_tablespace\": null}, {\"child_table\": \"bank_transactions_india\", \"child_schema\": \"public\", \"parent_table\": \"bank_transactions\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_3_tablespace\", \"parent_tablespace\": null}]\r\n(1 row)";
+  private final String SHELL_RESPONSE_MESSAGE_MULTIPLE_NAMESPACES_DB1 = "\r\n                                                                                                                                                                                                        jsonb_agg\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n[{\"child_table\": \"db1.table1.partition1\", \"child_schema\": \"public\", \"parent_table\": \"db1.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_1_tablespace\", \"parent_tablespace\": null}, {\"child_table\": \"db1.table1.partition2\", \"child_schema\": \"public\", \"parent_table\": \"db1.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_3_tablespace\", \"parent_tablespace\": null}]\r\n(1 row)";
+  private final String SHELL_RESPONSE_MESSAGE_MULTIPLE_NAMESPACES_DB2 = "\r\n                                                                                                                                                                                                        jsonb_agg\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n[{\"child_table\": \"db2.table1.partition1\", \"child_schema\": \"public\", \"parent_table\": \"db2.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_1_tablespace\", \"parent_tablespace\": null}]\r\n(1 row)";
 }
