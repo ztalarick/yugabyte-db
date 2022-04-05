@@ -114,7 +114,7 @@ public class TablesController extends AuthenticatedController {
       Commissioner commissioner,
       YBClientService service,
       MetricQueryHelper metricQueryHelper,
-      CustomerConfigService customerConfigService, 
+      CustomerConfigService customerConfigService,
       NodeUniverseManager nodeUniverseManager) {
     this.commissioner = commissioner;
     this.ybService = service;
@@ -312,7 +312,6 @@ public class TablesController extends AuthenticatedController {
 
     @ApiModelProperty(value = "Partition Info")
     public final List<TableInfoResp> partitionInfo;
-
   }
 
   @ApiOperation(
@@ -422,13 +421,13 @@ public class TablesController extends AuthenticatedController {
 
       return PlatformResults.withData(createFromResponse(universe, tableUUID, response));
     } catch (IllegalArgumentException e) {
-        LOG.error("Failed to get schema of table " + tableUUID + " in universe " + universeUUID, e);
-        throw new PlatformServiceException(BAD_REQUEST, e.getMessage());
+      LOG.error("Failed to get schema of table " + tableUUID + " in universe " + universeUUID, e);
+      throw new PlatformServiceException(BAD_REQUEST, e.getMessage());
     } catch (Exception e) {
-        LOG.error("Failed to get schema of table " + tableUUID + " in universe " + universeUUID, e);
-        throw new PlatformServiceException(INTERNAL_SERVER_ERROR, e.getMessage());
+      LOG.error("Failed to get schema of table " + tableUUID + " in universe " + universeUUID, e);
+      throw new PlatformServiceException(INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
-        ybService.closeClient(client, masterAddresses);
+      ybService.closeClient(client, masterAddresses);
     }
   }
 
@@ -845,10 +844,16 @@ public class TablesController extends AuthenticatedController {
     ListTablesResponse response = listTablesOrBadRequest(masterAddresses, certificate);
     List<TableInfo> tableInfoList = response.getTableInfoList();
 
-    Map<String, List<TableInfo>> namespaces = tableInfoList.stream().collect(Collectors.groupingBy(x -> x.getNamespace().getName()));
+    Map<String, List<TableInfo>> namespaces =
+        tableInfoList.stream().collect(Collectors.groupingBy(x -> x.getNamespace().getName()));
 
-    Map<TablePartitionInfo, TableInfo> tablePartitionInfoToTableInfoMap = tableInfoList.stream()
-    .collect(Collectors.toMap(x -> new TablePartitionInfo(x.getName(), x.getNamespace().getName()), Function.identity()));
+    Map<TablePartitionInfo, TableInfo> tablePartitionInfoToTableInfoMap =
+        tableInfoList
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    x -> new TablePartitionInfo(x.getName(), x.getNamespace().getName()),
+                    Function.identity()));
 
     LOG.info("tablePartitionInfoToTableInfoMap {} ", tablePartitionInfoToTableInfoMap);
 
@@ -861,14 +866,18 @@ public class TablesController extends AuthenticatedController {
     List<TableInfoResp> tableInfoRespList = new ArrayList<>(tableInfoList.size());
     Set<UUID> includedTableUuids = new HashSet<>();
 
-    for (Map.Entry<TablePartitionInfo, List<TablePartitionInfo>> entry : parentToPartitionMap.entrySet()) {
+    for (Map.Entry<TablePartitionInfo, List<TablePartitionInfo>> entry :
+        parentToPartitionMap.entrySet()) {
       LOG.info("entry key {}", entry.getKey());
       TableInfo table = tablePartitionInfoToTableInfoMap.get(entry.getKey());
       if (!isSystemTable(table) || isSystemRedis(table)) {
-        TableInfoResp.TableInfoRespBuilder parentBuilder = buildResponseFromTableInfo(table, tableSizes, entry.getKey());
+        TableInfoResp.TableInfoRespBuilder parentBuilder =
+            buildResponseFromTableInfo(table, tableSizes, entry.getKey());
         List<TableInfoResp> childrenList = new ArrayList<>();
         for (TablePartitionInfo childPartition : entry.getValue()) {
-          TableInfoResp.TableInfoRespBuilder childBuilder = buildResponseFromTableInfo(tablePartitionInfoToTableInfoMap.get(childPartition), tableSizes, childPartition);
+          TableInfoResp.TableInfoRespBuilder childBuilder =
+              buildResponseFromTableInfo(
+                  tablePartitionInfoToTableInfoMap.get(childPartition), tableSizes, childPartition);
           childrenList.add(childBuilder.build());
           includedTableUuids.add(childBuilder.tableUUID);
         }
@@ -891,66 +900,75 @@ public class TablesController extends AuthenticatedController {
     return PlatformResults.withData(tableInfoRespList);
   }
 
-  private TableInfoResp.TableInfoRespBuilder buildResponseFromTableInfo(TableInfo table, Map<String, Double> tableSizes, TablePartitionInfo tpi) {
-        String id = table.getId().toStringUtf8();
-        String tableKeySpace = table.getNamespace().getName();
-        TableInfoResp.TableInfoRespBuilder builder =
-            TableInfoResp.builder()
-                .tableUUID(getUUIDRepresentation(id))
-                .keySpace(tableKeySpace)
-                .tableType(table.getTableType())
-                .tableName(table.getName())
-                .relationType(table.getRelationType())
-                .isIndexTable(table.getRelationType() == RelationType.INDEX_TABLE_RELATION);
-        Double tableSize = tableSizes.get(id);
-        if (tableSize != null) {
-          builder.sizeBytes(tableSize);
-        }
-        if (tpi != null) {
-          builder.tableSpace(tpi.tableSpace);
-        }
-        return builder;
+  private TableInfoResp.TableInfoRespBuilder buildResponseFromTableInfo(
+      TableInfo table, Map<String, Double> tableSizes, TablePartitionInfo tpi) {
+    String id = table.getId().toStringUtf8();
+    String tableKeySpace = table.getNamespace().getName();
+    TableInfoResp.TableInfoRespBuilder builder =
+        TableInfoResp.builder()
+            .tableUUID(getUUIDRepresentation(id))
+            .keySpace(tableKeySpace)
+            .tableType(table.getTableType())
+            .tableName(table.getName())
+            .relationType(table.getRelationType())
+            .isIndexTable(table.getRelationType() == RelationType.INDEX_TABLE_RELATION);
+    Double tableSize = tableSizes.get(id);
+    if (tableSize != null) {
+      builder.sizeBytes(tableSize);
+    }
+    if (tpi != null) {
+      builder.tableSpace(tpi.tableSpace);
+    }
+    return builder;
   }
 
-  private Map<TablePartitionInfo, List<TablePartitionInfo>> fetchTablePartitionInfo(Universe universe, String dbName) {
+  private Map<TablePartitionInfo, List<TablePartitionInfo>> fetchTablePartitionInfo(
+      Universe universe, String dbName) {
     LOG.info("Fetching table partitions...");
     NodeDetails randomTServer = getARandomTServer(universe);
     Map<TablePartitionInfo, List<TablePartitionInfo>> parentToChildrenMap = new HashMap<>();
     final String fetchPartitionDataQuery =
-                          "SELECT jsonb_agg(res)"
-                            +" FROM"
-                              +" (SELECT t.child_table, t.child_schema, pt.tablespace as child_tablespace, t.parent_table, t.parent_schema, pt_parent.tablespace as parent_tablespace "  
-                                +" FROM "
-                                  +" (SELECT nmsp_parent.nspname AS parent_schema, parent.relname AS parent_table, nmsp_child.nspname AS child_schema, child.relname AS child_table "
-                                    +" FROM pg_inherits "
-                                    +"  JOIN pg_class parent "
-                                    +"    ON pg_inherits.inhparent = parent.oid "
-                                    +"  JOIN pg_class child "
-                                    +"    ON pg_inherits.inhrelid = child.oid "
-                                    +"  JOIN pg_namespace nmsp_parent  "
-                                    +"    ON nmsp_parent.oid  = parent.relnamespace "
-                                    +"  JOIN pg_namespace nmsp_child "
-                                    +"    ON nmsp_child.oid   = child.relnamespace) AS t "
-                                    +"  JOIN pg_tables pt "
-                                    +"    ON pt.schemaname = t.child_schema "
-                                    +"    AND pt.tablename = t.child_table "
-                                    +"  JOIN pg_tables pt_parent "
-                                    +"    ON pt_parent.schemaname = t.parent_schema "
-                                    +"    AND pt_parent.tablename = t.parent_table) AS res";
-    ShellResponse shellResponse = nodeUniverseManager.runYsqlCommand(randomTServer, universe, dbName, fetchPartitionDataQuery);
+        "SELECT jsonb_agg(res)"
+            + " FROM"
+            + " (SELECT t.child_table, t.child_schema, pt.tablespace as child_tablespace, t.parent_table, t.parent_schema, pt_parent.tablespace as parent_tablespace "
+            + " FROM "
+            + " (SELECT nmsp_parent.nspname AS parent_schema, parent.relname AS parent_table, nmsp_child.nspname AS child_schema, child.relname AS child_table "
+            + " FROM pg_inherits "
+            + "  JOIN pg_class parent "
+            + "    ON pg_inherits.inhparent = parent.oid "
+            + "  JOIN pg_class child "
+            + "    ON pg_inherits.inhrelid = child.oid "
+            + "  JOIN pg_namespace nmsp_parent  "
+            + "    ON nmsp_parent.oid  = parent.relnamespace "
+            + "  JOIN pg_namespace nmsp_child "
+            + "    ON nmsp_child.oid   = child.relnamespace) AS t "
+            + "  JOIN pg_tables pt "
+            + "    ON pt.schemaname = t.child_schema "
+            + "    AND pt.tablename = t.child_table "
+            + "  JOIN pg_tables pt_parent "
+            + "    ON pt_parent.schemaname = t.parent_schema "
+            + "    AND pt_parent.tablename = t.parent_table) AS res";
+    ShellResponse shellResponse =
+        nodeUniverseManager.runYsqlCommand(
+            randomTServer, universe, dbName, fetchPartitionDataQuery);
     if (!shellResponse.isSuccess()) {
       LOG.warn(
           "Attempt to fetch table partition info for db {} via node {} failed, response {}:{}",
-          dbName, randomTServer.nodeName, shellResponse.code, shellResponse.message);
-          throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching Table Partition information");
+          dbName,
+          randomTServer.nodeName,
+          shellResponse.code,
+          shellResponse.message);
+      throw new PlatformServiceException(
+          INTERNAL_SERVER_ERROR, "Error while fetching Table Partition information");
     }
     String jsonData = extractJsonisedQueryResponse(shellResponse);
-    if (jsonData == null || jsonData.isEmpty())  {
+    if (jsonData == null || jsonData.isEmpty()) {
       return parentToChildrenMap;
     }
     try {
       ObjectMapper objectMapper = new ObjectMapper();
-      List<TablePartitionInfo> partitionList = objectMapper.readValue(jsonData, new TypeReference<List<TablePartitionInfo>>(){});
+      List<TablePartitionInfo> partitionList =
+          objectMapper.readValue(jsonData, new TypeReference<List<TablePartitionInfo>>() {});
 
       for (TablePartitionInfo ti : partitionList) {
         ti.namespace = dbName;
@@ -967,14 +985,15 @@ public class TablesController extends AuthenticatedController {
       LOG.info("parentToChildrenMap size {}", parentToChildrenMap.size());
       return parentToChildrenMap;
     } catch (Exception e) {
-        LOG.error("Error while parsing partition query response {}", jsonData, e);
-        throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching Table Partition information");
+      LOG.error("Error while parsing partition query response {}", jsonData, e);
+      throw new PlatformServiceException(
+          INTERNAL_SERVER_ERROR, "Error while fetching Table Partition information");
     }
-
   }
 
   private NodeDetails getARandomTServer(Universe universe) {
-    UniverseDefinitionTaskParams.Cluster primaryCluster = universe.getUniverseDetails().getPrimaryCluster();
+    UniverseDefinitionTaskParams.Cluster primaryCluster =
+        universe.getUniverseDetails().getPrimaryCluster();
     List<NodeDetails> tserverLiveNodes =
         universe
             .getUniverseDetails()
@@ -988,7 +1007,7 @@ public class TablesController extends AuthenticatedController {
 
   private String extractJsonisedQueryResponse(ShellResponse shellResponse) {
     String data = null;
-    if (shellResponse.message != null && !shellResponse.message.isEmpty() ){
+    if (shellResponse.message != null && !shellResponse.message.isEmpty()) {
       LOG.info("Message = {}", shellResponse.message);
       Scanner scanner = new Scanner(shellResponse.message);
       int i = 0;
@@ -1004,73 +1023,76 @@ public class TablesController extends AuthenticatedController {
   }
 
   private static class TablePartitionInfo {
-      @JsonProperty("child_table")
-      public String table;
+    @JsonProperty("child_table")
+    public String table;
 
-      @JsonProperty("child_schema")
-      public String schema;
+    @JsonProperty("child_schema")
+    public String schema;
 
-      @JsonProperty("child_tablespace")
-      public String tableSpace;
+    @JsonProperty("child_tablespace")
+    public String tableSpace;
 
-      @JsonProperty("parent_table")
-      public String parentTable;
+    @JsonProperty("parent_table")
+    public String parentTable;
 
-      @JsonProperty("parent_schema")
-      public String parentSchema;
+    @JsonProperty("parent_schema")
+    public String parentSchema;
 
-      @JsonProperty("parent_tablespace")
-      public String parentTableSpace;
+    @JsonProperty("parent_tablespace")
+    public String parentTableSpace;
 
-      @JsonProperty("namespace")
-      public String namespace;
+    @JsonProperty("namespace")
+    public String namespace;
 
-      public TablePartitionInfo(String table, String namespace) {
-        this.table = table;
-        this.namespace = namespace;
-      }
+    public TablePartitionInfo(String table, String namespace) {
+      this.table = table;
+      this.namespace = namespace;
+    }
 
-      public TablePartitionInfo() {
-      }
+    public TablePartitionInfo() {}
 
-      @Override
-      public String toString() {
-        return "TablePartitionInfo [namespace=" + namespace + ", parentSchema=" + parentSchema + ", parentTable="
-            + parentTable + ", parentTableSpace=" + parentTableSpace + ", schema=" + schema + ", table=" + table
-            + ", tableSpace=" + tableSpace + "]";
-      }
+    @Override
+    public String toString() {
+      return "TablePartitionInfo [namespace="
+          + namespace
+          + ", parentSchema="
+          + parentSchema
+          + ", parentTable="
+          + parentTable
+          + ", parentTableSpace="
+          + parentTableSpace
+          + ", schema="
+          + schema
+          + ", table="
+          + table
+          + ", tableSpace="
+          + tableSpace
+          + "]";
+    }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((namespace == null) ? 0 : namespace.hashCode());
-        result = prime * result + ((table == null) ? 0 : table.hashCode());
-        return result;
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((namespace == null) ? 0 : namespace.hashCode());
+      result = prime * result + ((table == null) ? 0 : table.hashCode());
+      return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        TablePartitionInfo other = (TablePartitionInfo) obj;
-        if (namespace == null) {
-            if (other.namespace != null)
-                return false;
-        } else if (!namespace.equals(other.namespace))
-            return false;
-        if (table == null) {
-            if (other.table != null)
-                return false;
-        } else if (!table.equals(other.table))
-            return false;
-        return true;
+      if (this == obj) return true;
+      if (obj == null) return false;
+      if (getClass() != obj.getClass()) return false;
+      TablePartitionInfo other = (TablePartitionInfo) obj;
+      if (namespace == null) {
+        if (other.namespace != null) return false;
+      } else if (!namespace.equals(other.namespace)) return false;
+      if (table == null) {
+        if (other.table != null) return false;
+      } else if (!table.equals(other.table)) return false;
+      return true;
     }
-
   }
 
   @ApiOperation(
@@ -1093,31 +1115,41 @@ public class TablesController extends AuthenticatedController {
     List<TableSpaceInfoResp> tableSpaceInfoRespList = new ArrayList<>();
     LOG.info("Fetching table spaces...");
     NodeDetails randomTServer = getARandomTServer(universe);
-    final String fetchTablespaceQuery = "select jsonb_agg(t) from (select spcname, spcoptions from pg_catalog.pg_tablespace) as t";
-    ShellResponse shellResponse = nodeUniverseManager.runYsqlCommand(randomTServer, universe, "postgres", fetchTablespaceQuery);
+    final String fetchTablespaceQuery =
+        "select jsonb_agg(t) from (select spcname, spcoptions from pg_catalog.pg_tablespace) as t";
+    ShellResponse shellResponse =
+        nodeUniverseManager.runYsqlCommand(
+            randomTServer, universe, "postgres", fetchTablespaceQuery);
     if (!shellResponse.isSuccess()) {
       LOG.warn(
           "Attempt to fetch tablespace info via node {} failed, response {}:{}",
-          randomTServer.nodeName, shellResponse.code, shellResponse.message);
-          throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
+          randomTServer.nodeName,
+          shellResponse.code,
+          shellResponse.message);
+      throw new PlatformServiceException(
+          INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
     }
     String jsonData = extractJsonisedQueryResponse(shellResponse);
-    if (jsonData == null || jsonData.isEmpty())  {
+    if (jsonData == null || jsonData.isEmpty()) {
       PlatformResults.withData(tableSpaceInfoRespList);
     }
 
     LOG.debug("jsonData {}", jsonData);
     try {
       ObjectMapper objectMapper = new ObjectMapper();
-      List<TableSpaceQueryResponse> tablespaceList = objectMapper.readValue(jsonData, new TypeReference<List<TableSpaceQueryResponse>>(){});
-      tableSpaceInfoRespList = tablespaceList.stream()
-                          .filter(x -> !x.tableSpaceName.startsWith("pg_"))
-                          .map(x -> parseToTableSpaceInfoResp(x))
-                          .collect(Collectors.toList());
+      List<TableSpaceQueryResponse> tablespaceList =
+          objectMapper.readValue(jsonData, new TypeReference<List<TableSpaceQueryResponse>>() {});
+      tableSpaceInfoRespList =
+          tablespaceList
+              .stream()
+              .filter(x -> !x.tableSpaceName.startsWith("pg_"))
+              .map(x -> parseToTableSpaceInfoResp(x))
+              .collect(Collectors.toList());
       return PlatformResults.withData(tableSpaceInfoRespList);
     } catch (IOException ioe) {
       LOG.error("Unable to parse fetchTablespaceQuery response {}", jsonData, ioe);
-      throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
+      throw new PlatformServiceException(
+          INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
     }
   }
 
@@ -1130,15 +1162,17 @@ public class TablesController extends AuthenticatedController {
         if (optionStr.startsWith("replica_placement=")) {
           optionStr = optionStr.replaceFirst("replica_placement=", "");
           TableSpaceOptions option = objectMapper.readValue(optionStr, TableSpaceOptions.class);
-          builder
-          .numReplicas(option.numReplicas)
-          .placementBlocks(option.placementBlocks);
+          builder.numReplicas(option.numReplicas).placementBlocks(option.placementBlocks);
         }
       }
       return builder.build();
     } catch (IOException ioe) {
-      LOG.error("Unable to parse options fron fetchTablespaceQuery response {}", tablespace.tableSpaceOptions, ioe);
-      throw new PlatformServiceException(INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
+      LOG.error(
+          "Unable to parse options fron fetchTablespaceQuery response {}",
+          tablespace.tableSpaceOptions,
+          ioe);
+      throw new PlatformServiceException(
+          INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
     }
   }
 
@@ -1178,7 +1212,6 @@ public class TablesController extends AuthenticatedController {
 
     @JsonProperty("spcoptions")
     public List<String> tableSpaceOptions;
-
   }
 
   static class TableSpaceOptions {
@@ -1187,6 +1220,5 @@ public class TablesController extends AuthenticatedController {
 
     @JsonProperty("placement_blocks")
     public List<PlacementBlock> placementBlocks;
-
   }
 }
