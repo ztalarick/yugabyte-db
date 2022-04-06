@@ -41,6 +41,8 @@
 #include "utils/typcache.h"
 #include "utils/xml.h"
 
+#include "utils/mem_track.h"
+
 
 /* Hook for plugins to get control in ExplainOneQuery() */
 ExplainOneQuery_hook_type ExplainOneQuery_hook = NULL;
@@ -521,6 +523,8 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	/* call ExecutorStart to prepare the plan for execution */
 	ExecutorStart(queryDesc, eflags);
 
+	Size max_mem_cur_stmt = 0;
+
 	/* Execute the plan for statistics if asked for */
 	if (es->analyze)
 	{
@@ -534,6 +538,8 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 
 		/* run the plan */
 		ExecutorRun(queryDesc, dir, 0L, true);
+
+        max_mem_cur_stmt = YbPgMaxMemoryPerStmt;
 
 		/* run cleanup too */
 		ExecutorFinish(queryDesc);

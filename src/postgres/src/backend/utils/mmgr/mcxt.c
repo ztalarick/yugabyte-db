@@ -28,6 +28,31 @@
 #include "yb/yql/pggate/ybc_pggate.h"
 #include "pg_yb_utils.h"
 
+#include "utils/mem_track.h"
+
+#define max_of(x,y) (((x) >= (y)) ? (x) : (y))
+
+/*
+ * Max memory tracking. Global accessible in one PG backend process.
+ */
+Size YbPgCurrentMemory = 0;
+Size YbPgMaxMemory = 0;
+Size YbPgMaxMemoryPerStmt = 0;
+
+inline void AddMemoryConsumption(const Size sz) {
+	YbPgCurrentMemory += sz;
+	YbPgMaxMemory = max_of(YbPgMaxMemory, YbPgCurrentMemory);
+	YbPgMaxMemoryPerStmt = max_of(YbPgMaxMemoryPerStmt, YbPgCurrentMemory);
+}
+
+inline void SubMemoryConsumption(const Size sz) {
+	YbPgCurrentMemory -= sz;
+}
+
+inline void ResetMemoryConsumptionStmt(const Size sz) {
+	YbPgMaxMemoryPerStmt = 0;
+}
+
 /*****************************************************************************
  *	  GLOBAL MEMORY															 *
  *****************************************************************************/
