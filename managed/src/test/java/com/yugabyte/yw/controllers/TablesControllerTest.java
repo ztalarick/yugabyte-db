@@ -20,6 +20,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyObject;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.eq;
@@ -49,10 +51,14 @@ import com.yugabyte.yw.common.BackupUtil;
 import com.yugabyte.yw.common.FakeApiHelper;
 import com.yugabyte.yw.common.FakeDBApplication;
 import com.yugabyte.yw.common.ModelFactory;
+import com.yugabyte.yw.common.NodeUniverseManager;
 import com.yugabyte.yw.common.PlatformServiceException;
+import com.yugabyte.yw.common.ShellResponse;
 import com.yugabyte.yw.common.audit.AuditService;
 import com.yugabyte.yw.common.customer.config.CustomerConfigService;
 import com.yugabyte.yw.common.services.YBClientService;
+import com.yugabyte.yw.controllers.TablesController.PlacementBlock;
+import com.yugabyte.yw.controllers.TablesController.TableSpaceInfoResp;
 import com.yugabyte.yw.forms.BackupTableParams;
 import com.yugabyte.yw.forms.BulkImportParams;
 import com.yugabyte.yw.forms.TableDefinitionTaskParams;
@@ -77,6 +83,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.Ignore;
@@ -106,6 +116,7 @@ public class TablesControllerTest extends FakeDBApplication {
   private AuditService auditService;
   private ListTablesResponse mockListTablesResponse;
   private GetTableSchemaResponse mockSchemaResponse;
+  private NodeUniverseManager mockNodeUniverseManager;
 
   private Schema getFakeSchema() {
     List<ColumnSchema> columnSchemas = new LinkedList<>();
@@ -124,6 +135,7 @@ public class TablesControllerTest extends FakeDBApplication {
     mockListTablesResponse = mock(ListTablesResponse.class);
     mockSchemaResponse = mock(GetTableSchemaResponse.class);
     when(mockService.getClient(any(), any())).thenReturn(mockClient);
+    mockNodeUniverseManager = mock(NodeUniverseManager.class);
 
     auditService = new AuditService();
     Commissioner commissioner = app.injector().instanceOf(Commissioner.class);
@@ -131,7 +143,12 @@ public class TablesControllerTest extends FakeDBApplication {
     CustomerConfigService customerConfigService =
         app.injector().instanceOf(CustomerConfigService.class);
     tablesController =
-        new TablesController(commissioner, mockService, metricQueryHelper, customerConfigService);
+        new TablesController(
+            commissioner,
+            mockService,
+            metricQueryHelper,
+            customerConfigService,
+            mockNodeUniverseManager);
     tablesController.setAuditService(auditService);
   }
 
@@ -1033,4 +1050,63 @@ public class TablesControllerTest extends FakeDBApplication {
 
     tablesController.validateTables(new ArrayList<>(), universe);
   }
+
+  @Test
+  public void testListTableSpaces() throws Exception {
+    Customer customer = ModelFactory.testCustomer();
+    Users user = ModelFactory.testUser(customer);
+    Universe u1 = createUniverse(customer.getCustomerId());
+    u1 = Universe.saveDetails(u1.universeUUID, ApiUtils.mockUniverseUpdater());
+    customer.addUniverseUUID(u1.universeUUID);
+    customer.save();
+
+    ShellResponse shellResponse1 =
+        ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, SHELL_RESPONSE_MESSAGE_TABLE_SPACES);
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), anyString(), anyObject()))
+        .thenReturn(shellResponse1);
+
+    Result r = tablesController.listTableSpaces(customer.uuid, u1.universeUUID);
+    assertEquals(OK, r.status());
+    JsonNode json = Json.parse(contentAsString(r));
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    List<TableSpaceInfoResp> tableSpaceInfoRespList =
+        objectMapper.readValue(json.toString(), new TypeReference<List<TableSpaceInfoResp>>() {});
+    Assert.assertNotNull(tableSpaceInfoRespList);
+    Assert.assertEquals(4, tableSpaceInfoRespList.size());
+
+    Map<String, TableSpaceInfoResp> tableSpacesMap =
+        tableSpaceInfoRespList.stream().collect(Collectors.toMap(x -> x.name, Function.identity()));
+
+    TableSpaceInfoResp ap_south_1_tablespace = tableSpacesMap.get("ap_south_1_tablespace");
+    TableSpaceInfoResp us_west_2_tablespace = tableSpacesMap.get("us_west_2_tablespace");
+    TableSpaceInfoResp us_west_1_tablespace = tableSpacesMap.get("us_west_1_tablespace");
+    TableSpaceInfoResp us_west_3_tablespace = tableSpacesMap.get("us_west_3_tablespace");
+    Assert.assertNotNull(ap_south_1_tablespace);
+    Assert.assertNotNull(us_west_2_tablespace);
+    Assert.assertNotNull(us_west_1_tablespace);
+    Assert.assertNotNull(us_west_3_tablespace);
+
+    Assert.assertEquals(3, ap_south_1_tablespace.numReplicas);
+    Assert.assertEquals(3, ap_south_1_tablespace.placementBlocks.size());
+    Map<String, PlacementBlock> ap_south_1_tablespace_zones =
+        ap_south_1_tablespace
+            .placementBlocks
+            .stream()
+            .collect(Collectors.toMap(x -> x.zone, Function.identity()));
+    Assert.assertNotNull(ap_south_1_tablespace_zones.get("ap-south-1a"));
+    Assert.assertEquals("ap-south-1", ap_south_1_tablespace_zones.get("ap-south-1a").region);
+    Assert.assertEquals("aws", ap_south_1_tablespace_zones.get("ap-south-1a").cloud);
+    Assert.assertEquals(1, ap_south_1_tablespace_zones.get("ap-south-1a").minNumReplicas);
+
+    Assert.assertEquals(3, us_west_2_tablespace.numReplicas);
+    Assert.assertEquals(3, us_west_2_tablespace.placementBlocks.size());
+    Assert.assertEquals(1, us_west_1_tablespace.numReplicas);
+    Assert.assertEquals(1, us_west_1_tablespace.placementBlocks.size());
+    Assert.assertEquals(1, us_west_3_tablespace.numReplicas);
+    Assert.assertEquals(1, us_west_3_tablespace.placementBlocks.size());
+  }
+
+  private final String SHELL_RESPONSE_MESSAGE_TABLE_SPACES =
+      "\r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 jsonb_agg\r\n------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n [{\"spcname\": \"pg_default\", \"spcoptions\": null}, {\"spcname\": \"pg_global\", \"spcoptions\": null}, {\"spcname\": \"ap_south_1_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 3, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1a\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1b\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1c\\\",\\\"min_num_replicas\\\":1}]}\"]}, {\"spcname\": \"us_west_2_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 3, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2a\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2b\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2c\\\",\\\"min_num_replicas\\\":1}]}\"]}, {\"spcname\": \"us_west_1_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 1, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"gcp\\\",\\\"region\\\":\\\"us-west1\\\",\\\"zone\\\":\\\"us-west1-a\\\",\\\"min_num_replicas\\\":1}]\\n  }\"]}, {\"spcname\": \"us_west_3_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 1, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"gcp\\\",\\\"region\\\":\\\"us-west1\\\",\\\"zone\\\":\\\"us-west1-c\\\",\\\"min_num_replicas\\\":1}]\\n  }\"]}]";
 }
