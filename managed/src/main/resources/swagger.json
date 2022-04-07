@@ -4326,6 +4326,28 @@
       },
       "type" : "object"
     },
+    "PlacementBlock" : {
+      "properties" : {
+        "cloud" : {
+          "description" : "Cloud",
+          "type" : "string"
+        },
+        "minNumReplicas" : {
+          "description" : "Minimum replicas",
+          "format" : "int32",
+          "type" : "integer"
+        },
+        "region" : {
+          "description" : "Region",
+          "type" : "string"
+        },
+        "zone" : {
+          "description" : "Zone",
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
     "PlacementCloud" : {
       "properties" : {
         "code" : {
@@ -5798,6 +5820,28 @@
           "format" : "uuid",
           "readOnly" : true,
           "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "TableSpaceInfoResp" : {
+      "description" : "Tablespace information response",
+      "properties" : {
+        "name" : {
+          "description" : "Tablespace Name",
+          "type" : "string"
+        },
+        "numReplicas" : {
+          "description" : "numReplicas",
+          "format" : "int32",
+          "type" : "integer"
+        },
+        "placementBlocks" : {
+          "description" : "placements",
+          "items" : {
+            "$ref" : "#/definitions/PlacementBlock"
+          },
+          "type" : "array"
         }
       },
       "type" : "object"
@@ -13099,6 +13143,41 @@
           "apiKeyAuth" : [ ]
         } ],
         "summary" : "Create a single-table backup",
+        "tags" : [ "Table management" ]
+      }
+    },
+    "/api/v1/customers/{cUUID}/universes/{uniUUID}/tablespaces" : {
+      "get" : {
+        "description" : "Get a list of all tablespaces of a give universe",
+        "operationId" : "getAllTableSpaces",
+        "parameters" : [ {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "cUUID",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "uniUUID",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "items" : {
+                "$ref" : "#/definitions/TableSpaceInfoResp"
+              },
+              "type" : "array"
+            }
+          }
+        },
+        "security" : [ {
+          "apiKeyAuth" : [ ]
+        } ],
+        "summary" : "List all tablespaces",
         "tags" : [ "Table management" ]
       }
     },

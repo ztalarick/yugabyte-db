@@ -823,7 +823,7 @@ public class TablesController extends AuthenticatedController {
   @ApiOperation(
       value = "List all tablespaces",
       nickname = "getAllTableSpaces",
-      notes = "Get a list of all tablespaces of a give universe",
+      notes = "Get a list of all tablespaces of a given universe",
       response = TableSpaceInfoResp.class,
       responseContainer = "List")
   public Result listTableSpaces(UUID customerUUID, UUID universeUUID) {
