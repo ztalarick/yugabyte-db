@@ -539,7 +539,7 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 		/* run the plan */
 		ExecutorRun(queryDesc, dir, 0L, true);
 
-        max_mem_cur_stmt = YbPgMaxMemoryPerStmt;
+        max_mem_cur_stmt = YbTotalMaxMemoryPerStmt;
 
 		/* run cleanup too */
 		ExecutorFinish(queryDesc);
@@ -597,9 +597,18 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	 * user can set SUMMARY OFF to not have the timing information included in
 	 * the output).  By default, ANALYZE sets SUMMARY to true.
 	 */
-	if (es->summary && es->analyze)
+    if (es->summary && es->analyze)
+    {
 		ExplainPropertyFloat("Execution Time", "ms", 1000.0 * totaltime, 3,
 							 es);
+		appendStringInfo(es->str, "Maximum actual memory usage: %lu KiB\n", (max_mem_cur_stmt + 1023) / 1024);
+
+		// TODO remove, for debugging
+		int64 tc_mem = 0;
+		YBCGetPgggateHeapConsumption(&tc_mem);
+		appendStringInfo(es->str, "Current Tcmalloc acutal memory usage: %lu KiB\n", (tc_mem + 1023) / 1024);
+		appendStringInfo(es->str, "Current PG acutal memory usage: %lu KiB\n", (YbPgCurrentMemory + 1023) / 1024);
+	}
 
 	ExplainCloseGroup("Query", NULL, true, es);
 }

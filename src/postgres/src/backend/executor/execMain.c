@@ -66,6 +66,8 @@
 #include "utils/snapmgr.h"
 #include "utils/tqual.h"
 
+#include "utils/mem_track.h"
+
 #include "pg_yb_utils.h"
 
 /* Hooks for plugins to get control in ExecutorStart/Run/Finish/End */
@@ -151,6 +153,8 @@ ExecutorStart(QueryDesc *queryDesc, int eflags)
 void
 standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
+	ResetMemoryConsumptionStmt();
+
 	EState	   *estate;
 	MemoryContext oldcontext;
 

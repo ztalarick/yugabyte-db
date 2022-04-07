@@ -49,6 +49,8 @@
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
 
+#include "utils/mem_track.h"
+
 /* Define this to detail debug alloc information */
 /* #define HAVE_ALLOCINFO */
 
@@ -447,10 +449,12 @@ AllocSetContextCreateExtended(MemoryContext parent,
 
 		if (freelist->first_free != NULL)
 		{
+
 			/* Remove entry from freelist */
 			set = freelist->first_free;
 			freelist->first_free = (AllocSet) set->header.nextchild;
 			freelist->num_free--;
+
 
 			/* Update its maxBlockSize; everything else should be OK */
 			set->maxBlockSize = maxBlockSize;
@@ -550,6 +554,8 @@ AllocSetContextCreateExtended(MemoryContext parent,
 						parent,
 						name);
 
+	AddMemoryConsumption(firstBlockSize);
+
 	return (MemoryContext) set;
 }
 
@@ -604,10 +610,15 @@ AllocSetReset(MemoryContext context)
 			block->freeptr = datastart;
 			block->prev = NULL;
 			block->next = NULL;
+
+			// TODO ssong: sub or not here?
+			// SubMemoryConsumption(block->freeptr - ((char*)block));
 		}
 		else
 		{
 			/* Normal case, release the block */
+			SubMemoryConsumption(block->endptr - ((char*)block));
+
 #ifdef CLOBBER_FREED_MEMORY
 			wipe_mem(block, block->freeptr - ((char *) block));
 #endif
@@ -668,6 +679,9 @@ AllocSetDelete(MemoryContext context)
 				freelist->first_free = (AllocSetContext *) oldset->header.nextchild;
 				freelist->num_free--;
 
+				// TODO ssong
+                SubMemoryConsumption(sizeof(*oldset));
+
 				/* All that remains is to free the header/initial block */
 				free(oldset);
 			}
@@ -692,10 +706,15 @@ AllocSetDelete(MemoryContext context)
 #endif
 
 		if (block != set->keeper)
+		{
+			SubMemoryConsumption(block->endptr - ((char*) block));
 			free(block);
+		}
 
 		block = next;
 	}
+
+	SubMemoryConsumption(sizeof(*set));
 
 	/* Finally, free the context header, including the keeper block */
 	free(set);
@@ -737,6 +756,9 @@ AllocSetAlloc(MemoryContext context, Size size)
 		block = (AllocBlock) malloc(blksize);
 		if (block == NULL)
 			return NULL;
+
+		AddMemoryConsumption(blksize);
+
 		block->aset = set;
 		block->freeptr = block->endptr = ((char *) block) + blksize;
 
@@ -932,6 +954,8 @@ AllocSetAlloc(MemoryContext context, Size size)
 		if (block == NULL)
 			return NULL;
 
+    	AddMemoryConsumption(blksize);
+
 		block->aset = set;
 		block->freeptr = ((char *) block) + ALLOC_BLOCKHDRSZ;
 		block->endptr = ((char *) block) + blksize;
@@ -1035,6 +1059,9 @@ AllocSetFree(MemoryContext context, void *pointer)
 #ifdef CLOBBER_FREED_MEMORY
 		wipe_mem(block, block->freeptr - ((char *) block));
 #endif
+
+		SubMemoryConsumption(block->endptr - ((char*) block));
+
 		free(block);
 	}
 	else
@@ -1148,6 +1175,7 @@ AllocSetRealloc(MemoryContext context, void *pointer, Size size)
 		AllocBlock	block = (AllocBlock) (((char *) chunk) - ALLOC_BLOCKHDRSZ);
 		Size		chksize;
 		Size		blksize;
+		Size oldsize = block->endptr - ((char*)block);
 
 		/*
 		 * Try to verify that we have a sane block pointer: it should
@@ -1171,6 +1199,8 @@ AllocSetRealloc(MemoryContext context, void *pointer, Size size)
 			return NULL;
 		}
 		block->freeptr = block->endptr = ((char *) block) + blksize;
+
+		AddMemoryConsumption(blksize - oldsize);
 
 		/* Update pointers since block has likely been moved */
 		chunk = (AllocChunk) (((char *) block) + ALLOC_BLOCKHDRSZ);

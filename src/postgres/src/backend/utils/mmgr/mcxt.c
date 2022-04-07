@@ -35,22 +35,37 @@
 /*
  * Max memory tracking. Global accessible in one PG backend process.
  */
+// TODO consider atomicity for these vars and functions if necessary
 Size YbPgCurrentMemory = 0;
-Size YbPgMaxMemory = 0;
-Size YbPgMaxMemoryPerStmt = 0;
+Size YbTotalMaxMemory = 0;
+Size YbTotalMaxMemoryPerStmt = 0;
+Size YbTotalMaxMemoryPerStmtBase = 0;
 
-inline void AddMemoryConsumption(const Size sz) {
-	YbPgCurrentMemory += sz;
-	YbPgMaxMemory = max_of(YbPgMaxMemory, YbPgCurrentMemory);
-	YbPgMaxMemoryPerStmt = max_of(YbPgMaxMemoryPerStmt, YbPgCurrentMemory);
+static
+Size SnapshotMemory() {
+	int64 cur_tc_actual_sz = 0;
+	YBCGetPgggateHeapConsumption(&cur_tc_actual_sz);
+	return YbPgCurrentMemory + cur_tc_actual_sz;
 }
 
-inline void SubMemoryConsumption(const Size sz) {
+void YbPgUpdateMaxMemory() {
+	const Size snapshot_mem = SnapshotMemory();
+	YbTotalMaxMemory = max_of(YbTotalMaxMemory, snapshot_mem);
+	YbTotalMaxMemoryPerStmt = max_of(YbTotalMaxMemoryPerStmt, snapshot_mem - YbTotalMaxMemoryPerStmtBase);
+}
+
+void AddMemoryConsumption(const Size sz) {
+	YbPgCurrentMemory += sz;
+	YbPgUpdateMaxMemory();
+}
+
+void SubMemoryConsumption(const Size sz) {
 	YbPgCurrentMemory -= sz;
 }
 
-inline void ResetMemoryConsumptionStmt(const Size sz) {
-	YbPgMaxMemoryPerStmt = 0;
+void ResetMemoryConsumptionStmt() {
+	YbTotalMaxMemoryPerStmtBase = YbPgCurrentMemory;
+	YbTotalMaxMemoryPerStmt = 0;
 }
 
 /*****************************************************************************

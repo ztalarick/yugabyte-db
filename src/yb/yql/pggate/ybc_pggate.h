@@ -566,6 +566,8 @@ void YBCPgResetCatalogReadTime();
 
 YBCStatus YBCGetTabletServerHosts(YBCServerDescriptor **tablet_servers, size_t* numservers);
 
+YBCStatus YBCGetPgggateHeapConsumption(int64_t* consumption);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

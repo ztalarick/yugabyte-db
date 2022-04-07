@@ -492,6 +492,10 @@ bool MemTracker::UpdateConsumption(bool force) {
     poll_children_consumption_functors_();
   }
 
+  if (update_max_mem_functor_) {
+    update_max_mem_functor_();
+  }
+
   if (consumption_functor_) {
     auto now = CoarseMonoClock::now();
     auto interval = std::chrono::microseconds(

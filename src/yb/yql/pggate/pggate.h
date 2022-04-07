@@ -553,6 +553,10 @@ class PgApiImpl {
   // System Validation.
   CHECKED_STATUS ValidatePlacement(const char *placement_info);
 
+  const MemTracker& GetMemTracker() {
+    return *mem_tracker_;
+  }
+
  private:
   // Control variables.
   PggateOptions pggate_options_;

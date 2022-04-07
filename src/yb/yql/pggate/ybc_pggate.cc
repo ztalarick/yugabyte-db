@@ -195,6 +195,34 @@ bool YBCPgAllowForPrimaryKey(const YBCPgTypeEntity *type_entity) {
   return false;
 }
 
+YBCStatus YBCGetPgggateHeapConsumption(int64* consumption) {
+  if (pgapi) {
+    *consumption = pgapi->GetMemTracker().GetTCMallocActualHeapSizeBytes();
+  }
+  return YBCStatusOK();
+}
+
+YBCStatus YBCGetMemTrackerAllocated(int64* actual) {
+  if (pgapi) {
+    *actual = pgapi->GetMemTracker().GetTCMallocActualHeapSizeBytes();
+  }
+  return YBCStatusOK();
+}
+
+YBCStatus YBCGetMemTrackerPeak(int64_t* peak) {
+  if (pgapi) {
+    *peak = pgapi->GetMemTracker().peak_consumption();
+  }
+  return YBCStatusOK();
+}
+
+YBCStatus YBCGetMemTrackerCurrent(int64_t* cur) {
+  if (pgapi) {
+    *cur = pgapi->GetMemTracker().consumption();
+  }
+  return YBCStatusOK();
+}
+
 //--------------------------------------------------------------------------------------------------
 // DDL Statements.
 //--------------------------------------------------------------------------------------------------

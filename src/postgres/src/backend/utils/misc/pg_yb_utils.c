@@ -64,6 +64,8 @@
 #include "yb/common/ybc_util.h"
 #include "yb/yql/pggate/ybc_pggate.h"
 
+#include "utils/mem_track.h"
+
 #ifdef __linux__
 #include <sys/prctl.h>
 #endif
@@ -509,6 +511,7 @@ YBInitPostgresBackend(
 		callbacks.GetCurrentYbMemctx = &GetCurrentYbMemctx;
 		callbacks.GetDebugQueryString = &GetDebugQueryString;
 		callbacks.WriteExecOutParam = &YbWriteExecOutParam;
+		callbacks.UpdateMaxMemory = &YbPgUpdateMaxMemory;
 		YBCInitPgGate(type_table, count, callbacks);
 		YBCInstallTxnDdlHook();
 
