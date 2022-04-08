@@ -511,7 +511,7 @@ YBInitPostgresBackend(
 		callbacks.GetCurrentYbMemctx = &GetCurrentYbMemctx;
 		callbacks.GetDebugQueryString = &GetDebugQueryString;
 		callbacks.WriteExecOutParam = &YbWriteExecOutParam;
-		callbacks.UpdateMaxMemory = &YbPgUpdateMaxMemory;
+		callbacks.UpdateMaxMemory = &YbPgMemUpdateMax;
 		YBCInitPgGate(type_table, count, callbacks);
 		YBCInstallTxnDdlHook();
 

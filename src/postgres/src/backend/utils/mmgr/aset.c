@@ -494,6 +494,8 @@ AllocSetContextCreateExtended(MemoryContext parent,
 						   name)));
 	}
 
+	YbPgMemAddConsumption(firstBlockSize);
+
 	/*
 	 * Avoid writing code that can fail between here and MemoryContextCreate;
 	 * we'd leak the header/initial block if we ereport in this stretch.
@@ -554,8 +556,6 @@ AllocSetContextCreateExtended(MemoryContext parent,
 						parent,
 						name);
 
-	AddMemoryConsumption(firstBlockSize);
-
 	return (MemoryContext) set;
 }
 
@@ -610,14 +610,11 @@ AllocSetReset(MemoryContext context)
 			block->freeptr = datastart;
 			block->prev = NULL;
 			block->next = NULL;
-
-			// TODO ssong: sub or not here?
-			// SubMemoryConsumption(block->freeptr - ((char*)block));
 		}
 		else
 		{
 			/* Normal case, release the block */
-			SubMemoryConsumption(block->endptr - ((char*)block));
+			YbPgMemSubConsumption(block->endptr - ((char*)block));
 
 #ifdef CLOBBER_FREED_MEMORY
 			wipe_mem(block, block->freeptr - ((char *) block));
@@ -679,8 +676,7 @@ AllocSetDelete(MemoryContext context)
 				freelist->first_free = (AllocSetContext *) oldset->header.nextchild;
 				freelist->num_free--;
 
-				// TODO ssong
-                SubMemoryConsumption(sizeof(*oldset));
+                YbPgMemSubConsumption(sizeof(*oldset));
 
 				/* All that remains is to free the header/initial block */
 				free(oldset);
@@ -707,15 +703,14 @@ AllocSetDelete(MemoryContext context)
 
 		if (block != set->keeper)
 		{
-			SubMemoryConsumption(block->endptr - ((char*) block));
+			YbPgMemSubConsumption(block->endptr - ((char*) block));
 			free(block);
 		}
 
 		block = next;
 	}
 
-	SubMemoryConsumption(sizeof(*set));
-
+	YbPgMemSubConsumption(sizeof(*set));
 	/* Finally, free the context header, including the keeper block */
 	free(set);
 }
@@ -757,7 +752,7 @@ AllocSetAlloc(MemoryContext context, Size size)
 		if (block == NULL)
 			return NULL;
 
-		AddMemoryConsumption(blksize);
+		YbPgMemAddConsumption(blksize);
 
 		block->aset = set;
 		block->freeptr = block->endptr = ((char *) block) + blksize;
@@ -954,7 +949,7 @@ AllocSetAlloc(MemoryContext context, Size size)
 		if (block == NULL)
 			return NULL;
 
-    	AddMemoryConsumption(blksize);
+    	YbPgMemAddConsumption(blksize);
 
 		block->aset = set;
 		block->freeptr = ((char *) block) + ALLOC_BLOCKHDRSZ;
@@ -1060,8 +1055,7 @@ AllocSetFree(MemoryContext context, void *pointer)
 		wipe_mem(block, block->freeptr - ((char *) block));
 #endif
 
-		SubMemoryConsumption(block->endptr - ((char*) block));
-
+		YbPgMemSubConsumption(block->endptr - ((char*) block));
 		free(block);
 	}
 	else
@@ -1199,8 +1193,7 @@ AllocSetRealloc(MemoryContext context, void *pointer, Size size)
 			return NULL;
 		}
 		block->freeptr = block->endptr = ((char *) block) + blksize;
-
-		AddMemoryConsumption(blksize - oldsize);
+		YbPgMemAddConsumption(blksize - oldsize);
 
 		/* Update pointers since block has likely been moved */
 		chunk = (AllocChunk) (((char *) block) + ALLOC_BLOCKHDRSZ);

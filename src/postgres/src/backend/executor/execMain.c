@@ -153,7 +153,7 @@ ExecutorStart(QueryDesc *queryDesc, int eflags)
 void
 standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
-	ResetMemoryConsumptionStmt();
+	YbPgMemResetStmtConsumption();
 
 	EState	   *estate;
 	MemoryContext oldcontext;

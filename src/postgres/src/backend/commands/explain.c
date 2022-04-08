@@ -523,7 +523,9 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	/* call ExecutorStart to prepare the plan for execution */
 	ExecutorStart(queryDesc, eflags);
 
-	Size max_mem_cur_stmt = 0;
+	int64 tc_mem = 0;
+	int64 pggate_cur_mem = 0;
+	int64 pggate_peak_mem = 0;
 
 	/* Execute the plan for statistics if asked for */
 	if (es->analyze)
@@ -539,7 +541,9 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 		/* run the plan */
 		ExecutorRun(queryDesc, dir, 0L, true);
 
-        max_mem_cur_stmt = YbTotalMaxMemoryPerStmt;
+		YBCGetPgggateHeapConsumption(&tc_mem);
+		YBCGetMemTrackerCurrent(&pggate_cur_mem);
+		YBCGetMemTrackerPeak(&pggate_peak_mem);
 
 		/* run cleanup too */
 		ExecutorFinish(queryDesc);
@@ -601,13 +605,19 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
     {
 		ExplainPropertyFloat("Execution Time", "ms", 1000.0 * totaltime, 3,
 							 es);
-		appendStringInfo(es->str, "Maximum actual memory usage: %lu KiB\n", (max_mem_cur_stmt + 1023) / 1024);
+		appendStringInfo(es->str, "Maximum actual memory usage: %lu KiB\n",
+						 (PgMemTracker.stmtMaxMemBytes + 1023) / 1024);
 
 		// TODO remove, for debugging
-		int64 tc_mem = 0;
-		YBCGetPgggateHeapConsumption(&tc_mem);
-		appendStringInfo(es->str, "Current Tcmalloc acutal memory usage: %lu KiB\n", (tc_mem + 1023) / 1024);
-		appendStringInfo(es->str, "Current PG acutal memory usage: %lu KiB\n", (YbPgCurrentMemory + 1023) / 1024);
+		appendStringInfo(es->str,
+						 "Current Tcmalloc acutal memory usage: %lu KiB\n",
+						 (tc_mem + 1023) / 1024);
+		appendStringInfo(es->str, "Current pggate memory usage: %lu KiB\n",
+						 (pggate_cur_mem + 1023) / 1024);
+		appendStringInfo(es->str, "Current pggate peak memory usage: %lu KiB\n",
+						 (pggate_peak_mem + 1023) / 1024);
+		appendStringInfo(es->str, "Current PG acutal memory usage: %lu KiB\n",
+						 (PgMemTracker.currentMemBytes + 1023) / 1024);
 	}
 
 	ExplainCloseGroup("Query", NULL, true, es);

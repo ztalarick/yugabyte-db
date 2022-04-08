@@ -30,42 +30,45 @@
 
 #include "utils/mem_track.h"
 
-#define max_of(x,y) (((x) >= (y)) ? (x) : (y))
+YbPgMemTracker PgMemTracker;
 
-/*
- * Max memory tracking. Global accessible in one PG backend process.
- */
 // TODO consider atomicity for these vars and functions if necessary
-Size YbPgCurrentMemory = 0;
-Size YbTotalMaxMemory = 0;
-Size YbTotalMaxMemoryPerStmt = 0;
-Size YbTotalMaxMemoryPerStmtBase = 0;
-
+/*
+ * A helper function to take snapshot of current memory usage.
+ * It includes current PG memory usage plus current Tcmalloc usage by
+ * pggate.
+ */
 static
 Size SnapshotMemory() {
 	int64 cur_tc_actual_sz = 0;
 	YBCGetPgggateHeapConsumption(&cur_tc_actual_sz);
-	return YbPgCurrentMemory + cur_tc_actual_sz;
+	return PgMemTracker.currentMemBytes + cur_tc_actual_sz;
 }
 
-void YbPgUpdateMaxMemory() {
+void YbPgMemUpdateMax() {
 	const Size snapshot_mem = SnapshotMemory();
-	YbTotalMaxMemory = max_of(YbTotalMaxMemory, snapshot_mem);
-	YbTotalMaxMemoryPerStmt = max_of(YbTotalMaxMemoryPerStmt, snapshot_mem - YbTotalMaxMemoryPerStmtBase);
+        PgMemTracker.backendMaxMemBytes = Max(
+            PgMemTracker.backendMaxMemBytes,
+            snapshot_mem);
+        PgMemTracker.stmtMaxMemBytes = Max(
+            PgMemTracker.stmtMaxMemBytes, snapshot_mem -
+                                              PgMemTracker.stmtMaxMemBytes);
 }
 
-void AddMemoryConsumption(const Size sz) {
-	YbPgCurrentMemory += sz;
-	YbPgUpdateMaxMemory();
+void YbPgMemAddConsumption(const Size sz) {
+	PgMemTracker.currentMemBytes += sz;
+	if (sz >= 0) {
+		YbPgMemUpdateMax();
+	}
 }
 
-void SubMemoryConsumption(const Size sz) {
-	YbPgCurrentMemory -= sz;
+void YbPgMemSubConsumption(const Size sz) {
+	PgMemTracker.currentMemBytes -= sz;
 }
 
-void ResetMemoryConsumptionStmt() {
-	YbTotalMaxMemoryPerStmtBase = YbPgCurrentMemory;
-	YbTotalMaxMemoryPerStmt = 0;
+void YbPgMemResetStmtConsumption() {
+	PgMemTracker.stmtMaxMemBaseBytes = PgMemTracker.currentMemBytes;
+	PgMemTracker.stmtMaxMemBytes = 0;
 }
 
 /*****************************************************************************
