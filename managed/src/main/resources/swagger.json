@@ -5824,7 +5824,7 @@
       },
       "type" : "object"
     },
-    "TableSpaceInfoResp" : {
+    "TableSpaceInfo" : {
       "description" : "Tablespace information response",
       "properties" : {
         "name" : {
@@ -13168,7 +13168,7 @@
             "description" : "successful operation",
             "schema" : {
               "items" : {
-                "$ref" : "#/definitions/TableSpaceInfoResp"
+                "$ref" : "#/definitions/TableSpaceInfo"
               },
               "type" : "array"
             }

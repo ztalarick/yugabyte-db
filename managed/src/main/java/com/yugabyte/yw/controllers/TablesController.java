@@ -7,7 +7,6 @@ import static com.yugabyte.yw.common.Util.SYSTEM_PLATFORM_DB;
 import static com.yugabyte.yw.common.Util.getUUIDRepresentation;
 import static com.yugabyte.yw.forms.TableDefinitionTaskParams.createFromResponse;
 import static io.swagger.annotations.ApiModelProperty.AccessMode.READ_ONLY;
-import static play.mvc.Http.Status.CONFLICT;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -50,7 +49,6 @@ import com.yugabyte.yw.models.helpers.CommonUtils;
 import com.yugabyte.yw.models.helpers.NodeDetails;
 import com.yugabyte.yw.models.helpers.TableDetails;
 import com.yugabyte.yw.models.helpers.TaskType;
-import com.yugabyte.yw.models.helpers.NodeDetails.NodeState;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
@@ -68,8 +66,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.Scanner;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -824,7 +820,7 @@ public class TablesController extends AuthenticatedController {
       value = "List all tablespaces",
       nickname = "getAllTableSpaces",
       notes = "Get a list of all tablespaces of a given universe",
-      response = TableSpaceInfoResp.class,
+      response = TableSpaceInfo.class,
       responseContainer = "List")
   public Result listTableSpaces(UUID customerUUID, UUID universeUUID) {
     Customer.getOrBadRequest(customerUUID);
@@ -837,9 +833,14 @@ public class TablesController extends AuthenticatedController {
       return ok(errMsg);
     }
 
-    List<TableSpaceInfoResp> tableSpaceInfoRespList = new ArrayList<>();
     LOG.info("Fetching table spaces...");
-    NodeDetails randomTServer = CommonUtils.getARandomTServer(universe);
+    NodeDetails randomTServer = null;
+    try {
+      randomTServer = CommonUtils.getARandomLiveTServer(universe);
+    } catch (IllegalStateException ise) {
+      throw new PlatformServiceException(
+          BAD_REQUEST, "Cluster may not have been initialized yet. Please try later");
+    }
     final String fetchTablespaceQuery =
         "select jsonb_agg(t) from (select spcname, spcoptions from pg_catalog.pg_tablespace) as t";
     ShellResponse shellResponse =
@@ -854,7 +855,8 @@ public class TablesController extends AuthenticatedController {
       throw new PlatformServiceException(
           INTERNAL_SERVER_ERROR, "Error while fetching TableSpace information");
     }
-    String jsonData = CommonUtils.extractJsonisedQueryResponse(shellResponse);
+    String jsonData = CommonUtils.extractJsonisedSqlResponse(shellResponse);
+    List<TableSpaceInfo> tableSpaceInfoRespList = new ArrayList<>();
     if (jsonData == null || jsonData.isEmpty()) {
       PlatformResults.withData(tableSpaceInfoRespList);
     }
@@ -878,8 +880,8 @@ public class TablesController extends AuthenticatedController {
     }
   }
 
-  private TableSpaceInfoResp parseToTableSpaceInfoResp(TableSpaceQueryResponse tablespace) {
-    TableSpaceInfoResp.TableSpaceInfoRespBuilder builder = TableSpaceInfoResp.builder();
+  private TableSpaceInfo parseToTableSpaceInfoResp(TableSpaceQueryResponse tablespace) {
+    TableSpaceInfo.TableSpaceInfoBuilder builder = TableSpaceInfo.builder();
     builder.name(tablespace.tableSpaceName);
     try {
       ObjectMapper objectMapper = new ObjectMapper();
@@ -904,7 +906,7 @@ public class TablesController extends AuthenticatedController {
   @ApiModel(description = "Tablespace information response")
   @Jacksonized
   @Builder
-  static class TableSpaceInfoResp {
+  static class TableSpaceInfo {
 
     @ApiModelProperty(value = "Tablespace Name")
     public String name;

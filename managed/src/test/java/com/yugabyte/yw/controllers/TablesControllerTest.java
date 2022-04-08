@@ -54,11 +54,12 @@ import com.yugabyte.yw.common.ModelFactory;
 import com.yugabyte.yw.common.NodeUniverseManager;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.ShellResponse;
+import com.yugabyte.yw.common.TestUtils;
 import com.yugabyte.yw.common.audit.AuditService;
 import com.yugabyte.yw.common.customer.config.CustomerConfigService;
 import com.yugabyte.yw.common.services.YBClientService;
 import com.yugabyte.yw.controllers.TablesController.PlacementBlock;
-import com.yugabyte.yw.controllers.TablesController.TableSpaceInfoResp;
+import com.yugabyte.yw.controllers.TablesController.TableSpaceInfo;
 import com.yugabyte.yw.forms.BackupTableParams;
 import com.yugabyte.yw.forms.BulkImportParams;
 import com.yugabyte.yw.forms.TableDefinitionTaskParams;
@@ -1059,9 +1060,12 @@ public class TablesControllerTest extends FakeDBApplication {
     u1 = Universe.saveDetails(u1.universeUUID, ApiUtils.mockUniverseUpdater());
     customer.addUniverseUUID(u1.universeUUID);
     customer.save();
+    LOG.info("new code");
+    final String shellResponseString =
+        TestUtils.readResource("com/yugabyte/yw/controllers/tablespaces_shell_response.txt");
 
     ShellResponse shellResponse1 =
-        ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, SHELL_RESPONSE_MESSAGE_TABLE_SPACES);
+        ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, shellResponseString);
     when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), anyString(), anyObject()))
         .thenReturn(shellResponse1);
 
@@ -1070,18 +1074,18 @@ public class TablesControllerTest extends FakeDBApplication {
     JsonNode json = Json.parse(contentAsString(r));
     ObjectMapper objectMapper = new ObjectMapper();
 
-    List<TableSpaceInfoResp> tableSpaceInfoRespList =
-        objectMapper.readValue(json.toString(), new TypeReference<List<TableSpaceInfoResp>>() {});
+    List<TableSpaceInfo> tableSpaceInfoRespList =
+        objectMapper.readValue(json.toString(), new TypeReference<List<TableSpaceInfo>>() {});
     Assert.assertNotNull(tableSpaceInfoRespList);
     Assert.assertEquals(4, tableSpaceInfoRespList.size());
 
-    Map<String, TableSpaceInfoResp> tableSpacesMap =
+    Map<String, TableSpaceInfo> tableSpacesMap =
         tableSpaceInfoRespList.stream().collect(Collectors.toMap(x -> x.name, Function.identity()));
 
-    TableSpaceInfoResp ap_south_1_tablespace = tableSpacesMap.get("ap_south_1_tablespace");
-    TableSpaceInfoResp us_west_2_tablespace = tableSpacesMap.get("us_west_2_tablespace");
-    TableSpaceInfoResp us_west_1_tablespace = tableSpacesMap.get("us_west_1_tablespace");
-    TableSpaceInfoResp us_west_3_tablespace = tableSpacesMap.get("us_west_3_tablespace");
+    TableSpaceInfo ap_south_1_tablespace = tableSpacesMap.get("ap_south_1_tablespace");
+    TableSpaceInfo us_west_2_tablespace = tableSpacesMap.get("us_west_2_tablespace");
+    TableSpaceInfo us_west_1_tablespace = tableSpacesMap.get("us_west_1_tablespace");
+    TableSpaceInfo us_west_3_tablespace = tableSpacesMap.get("us_west_3_tablespace");
     Assert.assertNotNull(ap_south_1_tablespace);
     Assert.assertNotNull(us_west_2_tablespace);
     Assert.assertNotNull(us_west_1_tablespace);
@@ -1106,7 +1110,4 @@ public class TablesControllerTest extends FakeDBApplication {
     Assert.assertEquals(1, us_west_3_tablespace.numReplicas);
     Assert.assertEquals(1, us_west_3_tablespace.placementBlocks.size());
   }
-
-  private final String SHELL_RESPONSE_MESSAGE_TABLE_SPACES =
-      "\r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 jsonb_agg\r\n------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n [{\"spcname\": \"pg_default\", \"spcoptions\": null}, {\"spcname\": \"pg_global\", \"spcoptions\": null}, {\"spcname\": \"ap_south_1_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 3, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1a\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1b\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"ap-south-1\\\",\\\"zone\\\":\\\"ap-south-1c\\\",\\\"min_num_replicas\\\":1}]}\"]}, {\"spcname\": \"us_west_2_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 3, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2a\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2b\\\",\\\"min_num_replicas\\\":1},\\n  {\\\"cloud\\\":\\\"aws\\\",\\\"region\\\":\\\"us-west-2\\\",\\\"zone\\\":\\\"us-west-2c\\\",\\\"min_num_replicas\\\":1}]}\"]}, {\"spcname\": \"us_west_1_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 1, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"gcp\\\",\\\"region\\\":\\\"us-west1\\\",\\\"zone\\\":\\\"us-west1-a\\\",\\\"min_num_replicas\\\":1}]\\n  }\"]}, {\"spcname\": \"us_west_3_tablespace\", \"spcoptions\": [\"replica_placement={\\\"num_replicas\\\": 1, \\\"placement_blocks\\\":\\n  [{\\\"cloud\\\":\\\"gcp\\\",\\\"region\\\":\\\"us-west1\\\",\\\"zone\\\":\\\"us-west1-c\\\",\\\"min_num_replicas\\\":1}]\\n  }\"]}]";
 }

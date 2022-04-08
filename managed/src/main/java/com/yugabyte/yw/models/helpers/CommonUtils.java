@@ -623,7 +623,7 @@ public class CommonUtils {
     return rVal;
   }
 
-  public static NodeDetails getARandomTServer(Universe universe) {
+  public static NodeDetails getARandomLiveTServer(Universe universe) {
     UniverseDefinitionTaskParams.Cluster primaryCluster =
         universe.getUniverseDetails().getPrimaryCluster();
     List<NodeDetails> tserverLiveNodes =
@@ -634,10 +634,19 @@ public class CommonUtils {
             .filter(nodeDetails -> nodeDetails.isTserver)
             .filter(nodeDetails -> nodeDetails.state == NodeState.Live)
             .collect(Collectors.toList());
+    if (tserverLiveNodes.isEmpty()) {
+      throw new IllegalStateException(
+          "No live TServers found for Universe UUID: " + universe.universeUUID);
+    }
     return tserverLiveNodes.get(new Random().nextInt(tserverLiveNodes.size()));
   }
 
-  public static String extractJsonisedQueryResponse(ShellResponse shellResponse) {
+  /**
+   * This method extracts the json from shell response where the shell executes a SQL Query that
+   * aggregates the response as JSON e.g. select jsonb_agg() The resultant shell output has json
+   * response on line number 3
+   */
+  public static String extractJsonisedSqlResponse(ShellResponse shellResponse) {
     String data = null;
     if (shellResponse.message != null && !shellResponse.message.isEmpty()) {
       Scanner scanner = new Scanner(shellResponse.message);
