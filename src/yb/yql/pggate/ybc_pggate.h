@@ -568,6 +568,10 @@ YBCStatus YBCGetTabletServerHosts(YBCServerDescriptor **tablet_servers, size_t* 
 
 YBCStatus YBCGetPgggateHeapConsumption(int64_t* consumption);
 
+YBCStatus YBCGetMemTrackerPeak(int64_t* peak);
+
+YBCStatus YBCGetMemTrackerCurrent(int64_t* cur);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

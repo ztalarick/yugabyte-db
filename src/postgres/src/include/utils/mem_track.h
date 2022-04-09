@@ -1,7 +1,9 @@
-#ifndef MEM_TRACK
-#define MEM_TRACK
+#ifndef MEM_TRACK_H
+#define MEM_TRACK_H
 
 #include "c.h"
+
+#define PG_MEM_TRACKER_INIT {0, 0, 0, 0}
 
 /*
  * Tracking memory consumption for both PG backend and pggate tcmalloc acutal
@@ -32,7 +34,8 @@ extern void YbPgMemUpdateMax();
 extern void YbPgMemAddConsumption(const Size sz);
 
 /*
- *
+ * Substract the sz bytes from PgMemTracker. It doesn't update the maximum
+ * values for the backend and stmt.
  */
 extern void YbPgMemSubConsumption(const Size sz);
 
