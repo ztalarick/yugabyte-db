@@ -29,8 +29,6 @@
 #include "yb/yql/pggate/ybc_pggate.h"
 #include "pg_yb_utils.h"
 
-#define PG_MEM_TRACKER_INIT {0, 0, 0, 0}
-
 YbPgMemTracker PgMemTracker = PG_MEM_TRACKER_INIT;
 
 // TODO consider atomicity for these vars and functions if necessary
@@ -51,27 +49,23 @@ void
 YbPgMemUpdateMax()
 {
 	const Size snapshot_mem = SnapshotMemory();
-	PgMemTracker.backendMaxMemBytes =
-		Max(PgMemTracker.backendMaxMemBytes, snapshot_mem);
+	PgMemTracker.backendMaxMemBytes =Max(PgMemTracker.backendMaxMemBytes, snapshot_mem);
 	PgMemTracker.stmtMaxMemBytes =
 		Max(PgMemTracker.stmtMaxMemBytes,
-			snapshot_mem - PgMemTracker.stmtMaxMemBytes);
+snapshot_mem - PgMemTracker.stmtMaxMemBytes);
 }
 
-void
-YbPgMemAddConsumption(const Size sz)
-{
+void YbPgMemAddConsumption(const Size sz) {
 	PgMemTracker.currentMemBytes += sz;
-	if (sz >= 0)
-	{
+	if (sz >= 0) {
 		YbPgMemUpdateMax();
 	}
 }
 
 void
-YbPgMemSubConsumption(const Size sz)
+YbPgMemSubConsumption(const  Size sz)
 {
-	PgMemTracker.currentMemBytes -= sz;
+	PgMemTracker.currentMemBytes-=sz;
 }
 
 void
