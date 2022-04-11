@@ -9,10 +9,10 @@ Language:        Cpp
 # Please update this file if you identify any formats.
 AccessModifierOffset: -2
 AlignAfterOpenBracket: Align
-AlignConsecutiveMacros: Consecutive
-AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: true
 AlignConsecutiveBitFields: false
-AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveDeclarations: true
 AlignEscapedNewlines: DontAlign
 AlignOperands:   Align
 AlignTrailingComments: true
@@ -80,9 +80,9 @@ IncludeCategories:
     SortPriority:    0
 IncludeIsMainRegex: '(Test)?$'
 IncludeIsMainSourceRegex: ''
-IndentCaseLabels: yes
+IndentCaseLabels: true
 IndentCaseBlocks: false
-IndentGotoLabels: no
+IndentGotoLabels: false
 IndentPPDirectives: None
 IndentExternBlock: AfterExternBlock
 IndentWidth:     4
@@ -107,7 +107,8 @@ SortUsingDeclarations: true
 SpaceAfterCStyleCast: true
 SpaceAfterLogicalNot: false
 SpaceBeforeAssignmentOperators: true
-SpaceBeforeCaseColon: false
+# clang-format v12
+#SpaceBeforeCaseColon: false
 SpaceBeforeParens: ControlStatements
 SpaceBeforeRangeBasedForLoopColon: true
 SpaceInEmptyBlock: false
