@@ -431,6 +431,20 @@ public class TestYsqlMetrics extends BasePgSQLTest {
     }
   }
 
+  @Test
+  public void testExplainMaxMemory() throws Exception {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TABLE tst (c1 INT)");
+      statement.execute("INSERT INTO tst SELECT s FROM generate_series(1, 1000000) s;");
+      ResultSet result = statement.executeQuery(
+        "explain analyze select m1 from " + 
+          "(select max(c1) as m1 from " + 
+            "(select * from tst) as t0 " +
+            "group by c1) as t1 " + 
+          "order by m1;");
+    }
+  }
+
   private void testStatement(Statement statement,
                              String query,
                              String metric_name) throws Exception {
