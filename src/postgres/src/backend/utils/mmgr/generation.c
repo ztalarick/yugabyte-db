@@ -40,9 +40,8 @@
 
 #include "lib/ilist.h"
 #include "utils/memdebug.h"
+#include "utils/memtrack.h"
 #include "utils/memutils.h"
-#include "utils/mem_track.h"
-
 
 #define Generation_CONTEXTSZ	MAXALIGN(sizeof(GenerationContext))
 #define Generation_BLOCKHDRSZ	MAXALIGN(sizeof(GenerationBlock))
@@ -305,7 +304,7 @@ GenerationReset(MemoryContext context)
 		wipe_mem(block, block->blksize);
 #endif
 
-		YbPgMemSubConsumption(block->endptr - ((char *)block));
+		YbPgMemSubConsumption(block->endptr - ((char *) block));
 
 		free(block);
 	}

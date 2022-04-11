@@ -47,9 +47,8 @@
 #include "postgres.h"
 
 #include "utils/memdebug.h"
+#include "utils/memtrack.h"
 #include "utils/memutils.h"
-
-#include "utils/mem_track.h"
 
 /* Define this to detail debug alloc information */
 /* #define HAVE_ALLOCINFO */
@@ -449,12 +448,10 @@ AllocSetContextCreateExtended(MemoryContext parent,
 
 		if (freelist->first_free != NULL)
 		{
-
 			/* Remove entry from freelist */
 			set = freelist->first_free;
 			freelist->first_free = (AllocSet) set->header.nextchild;
 			freelist->num_free--;
-
 
 			/* Update its maxBlockSize; everything else should be OK */
 			set->maxBlockSize = maxBlockSize;
@@ -614,7 +611,7 @@ AllocSetReset(MemoryContext context)
 		else
 		{
 			/* Normal case, release the block */
-			YbPgMemSubConsumption(block->endptr - ((char*)block));
+			YbPgMemSubConsumption(block->endptr - ((char *) block));
 
 #ifdef CLOBBER_FREED_MEMORY
 			wipe_mem(block, block->freeptr - ((char *) block));
@@ -676,7 +673,7 @@ AllocSetDelete(MemoryContext context)
 				freelist->first_free = (AllocSetContext *) oldset->header.nextchild;
 				freelist->num_free--;
 
-                YbPgMemSubConsumption(sizeof(*oldset));
+				YbPgMemSubConsumption(sizeof(*oldset));
 
 				/* All that remains is to free the header/initial block */
 				free(oldset);
@@ -703,7 +700,7 @@ AllocSetDelete(MemoryContext context)
 
 		if (block != set->keeper)
 		{
-			YbPgMemSubConsumption(block->endptr - ((char*) block));
+			YbPgMemSubConsumption(block->endptr - ((char *) block));
 			free(block);
 		}
 
@@ -949,7 +946,7 @@ AllocSetAlloc(MemoryContext context, Size size)
 		if (block == NULL)
 			return NULL;
 
-    	YbPgMemAddConsumption(blksize);
+		YbPgMemAddConsumption(blksize);
 
 		block->aset = set;
 		block->freeptr = ((char *) block) + ALLOC_BLOCKHDRSZ;
@@ -1055,7 +1052,7 @@ AllocSetFree(MemoryContext context, void *pointer)
 		wipe_mem(block, block->freeptr - ((char *) block));
 #endif
 
-		YbPgMemSubConsumption(block->endptr - ((char*) block));
+		YbPgMemSubConsumption(block->endptr - ((char *) block));
 		free(block);
 	}
 	else
@@ -1169,7 +1166,7 @@ AllocSetRealloc(MemoryContext context, void *pointer, Size size)
 		AllocBlock	block = (AllocBlock) (((char *) chunk) - ALLOC_BLOCKHDRSZ);
 		Size		chksize;
 		Size		blksize;
-		Size oldsize = block->endptr - ((char*)block);
+		Size		oldsize = block->endptr - ((char *) block);
 
 		/*
 		 * Try to verify that we have a sane block pointer: it should

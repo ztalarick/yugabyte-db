@@ -1,20 +1,24 @@
-#ifndef MEM_TRACK_H
-#define MEM_TRACK_H
+#ifndef MEMTRACK_H
+#define MEMTRACK_H
 
 #include "c.h"
 
-#define PG_MEM_TRACKER_INIT {0, 0, 0, 0}
+#define PG_MEM_TRACKER_INIT \
+	{ \
+		0, 0, 0, 0 \
+	}
 
 /*
  * Tracking memory consumption for both PG backend and pggate tcmalloc acutal
  * heap consumption.
  * Global accessible in one PG backend process.
  */
-typedef struct YbPgMemTracker {
-    Size currentMemBytes;
-    Size backendMaxMemBytes;
-    Size stmtMaxMemBytes;
-	Size stmtMaxMemBaseBytes;
+typedef struct YbPgMemTracker
+{
+	Size cur_mem_bytes;
+	Size backend_max_mem_bytes;
+	Size stmt_max_mem_bytes;
+	Size stmt_max_mem_base_bytes;
 } YbPgMemTracker;
 
 extern YbPgMemTracker PgMemTracker;

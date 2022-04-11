@@ -59,14 +59,13 @@
 #include "tcop/utility.h"
 #include "utils/acl.h"
 #include "utils/lsyscache.h"
+#include "utils/memtrack.h"
 #include "utils/memutils.h"
 #include "utils/partcache.h"
 #include "utils/rls.h"
 #include "utils/ruleutils.h"
 #include "utils/snapmgr.h"
 #include "utils/tqual.h"
-
-#include "utils/mem_track.h"
 
 #include "pg_yb_utils.h"
 

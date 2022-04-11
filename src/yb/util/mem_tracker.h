@@ -384,9 +384,8 @@ class MemTracker : public std::enable_shared_from_this<MemTracker> {
     poll_children_consumption_functors_ = std::move(poll_children_consumption_functors);
   }
 
-  void AssignUpdateMaxMemFunctor(void (*func)()) {
-    update_max_mem_functor_ = func;
-  }
+  // Assign the functor to update PG's global memory consumption.
+  void AssignUpdateMaxMemFunctor(void (*func)()) { update_max_mem_functor_ = func; }
 
  private:
   bool CheckLimitExceeded() const {

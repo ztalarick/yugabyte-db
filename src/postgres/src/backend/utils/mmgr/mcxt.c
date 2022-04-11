@@ -23,15 +23,14 @@
 
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
+#include "pg_yb_utils.h"
+#include "utils/memtrack.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
-#include "utils/mem_track.h"
 #include "yb/yql/pggate/ybc_pggate.h"
-#include "pg_yb_utils.h"
 
 YbPgMemTracker PgMemTracker = PG_MEM_TRACKER_INIT;
 
-// TODO consider atomicity for these vars and functions if necessary
 /*
  * A helper function to take snapshot of current memory usage.
  * It includes current PG memory usage plus current Tcmalloc usage by
@@ -42,37 +41,41 @@ SnapshotMemory()
 {
 	int64 cur_tc_actual_sz = 0;
 	YBCGetPgggateHeapConsumption(&cur_tc_actual_sz);
-	return PgMemTracker.currentMemBytes + cur_tc_actual_sz;
+	return PgMemTracker.cur_mem_bytes + cur_tc_actual_sz;
 }
 
 void
 YbPgMemUpdateMax()
 {
 	const Size snapshot_mem = SnapshotMemory();
-	PgMemTracker.backendMaxMemBytes =Max(PgMemTracker.backendMaxMemBytes, snapshot_mem);
-	PgMemTracker.stmtMaxMemBytes =
-		Max(PgMemTracker.stmtMaxMemBytes,
-snapshot_mem - PgMemTracker.stmtMaxMemBytes);
+	PgMemTracker.backend_max_mem_bytes =
+		Max(PgMemTracker.backend_max_mem_bytes, snapshot_mem);
+	PgMemTracker.stmt_max_mem_bytes =
+		Max(PgMemTracker.stmt_max_mem_bytes,
+			snapshot_mem - PgMemTracker.stmt_max_mem_bytes);
 }
 
-void YbPgMemAddConsumption(const Size sz) {
-	PgMemTracker.currentMemBytes += sz;
-	if (sz >= 0) {
+void
+YbPgMemAddConsumption(const Size sz)
+{
+	PgMemTracker.cur_mem_bytes += sz;
+	if (sz >= 0)
+	{
 		YbPgMemUpdateMax();
 	}
 }
 
 void
-YbPgMemSubConsumption(const  Size sz)
+YbPgMemSubConsumption(const Size sz)
 {
-	PgMemTracker.currentMemBytes-=sz;
+	PgMemTracker.cur_mem_bytes -= sz;
 }
 
 void
 YbPgMemResetStmtConsumption()
 {
-	PgMemTracker.stmtMaxMemBaseBytes = PgMemTracker.currentMemBytes;
-	PgMemTracker.stmtMaxMemBytes = 0;
+	PgMemTracker.stmt_max_mem_base_bytes = PgMemTracker.cur_mem_bytes;
+	PgMemTracker.stmt_max_mem_bytes	 = 0;
 }
 
 /*****************************************************************************

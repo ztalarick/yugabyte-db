@@ -34,15 +34,13 @@
 #include "utils/builtins.h"
 #include "utils/json.h"
 #include "utils/lsyscache.h"
+#include "utils/memtrack.h"
 #include "utils/rel.h"
 #include "utils/ruleutils.h"
 #include "utils/snapmgr.h"
 #include "utils/tuplesort.h"
 #include "utils/typcache.h"
 #include "utils/xml.h"
-
-#include "utils/mem_track.h"
-
 
 /* Hook for plugins to get control in ExplainOneQuery() */
 ExplainOneQuery_hook_type ExplainOneQuery_hook = NULL;
@@ -56,6 +54,8 @@ explain_get_index_name_hook_type explain_get_index_name_hook = NULL;
 #define X_CLOSING 1
 #define X_CLOSE_IMMEDIATE 2
 #define X_NOWHITESPACE 4
+
+#define CEILING_K(s) ((s + 1023) / 1024)
 
 static void ExplainOneQuery(Query *query, int cursorOptions,
 				IntoClause *into, ExplainState *es,
@@ -136,7 +136,12 @@ static void ExplainJSONLineEnding(ExplainState *es);
 static void ExplainYAMLLineStarting(ExplainState *es);
 static void escape_yaml(StringInfo buf, const char *str);
 
+static Size GetCeilingUnitBytes(Size bytes, const char **unit);
+static void appendPgMemInfo(ExplainState *es, Size peakMem);
 
+static const char* KIB = "KiB";
+static const char* MIB = "MiB";
+static const char* GIB = "GiB";
 
 /*
  * ExplainQuery -
@@ -523,9 +528,7 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	/* call ExecutorStart to prepare the plan for execution */
 	ExecutorStart(queryDesc, eflags);
 
-	int64 tc_mem = 0;
-	int64 pggate_cur_mem = 0;
-	int64 pggate_peak_mem = 0;
+	int64 peakMem = 0;
 
 	/* Execute the plan for statistics if asked for */
 	if (es->analyze)
@@ -541,9 +544,8 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 		/* run the plan */
 		ExecutorRun(queryDesc, dir, 0L, true);
 
-		YBCGetPgggateHeapConsumption(&tc_mem);
-		YBCGetMemTrackerCurrent(&pggate_cur_mem);
-		YBCGetMemTrackerPeak(&pggate_peak_mem);
+		/* take a snapshot on the max PG memory consumption */
+		peakMem = PgMemTracker.stmt_max_mem_bytes;
 
 		/* run cleanup too */
 		ExecutorFinish(queryDesc);
@@ -601,26 +603,52 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 	 * user can set SUMMARY OFF to not have the timing information included in
 	 * the output).  By default, ANALYZE sets SUMMARY to true.
 	 */
-    if (es->summary && es->analyze)
-    {
+	if (es->summary && es->analyze)
+	{
 		ExplainPropertyFloat("Execution Time", "ms", 1000.0 * totaltime, 3,
 							 es);
-		appendStringInfo(es->str, "Maximum actual memory usage: %lu KiB\n",
-						 (PgMemTracker.stmtMaxMemBytes + 1023) / 1024);
 
-		// TODO remove, for debugging
-		appendStringInfo(es->str,
-						 "Current Tcmalloc acutal memory usage: %lu KiB\n",
-						 (tc_mem + 1023) / 1024);
-		appendStringInfo(es->str, "Current pggate memory usage: %lu KiB\n",
-						 (pggate_cur_mem + 1023) / 1024);
-		appendStringInfo(es->str, "Current pggate peak memory usage: %lu KiB\n",
-						 (pggate_peak_mem + 1023) / 1024);
-		appendStringInfo(es->str, "Current PG acutal memory usage: %lu KiB\n",
-						 (PgMemTracker.currentMemBytes + 1023) / 1024);
+		if (IsYugaByteEnabled())
+			appendPgMemInfo(es, peakMem);
 	}
 
 	ExplainCloseGroup("Query", NULL, true, es);
+}
+
+static void
+appendPgMemInfo(ExplainState *es, Size peakMem)
+{
+	appendStringInfo(es->str, "Maximum actual memory usage: %lu KiB\n",
+					 CEILING_K(peakMem));
+
+	const char *unit;
+	Size peakMemUnit = GetCeilingUnitBytes(peakMem, &unit);
+	appendStringInfo(es->str, "Maximum actual memory usage: %lu %s\n",
+					 peakMemUnit, unit);
+
+	const char *unit_cur;
+	Size curMemUnit = GetCeilingUnitBytes(PgMemTracker.cur_mem_bytes, &unit_cur);
+	appendStringInfo(es->str,
+					 "Current PG acutal memory usage: %lu %s\n",
+					 curMemUnit, unit_cur);
+}
+
+static Size
+GetCeilingUnitBytes(Size bytes, const char **unit)
+{
+	// Show minimal 1 KiB
+	*unit = KIB;
+	if (bytes < 1024 * 1024)
+		return CEILING_K(bytes);
+
+	*unit = MIB;
+	bytes /= 1024;
+	if (bytes < 1024 * 1024)
+		return CEILING_K(bytes);
+
+	bytes /= 1024;
+	*unit = GIB;
+	return CEILING_K(bytes);
 }
 
 /*

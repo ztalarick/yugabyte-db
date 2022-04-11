@@ -566,11 +566,11 @@ void YBCPgResetCatalogReadTime();
 
 YBCStatus YBCGetTabletServerHosts(YBCServerDescriptor **tablet_servers, size_t* numservers);
 
-YBCStatus YBCGetPgggateHeapConsumption(int64_t* consumption);
+YBCStatus YBCGetPgggateHeapConsumption(int64_t *consumption);
 
-YBCStatus YBCGetMemTrackerPeak(int64_t* peak);
+YBCStatus YBCGetMemTrackerPeak(int64_t *peak);
 
-YBCStatus YBCGetMemTrackerCurrent(int64_t* cur);
+YBCStatus YBCGetMemTrackerCurrent(int64_t *cur);
 
 #ifdef __cplusplus
 }  // extern "C"
