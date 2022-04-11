@@ -327,8 +327,8 @@ SlabDelete(MemoryContext context)
 	/* Reset to release all the SlabBlocks */
 	SlabReset(context);
 
-	// TODO ssong
-	YbPgMemSubConsumption(0);
+	YbPgMemSubConsumption(((SlabContext *) context)->headerSize);
+
 	/* And free the context header */
 	free(context);
 }

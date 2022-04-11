@@ -673,7 +673,9 @@ AllocSetDelete(MemoryContext context)
 				freelist->first_free = (AllocSetContext *) oldset->header.nextchild;
 				freelist->num_free--;
 
-				YbPgMemSubConsumption(sizeof(*oldset));
+				YbPgMemSubConsumption(
+					((AllocSetContext *) oldset)->keeper->endptr -
+					((char *) oldset));
 
 				/* All that remains is to free the header/initial block */
 				free(oldset);
@@ -707,7 +709,8 @@ AllocSetDelete(MemoryContext context)
 		block = next;
 	}
 
-	YbPgMemSubConsumption(sizeof(*set));
+	YbPgMemSubConsumption(((AllocSetContext *) set)->keeper->endptr -
+						  ((char *) set));
 	/* Finally, free the context header, including the keeper block */
 	free(set);
 }

@@ -534,7 +534,7 @@ GenerationFree(MemoryContext context, void *pointer)
 	if (set->block == block)
 		set->block = NULL;
 
-	YbPgMemSubConsumption(block->endptr - ((char *) block));
+	YbPgMemSubConsumption(block->blksize);
 	free(block);
 }
 
