@@ -50,7 +50,7 @@ public class MetricGrafanaGen {
     try {
       File grafanaFile = new File(dashboardGenPath);
       grafanaFile.createNewFile();
-      ObjectWriter fileWriter = mapper.writer(new DefaultPrettyPrinter());
+      ObjectWriter fileWriter = mapper.writer(new DefaultPrettyPrinter("\n"));
       fileWriter.writeValue(grafanaFile, grafanaJson);
 
     } catch (IOException e) {
