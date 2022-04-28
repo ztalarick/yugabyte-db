@@ -62,6 +62,7 @@ import com.yugabyte.yw.common.services.YBClientService;
 import com.yugabyte.yw.controllers.TablesController.PlacementBlock;
 import com.yugabyte.yw.controllers.TablesController.TableInfoResp;
 import com.yugabyte.yw.controllers.TablesController.TableSpaceInfo;
+
 import com.yugabyte.yw.forms.BackupTableParams;
 import com.yugabyte.yw.forms.BulkImportParams;
 import com.yugabyte.yw.forms.TableDefinitionTaskParams;
@@ -74,6 +75,7 @@ import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.Users;
 import com.yugabyte.yw.models.extended.UserWithFeatures;
 import com.yugabyte.yw.models.helpers.ColumnDetails;
+import com.yugabyte.yw.models.helpers.FileUtils;
 import com.yugabyte.yw.models.helpers.NodeDetails;
 import com.yugabyte.yw.models.helpers.TaskType;
 import java.io.IOException;
@@ -90,6 +92,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -97,6 +100,8 @@ import org.junit.Ignore;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Matchers;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yb.ColumnSchema;
@@ -109,6 +114,8 @@ import org.yb.client.YBClient;
 import org.yb.master.MasterDdlOuterClass.ListTablesResponsePB.TableInfo;
 import org.yb.master.MasterTypes;
 import org.yb.master.MasterTypes.RelationType;
+
+import play.Environment;
 import play.libs.Json;
 import play.mvc.Http;
 import play.mvc.Result;
@@ -122,6 +129,8 @@ public class TablesControllerTest extends FakeDBApplication {
   private ListTablesResponse mockListTablesResponse;
   private GetTableSchemaResponse mockSchemaResponse;
   private NodeUniverseManager mockNodeUniverseManager;
+  private Environment mockedEnvironment;
+  MockedStatic<FileUtils> mockedFileUtils;
 
   private Schema getFakeSchema() {
     List<ColumnSchema> columnSchemas = new LinkedList<>();
@@ -140,6 +149,7 @@ public class TablesControllerTest extends FakeDBApplication {
     mockListTablesResponse = mock(ListTablesResponse.class);
     mockSchemaResponse = mock(GetTableSchemaResponse.class);
     mockNodeUniverseManager = mock(NodeUniverseManager.class);
+    mockedEnvironment = mock(Environment.class);
     when(mockService.getClient(any(), any())).thenReturn(mockClient);
     mockNodeUniverseManager = mock(NodeUniverseManager.class);
 
@@ -149,14 +159,22 @@ public class TablesControllerTest extends FakeDBApplication {
     CustomerConfigService customerConfigService =
         app.injector().instanceOf(CustomerConfigService.class);
     tablesController =
-
         new TablesController(
             commissioner,
             mockService,
             metricQueryHelper,
             customerConfigService,
-            mockNodeUniverseManager);
+            mockNodeUniverseManager, mockedEnvironment);
     tablesController.setAuditService(auditService);
+
+    mockedFileUtils = Mockito.mockStatic(FileUtils.class);
+    mockedFileUtils.when(() -> FileUtils.readResource(anyString(), anyObject()))
+          .thenReturn("QUERY");
+  }
+
+  @After
+  public void cleanup() {
+    mockedFileUtils.close();
   }
 
   @Test
@@ -1164,6 +1182,7 @@ public class TablesControllerTest extends FakeDBApplication {
 
     when(mockListTablesResponse.getTableInfoList()).thenReturn(tableInfoList);
     when(mockClient.getTablesList()).thenReturn(mockListTablesResponse);
+    
     Customer customer = ModelFactory.testCustomer();
     Users user = ModelFactory.testUser(customer);
     Universe u1 = createUniverse(customer.getCustomerId());
@@ -1187,12 +1206,12 @@ public class TablesControllerTest extends FakeDBApplication {
 
     ObjectMapper objectMapper = new ObjectMapper();
     LOG.debug("JSON respone {}", json.toString());
-    List<TableInfoResp> tableInfoRespList =
-        objectMapper.readValue(json.toString(), new TypeReference<List<TableInfoResp>>() {});
+    List<TableInfoResp.TableInfoRespBuilder> tableInfoRespList =
+        objectMapper.readValue(json.toString(), new TypeReference<List<TableInfoResp.TableInfoRespBuilder>>() {});
     LOG.debug("Fetched table list from universe, response: " + contentAsString(r));
     assertEquals(OK, r.status());
     Assert.assertEquals(1, tableInfoRespList.size());
-    TableInfoResp parent = tableInfoRespList.get(0);
+    TableInfoResp parent = tableInfoRespList.get(0).build();
     Assert.assertEquals("bank_transactions", parent.tableName);
     Assert.assertEquals("$$$Default", parent.keySpace);
     Assert.assertEquals(2, parent.partitionInfo.size());
@@ -1321,21 +1340,24 @@ public class TablesControllerTest extends FakeDBApplication {
     when(mockNodeUniverseManager.runYsqlCommand(
             anyObject(), anyObject(), eq("system"), anyObject()))
         .thenReturn(ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, ""));
+    
 
     LOG.info("Created customer " + customer.uuid + " with universe " + u1.universeUUID);
     Result r = tablesController.listTablesWithPartitionInfo(customer.uuid, u1.universeUUID);
     JsonNode json = Json.parse(contentAsString(r));
 
     ObjectMapper objectMapper = new ObjectMapper();
-    List<TableInfoResp> tableInfoRespList =
-        objectMapper.readValue(json.toString(), new TypeReference<List<TableInfoResp>>() {});
+    List<TableInfoResp.TableInfoRespBuilder> tableInfoRespList =
+        objectMapper.readValue(json.toString(), new TypeReference<List<TableInfoResp.TableInfoRespBuilder>>() {});
     assertEquals(OK, r.status());
     Assert.assertEquals(4, tableInfoRespList.size());
     List<TableInfoResp> db1 =
         tableInfoRespList
             .stream()
+            .map(x -> x.build())
             .filter(x -> "db1".equals(x.keySpace))
             .collect(Collectors.toList());
+            
     Assert.assertEquals(1, db1.size());
     Assert.assertEquals("db1.table1", db1.get(0).tableName);
     Assert.assertEquals(2, db1.get(0).partitionInfo.size());
@@ -1359,11 +1381,12 @@ public class TablesControllerTest extends FakeDBApplication {
     List<TableInfoResp> db2 =
         tableInfoRespList
             .stream()
+            .map(x -> x.build())
             .filter(x -> "db2".equals(x.keySpace))
             .collect(Collectors.toList());
     Assert.assertEquals(2, db2.size());
     TableInfoResp db2_table1 =
-        db2.stream()
+        db2.stream()            
             .filter(x -> "db2.table1".equals(x.tableName))
             .collect(Collectors.toList())
             .get(0);
@@ -1380,6 +1403,7 @@ public class TablesControllerTest extends FakeDBApplication {
     List<TableInfoResp> db3 =
         tableInfoRespList
             .stream()
+            .map(x -> x.build())
             .filter(x -> "db3".equals(x.keySpace))
             .collect(Collectors.toList());
     Assert.assertEquals(1, db3.size());
@@ -1392,6 +1416,6 @@ public class TablesControllerTest extends FakeDBApplication {
   private final String SHELL_RESPONSE_MESSAGE_MULTIPLE_NAMESPACES_DB1 =
       "\r\n                                                                                                                                                                                                        jsonb_agg\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n[{\"child_table\": \"db1.table1.partition1\", \"child_schema\": \"public\", \"parent_table\": \"db1.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_1_tablespace\", \"parent_tablespace\": null}, {\"child_table\": \"db1.table1.partition2\", \"child_schema\": \"public\", \"parent_table\": \"db1.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_3_tablespace\", \"parent_tablespace\": null}]\r\n(1 row)";
   private final String SHELL_RESPONSE_MESSAGE_MULTIPLE_NAMESPACES_DB2 =
-      "\r\n 
 
+      "\r\n                                                                                                                                                                                                        jsonb_agg\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n[{\"child_table\": \"db2.table1.partition1\", \"child_schema\": \"public\", \"parent_table\": \"db2.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_1_tablespace\", \"parent_tablespace\": null}]\r\n(1 row)";
 }

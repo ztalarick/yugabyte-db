@@ -15,9 +15,12 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.yugabyte.yw.commissioner.Commissioner;
 import com.yugabyte.yw.commissioner.Common;
@@ -50,6 +53,7 @@ import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.CustomerConfig.ConfigState;
 import com.yugabyte.yw.models.helpers.ColumnDetails;
 import com.yugabyte.yw.models.helpers.CommonUtils;
+import com.yugabyte.yw.models.helpers.FileUtils;
 import com.yugabyte.yw.models.helpers.NodeDetails;
 import com.yugabyte.yw.models.helpers.TableDetails;
 import com.yugabyte.yw.models.helpers.TaskType;
@@ -93,6 +97,8 @@ import org.yb.client.YBClient;
 import org.yb.master.CatalogEntityInfo.PlacementBlockPB;
 import org.yb.master.MasterDdlOuterClass.ListTablesResponsePB.TableInfo;
 import org.yb.master.MasterTypes.RelationType;
+
+import play.Environment;
 import play.data.Form;
 import play.libs.Json;
 import play.mvc.Result;
@@ -113,18 +119,24 @@ public class TablesController extends AuthenticatedController {
 
   private final NodeUniverseManager nodeUniverseManager;
 
+  private final Environment environment;
+
+  private final String PARTITION_QUERY_PATH = "queries/fetch_table_partitions.sql";
+
   @Inject
   public TablesController(
       Commissioner commissioner,
       YBClientService service,
       MetricQueryHelper metricQueryHelper,
       CustomerConfigService customerConfigService,
-      NodeUniverseManager nodeUniverseManager) {
+      NodeUniverseManager nodeUniverseManager,
+      Environment environment) {
     this.commissioner = commissioner;
     this.ybService = service;
     this.metricQueryHelper = metricQueryHelper;
     this.customerConfigService = customerConfigService;
     this.nodeUniverseManager = nodeUniverseManager;
+    this.environment = environment;
   }
 
   @ApiOperation(
@@ -286,38 +298,50 @@ public class TablesController extends AuthenticatedController {
   }
 
   @ApiModel(description = "Table information response")
+  @Jacksonized
   @Builder
   static class TableInfoResp {
 
     @ApiModelProperty(value = "Table UUID", accessMode = READ_ONLY)
+    @JsonDeserialize(using = UUIDDeserializer.class)
     public final UUID tableUUID;
 
     @ApiModelProperty(value = "Keyspace")
+    @JsonProperty("keySpace")
     public final String keySpace;
 
     @ApiModelProperty(value = "Table type")
+    @JsonProperty("tableType")
     public final TableType tableType;
 
     @ApiModelProperty(value = "Table name")
+    @JsonProperty("tableName")
     public final String tableName;
 
     @ApiModelProperty(value = "Relation type")
+    @JsonProperty("relationType")
     public final RelationType relationType;
 
     @ApiModelProperty(value = "Size in bytes", accessMode = READ_ONLY)
+    @JsonProperty("sizeBytes")
     public final double sizeBytes;
 
     @ApiModelProperty(value = "UI_ONLY", hidden = true)
+    @JsonProperty("isIndexTable")
     public final boolean isIndexTable;
 
     @ApiModelProperty(value = "Namespace or Schema")
+    @JsonProperty("nameSpace")
     public final String nameSpace;
 
     @ApiModelProperty(value = "Table space")
+    @JsonProperty("tableSpace")
     public final String tableSpace;
 
     @ApiModelProperty(value = "Partition Info")
+    @JsonProperty("partitionInfo")
     public final List<TableInfoResp> partitionInfo;
+
   }
 
   @ApiOperation(
@@ -986,49 +1010,22 @@ public class TablesController extends AuthenticatedController {
     Map<String, List<TableInfo>> namespaces =
         tableInfoList.stream().collect(Collectors.groupingBy(x -> x.getNamespace().getName()));
 
-    Map<TablePartitionInfo, TableInfo> tablePartitionInfoToTableInfoMap =
-        tableInfoList
-            .stream()
-            .collect(
-                Collectors.toMap(
-                    x -> new TablePartitionInfo(x.getName(), x.getNamespace().getName()),
-                    Function.identity()));
-
-    LOG.info("tablePartitionInfoToTableInfoMap {} ", tablePartitionInfoToTableInfoMap);
-
-    Map<TablePartitionInfo, List<TablePartitionInfo>> parentToPartitionMap = new HashMap<>();
+    Set<TablePartitionInfo> partitionSet = new HashSet<>();
     for (String namespace : namespaces.keySet()) {
-      parentToPartitionMap.putAll(fetchTablePartitionInfo(universe, namespace));
+      partitionSet.addAll(fetchTablePartitionInfo(universe, namespace));
     }
-    LOG.info("parentToPartitionMap {}", parentToPartitionMap);
+
+    LOG.info("parentToPartitionMap {}", partitionSet);
 
     List<TableInfoResp> tableInfoRespList = new ArrayList<>(tableInfoList.size());
     Set<UUID> includedTableUuids = new HashSet<>();
-
-    for (Map.Entry<TablePartitionInfo, List<TablePartitionInfo>> entry :
-        parentToPartitionMap.entrySet()) {
-      LOG.info("entry key {}", entry.getKey());
-      TableInfo table = tablePartitionInfoToTableInfoMap.get(entry.getKey());
-      if (!isSystemTable(table) || isSystemRedis(table)) {
-        TableInfoResp.TableInfoRespBuilder parentBuilder =
-            buildResponseFromTableInfo(table, tableSizes, entry.getKey());
-        List<TableInfoResp> childrenList = new ArrayList<>();
-        for (TablePartitionInfo childPartition : entry.getValue()) {
-          TableInfoResp.TableInfoRespBuilder childBuilder =
-              buildResponseFromTableInfo(
-                  tablePartitionInfoToTableInfoMap.get(childPartition), tableSizes, childPartition);
-          childrenList.add(childBuilder.build());
-          includedTableUuids.add(childBuilder.tableUUID);
-        }
-        parentBuilder.partitionInfo(childrenList);
-        includedTableUuids.add(parentBuilder.tableUUID);
-        tableInfoRespList.add(parentBuilder.build());
-      }
+    if (!partitionSet.isEmpty()) {
+      tableInfoRespList.addAll(
+          buildPartitionTree(partitionSet, tableInfoList, includedTableUuids, tableSizes));
     }
-
+  
     for (TableInfo table : tableInfoList) {
       if (!isSystemTable(table) || isSystemRedis(table)) {
-        String tableKeySpace = table.getNamespace().getName();
         String id = table.getId().toStringUtf8();
         if (!includedTableUuids.contains(getUUIDRepresentation(id))) {
           tableInfoRespList.add(buildResponseFromTableInfo(table, tableSizes, null).build());
@@ -1039,6 +1036,72 @@ public class TablesController extends AuthenticatedController {
     return PlatformResults.withData(tableInfoRespList);
   }
 
+  private List<TableInfoResp> buildPartitionTree(
+      Set<TablePartitionInfo> partitionSet,
+      List<TableInfo> tableInfoList,
+      Set<UUID> includedTableUuids,
+      Map<String, Double> tableSizes) {
+    
+    Map<TablePartitionInfo, TableInfo> tablePartitionInfoToTableInfoMap =
+        tableInfoList
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    x -> new TablePartitionInfo(x.getName(), x.getNamespace().getName()),
+                    Function.identity()));
+
+    LOG.info("tablePartitionInfoToTableInfoMap {} ", tablePartitionInfoToTableInfoMap);
+    Map<TablePartitionInfo, Set<TablePartitionInfo>> parentToChildrenMap = new HashMap<>();
+    Set<TablePartitionInfo> parentTables = new HashSet<>();
+
+    partitionSet = partitionSet.stream()
+              .filter(x -> {TableInfo t = tablePartitionInfoToTableInfoMap.get(x);
+                return t != null && (!isSystemTable(t) || isSystemRedis(t)) ;})
+              .collect(Collectors.toSet());
+
+    
+    for (TablePartitionInfo ti : partitionSet) {
+      TablePartitionInfo parent = new TablePartitionInfo();
+      parent.schema = ti.parentSchema;
+      parent.table = ti.parentTable;
+      parent.tableSpace = ti.parentTableSpace;
+      parent.keyspace = ti.keyspace;
+      if (!parentToChildrenMap.containsKey(parent)) {
+        parentToChildrenMap.put(parent, new HashSet<>());
+      }
+      parentToChildrenMap.get(parent).add(ti);
+      if (!partitionSet.contains(parent)) {
+        parentTables.add(parent);
+      }
+    }
+    List<TableInfoResp> out = new ArrayList<>(tableInfoList.size());
+    for (TablePartitionInfo parent : parentTables) {
+      out.add(getPartitionTree(parent, tablePartitionInfoToTableInfoMap, includedTableUuids, tableSizes, parentToChildrenMap));
+    }
+    return out;
+  }  
+
+  private TableInfoResp getPartitionTree(TablePartitionInfo parent, Map<TablePartitionInfo, TableInfo> tablePartitionInfoToTableInfoMap,
+      Set<UUID> includedTableUuids,
+      Map<String, Double> tableSizes,
+      Map<TablePartitionInfo, Set<TablePartitionInfo>> parentToChildrenMap) {
+      
+      TableInfoResp.TableInfoRespBuilder builder =
+        buildResponseFromTableInfo(tablePartitionInfoToTableInfoMap.get(parent), tableSizes, parent);        
+      
+      includedTableUuids.add(builder.tableUUID);
+
+      Set<TablePartitionInfo> partitions = parentToChildrenMap.get(parent);
+      if (!(partitions == null || partitions.isEmpty())) {
+        List<TableInfoResp> partitionTableInfo = new ArrayList<>();
+        for (TablePartitionInfo partition : partitions) {        
+          partitionTableInfo.add(getPartitionTree(partition, tablePartitionInfoToTableInfoMap, includedTableUuids, tableSizes, parentToChildrenMap));
+        }
+        builder.partitionInfo(partitionTableInfo);
+      }
+      return builder.build();
+  }
+  
   private TableInfoResp.TableInfoRespBuilder buildResponseFromTableInfo(
       TableInfo table, Map<String, Double> tableSizes, TablePartitionInfo tpi) {
     String id = table.getId().toStringUtf8();
@@ -1061,32 +1124,14 @@ public class TablesController extends AuthenticatedController {
     return builder;
   }
 
-  private Map<TablePartitionInfo, List<TablePartitionInfo>> fetchTablePartitionInfo(
+  private Set<TablePartitionInfo> fetchTablePartitionInfo(
       Universe universe, String dbName) {
     LOG.info("Fetching table partitions...");
+
     NodeDetails randomTServer = CommonUtils.getARandomLiveTServer(universe);
-    Map<TablePartitionInfo, List<TablePartitionInfo>> parentToChildrenMap = new HashMap<>();
-    final String fetchPartitionDataQuery =
-        "SELECT jsonb_agg(res)"
-            + " FROM"
-            + " (SELECT t.child_table, t.child_schema, pt.tablespace as child_tablespace, t.parent_table, t.parent_schema, pt_parent.tablespace as parent_tablespace "
-            + " FROM "
-            + " (SELECT nmsp_parent.nspname AS parent_schema, parent.relname AS parent_table, nmsp_child.nspname AS child_schema, child.relname AS child_table "
-            + " FROM pg_inherits "
-            + "  JOIN pg_class parent "
-            + "    ON pg_inherits.inhparent = parent.oid "
-            + "  JOIN pg_class child "
-            + "    ON pg_inherits.inhrelid = child.oid "
-            + "  JOIN pg_namespace nmsp_parent  "
-            + "    ON nmsp_parent.oid  = parent.relnamespace "
-            + "  JOIN pg_namespace nmsp_child "
-            + "    ON nmsp_child.oid   = child.relnamespace) AS t "
-            + "  JOIN pg_tables pt "
-            + "    ON pt.schemaname = t.child_schema "
-            + "    AND pt.tablename = t.child_table "
-            + "  JOIN pg_tables pt_parent "
-            + "    ON pt_parent.schemaname = t.parent_schema "
-            + "    AND pt_parent.tablename = t.parent_table) AS res";
+    LOG.info("Reading query from {}", PARTITION_QUERY_PATH);
+    final String fetchPartitionDataQuery = FileUtils.readResource(PARTITION_QUERY_PATH, environment);
+    LOG.info("Query is {}", fetchPartitionDataQuery);
     ShellResponse shellResponse =
         nodeUniverseManager.runYsqlCommand(
             randomTServer, universe, dbName, fetchPartitionDataQuery);
@@ -1100,29 +1145,19 @@ public class TablesController extends AuthenticatedController {
       throw new PlatformServiceException(
           INTERNAL_SERVER_ERROR, "Error while fetching Table Partition information");
     }
+
+    LOG.info("shell response {}", shellResponse);
     String jsonData = CommonUtils.extractJsonisedSqlResponse(shellResponse);
-    if (jsonData == null || jsonData.isEmpty()) {
-      return parentToChildrenMap;
+    if (jsonData == null || (jsonData = jsonData.trim()).isEmpty()) {
+      return Collections.EMPTY_SET;
     }
+    LOG.info("jsonData = {}", jsonData);
     try {
       ObjectMapper objectMapper = new ObjectMapper();
-      List<TablePartitionInfo> partitionList =
+      List<TablePartitionInfo> partitionList = 
           objectMapper.readValue(jsonData, new TypeReference<List<TablePartitionInfo>>() {});
-
-      for (TablePartitionInfo ti : partitionList) {
-        ti.keyspace = dbName;
-        TablePartitionInfo parent = new TablePartitionInfo();
-        parent.schema = ti.parentSchema;
-        parent.table = ti.parentTable;
-        parent.tableSpace = ti.parentTableSpace;
-        parent.keyspace = dbName;
-        if (!parentToChildrenMap.containsKey(parent)) {
-          parentToChildrenMap.put(parent, new ArrayList<>());
-        }
-        parentToChildrenMap.get(parent).add(ti);
-      }
-      LOG.info("parentToChildrenMap size {}", parentToChildrenMap.size());
-      return parentToChildrenMap;
+          partitionList.stream().forEach(x -> x.keyspace = dbName);
+      return Sets.newHashSet(partitionList);
     } catch (Exception e) {
       LOG.error("Error while parsing partition query response {}", jsonData, e);
       throw new PlatformServiceException(

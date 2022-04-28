@@ -10,7 +10,7 @@ import play.Environment;
 
 public class FileUtils {
 
-  public static String fileContentsAsString(String filePath, Environment environment) {
+  public static String readResource(String filePath, Environment environment) {
     if (filePath == null || filePath.isEmpty()) {
       throw new IllegalArgumentException("File path can't be null or empty");
     }
