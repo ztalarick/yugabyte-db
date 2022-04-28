@@ -160,15 +160,18 @@ public class EditUniverse extends UniverseDefinitionTaskBase {
       // Mark the update of the universe as done. This will allow future edits/updates to the
       // universe to happen.
       Universe universe = unlockUniverseForUpdate(errorString);
-      universe.updateConfig(
-          ImmutableMap.of(
-              Universe.USE_CUSTOM_IMAGE,
-              Boolean.toString(
-                  universe
-                      .getUniverseDetails()
-                      .nodeDetailsSet
-                      .stream()
-                      .allMatch(n -> n.ybPrebuiltAmi))));
+
+      if (universe.getConfig().getOrDefault(Universe.USE_CUSTOM_IMAGE, "false").equals("true")) {
+        universe.updateConfig(
+            ImmutableMap.of(
+                Universe.USE_CUSTOM_IMAGE,
+                Boolean.toString(
+                    universe
+                        .getUniverseDetails()
+                        .nodeDetailsSet
+                        .stream()
+                        .allMatch(n -> n.ybPrebuiltAmi))));
+      }
     }
     log.info("Finished {} task.", getName());
   }
@@ -430,6 +433,10 @@ public class EditUniverse extends UniverseDefinitionTaskBase {
               null /* no gflag to update */,
               true /* updateMasterAddrs */)
           .setSubTaskGroupType(SubTaskGroupType.UpdatingGFlags);
+
+      // Update the master addresses on the target universes whose source universe belongs to
+      // this task.
+      createXClusterConfigUpdateMasterAddressesTask();
     }
 
     // Finally send destroy to the old set of nodes and remove them from this universe.

@@ -293,13 +293,14 @@ class YBClient {
   CHECKED_STATUS GetTableSchemaById(const TableId& table_id, std::shared_ptr<YBTableInfo> info,
                                     StatusCallback callback);
 
-  CHECKED_STATUS GetTablegroupSchemaById(const TablegroupId& parent_tablegroup_table_id,
+  CHECKED_STATUS GetTablegroupSchemaById(const TablegroupId& tablegroup_id,
                                          std::shared_ptr<std::vector<YBTableInfo>> info,
                                          StatusCallback callback);
 
-  CHECKED_STATUS GetColocatedTabletSchemaById(const TableId& parent_colocated_table_id,
-                                              std::shared_ptr<std::vector<YBTableInfo>> info,
-                                              StatusCallback callback);
+  CHECKED_STATUS GetColocatedTabletSchemaByParentTableId(
+      const TableId& parent_colocated_table_id,
+      std::shared_ptr<std::vector<YBTableInfo>> info,
+      StatusCallback callback);
 
   Result<IndexPermissions> GetIndexPermissions(
       const TableId& table_id,
@@ -414,15 +415,12 @@ class YBClient {
   Result<bool> NamespaceIdExists(const std::string& namespace_id,
                                  const boost::optional<YQLDatabase>& database_type = boost::none);
 
-  // Create a new tablegroup.
   CHECKED_STATUS CreateTablegroup(const std::string& namespace_name,
                                   const std::string& namespace_id,
                                   const std::string& tablegroup_id,
                                   const std::string& tablespace_id);
 
-  // Delete a tablegroup.
-  CHECKED_STATUS DeleteTablegroup(const std::string& namespace_id,
-                                  const std::string& tablegroup_id);
+  CHECKED_STATUS DeleteTablegroup(const std::string& tablegroup_id);
 
   // Check if the tablegroup given by 'tablegroup_id' exists.
   // Result value is set only on success.
@@ -740,7 +738,7 @@ class YBClient {
                         LookupTabletCallback callback,
                         UseCache use_cache);
 
-  void LookupAllTablets(const std::shared_ptr<const YBTable>& table,
+  void LookupAllTablets(const std::shared_ptr<YBTable>& table,
                         CoarseTimePoint deadline,
                         LookupTabletRangeCallback callback);
 
@@ -750,7 +748,7 @@ class YBClient {
       CoarseTimePoint deadline);
 
   std::future<Result<std::vector<internal::RemoteTabletPtr>>> LookupAllTabletsFuture(
-      const std::shared_ptr<const YBTable>& table,
+      const std::shared_ptr<YBTable>& table,
       CoarseTimePoint deadline);
 
   rpc::Messenger* messenger() const;

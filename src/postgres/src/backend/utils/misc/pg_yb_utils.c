@@ -40,15 +40,31 @@
 #include "access/tupdesc.h"
 #include "access/xact.h"
 #include "executor/ybcExpr.h"
+#include "catalog/indexing.h"
+#include "catalog/pg_am.h"
+#include "catalog/pg_amproc.h"
+#include "catalog/pg_attrdef.h"
+#include "catalog/pg_auth_members.h"
 #include "catalog/pg_authid.h"
-#include "catalog/pg_collation_d.h"
+#include "catalog/pg_cast.h"
+#include "catalog/pg_collation.h"
+#include "catalog/pg_constraint.h"
 #include "catalog/pg_database.h"
+#include "catalog/pg_db_role_setting.h"
+#include "catalog/pg_inherits.h"
+#include "catalog/pg_opclass.h"
+#include "catalog/pg_operator.h"
+#include "catalog/pg_partitioned_table.h"
+#include "catalog/pg_policy.h"
 #include "catalog/pg_proc.h"
+#include "catalog/pg_rewrite.h"
+#include "catalog/pg_trigger.h"
 #include "catalog/pg_type.h"
 #include "catalog/catalog.h"
 #include "catalog/yb_catalog_version.h"
 #include "catalog/yb_type.h"
 #include "commands/dbcommands.h"
+#include "commands/defrem.h"
 #include "common/pg_yb_common.h"
 #include "lib/stringinfo.h"
 #include "tcop/utility.h"
@@ -295,18 +311,26 @@ extern bool YBRelHasOldRowTriggers(Relation rel, CmdType operation)
 }
 
 bool
-YBIsDatabaseColocated(Oid dbId)
+YbIsDatabaseColocated(Oid dbid)
 {
 	bool colocated;
-	HandleYBStatus(YBCPgIsDatabaseColocated(dbId, &colocated));
+	HandleYBStatus(YBCPgIsDatabaseColocated(dbid, &colocated));
 	return colocated;
 }
 
 bool
-YBIsTableColocated(Oid dbId, Oid relationId)
+YbIsUserTableColocated(Oid dbid, Oid relid)
 {
-	bool colocated;
-	HandleYBStatus(YBCPgIsTableColocated(dbId, relationId, &colocated));
+	if (!MyDatabaseColocated && !YbTablegroupCatalogExists)
+		return false;
+
+	bool colocated = false;
+	bool not_found = false;
+
+	HandleYBStatusIgnoreNotFound(YbPgIsUserTableColocated(dbid,
+														  relid,
+														  &colocated),
+								 &not_found);
 	return colocated;
 }
 
@@ -1026,7 +1050,9 @@ YBDecrementDdlNestingLevel(bool is_catalog_version_increment, bool is_breaking_c
 	ddl_nesting_level--;
 	if (ddl_nesting_level == 0)
 	{
-		const bool increment_done = is_catalog_version_increment &&
+		const bool increment_done =
+			is_catalog_version_increment &&
+			YBCPgHasWriteOperationsInDdlTxnMode() &&
 			YbIncrementMasterCatalogVersionTableEntry(is_breaking_catalog_change);
 
 		HandleYBStatus(YBCPgExitSeparateDdlTxnMode());
@@ -1069,6 +1095,34 @@ YBDecrementDdlNestingLevel(bool is_catalog_version_increment, bool is_breaking_c
 	}
 }
 
+static Node*
+GetActualStmtNode(PlannedStmt *pstmt)
+{
+	if (nodeTag(pstmt->utilityStmt) == T_ExplainStmt)
+	{
+		ExplainStmt *stmt = castNode(ExplainStmt, pstmt->utilityStmt);
+		Node *actual_stmt = castNode(Query, stmt->query)->utilityStmt;
+		if (actual_stmt)
+		{
+			/*
+			 * EXPLAIN statement may have multiple ANALYZE options.
+			 * The value of the last one will take effect.
+			 */
+			bool analyze = false;
+			ListCell *lc;
+			foreach(lc, stmt->options)
+			{
+				DefElem *opt = (DefElem *) lfirst(lc);
+				if (strcmp(opt->defname, "analyze") == 0)
+					analyze = defGetBoolean(opt);
+			}
+			if (analyze)
+				return actual_stmt;
+		}
+	}
+	return pstmt->utilityStmt;
+}
+
 bool IsTransactionalDdlStatement(PlannedStmt *pstmt,
                                  bool *is_catalog_version_increment,
                                  bool *is_breaking_catalog_change)
@@ -1076,7 +1130,7 @@ bool IsTransactionalDdlStatement(PlannedStmt *pstmt,
 	/* Assume the worst. */
 	*is_catalog_version_increment = true;
 	*is_breaking_catalog_change = true;
-	Node *parsetree = pstmt->utilityStmt;
+	Node *parsetree = GetActualStmtNode(pstmt);
 
 	NodeTag node_tag = nodeTag(parsetree);
 	switch (node_tag) {
@@ -2162,4 +2216,85 @@ void YbCheckUnsupportedSystemColumns(Var *var, const char *colname, RangeTblEntr
 		default:
 			break;
 	}
+}
+
+void YbRegisterSysTableForPrefetching(int sys_table_id) {
+	int db_id = MyDatabaseId;
+	int sys_table_index_id = InvalidOid;
+
+	switch(sys_table_id)
+	{
+		// TemplateDb tables
+		case AuthMemRelationId:                           // pg_auth_members
+			sys_table_index_id = AuthMemMemRoleIndexId;
+			db_id = TemplateDbOid;
+			break;
+		case AuthIdRelationId:                            // pg_authid
+			db_id = TemplateDbOid;
+			sys_table_index_id = AuthIdRolnameIndexId;
+			break;
+		case DatabaseRelationId:                          // pg_database
+			db_id = TemplateDbOid;
+			sys_table_index_id = DatabaseNameIndexId;
+			break;
+
+		case DbRoleSettingRelationId:                     // pg_db_role_setting
+			db_id = TemplateDbOid;
+			break;
+
+		// MyDb tables
+		case AccessMethodProcedureRelationId:             // pg_amproc
+			sys_table_index_id = AccessMethodProcedureIndexId;
+			break;
+		case AccessMethodRelationId:                      // pg_am AmNameIndexId
+			sys_table_index_id = AmNameIndexId;
+			break;
+		case AttrDefaultRelationId:                       // pg_attrdef
+			sys_table_index_id = AttrDefaultIndexId;
+			break;
+		case AttributeRelationId:                         // pg_attribute
+			sys_table_index_id = AttributeRelidNameIndexId;
+			break;
+		case ConstraintRelationId:                        // pg_constraint
+			sys_table_index_id = ConstraintRelidTypidNameIndexId;
+			break;
+		case InheritsRelationId:                          // pg_inherits
+			sys_table_index_id = InheritsParentIndexId;
+			break;
+		case OperatorClassRelationId:                     // pg_opclass
+			sys_table_index_id = OpclassAmNameNspIndexId;
+			break;
+		case OperatorRelationId:                          // pg_operator
+			sys_table_index_id = OperatorNameNspIndexId;
+			break;
+		case PolicyRelationId:                            // pg_policy
+			sys_table_index_id = PolicyPolrelidPolnameIndexId;
+			break;
+		case RelationRelationId:                          // pg_class
+			sys_table_index_id = ClassNameNspIndexId;
+			break;
+		case RewriteRelationId:                           // pg_rewrite
+			sys_table_index_id = RewriteRelRulenameIndexId;
+			break;
+		case TriggerRelationId:                           // pg_trigger
+			sys_table_index_id = TriggerRelidNameIndexId;
+			break;
+		case TypeRelationId:                              // pg_type
+			sys_table_index_id = TypeNameNspIndexId;
+			break;
+
+		case CastRelationId:        switch_fallthrough(); // pg_cast
+		case IndexRelationId:       switch_fallthrough(); // pg_index
+		case PartitionedRelationId: switch_fallthrough(); // pg_partitioned_table
+		case ProcedureRelationId:   break;                // pg_proc
+
+		default:
+		{
+			ereport(FATAL,
+                    (errcode(ERRCODE_INTERNAL_ERROR),
+                    errmsg("Sys table '%d' are not yet inteded for preloading", sys_table_id)));
+
+		}
+	}
+	YBCRegisterSysTableForPrefetching(db_id, sys_table_id, sys_table_index_id);
 }

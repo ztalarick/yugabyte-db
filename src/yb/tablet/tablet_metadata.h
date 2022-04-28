@@ -203,7 +203,7 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata> {
   // provided 'schema'.
   //
   // This is mostly useful for tests which instantiate Raft groups directly.
-  static Result<RaftGroupMetadataPtr> LoadOrCreate(const RaftGroupMetadataData& data);
+  static Result<RaftGroupMetadataPtr> TEST_LoadOrCreate(const RaftGroupMetadataData& data);
 
   Result<TableInfoPtr> GetTableInfo(const TableId& table_id) const;
   Result<TableInfoPtr> GetTableInfoUnlocked(const TableId& table_id) const;
@@ -539,6 +539,8 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata> {
 
   HybridTime restoration_hybrid_time_ GUARDED_BY(data_mutex_) = HybridTime::kMin;
 
+  // SPLIT_OP ID designated for this tablet (so child tablets will have this unset until they've
+  // been split themselves).
   OpId split_op_id_ GUARDED_BY(data_mutex_);
   std::array<TabletId, kNumSplitParts> split_child_tablet_ids_ GUARDED_BY(data_mutex_);
 

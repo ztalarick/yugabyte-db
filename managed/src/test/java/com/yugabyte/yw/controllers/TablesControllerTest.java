@@ -54,12 +54,14 @@ import com.yugabyte.yw.common.ModelFactory;
 import com.yugabyte.yw.common.NodeUniverseManager;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.ShellResponse;
+
+import com.yugabyte.yw.common.TestUtils;
 import com.yugabyte.yw.common.audit.AuditService;
 import com.yugabyte.yw.common.customer.config.CustomerConfigService;
 import com.yugabyte.yw.common.services.YBClientService;
 import com.yugabyte.yw.controllers.TablesController.PlacementBlock;
 import com.yugabyte.yw.controllers.TablesController.TableInfoResp;
-import com.yugabyte.yw.controllers.TablesController.TableSpaceInfoResp;
+import com.yugabyte.yw.controllers.TablesController.TableSpaceInfo;
 import com.yugabyte.yw.forms.BackupTableParams;
 import com.yugabyte.yw.forms.BulkImportParams;
 import com.yugabyte.yw.forms.TableDefinitionTaskParams;
@@ -139,6 +141,7 @@ public class TablesControllerTest extends FakeDBApplication {
     mockSchemaResponse = mock(GetTableSchemaResponse.class);
     mockNodeUniverseManager = mock(NodeUniverseManager.class);
     when(mockService.getClient(any(), any())).thenReturn(mockClient);
+    mockNodeUniverseManager = mock(NodeUniverseManager.class);
 
     auditService = new AuditService();
     Commissioner commissioner = app.injector().instanceOf(Commissioner.class);
@@ -146,7 +149,13 @@ public class TablesControllerTest extends FakeDBApplication {
     CustomerConfigService customerConfigService =
         app.injector().instanceOf(CustomerConfigService.class);
     tablesController =
-        new TablesController(commissioner, mockService, metricQueryHelper, customerConfigService, mockNodeUniverseManager);
+
+        new TablesController(
+            commissioner,
+            mockService,
+            metricQueryHelper,
+            customerConfigService,
+            mockNodeUniverseManager);
     tablesController.setAuditService(auditService);
   }
 
@@ -1050,6 +1059,65 @@ public class TablesControllerTest extends FakeDBApplication {
   }
 
   @Test
+  public void testListTableSpaces() throws Exception {
+    Customer customer = ModelFactory.testCustomer();
+    Users user = ModelFactory.testUser(customer);
+    Universe u1 = createUniverse(customer.getCustomerId());
+    u1 = Universe.saveDetails(u1.universeUUID, ApiUtils.mockUniverseUpdater());
+    customer.addUniverseUUID(u1.universeUUID);
+    customer.save();
+    LOG.info("new code");
+    final String shellResponseString =
+        TestUtils.readResource("com/yugabyte/yw/controllers/tablespaces_shell_response.txt");
+
+    ShellResponse shellResponse1 =
+        ShellResponse.create(ShellResponse.ERROR_CODE_SUCCESS, shellResponseString);
+    when(mockNodeUniverseManager.runYsqlCommand(anyObject(), anyObject(), anyString(), anyObject()))
+        .thenReturn(shellResponse1);
+
+    Result r = tablesController.listTableSpaces(customer.uuid, u1.universeUUID);
+    assertEquals(OK, r.status());
+    JsonNode json = Json.parse(contentAsString(r));
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    List<TableSpaceInfo> tableSpaceInfoRespList =
+        objectMapper.readValue(json.toString(), new TypeReference<List<TableSpaceInfo>>() {});
+    Assert.assertNotNull(tableSpaceInfoRespList);
+    Assert.assertEquals(4, tableSpaceInfoRespList.size());
+
+    Map<String, TableSpaceInfo> tableSpacesMap =
+        tableSpaceInfoRespList.stream().collect(Collectors.toMap(x -> x.name, Function.identity()));
+
+    TableSpaceInfo ap_south_1_tablespace = tableSpacesMap.get("ap_south_1_tablespace");
+    TableSpaceInfo us_west_2_tablespace = tableSpacesMap.get("us_west_2_tablespace");
+    TableSpaceInfo us_west_1_tablespace = tableSpacesMap.get("us_west_1_tablespace");
+    TableSpaceInfo us_west_3_tablespace = tableSpacesMap.get("us_west_3_tablespace");
+    Assert.assertNotNull(ap_south_1_tablespace);
+    Assert.assertNotNull(us_west_2_tablespace);
+    Assert.assertNotNull(us_west_1_tablespace);
+    Assert.assertNotNull(us_west_3_tablespace);
+
+    Assert.assertEquals(3, ap_south_1_tablespace.numReplicas);
+    Assert.assertEquals(3, ap_south_1_tablespace.placementBlocks.size());
+    Map<String, PlacementBlock> ap_south_1_tablespace_zones =
+        ap_south_1_tablespace
+            .placementBlocks
+            .stream()
+            .collect(Collectors.toMap(x -> x.zone, Function.identity()));
+    Assert.assertNotNull(ap_south_1_tablespace_zones.get("ap-south-1a"));
+    Assert.assertEquals("ap-south-1", ap_south_1_tablespace_zones.get("ap-south-1a").region);
+    Assert.assertEquals("aws", ap_south_1_tablespace_zones.get("ap-south-1a").cloud);
+    Assert.assertEquals(1, ap_south_1_tablespace_zones.get("ap-south-1a").minNumReplicas);
+
+    Assert.assertEquals(3, us_west_2_tablespace.numReplicas);
+    Assert.assertEquals(3, us_west_2_tablespace.placementBlocks.size());
+    Assert.assertEquals(1, us_west_1_tablespace.numReplicas);
+    Assert.assertEquals(1, us_west_1_tablespace.placementBlocks.size());
+    Assert.assertEquals(1, us_west_3_tablespace.numReplicas);
+    Assert.assertEquals(1, us_west_3_tablespace.placementBlocks.size());
+  }
+
+  @Test
   public void testListTablesWithPartitionInfo() throws Exception {
     List<TableInfo> tableInfoList = new ArrayList<>();
     Set<String> tableNames = new HashSet<>();
@@ -1324,6 +1392,6 @@ public class TablesControllerTest extends FakeDBApplication {
   private final String SHELL_RESPONSE_MESSAGE_MULTIPLE_NAMESPACES_DB1 =
       "\r\n                                                                                                                                                                                                        jsonb_agg\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n[{\"child_table\": \"db1.table1.partition1\", \"child_schema\": \"public\", \"parent_table\": \"db1.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_1_tablespace\", \"parent_tablespace\": null}, {\"child_table\": \"db1.table1.partition2\", \"child_schema\": \"public\", \"parent_table\": \"db1.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_3_tablespace\", \"parent_tablespace\": null}]\r\n(1 row)";
   private final String SHELL_RESPONSE_MESSAGE_MULTIPLE_NAMESPACES_DB2 =
-      "\r\n                                                                                                                                                                                                        jsonb_agg\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n[{\"child_table\": \"db2.table1.partition1\", \"child_schema\": \"public\", \"parent_table\": \"db2.table1\", \"parent_schema\": \"public\", \"child_tablespace\": \"us_west_1_tablespace\", \"parent_tablespace\": null}]\r\n(1 row)";
+      "\r\n 
 
 }

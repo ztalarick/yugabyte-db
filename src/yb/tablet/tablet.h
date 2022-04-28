@@ -279,7 +279,7 @@ class Tablet : public AbstractTablet, public TransactionIntentApplier {
   // Returns true if it was the first call to StartShutdown.
   bool StartShutdown();
   bool IsShutdownRequested() const {
-    return shutdown_requested_.load(std::memory_order::memory_order_acquire);
+    return shutdown_requested_.load(std::memory_order::acquire);
   }
 
   // Complete the shutdown of this tablet. This includes shutdown of internal structures such as:
@@ -825,6 +825,8 @@ class Tablet : public AbstractTablet, public TransactionIntentApplier {
   void UnregisterOperationFilterUnlocked(OperationFilter* filter)
     REQUIRES(operation_filters_mutex_);
 
+  const docdb::SchemaPackingStorage& PrimarySchemaPackingStorage();
+
   std::unique_ptr<const Schema> key_schema_;
 
   RaftGroupMetadataPtr metadata_;
@@ -972,6 +974,9 @@ class Tablet : public AbstractTablet, public TransactionIntentApplier {
 
   template <class F>
   auto GetRegularDbStat(const F& func, const decltype(func())& default_value) const;
+
+  Result<docdb::CompactionSchemaPacking> GetSchemaPacking(
+    const Uuid& uuid, uint32_t schema_version);
 
   std::function<rocksdb::MemTableFilter()> mem_table_flush_filter_factory_;
 
