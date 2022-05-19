@@ -6,31 +6,26 @@
 #
 # https://github.com/YugaByte/yugabyte-db/blob/master/licenses/POLYFORM-FREE-TRIAL-LICENSE-1.0.0.txt
 
-- block:
-  - name: Install cgconfig service on CentOS
-    package:
-      name:
-        - libcgroup
-        - libcgroup-tools
-      state: present
-    when: ansible_os_family == 'RedHat'
-    register: result
-    until: result is succeeded
-    retries: "{{ install_retry_count }}"
+- name: Install cgconfig service on CentOS
+  package:
+    name:
+      - libcgroup
+      - libcgroup-tools
+    state: present
+  register: result
+  until: result is succeeded
+  retries: "{{ install_retry_count }}"
+  tags: yb-prebuilt-ami
 
-  - name: Add ysql crgroup info to cgconfig.conf
-    template:
-      src: cgconfig.conf.j2
-      dest: "/etc/cgconfig.conf"
-      mode: 0755
+- name: Add ysql crgroup info to cgconfig.conf
+  template:
+    src: cgconfig.conf.j2
+    dest: "/etc/cgconfig.conf"
+    mode: 0755
 
-  - name: Start cgconfig service
-    ansible.builtin.service:
-      name: cgconfig
-      state: started
-
-  - name: Enable cgconfig service
-    ansible.builtin.service:
-      name: cgconfig
-      enabled: yes
-  when: ansible_os_family == 'RedHat'
+- name: Start cgconfig service
+  ansible.builtin.service:
+    name: cgconfig
+    state: started
+    enabled: yes
+  tags: yb-prebuilt-ami
