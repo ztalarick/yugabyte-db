@@ -16,3 +16,6 @@ export * from './YBFormComponents/YBLabel';
 export * from './YBFormComponents/YBHelper';
 export * from './YBCheckbox/YBCheckbox';
 export * from './YBCheckbox/YBCheckboxField';
+export * from './YBPassword/YBPasswordField';
+export * from './YBTooltip/YBTooltip';
+export * from './YBAutoComplete/YBAutoComplete';
