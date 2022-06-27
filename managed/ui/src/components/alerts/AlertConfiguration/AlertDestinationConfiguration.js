@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useMount } from 'react-use';
 import { Col, Row } from 'react-bootstrap';
 import { Field, reduxForm } from 'redux-form';
 import { connect } from 'react-redux';
@@ -18,7 +19,6 @@ const required = (value) => (value ? undefined : 'This field is required.');
 const AlertDestinationConfiguration = (props) => {
   const [destinationChannelList, setDestinationChannelList] = useState([]);
 
-
   const onInit = () => {
     props.getAlertChannels().then((channels) => {
       channels = channels.map((channel) => {
@@ -31,7 +31,7 @@ const AlertDestinationConfiguration = (props) => {
     });
   };
 
-  useEffect(onInit, []);
+  useMount(onInit);
 
   /**
    *
@@ -71,8 +71,7 @@ const AlertDestinationConfiguration = (props) => {
     setInitialValues,
     modal: { showModal, visibleModal }
   } = props;
-  const isReadOnly = isNonAvailable(
-    customer.data.features, 'alert.destinations.actions');
+  const isReadOnly = isNonAvailable(customer.data.features, 'alert.destinations.actions');
 
   return (
     <>
@@ -115,19 +114,19 @@ const AlertDestinationConfiguration = (props) => {
               />
             </Col>
             {!isReadOnly && (
-            <Col md={6} className="add-destination-container">
-              <Row>
-                <Col lg={3} className="pd-0">
-                  <a href="# " className="on-prem-add-link" onClick={props.showAddChannelModal}>
-                    <i
-                      className="fa fa-plus-circle fa-2x on-prem-row-add-btn"
-                      onClick={props.showAddChannelModal}
-                    />
-                    Add Channel
-                  </a>
-                </Col>
-              </Row>
-            </Col>
+              <Col md={6} className="add-destination-container">
+                <Row>
+                  <Col lg={3} className="pd-0">
+                    <a href="# " className="on-prem-add-link" onClick={props.showAddChannelModal}>
+                      <i
+                        className="fa fa-plus-circle fa-2x on-prem-row-add-btn"
+                        onClick={props.showAddChannelModal}
+                      />
+                      Add Channel
+                    </a>
+                  </Col>
+                </Row>
+              </Col>
             )}
           </Row>
           <Row className="alert-action-button-container">

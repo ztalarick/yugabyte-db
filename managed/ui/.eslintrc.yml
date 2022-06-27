@@ -1,11 +1,10 @@
 ---
 extends:
   - 'react-app'
-  - 'prettier/@typescript-eslint'
+  - 'prettier'
 #  - 'plugin:@typescript-eslint/recommended' # TODO: uncomment and fix all eslint warnings/errors separately
 
-parser:
-  '@typescript-eslint/parser'
+parser: '@typescript-eslint/parser'
 
 plugins:
   - import
@@ -19,6 +18,6 @@ rules:
   semi: 1
   no-var: 1
   prefer-const: 1
-  indent: [1, 2, {"SwitchCase": 1}]
+  indent: [1, 2, { 'SwitchCase': 1 }]
   react/jsx-indent: [1, 2]
   react/jsx-wrap-multilines: 1

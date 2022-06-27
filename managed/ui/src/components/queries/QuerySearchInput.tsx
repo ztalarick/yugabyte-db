@@ -16,7 +16,7 @@ export interface QuerySearchInputProps {
   placeholder: string;
   searchTerms: SearchTokensType[];
   // key map of available columns to display
-  columns: Record<string, { value: string, type: string }>;
+  columns: Record<string, { value: string; type: string }>;
   onSearch: Function;
   onClear: Function;
   onSubmitSearchTerms: Function;
@@ -148,15 +148,14 @@ export const QuerySearchInput: FC<QuerySearchInputProps> = ({
   };
 
   useEffect(() => {
-    const searchDropdownHandler: EventListener = (ev) => {
+    const searchDropdownHandler = (ev: any) => {
       const searchBarEl = document.getElementById(id);
-      if (searchBarEl && !searchBarEl.contains((ev.target as HTMLElement))) {
+      if (searchBarEl && !searchBarEl.contains(ev.target as HTMLElement)) {
         setShowAutoComplete(false);
         setSelectedAutoCompleteEntry(null);
       }
     };
     document.addEventListener('click', searchDropdownHandler);
-
     return () => {
       document.removeEventListener('click', searchDropdownHandler);
     };

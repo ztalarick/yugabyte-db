@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useUpdateEffect, useMount } from 'react-use';
 import { Field } from 'formik';
 import { ListGroupItem, ListGroup, Row, Col, Badge } from 'react-bootstrap';
 import { YBButton, YBFormInput, YBInputField } from '../../common/forms/fields';
@@ -95,8 +96,8 @@ const AddGFlag = ({ formProps, gFlagProps }) => {
   };
 
   //Effects
-  useEffect(onValueChanged, [toggleMostUsed, searchVal]);
-  useEffect(onInit, []);
+  useUpdateEffect(onValueChanged, [toggleMostUsed, searchVal]);
+  useMount(onInit);
 
   //nodes
   const valueLabel = (
