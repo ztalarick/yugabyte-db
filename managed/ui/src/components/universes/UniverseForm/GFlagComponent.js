@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useUpdateEffect } from 'react-use';
 import {
   Alert,
   DropdownButton,
@@ -167,7 +168,7 @@ export default function GFlagComponent(props) {
     });
   };
 
-  useEffect(onVersionChange, [dbVersion]);
+  useUpdateEffect(onVersionChange, [dbVersion]);
 
   const errorPopover = (title, msg) => (
     <OverlayTrigger
