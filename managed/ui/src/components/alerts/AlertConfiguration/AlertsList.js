@@ -6,6 +6,7 @@
 
 import moment from 'moment';
 import React, { useEffect, useRef, useState } from 'react';
+import { useMount } from 'react-use';
 import { Col, DropdownButton, MenuItem, Row } from 'react-bootstrap';
 import { BootstrapTable, TableHeaderColumn } from 'react-bootstrap-table';
 import { isNonEmptyArray } from '../../../utils/ObjectUtils';
@@ -175,7 +176,7 @@ export const AlertsList = (props) => {
     });
   };
 
-  useEffect(onInit, []);
+  useMount(onInit);
 
   const formatName = (cell, row) => {
     const Tag = getTag(row.targetType);

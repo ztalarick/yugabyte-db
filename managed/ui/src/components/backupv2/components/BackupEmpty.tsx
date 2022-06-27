@@ -95,7 +95,7 @@ const BackupDisabledTooltip = ({
   children
 }: {
   disabled: boolean;
-  children: JSX.Element;
+  children: React.ReactNode;
 }) => {
   return disabled ? (
     <div className="backup-disabled-tooltip">

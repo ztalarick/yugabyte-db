@@ -5,7 +5,8 @@
 // This file will hold all the alert configuration tabs along
 // with their respective components.
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useMount } from 'react-use';
 import { Tab } from 'react-bootstrap';
 import { isDisabled } from '../../../utils/LayoutUtils';
 import { YBTabsPanel } from '../../panels';
@@ -57,7 +58,7 @@ export const AlertConfiguration = (props) => {
     }
   };
 
-  useEffect(onInit, []);
+  useMount(onInit);
 
   /**
    * This method is used to handle the metrics API call based on
