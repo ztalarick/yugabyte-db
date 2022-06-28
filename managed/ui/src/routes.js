@@ -34,6 +34,8 @@ import YugawareLogs from './pages/YugawareLogs';
 import Importer from './pages/Importer';
 import Releases from './pages/Releases';
 import { isDefinedNotNull, isNullOrEmpty } from './utils/ObjectUtils';
+import { CreateUniverse } from './redesign/features/universe/universe-form/CreateUniverse';
+import { UniverseForm } from './redesign/features/universe/universe-form/UniverseForm';
 import { Administration } from './pages/Administration';
 import ToggleFeaturesInTest from './pages/ToggleFeaturesInTest';
 import { ReplicationDetails } from './components/xcluster';
@@ -252,6 +254,9 @@ export default (store) => {
         <Route path="/universe/:uuid" component={UniverseDetail} />
         <Route path="/universe/:uuid/edit/primary" component={EditUniverse} />
         <Route path="/universe/:uuid/edit/async" component={EditUniverse} /> */}
+        <Route path="/universe/new" component={CreateUniverse} />
+        <Route path="/universe/:uuid" component={UniverseDetail} />
+        <Route path="/universe/:uuid/:mode/:clustertype" component={UniverseForm} />
         {/* ------------------------------------------------------------------------*/}
 
         <Route path="/tasks" component={Tasks}>
