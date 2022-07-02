@@ -36,9 +36,7 @@ const AppWrapper = () => (
   <Provider store={store}>
     <QueryClientProvider client={queryClient}>
       <IntlProvider locale="en">
-        <Router history={browserHistory}>
-          {fetchRoutes(store)}
-        </Router>
+        <Router history={browserHistory}>{fetchRoutes(store)}</Router>
       </IntlProvider>
     </QueryClientProvider>
   </Provider>
