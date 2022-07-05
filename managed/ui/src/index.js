@@ -6,6 +6,8 @@ import { Provider } from 'react-redux';
 import { Router, browserHistory } from 'react-router';
 import { IntlProvider } from 'react-intl';
 import { QueryClient, QueryClientProvider } from 'react-query';
+import { CssBaseline, ThemeProvider } from '@material-ui/core';
+import { mainTheme } from './redesign/theme/mainTheme';
 import fetchRoutes from './routes';
 import configureStore from './store/configureStore.js';
 import 'intl';
@@ -24,9 +26,14 @@ const queryClient = new QueryClient({
 const AppWrapper = () => (
   <Provider store={store}>
     <QueryClientProvider client={queryClient}>
-      <IntlProvider locale="en">
-        <Router history={browserHistory}>{fetchRoutes(store)}</Router>
-      </IntlProvider>
+      <ThemeProvider theme={mainTheme}>
+        <IntlProvider locale="en">
+          <Router history={browserHistory}>
+            <CssBaseline />
+            {fetchRoutes(store)}
+          </Router>
+        </IntlProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </Provider>
 );

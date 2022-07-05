@@ -2,13 +2,13 @@ import React, { FC } from 'react';
 import { Box, Typography } from '@material-ui/core';
 import { useSectionStyles } from '../../universeMainStyle';
 
-interface CloudConfigProps {}
+interface AdvancedConfigProps {}
 
-export const CloudConfiguration: FC<CloudConfigProps> = () => {
+export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
   const classes = useSectionStyles();
   return (
     <Box className={classes.sectionContainer}>
-      <Typography variant="h5">Cloud Configuration</Typography>
+      <Typography variant="h5">Advanced Configuration</Typography>
       <Box
         width="100%"
         display="flex"
