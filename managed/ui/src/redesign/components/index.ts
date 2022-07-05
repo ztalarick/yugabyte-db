@@ -9,3 +9,4 @@ export * from './YBInput/YBInputField';
 export * from './YBPassword/YBPasswordField';
 export * from './YBTooltip/YBTooltip';
 export * from './YBAutoComplete/YBAutoComplete';
+export * from './YBButton/YBButton';
