@@ -12,7 +12,7 @@ export const CreateUniverse: FC<RouteComponentProps<{}, CreateUniverseProps>> = 
     <UniverseForm
       defaultFormData={DEFAULT_FORM_DATA}
       mode={isPrimary ? clusterModes.NEW_PRIMARY : clusterModes.NEW_ASYNC}
-      title={isPrimary ? 'Create Univese' : 'Configure Read Replica'}
+      title={isPrimary ? 'Create Universe' : 'Universe Name >> Configure Read Replica'}
     />
   );
 };
