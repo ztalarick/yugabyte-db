@@ -37,6 +37,20 @@ import {
   ACCESS_KEY_FIELD
 } from '../../utils/constants';
 import { useSectionStyles } from '../../universeMainStyle';
+import {
+  AssignPublicIPField,
+  ClientToNodeTLSField,
+  EncryptionAtRestField,
+  InstanceTypeField,
+  KMSConfigField,
+  NodeToNodeTLSField,
+  RootCertificateField,
+  TimeSyncField,
+  VolumeInfoField,
+  YEDISField,
+  YCQLField,
+  YSQLField
+} from '../../fields';
 
 interface InstanceConfigProps {}
 
