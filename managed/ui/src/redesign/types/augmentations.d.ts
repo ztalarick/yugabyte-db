@@ -83,10 +83,12 @@ declare module '@material-ui/core/styles/createPalette' {
   // extend standard palette with chart colors
   interface Palette {
     chart: ChartColors;
+    orange: PaletteColor;
   }
 
   interface PaletteOptions {
     chart?: ChartColors;
+    orange: PaletteColor;
   }
 
   // extend standard palette with color tones
