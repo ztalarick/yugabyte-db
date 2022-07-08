@@ -1,4 +1,5 @@
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
 import { Typography, Grid, Box } from '@material-ui/core';
 import { YBButton } from '../../../components';
@@ -20,6 +21,7 @@ interface UniverseFormProps {
 
 export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, title }) => {
   const classes = useFormMainStyles();
+  const { t } = useTranslation();
   const formMethods = useForm<UniverseFormData>({
     mode: 'onChange',
     defaultValues: defaultFormData
@@ -28,37 +30,37 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
   const onSubmit = (data: UniverseFormData) => console.log(data);
 
   return (
-    <div className={classes.mainConatiner}>
+    <Box className={classes.mainConatiner}>
       <FormProvider {...formMethods}>
         <form onSubmit={formMethods.handleSubmit(onSubmit)}>
-          <div className={classes.formHeader}>
+          <Box className={classes.formHeader}>
             <Typography variant="h4">{title}</Typography>
-          </div>
-          <div className={classes.formContainer}>
+          </Box>
+          <Box className={classes.formContainer}>
             <CloudConfiguration />
             <InstanceConfiguration />
             <AdvancedConfiguration />
             <GFlags />
             <UserTags />
-          </div>
-          <div className={classes.formFooter}>
-            <Grid container alignItems="center">
+          </Box>
+          <Box className={classes.formFooter} mt={4}>
+            <Grid container justifyContent="space-between">
               <Grid item lg={6}>
-                <Box width="100%" display="flex" justifyContent="center" alignItems="center">
+                <Box width="100%" display="flex" justifyContent="flex-start" alignItems="center">
                   Placeholder to Paint Cost estimation
                 </Box>
               </Grid>
               <Grid item lg={6}>
                 <Box width="100%" display="flex" justifyContent="flex-end">
                   <YBButton variant="primary" size="large" type="submit">
-                    Create
+                    {t('common.create')}
                   </YBButton>
                 </Box>
               </Grid>
             </Grid>
-          </div>
+          </Box>
         </form>
       </FormProvider>
-    </div>
+    </Box>
   );
 };
