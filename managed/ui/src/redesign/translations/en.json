@@ -1,0 +1,54 @@
+{
+  "translation": {
+    "common": {
+      "create": "Create"
+    },
+    "universeForm": {
+      "configReadReplica": "Configure Read Replica",
+      "createUniverse": "Create Universe",
+      "advancedConfig": {
+        "title": "Advanced Configuration"
+      },
+      "cloudConfig": {
+        "title": "Cloud Configuration"
+      },
+      "gFlags": {
+        "title": "G-Flags"
+      },
+      "instanceConfig": {
+        "assignPublicIP": "Assign Public IP",
+        "assignPublicIPHelper": "Assign a public IP to the DB servers for connections over the internet.",
+        "confirmPassword": "Confirm Password",
+        "enableClientToNodeTLS": "Enable Client-to-Node TLS",
+        "enableClientToNodeTLSHelper": "Enable encryption in transit for communication between clients and the DB servers.",
+        "enableEncryptionAtRest": "Enable Encryption at Rest",
+        "enableEncryptionAtRestHelper": "Enable encryption for data stored on the tablet servers.",
+        "enableNodeToNodeTLS": "Enable Node-to-Node TLS",
+        "enableNodeToNodeTLSHelper": "Enable encryption in transit for communication between the DB servers.",
+        "enableYEDIS": "Enable YEDIS",
+        "enableYEDISHelper": "Enable the YEDIS API endpoint to run REDIS compatible workloads.",
+        "enableYSQL": "Enable YSQL",
+        "enableYSQLHelper": "Enable the YSQL API endpoint to run postgres compatible workloads.",
+        "enableYSQLAuth": "Enable YSQL Auth",
+        "enableYSQLAuthHelper": "Enable the YSQL password authentication.",
+        "enableYCQL": "Enable YCQL",
+        "enableYCQLHelper": "Enable the YCQL API endpoint to run cassandra compatible workloads.",
+        "enableYCQLAuth": "Enable YCQL Auth",
+        "enableYCQLAuthHelper": "Enable the YCQL password authentication.",
+        "instanceType": "Instance Type",
+        "kmsConfig": "Key Management Service Config",
+        "kmsConfigPlaceHolder": "Select Configuration",
+        "rootCertificate": "Root Certificate",
+        "rootCertificatePlaceHolder": "Create New Certificate",
+        "title": "Instance Configuration",
+        "useTimeSync": "Use {{provider}} Time Sync",
+        "useTimeSyncHelper": "Enable the {{provider}} Time Sync functionality for the DB servers.",
+        "YSQLAuthPassword": "YSQL Auth Password",
+        "YCQLAuthPassword": "YCQL Auth Password"
+      },
+      "userTags": {
+        "title": "User Tags"
+      }
+    }
+  }
+}

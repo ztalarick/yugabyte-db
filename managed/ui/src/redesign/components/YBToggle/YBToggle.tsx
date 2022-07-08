@@ -30,8 +30,8 @@ const AntSwitch = withStyles((theme: Theme) => {
         color: theme.palette.common.white,
         '& + $track': {
           opacity: 1,
-          backgroundColor: theme.palette.primary.main,
-          borderColor: theme.palette.primary.main
+          backgroundColor: theme.palette.orange[500],
+          borderColor: theme.palette.orange[500]
         }
       }
     },

@@ -30,6 +30,9 @@ export const mainTheme = createTheme({
       ...colors.info,
       main: colors.info[500]
     },
+    orange: {
+      ...colors.orange
+    },
     common: {
       ...colors.common
     },

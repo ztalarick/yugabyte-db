@@ -3,8 +3,8 @@ import { Autocomplete, AutocompleteProps } from '@material-ui/lab';
 import { makeStyles, Theme } from '@material-ui/core';
 import Paper from '@material-ui/core/Paper';
 import clsx from 'clsx';
-import CaretDownIcon from '../../assets/caret-down.svg';
-import CloseIcon from '../../assets/close.svg';
+import { ReactComponent as CaretDownIcon } from '../../assets/caret-down.svg';
+import { ReactComponent as CloseIcon } from '../../assets/close.svg';
 
 import { YBInput, YBInputProps } from '../YBInput/YBInput';
 
@@ -16,7 +16,7 @@ export interface YBAutoCompleteProps
     AutocompleteProps<Record<string, string>, boolean, boolean, boolean>,
     'renderInput'
   > {
-  getOptionLabel: (option: Record<string, string>) => string;
+  getOptionLabel?: (option: Record<string, string>) => string;
   ybInputProps?: YBAutoCompleteInputProps;
   autoCompleteDropdownID?: string;
 }

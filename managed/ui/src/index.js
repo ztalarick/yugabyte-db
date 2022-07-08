@@ -12,7 +12,8 @@ import { CssBaseline, ThemeProvider } from '@material-ui/core';
 import { mainTheme } from './redesign/theme/mainTheme';
 import fetchRoutes from './routes';
 import configureStore from './store/configureStore.js';
-import en from './translations/en.json';
+import { IN_DEVELOPMENT_MODE } from './config';
+import en from '../src/redesign/translations/en.json';
 import 'intl';
 import 'intl/locale-data/jsonp/en.js';
 
@@ -28,7 +29,8 @@ const queryClient = new QueryClient({
 
 void i18n.use(initReactI18next).init({
   resources: { en },
-  fallbackLng: 'en',
+  lng: 'en',
+  debug: IN_DEVELOPMENT_MODE,
   interpolation: {
     escapeValue: false
   }
