@@ -1,7 +1,9 @@
 {
   "translation": {
     "common": {
-      "create": "Create"
+      "create": "Create",
+      "genericFailure": "Something went wrong. Please try again.",
+      "requiredField": "Required field"
     },
     "universeForm": {
       "configReadReplica": "Configure Read Replica",
@@ -10,7 +12,12 @@
         "title": "Advanced Configuration"
       },
       "cloudConfig": {
-        "title": "Cloud Configuration"
+        "title": "Cloud Configuration",
+        "universeName": "Name",
+        "universeNameInUse": "Name already in use",
+        "providerField": "Provider",
+        "regionsField": "Regions",
+        "replicationField": "Replication Factor"
       },
       "gFlags": {
         "title": "G-Flags"
