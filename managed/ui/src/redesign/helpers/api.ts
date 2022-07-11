@@ -41,7 +41,7 @@ class ApiService {
     return customerId || '';
   }
 
-  findUniverseByName = (universeName: string): Promise<Universe> => {
+  findUniverseByName = (universeName: string): Promise<string[]> => {
     // auto-cancel previous request, if any
     if (this.cancellers.findUniverseByName) this.cancellers.findUniverseByName();
 
@@ -49,9 +49,9 @@ class ApiService {
     const source = axios.CancelToken.source();
     this.cancellers.findUniverseByName = source.cancel;
 
-    const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universes/find/${universeName}`;
+    const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universes/find?name=${universeName}`;
     return axios
-      .get<Universe>(requestUrl, { cancelToken: source.token })
+      .get<string[]>(requestUrl, { cancelToken: source.token })
       .then((resp) => resp.data);
   };
 

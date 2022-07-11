@@ -1,3 +1,5 @@
+import { ProviderMin } from '../fields/ProvidersField/ProvidersField';
+
 //types & interfaces
 export enum clusterModes {
   NEW_PRIMARY,
@@ -8,12 +10,40 @@ export enum clusterModes {
 
 export interface CloudConfigFormValue {
   universeName: string;
-  provider: string | null;
+  provider: ProviderMin | null;
   regionList: string[]; // array of region IDs
   totalNodes: number;
   replicationFactor: number;
   autoPlacement: boolean;
   placements: string[];
+}
+
+export interface Provider {
+  uuid: string;
+  code: CloudType;
+  name: string;
+  active: boolean;
+  customerUUID: string;
+}
+
+export interface AvailabilityZone {
+  uuid: string;
+  code: string;
+  name: string;
+  active: boolean;
+  subnet: string;
+}
+export interface Region {
+  uuid: string;
+  code: string;
+  name: string;
+  ybImage: string;
+  longitude: number;
+  latitude: number;
+  active: boolean;
+  securityGroupId: string | null;
+  details: string | null;
+  zones: AvailabilityZone[];
 }
 
 export interface InstanceConfigFormValue {
