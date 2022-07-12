@@ -9,6 +9,7 @@ export * from './RegionsField/RegionsField';
 export * from './ReplicationFactorField/ReplicationFactorField';
 export * from './RootCertificateField/RootCertificateField';
 export * from './TimeSyncField/TimeSyncField';
+export * from './TotalNodesField/TotalNodesField';
 export * from './UniverseNameField/UniverseNameField';
 export * from './VolumeInfoField/VolumeInfoField';
 export * from './YEDISField/YEDISField';
