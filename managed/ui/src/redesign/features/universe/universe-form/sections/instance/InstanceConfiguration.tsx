@@ -51,6 +51,7 @@ import {
   YCQLField,
   YSQLField
 } from '../../fields';
+import { YBLabel } from '../../../../../components';
 
 interface InstanceConfigProps {}
 

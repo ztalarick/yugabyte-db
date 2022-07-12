@@ -241,6 +241,19 @@ export interface Placement {
   parentRegionCode: string;
 }
 
+export interface CommunicationPorts {
+  masterHttpPort: number;
+  masterRpcPort: number;
+  tserverHttpPort: number;
+  tserverRpcPort: number;
+  redisServerHttpPort: number;
+  redisServerRpcPort: number;
+  yqlServerHttpPort: number;
+  yqlServerRpcPort: number;
+  ysqlServerHttpPort: number;
+  ysqlServerRpcPort: number;
+}
+
 export interface CloudConfigFormValue {
   universeName: string;
   provider: ProviderMin | null;
@@ -427,6 +440,24 @@ export interface Certificate {
   privateKey: string;
   certificate: string;
   certType: 'SelfSigned' | 'CustomCertHostPath';
+}
+
+export interface AccessKey {
+  idKey: {
+    keyCode: string;
+    providerUUID: string;
+  };
+  keyInfo: {
+    publicKey: string;
+    privateKey: string;
+    vaultPasswordFile: string;
+    vaultFile: string;
+    sshUser: string;
+    sshPort: number;
+    airGapInstall: boolean;
+    passwordlessSudoAccess: boolean;
+    provisionInstanceScript: string;
+  };
 }
 
 export interface Provider {
