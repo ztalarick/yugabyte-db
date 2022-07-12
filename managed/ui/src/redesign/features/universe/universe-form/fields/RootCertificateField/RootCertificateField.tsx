@@ -22,10 +22,13 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
   const { t } = useTranslation();
 
   //fetch data
-  const { data: certificates = [] } = useQuery(QUERY_KEY.getCertificates, api.getCertificates);
+  const { data: certificates = [], isLoading } = useQuery(
+    QUERY_KEY.getCertificates,
+    api.getCertificates
+  );
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(FIELD_NAME, option.uuid);
+    setValue(FIELD_NAME, option?.uuid);
   };
 
   return (
@@ -35,9 +38,10 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
         const value = certificates.find((i) => i.uuid === field.value) ?? '';
         return (
           <Box display="flex" width="100%">
-            <YBLabel>{t('universeForm.instanceConfig.kmsConfig')}</YBLabel>
+            <YBLabel>{t('universeForm.instanceConfig.rootCertificate')}</YBLabel>
             <Box flex={1}>
               <YBAutoComplete
+                loading={isLoading}
                 options={(certificates as unknown) as Record<string, string>[]}
                 getOptionLabel={getOptionLabel}
                 renderOption={renderOption}

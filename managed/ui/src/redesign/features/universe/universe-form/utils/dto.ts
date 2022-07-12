@@ -8,6 +8,19 @@ export enum clusterModes {
   EDIT_ASYNC
 }
 
+export interface CommunicationPorts {
+  masterHttpPort: number;
+  masterRpcPort: number;
+  tserverHttpPort: number;
+  tserverRpcPort: number;
+  redisServerHttpPort: number;
+  redisServerRpcPort: number;
+  yqlServerHttpPort: number;
+  yqlServerRpcPort: number;
+  ysqlServerHttpPort: number;
+  ysqlServerRpcPort: number;
+}
+
 export interface CloudConfigFormValue {
   universeName: string;
   provider: ProviderMin | null;
@@ -16,6 +29,24 @@ export interface CloudConfigFormValue {
   replicationFactor: number;
   autoPlacement: boolean;
   placements: string[];
+}
+
+export interface AccessKey {
+  idKey: {
+    keyCode: string;
+    providerUUID: string;
+  };
+  keyInfo: {
+    publicKey: string;
+    privateKey: string;
+    vaultPasswordFile: string;
+    vaultFile: string;
+    sshUser: string;
+    sshPort: number;
+    airGapInstall: boolean;
+    passwordlessSudoAccess: boolean;
+    provisionInstanceScript: string;
+  };
 }
 
 export interface Provider {
@@ -69,9 +100,21 @@ export interface InstanceConfigFormValue {
   kmsConfig: string | null;
 }
 
+export interface AdvancedConfigFormValue {
+  useSystemd: boolean;
+  ybcPackagePath: string | null;
+  awsArnString: string | null;
+  enableIPV6: boolean;
+  enableExposingService: boolean;
+  customizePort: boolean;
+  accessKeyCode: string | null;
+  ybSoftwareVersion: string | null;
+  communicationPorts: CommunicationPorts;
+}
 export interface UniverseFormData {
   cloudConfig: CloudConfigFormValue;
   instanceConfig: InstanceConfigFormValue;
+  advancedConfig: AdvancedConfigFormValue;
 }
 
 //Instance Config
@@ -102,6 +145,19 @@ export enum StorageType {
   Premium_LRS = 'Premium_LRS',
   UltraSSD_LRS = 'UltraSSD_LRS'
 }
+
+export const DEFAULT_COMMUNICATION_PORTS: CommunicationPorts = {
+  masterHttpPort: 7000,
+  masterRpcPort: 7100,
+  tserverHttpPort: 9000,
+  tserverRpcPort: 9100,
+  redisServerHttpPort: 11000,
+  redisServerRpcPort: 6379,
+  yqlServerHttpPort: 12000,
+  yqlServerRpcPort: 9042,
+  ysqlServerHttpPort: 13000,
+  ysqlServerRpcPort: 5433
+};
 
 export interface DeviceInfo {
   volumeSize: number;
@@ -165,9 +221,22 @@ const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   kmsConfig: null
 };
 
+const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
+  useSystemd: false,
+  ybcPackagePath: null,
+  awsArnString: null,
+  enableIPV6: false,
+  enableExposingService: false,
+  customizePort: false,
+  accessKeyCode: null,
+  ybSoftwareVersion: null,
+  communicationPorts: DEFAULT_COMMUNICATION_PORTS
+};
+
 export const DEFAULT_FORM_DATA: UniverseFormData = {
   cloudConfig: DEFAULT_CLOUD_CONFIG,
-  instanceConfig: DEFAULT_INSTANCE_CONFIG
+  instanceConfig: DEFAULT_INSTANCE_CONFIG,
+  advancedConfig: DEFAULT_ADVANCED_CONFIG
   // dbConfig: DEFAULT_DB_CONFIG,
   // securityConfig: DEFAULT_SECURITY_CONFIG,
   // hiddenConfig: DEFAULT_HIDDEN_CONFIG

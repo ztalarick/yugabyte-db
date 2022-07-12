@@ -21,21 +21,21 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={2}>
           <Grid container>
-            <Grid lg={6} item>
+            <Grid lg={6} item container>
               <UniverseNameField disabled={false} />
             </Grid>
           </Grid>
         </Box>
         <Box mt={2}>
           <Grid container>
-            <Grid lg={6} item>
+            <Grid lg={6} item container>
               <ProvidersField disabled={false} />
             </Grid>
           </Grid>
         </Box>
         <Box mt={2}>
           <Grid container>
-            <Grid lg={6} item>
+            <Grid lg={6} item container>
               <RegionsField disabled={false} />
             </Grid>
           </Grid>
