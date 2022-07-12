@@ -28,7 +28,7 @@ const DEFAULT_INSTANCE_TYPES = {
 };
 
 const FIELD_NAME = 'instanceConfig.instanceType';
-// const PROVIDER_FIELD_NAME = 'instanceConfig.provider';
+const PROVIDER_FIELD_NAME = 'cloudConfig.provider';
 
 const sortAndGroup = (data?: InstanceType[], cloud?: CloudType): InstanceType[] => {
   if (!data) return [];
@@ -83,19 +83,13 @@ export const InstanceTypeField: FC = () => {
   const { getValues, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  console.log(useWatch());
-
-  //   const provider = useWatch({name: PROVIDER_FIELD_NAME});
-  const provider = {
-    uuid: '08c0ba0e-3558-40fc-94e5-a87a627de8c5',
-    code: CloudType.aws
-  };
+  const provider = useWatch({ name: PROVIDER_FIELD_NAME });
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(FIELD_NAME, option.instanceTypeCode);
+    setValue(FIELD_NAME, option?.instanceTypeCode);
   };
 
-  const { data } = useQuery(
+  const { data, isLoading } = useQuery(
     [QUERY_KEY.getInstanceTypes, provider?.uuid],
     () => api.getInstanceTypes(provider?.uuid),
     {
@@ -105,7 +99,7 @@ export const InstanceTypeField: FC = () => {
         if (!getValues(FIELD_NAME) && provider?.code && data.length) {
           const defaultInstanceType =
             DEFAULT_INSTANCE_TYPES[provider.code] || data[0].instanceTypeCode;
-          setValue(FIELD_NAME, defaultInstanceType); // intentionally omit validation as field wasn't changed by user
+          setValue(FIELD_NAME, defaultInstanceType);
         }
       }
     }
@@ -122,6 +116,7 @@ export const InstanceTypeField: FC = () => {
             <YBLabel>{t('universeForm.instanceConfig.instanceType')}</YBLabel>
             <Box flex={1}>
               <YBAutoComplete
+                loading={isLoading}
                 value={(value as unknown) as Record<string, string>}
                 options={(instanceTypes as unknown) as Record<string, string>[]}
                 groupBy={(option: Record<string, string>) => option.groupName}

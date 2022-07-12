@@ -24,6 +24,7 @@ export enum QUERY_KEY {
   universeConfigure = 'universeConfigure',
   getInstanceTypes = 'getInstanceTypes',
   getDBVersions = 'getDBVersions',
+  getDBVersionsByProvider = 'getDBVersionsByProvider',
   getAccessKeys = 'getAccessKeys',
   getCertificates = 'getCertificates',
   getKMSConfigs = 'getKMSConfigs',
@@ -106,6 +107,15 @@ class ApiService {
   getDBVersions = (): Promise<string[]> => {
     const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/releases`;
     return axios.get<string[]>(requestUrl).then((resp) => resp.data);
+  };
+
+  getDBVersionsByProvider = (providerId?: string): Promise<string[]> => {
+    if (providerId) {
+      const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/providers/${providerId}/releases`;
+      return axios.get<string[]>(requestUrl).then((resp) => resp.data);
+    } else {
+      return Promise.reject('Querying access keys failed: no provider ID provided');
+    }
   };
 
   getAccessKeys = (providerId?: string): Promise<AccessKey[]> => {

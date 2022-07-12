@@ -20,7 +20,7 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
   const ysqlAuthEnabled = useWatch({ name: YSQL_AUTH_FIELD_NAME });
 
   return (
-    <Box display="flex" width="100" flexDirection="column">
+    <Box display="flex" width="100%" flexDirection="column">
       <Box display="flex">
         <YBLabel>{t('universeForm.instanceConfig.enableYSQL')}</YBLabel>
         <Box flex={1}>
@@ -55,9 +55,9 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
 
           {ysqlAuthEnabled && (
             <Box display="flex">
-              <Grid container>
-                <Grid sm={12} lg={6}>
-                  <Box display="flex" mr={1}>
+              <Grid container spacing={3}>
+                <Grid item sm={12} lg={6}>
+                  <Box display="flex">
                     <YBLabel>{t('universeForm.instanceConfig.YSQLAuthPassword')}</YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
@@ -72,7 +72,7 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
                     </Box>
                   </Box>
                 </Grid>
-                <Grid sm={12} lg={6}>
+                <Grid item sm={12} lg={6}>
                   <Box display="flex">
                     <YBLabel>{t('universeForm.instanceConfig.confirmPassword')}</YBLabel>
                     <Box flex={1}>

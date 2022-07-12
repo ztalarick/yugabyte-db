@@ -319,9 +319,9 @@ export interface KmsConfig {
 export interface HAPlatformInstance {
   uuid: string;
   config_uuid: string;
-  address: string,
-  is_leader: boolean,
-  is_local: boolean,
+  address: string;
+  is_leader: boolean;
+  is_local: boolean;
   last_backup: string | null;
 }
 
