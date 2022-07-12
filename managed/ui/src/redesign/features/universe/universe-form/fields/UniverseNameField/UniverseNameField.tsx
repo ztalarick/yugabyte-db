@@ -9,6 +9,8 @@ interface UniverseNameFieldProps {
   disabled?: boolean;
 }
 
+const FIELD_NAME = 'cloudConfig.universeName';
+
 export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -34,7 +36,7 @@ export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactEl
       <Box flex={1}>
         <YBInputField
           control={control}
-          name={'cloudConfig.universeName'}
+          name={FIELD_NAME}
           fullWidth
           rules={{ validate: validateUniverseName }}
           disabled={disabled}
