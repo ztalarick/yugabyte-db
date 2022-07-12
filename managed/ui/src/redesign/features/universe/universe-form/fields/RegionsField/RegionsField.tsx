@@ -29,7 +29,6 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
     {
       enabled: !!provider?.uuid, // make sure query won't run when there's no provider defined
       onSuccess: (regions) => {
-        console.log(regions);
         // if regions are not selected and there's single region available - automatically preselect it
         if (_.isEmpty(getValues(FIELD_NAME)) && regions.length === 1) {
           setValue(FIELD_NAME, [regions[0].uuid], { shouldValidate: true });

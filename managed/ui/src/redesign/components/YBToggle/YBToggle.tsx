@@ -16,8 +16,8 @@ import {
 const AntSwitch = withStyles((theme: Theme) => {
   return createStyles({
     root: {
-      width: 38,
-      height: 20,
+      width: 42,
+      height: 24,
       marginRight: 8,
       padding: 0,
       display: 'flex'
@@ -36,8 +36,8 @@ const AntSwitch = withStyles((theme: Theme) => {
       }
     },
     thumb: {
-      width: 12,
-      height: 12,
+      width: 16,
+      height: 16,
       boxShadow: 'none',
       color: theme.palette.common.white
     },

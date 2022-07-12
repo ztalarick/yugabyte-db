@@ -1,6 +1,6 @@
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography } from '@material-ui/core';
+import { Box, Grid, Typography } from '@material-ui/core';
 import { useSectionStyles } from '../../universeMainStyle';
 import {
   AssignPublicIPField,
@@ -16,6 +16,7 @@ import {
   YCQLField,
   YSQLField
 } from '../../fields';
+import { YBLabel } from '../../../../../components';
 
 interface InstanceConfigProps {}
 
@@ -27,50 +28,96 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
       <Typography variant="h5">{t('universeForm.instanceConfig.title')}</Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={4}>
-          <InstanceTypeField></InstanceTypeField>
+          <Grid container spacing={3}>
+            <Grid lg={6} item container>
+              <InstanceTypeField />
+            </Grid>
+          </Grid>
         </Box>
+
         <Box mt={1}>
-          <VolumeInfoField></VolumeInfoField>
+          <Grid container>
+            <Grid lg={6} item container>
+              <Box display="flex">
+                <YBLabel></YBLabel>
+                <Box flex={1}>
+                  <VolumeInfoField />
+                </Box>
+              </Box>
+            </Grid>
+          </Grid>
         </Box>
 
         <Box mt={4}>
-          <AssignPublicIPField disabled={false}></AssignPublicIPField>
+          <Grid container>
+            <Grid lg={6} item container>
+              <AssignPublicIPField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
 
         <Box mt={2}>
-          <TimeSyncField disabled={false}></TimeSyncField>
+          <Grid container>
+            <Grid lg={6} item container>
+              <TimeSyncField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
 
         <Box mt={6}>
-          <EncryptionAtRestField disabled={false}></EncryptionAtRestField>
+          <Grid container>
+            <Grid lg={6} item container>
+              <EncryptionAtRestField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
 
         <Box mt={1}>
-          <KMSConfigField disabled={false}></KMSConfigField>
+          <Grid container spacing={3}>
+            <Grid lg={6} item container>
+              <KMSConfigField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
 
         <Box mt={6}>
-          <YSQLField disabled={false}></YSQLField>
+          <YSQLField disabled={false} />
         </Box>
 
         <Box mt={6}>
-          <YCQLField disabled={false}></YCQLField>
+          <YCQLField disabled={false} />
         </Box>
 
         <Box mt={6}>
-          <YEDISField disabled={false}></YEDISField>
+          <Grid container>
+            <Grid lg={6} item container>
+              <YEDISField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
 
         <Box mt={2}>
-          <NodeToNodeTLSField disabled={false}></NodeToNodeTLSField>
+          <Grid container>
+            <Grid lg={6} item container>
+              <NodeToNodeTLSField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
 
         <Box mt={6}>
-          <ClientToNodeTLSField disabled={false}></ClientToNodeTLSField>
+          <Grid container>
+            <Grid lg={6} item container>
+              <ClientToNodeTLSField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
 
         <Box mt={1} mb={4}>
-          <RootCertificateField disabled={false}></RootCertificateField>
+          <Grid container spacing={3}>
+            <Grid lg={6} item container>
+              <RootCertificateField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
       </Box>
     </Box>

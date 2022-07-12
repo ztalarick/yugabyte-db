@@ -34,14 +34,13 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
   const isHCVaultEnabled = featureFlags.test.enableHCVault || featureFlags.released.enableHCVault;
 
   //fetch data
-  const { data } = useQuery(QUERY_KEY.getKMSConfigs, api.getKMSConfigs);
+  const { data, isLoading } = useQuery(QUERY_KEY.getKMSConfigs, api.getKMSConfigs);
   let kmsConfigs: KmsConfig[] = data || [];
   if (!isHCVaultEnabled)
     kmsConfigs = kmsConfigs.filter((config: KmsConfig) => config.metadata.provider !== 'HASHICORP');
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    console.log('op', option);
-    setValue(FIELD_NAME, option.metadata.configUUID ?? '');
+    setValue(FIELD_NAME, option?.metadata?.configUUID ?? '');
   };
 
   return (
@@ -54,6 +53,7 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
             <YBLabel>{t('universeForm.instanceConfig.kmsConfig')}</YBLabel>
             <Box flex={1}>
               <YBAutoComplete
+                loading={isLoading}
                 options={(kmsConfigs as unknown) as Record<string, string>[]}
                 ybInputProps={{
                   placeholder: t('universeForm.instanceConfig.kmsConfigPlaceHolder')

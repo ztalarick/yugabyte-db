@@ -20,7 +20,7 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
   const ycqlAuthEnabled = useWatch({ name: YCQL_AUTH_FIELD_NAME });
 
   return (
-    <Box display="flex" width="100" flexDirection="column">
+    <Box display="flex" width="100%" flexDirection="column">
       <Box display="flex">
         <YBLabel>{t('universeForm.instanceConfig.enableYCQL')}</YBLabel>
         <Box flex={1}>
@@ -55,9 +55,9 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
 
           {ycqlAuthEnabled && (
             <Box display="flex">
-              <Grid container>
-                <Grid sm={12} lg={6}>
-                  <Box display="flex" mr={1}>
+              <Grid container spacing={3}>
+                <Grid item sm={12} lg={6}>
+                  <Box display="flex">
                     <YBLabel>{t('universeForm.instanceConfig.YCQLAuthPassword')}</YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
@@ -72,7 +72,7 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
                     </Box>
                   </Box>
                 </Grid>
-                <Grid sm={12} lg={6}>
+                <Grid item sm={12} lg={6}>
                   <Box display="flex">
                     <YBLabel>{t('universeForm.instanceConfig.confirmPassword')}</YBLabel>
                     <Box flex={1}>
