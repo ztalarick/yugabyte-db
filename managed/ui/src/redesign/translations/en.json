@@ -17,7 +17,8 @@
         "universeNameInUse": "Name already in use",
         "providerField": "Provider",
         "regionsField": "Regions",
-        "replicationField": "Replication Factor"
+        "replicationField": "Replication Factor",
+        "totalNodesField": "Nodes"
       },
       "gFlags": {
         "title": "G-Flags"
