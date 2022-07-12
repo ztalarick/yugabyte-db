@@ -11,6 +11,8 @@ interface UniverseNameFieldProps {
   disabled?: boolean;
 }
 
+const FIELD_NAME = 'cloudConfig.universeName';
+
 export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
