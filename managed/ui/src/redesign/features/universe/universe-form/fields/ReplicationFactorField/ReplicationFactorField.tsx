@@ -10,7 +10,7 @@ interface ReplicationFactorProps {
 }
 
 const REPLICATION_FACTORS = [1, 3, 5, 7];
-const FIELD_NAME = 'cloudConfig.replicationFactor';
+const REPLICATION_FACTOR_FIELD_NAME = 'cloudConfig.replicationFactor';
 
 export const ReplicationFactor = ({ disabled }: ReplicationFactorProps): ReactElement => {
   const { setValue } = useFormContext<UniverseFormData>();
@@ -18,11 +18,11 @@ export const ReplicationFactor = ({ disabled }: ReplicationFactorProps): ReactEl
   const {
     field: { value }
   } = useController({
-    name: FIELD_NAME
+    name: REPLICATION_FACTOR_FIELD_NAME
   });
 
   const handleSelect = (val: number) => {
-    setValue(FIELD_NAME, val);
+    setValue(REPLICATION_FACTOR_FIELD_NAME, val);
   };
 
   return (

@@ -9,6 +9,8 @@ interface YBCFieldProps {
   disabled?: boolean;
 }
 
+const YBC_FIELD_NAME = 'advancedConfig.ybcPackagePath';
+
 export const YBCField = ({ disabled }: YBCFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -19,7 +21,7 @@ export const YBCField = ({ disabled }: YBCFieldProps): ReactElement => {
       <Box flex={1}>
         <YBInputField
           control={control}
-          name={'advancedConfig.ybcPackagePath'}
+          name={YBC_FIELD_NAME}
           fullWidth
           disabled={disabled}
           inputProps={{

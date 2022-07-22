@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { api, QUERY_KEY } from '../../../../../helpers/api';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
-import { UniverseFormData } from '../../utils/dto';
+import { DEFAULT_ADVANCED_CONFIG, UniverseFormData } from '../../utils/dto';
 import { sortVersionStrings } from './DBVersionHelper';
 
 interface DBVersionFieldProps {
@@ -39,7 +39,7 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
         //pre-select first available db version
         const sorted: Record<string, string>[] = sortVersionStrings(data);
         if (!getValues(DB_VERSION_FIELD_NAME) && sorted.length) {
-          setValue(DB_VERSION_FIELD_NAME, sorted[0].value);
+          setValue(DB_VERSION_FIELD_NAME, sorted[0].value, { shouldValidate: true });
         }
       },
       select: transformData
@@ -47,7 +47,9 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
   );
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(DB_VERSION_FIELD_NAME, option?.value ?? '');
+    setValue(DB_VERSION_FIELD_NAME, option?.value ?? DEFAULT_ADVANCED_CONFIG.ybSoftwareVersion, {
+      shouldValidate: true
+    });
   };
 
   const dbVersions: Record<string, string>[] = data ? sortVersionStrings(data) : [];
@@ -56,7 +58,7 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
     <Controller
       name={DB_VERSION_FIELD_NAME}
       control={control}
-      render={({ field }) => {
+      render={({ field, fieldState }) => {
         const value = dbVersions.find((item) => item.value === field.value) ?? '';
         return (
           <Box display="flex" width="100%">
@@ -70,6 +72,10 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
                 renderOption={renderOption}
                 onChange={handleChange}
                 value={(value as unknown) as never}
+                ybInputProps={{
+                  error: !!fieldState.error,
+                  helperText: fieldState.error?.message
+                }}
               />
             </Box>
           </Box>

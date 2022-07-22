@@ -9,6 +9,8 @@ interface SystemDFieldProps {
   disabled: boolean;
 }
 
+const SYSTEMD_FIELD_NAME = 'advancedConfig.useSystemd';
+
 export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -18,7 +20,7 @@ export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
       <YBLabel>{t('universeForm.advancedConfig.enableSystemD')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'advancedConfig.useSystemd'}
+          name={SYSTEMD_FIELD_NAME}
           inputProps={{
             'data-testid': 'systemD'
           }}
@@ -30,4 +32,4 @@ export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
   );
 };
 
-//shown only after provider selected
+//shown only after provider is selected

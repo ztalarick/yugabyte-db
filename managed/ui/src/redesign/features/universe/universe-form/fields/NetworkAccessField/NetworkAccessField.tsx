@@ -9,6 +9,8 @@ interface NetworkAccessFieldProps {
   disabled: boolean;
 }
 
+const NETWORK_ACCESS_FIELD_NAME = 'advancedConfig.enableExposingService';
+
 export const NetworkAccessField = ({ disabled }: NetworkAccessFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -18,7 +20,7 @@ export const NetworkAccessField = ({ disabled }: NetworkAccessFieldProps): React
       <YBLabel>{t('universeForm.advancedConfig.enableNetworkAccess')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'advancedConfig.enableExposingService'}
+          name={NETWORK_ACCESS_FIELD_NAME}
           inputProps={{
             'data-testid': 'enableNetworkAccess'
           }}

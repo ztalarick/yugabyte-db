@@ -5,7 +5,7 @@ import { useQuery } from 'react-query';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { api, QUERY_KEY } from '../../../../../helpers/api';
-import { UniverseFormData } from '../../utils/dto';
+import { DEFAULT_INSTANCE_CONFIG, UniverseFormData } from '../../utils/dto';
 import { KmsConfig } from '../../../../../helpers/dtos';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 
@@ -23,10 +23,10 @@ interface KMSConfigFieldProps {
   disabled: boolean;
 }
 
-const FIELD_NAME = 'instanceConfig.kmsConfig';
+const KMS_CONFIG_FIELD_NAME = 'instanceConfig.kmsConfig';
 
 export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
-  const { setValue } = useFormContext<UniverseFormData>();
+  const { setValue, control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
   //feature flagging
@@ -40,13 +40,18 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
     kmsConfigs = kmsConfigs.filter((config: KmsConfig) => config.metadata.provider !== 'HASHICORP');
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(FIELD_NAME, option?.metadata?.configUUID ?? '');
+    setValue(
+      KMS_CONFIG_FIELD_NAME,
+      option?.metadata?.configUUID ?? DEFAULT_INSTANCE_CONFIG.kmsConfig,
+      { shouldValidate: true }
+    );
   };
 
   return (
     <Controller
-      name={FIELD_NAME}
-      render={({ field }) => {
+      name={KMS_CONFIG_FIELD_NAME}
+      control={control}
+      render={({ field, fieldState }) => {
         const value = kmsConfigs.find((i) => i.metadata.configUUID === field.value) ?? '';
         return (
           <Box display="flex" width="100%">
@@ -56,7 +61,9 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
                 loading={isLoading}
                 options={(kmsConfigs as unknown) as Record<string, string>[]}
                 ybInputProps={{
-                  placeholder: t('universeForm.instanceConfig.kmsConfigPlaceHolder')
+                  placeholder: t('universeForm.instanceConfig.kmsConfigPlaceHolder'),
+                  error: !!fieldState.error,
+                  helperText: fieldState.error?.message
                 }}
                 getOptionLabel={getOptionLabel}
                 renderOption={renderOption}

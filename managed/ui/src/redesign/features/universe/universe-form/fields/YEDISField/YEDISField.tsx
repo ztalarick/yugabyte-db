@@ -9,6 +9,8 @@ interface YEDISFieldProps {
   disabled: boolean;
 }
 
+const YEDIS_FIELD_NAME = 'instanceConfig.enableYEDIS';
+
 export const YEDISField = ({ disabled }: YEDISFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -18,7 +20,7 @@ export const YEDISField = ({ disabled }: YEDISFieldProps): ReactElement => {
       <YBLabel>{t('universeForm.instanceConfig.enableYEDIS')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'instanceConfig.enableYEDIS'}
+          name={YEDIS_FIELD_NAME}
           inputProps={{
             'data-testid': 'Yedis'
           }}

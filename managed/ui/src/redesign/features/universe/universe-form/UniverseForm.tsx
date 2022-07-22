@@ -1,4 +1,6 @@
 import React, { FC } from 'react';
+import * as Yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
 import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
 import { Typography, Grid, Box } from '@material-ui/core';
@@ -22,9 +24,71 @@ interface UniverseFormProps {
 export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, title }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
+
+  //Form Validation
+  const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
+  const validationSchema = Yup.object({
+    advancedConfig: Yup.object({
+      accessKeyCode: Yup.mixed().required(
+        t('universeForm.validation.required', { field: t('universeForm.advancedConfig.accessKey') })
+      ),
+      ybSoftwareVersion: Yup.mixed().required(
+        t('universeForm.validation.required', { field: t('universeForm.advancedConfig.dbVersion') })
+      )
+    }),
+    cloudConfig: Yup.object({
+      provider: Yup.mixed().required(
+        t('universeForm.validation.required', {
+          field: t('universeForm.cloudConfig.providerField')
+        })
+      ),
+      regionList: Yup.array().required(
+        t('universeForm.validation.required', { field: t('universeForm.cloudConfig.regionsField') })
+      )
+    }),
+    instanceConfig: Yup.object({
+      instanceType: Yup.mixed().required(
+        t('universeForm.validation.required', {
+          field: t('universeForm.instanceConfig.instanceType')
+        })
+      ),
+      kmsConfig: Yup.mixed().when('enableEncryptionAtRest', {
+        is: (kmsConfig) => kmsConfig === true,
+        then: Yup.mixed().required(
+          t('universeForm.validation.required', {
+            field: t('universeForm.instanceConfig.kmsConfig')
+          })
+        )
+      }),
+      ycqlPassword: Yup.string().when('enableYCQLAuth', {
+        is: (enableYCQLAuth) => enableYCQLAuth === true,
+        then: Yup.string().matches(PASSWORD_REGEX, {
+          message: t('universeForm.validation.passwordStrength')
+        })
+      }),
+      ycqlConfirmPassword: Yup.string().oneOf(
+        [Yup.ref('ycqlPassword')],
+        t('universeForm.validation.confirmPassword')
+      ),
+      ysqlPassword: Yup.string().when('enableYSQLAuth', {
+        is: (enableYSQLAuth) => enableYSQLAuth === true,
+        then: Yup.string().matches(PASSWORD_REGEX, {
+          message: t('universeForm.validation.passwordStrength')
+        })
+      }),
+      ysqlConfirmPassword: Yup.string().oneOf(
+        [Yup.ref('ysqlPassword')],
+        t('universeForm.validation.confirmPassword')
+      )
+    })
+  });
+  //Form Validation
+
   const formMethods = useForm<UniverseFormData>({
     mode: 'onChange',
-    defaultValues: defaultFormData
+    reValidateMode: 'onChange',
+    defaultValues: defaultFormData,
+    resolver: yupResolver(validationSchema)
   });
 
   const onSubmit = (data: UniverseFormData) => console.log(data);

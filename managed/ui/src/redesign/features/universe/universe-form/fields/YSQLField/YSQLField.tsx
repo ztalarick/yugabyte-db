@@ -13,7 +13,10 @@ const YSQL_FIELD_NAME = 'instanceConfig.enableYSQL';
 const YSQL_AUTH_FIELD_NAME = 'instanceConfig.enableYSQLAuth';
 
 export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
-  const { control } = useFormContext<UniverseFormData>();
+  const {
+    control,
+    formState: { errors }
+  } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
   const ysqlEnabled = useWatch({ name: YSQL_FIELD_NAME });
@@ -68,6 +71,8 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
                           autoComplete: 'new-password',
                           'data-testid': 'InputYsqlPassword'
                         }}
+                        error={!!errors?.instanceConfig?.ysqlPassword}
+                        helperText={errors?.instanceConfig?.ysqlPassword?.message}
                       />
                     </Box>
                   </Box>
@@ -84,6 +89,8 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
                           autoComplete: 'new-password',
                           'data-testid': 'InputConfirmYsqlPassword'
                         }}
+                        error={!!errors?.instanceConfig?.ysqlConfirmPassword}
+                        helperText={errors?.instanceConfig?.ysqlConfirmPassword?.message}
                       />
                     </Box>
                   </Box>
@@ -96,3 +103,6 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
     </Box>
   );
 };
+
+//shown only for aws, gcp, azu, on-pre, k8s
+//disabled for non primary cluster

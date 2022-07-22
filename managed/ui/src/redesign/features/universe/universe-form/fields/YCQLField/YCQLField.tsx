@@ -13,7 +13,10 @@ const YCQL_FIELD_NAME = 'instanceConfig.enableYCQL';
 const YCQL_AUTH_FIELD_NAME = 'instanceConfig.enableYCQLAuth';
 
 export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
-  const { control } = useFormContext<UniverseFormData>();
+  const {
+    control,
+    formState: { errors }
+  } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
   const ycqlEnabled = useWatch({ name: YCQL_FIELD_NAME });
@@ -68,6 +71,8 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
                           autoComplete: 'new-password',
                           'data-testid': 'InputYcqlPassword'
                         }}
+                        error={!!errors?.instanceConfig?.ycqlPassword}
+                        helperText={errors?.instanceConfig?.ycqlPassword?.message}
                       />
                     </Box>
                   </Box>
@@ -84,6 +89,8 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
                           autoComplete: 'new-password',
                           'data-testid': 'InputConfirmYcqlPassword'
                         }}
+                        error={!!errors?.instanceConfig?.ycqlConfirmPassword}
+                        helperText={errors?.instanceConfig?.ycqlConfirmPassword?.message}
                       />
                     </Box>
                   </Box>
@@ -96,3 +103,6 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
     </Box>
   );
 };
+
+//shown only for aws, gcp, azu, on-pre, k8s
+//disabled for non primary cluster
