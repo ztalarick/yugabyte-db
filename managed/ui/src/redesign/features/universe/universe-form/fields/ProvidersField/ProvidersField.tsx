@@ -6,13 +6,13 @@ import { Controller, useFormContext } from 'react-hook-form';
 import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 import { api, QUERY_KEY } from '../../../../../helpers/api';
-import { UniverseFormData, Provider } from '../../utils/dto';
+import { UniverseFormData, Provider, DEFAULT_CLOUD_CONFIG } from '../../utils/dto';
 
 interface ProvidersFieldProps {
   disabled?: boolean;
 }
 
-const FIELD_NAME = 'cloudConfig.provider';
+const PROVIDER_FIELD_NAME = 'cloudConfig.provider';
 
 // simplified provider object with bare minimum fields needed in UI
 export type ProviderMin = Pick<Provider, 'uuid' | 'code'>;
@@ -27,16 +27,20 @@ export const ProvidersField = ({ disabled }: ProvidersFieldProps): ReactElement 
   const providersList = _.sortBy(data || [], 'code', 'name');
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    const { code, uuid } = option || {};
-    setValue(FIELD_NAME, { code, uuid });
+    if (option) {
+      const { code, uuid } = option;
+      setValue(PROVIDER_FIELD_NAME, { code, uuid }, { shouldValidate: true });
+    } else {
+      setValue(PROVIDER_FIELD_NAME, DEFAULT_CLOUD_CONFIG.provider, { shouldValidate: true });
+    }
   };
 
   return (
     <Box display="flex" width="100%" flexDirection={'row'}>
       <Controller
-        name={FIELD_NAME}
+        name={PROVIDER_FIELD_NAME}
         control={control}
-        render={({ field }) => {
+        render={({ field, fieldState }) => {
           const value =
             providersList.find((provider) => provider.uuid === field.value?.uuid) || null;
           return (
@@ -51,6 +55,10 @@ export const ProvidersField = ({ disabled }: ProvidersFieldProps): ReactElement 
                   getOptionLabel={getOptionLabel}
                   onChange={handleChange}
                   disabled={disabled}
+                  ybInputProps={{
+                    error: !!fieldState.error,
+                    helperText: fieldState.error?.message
+                  }}
                 />
               </Box>
             </>

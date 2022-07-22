@@ -15,10 +15,10 @@ interface RootCertificateFieldProps {
   disabled: boolean;
 }
 
-const FIELD_NAME = 'instanceConfig.rootCA';
+const ROOT_CERT_FIELD_NAME = 'instanceConfig.rootCA';
 
 export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
-  const { setValue } = useFormContext<UniverseFormData>();
+  const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
   //fetch data
@@ -28,13 +28,14 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
   );
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(FIELD_NAME, option?.uuid);
+    setValue(ROOT_CERT_FIELD_NAME, option?.uuid);
   };
 
   return (
     <Controller
-      name={FIELD_NAME}
-      render={({ field }) => {
+      name={ROOT_CERT_FIELD_NAME}
+      control={control}
+      render={({ field, fieldState }) => {
         const value = certificates.find((i) => i.uuid === field.value) ?? '';
         return (
           <Box display="flex" width="100%">
@@ -46,10 +47,12 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
                 getOptionLabel={getOptionLabel}
                 renderOption={renderOption}
                 onChange={handleChange}
-                ybInputProps={{
-                  placeholder: t('universeForm.instanceConfig.rootCertificatePlaceHolder')
-                }}
                 value={(value as unknown) as never}
+                ybInputProps={{
+                  placeholder: t('universeForm.instanceConfig.rootCertificatePlaceHolder'),
+                  error: !!fieldState.error,
+                  helperText: fieldState.error?.message
+                }}
               />
             </Box>
           </Box>

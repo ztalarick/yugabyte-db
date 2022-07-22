@@ -9,6 +9,8 @@ interface NodeToNodeTLSFieldProps {
   disabled: boolean;
 }
 
+const NODE_NODE_TLS_FIELD_NAME = 'instanceConfig.enableNodeToNodeEncrypt';
+
 export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -18,7 +20,7 @@ export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): React
       <YBLabel>{t('universeForm.instanceConfig.enableNodeToNodeTLS')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'instanceConfig.enableNodeToNodeEncrypt'}
+          name={NODE_NODE_TLS_FIELD_NAME}
           inputProps={{
             'data-testid': 'NodeToNodeTLS'
           }}

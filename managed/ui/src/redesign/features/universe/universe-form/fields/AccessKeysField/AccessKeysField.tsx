@@ -18,18 +18,20 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const provider = useWatch({ name: PROVIDER_FIELD_NAME });
+  const fieldVal = useWatch({ name: ACCESS_KEYS_FIELD_NAME });
 
   //all access keys
   const allAccessKeys = useSelector((state: any) => state.cloud.accessKeys);
 
   //filter by provider
   const accessKeys = allAccessKeys.data.filter(
-    (item: AccessKey) => item.idKey.providerUUID === provider?.uuid
+    (item: AccessKey) => item?.idKey?.providerUUID === provider?.uuid
   );
 
   useUpdateEffect(() => {
-    if (accessKeys.length && provider?.uuid) {
-      setValue(ACCESS_KEYS_FIELD_NAME, accessKeys[0].idKey.keyCode);
+    const defaultVal = accessKeys[0]?.idKey.keyCode;
+    if (accessKeys.length && provider?.uuid && defaultVal !== fieldVal) {
+      setValue(ACCESS_KEYS_FIELD_NAME, defaultVal, { shouldValidate: true });
     }
   }, [provider?.uuid, accessKeys]);
 

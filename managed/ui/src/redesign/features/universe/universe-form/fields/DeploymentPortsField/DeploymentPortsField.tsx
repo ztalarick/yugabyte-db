@@ -9,7 +9,7 @@ interface DeploymentPortsFieldids {
   disabled: boolean;
 }
 
-const FIELD_NAME = 'advancedConfig.communicationPorts';
+const COMMUNICATION_PORTS_FIELD_NAME = 'advancedConfig.communicationPorts';
 const YCQL_FIELD_NAME = 'instanceConfig.enableYCQL';
 const YSQL_FIELD_NAME = 'instanceConfig.enableYSQL';
 const YEDIS_FIELD_NAME = 'instanceConfig.enableYEDIS';
@@ -42,7 +42,7 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
 
   return (
     <Controller
-      name={FIELD_NAME}
+      name={COMMUNICATION_PORTS_FIELD_NAME}
       render={({ field: { value, onChange } }) => {
         return (
           <Box display="flex" alignItems="flex-start">
@@ -96,3 +96,5 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
     />
   );
 };
+
+//hidden for k8s

@@ -7,7 +7,7 @@ export interface StorageTypeOption {
 
 export const DEFAULT_STORAGE_TYPES = {
   [CloudType.aws]: StorageType.GP2,
-  [CloudType.gcp]: StorageType.Scratch,
+  [CloudType.gcp]: StorageType.Persistent,
   [CloudType.azu]: StorageType.Premium_LRS
 };
 
@@ -18,8 +18,8 @@ export const AWS_STORAGE_TYPE_OPTIONS: StorageTypeOption[] = [
 ];
 
 export const GCP_STORAGE_TYPE_OPTIONS: StorageTypeOption[] = [
-  { value: StorageType.Scratch, label: 'Local Scratch' },
-  { value: StorageType.Persistent, label: 'Persistent' }
+  { value: StorageType.Persistent, label: 'Persistent' },
+  { value: StorageType.Scratch, label: 'Local Scratch' }
 ];
 
 export const AZURE_STORAGE_TYPE_OPTIONS: StorageTypeOption[] = [

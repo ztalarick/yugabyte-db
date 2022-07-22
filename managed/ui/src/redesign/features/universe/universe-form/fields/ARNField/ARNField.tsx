@@ -9,6 +9,8 @@ interface ARNFieldProps {
   disabled?: boolean;
 }
 
+const ARN_FIELD_NAME = 'advancedConfig.awsArnString';
+
 export const ARNField = ({ disabled }: ARNFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -19,7 +21,7 @@ export const ARNField = ({ disabled }: ARNFieldProps): ReactElement => {
       <Box flex={1}>
         <YBInputField
           control={control}
-          name={'advancedConfig.awsArnString'}
+          name={ARN_FIELD_NAME}
           fullWidth
           disabled={disabled}
           inputProps={{
