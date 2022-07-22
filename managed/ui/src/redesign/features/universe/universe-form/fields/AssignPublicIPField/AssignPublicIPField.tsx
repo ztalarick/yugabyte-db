@@ -9,6 +9,8 @@ interface AssignPublicIPFieldProps {
   disabled: boolean;
 }
 
+const PUBLIC_IP_FIELD_NAME = 'instanceConfig.assignPublicIP';
+
 export const AssignPublicIPField = ({ disabled }: AssignPublicIPFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -18,7 +20,7 @@ export const AssignPublicIPField = ({ disabled }: AssignPublicIPFieldProps): Rea
       <YBLabel>{t('universeForm.instanceConfig.assignPublicIP')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'instanceConfig.assignPublicIP'}
+          name={PUBLIC_IP_FIELD_NAME}
           inputProps={{
             'data-testid': 'ToggleUseVPC'
           }}

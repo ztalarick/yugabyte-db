@@ -77,10 +77,16 @@
         "provisionedThroughput": "Provisioned Throughput",
         "provisionedIops": "Provisioned IOPS",
         "YSQLAuthPassword": "YSQL Auth Password",
-        "YCQLAuthPassword": "YCQL Auth Password"
+        "YCQLAuthPassword": "YCQL Auth Password",
+        "ephemeralStorage": "! Selected instance type is with ephemeral storage, If you will pause this universe your data will get lost."
       },
       "userTags": {
         "title": "User Tags"
+      },
+      "validation": {
+        "passwordStrength": "Password must be 8 characters minimum and must contain at least 1 digit, 1 uppercase, 1 lowercase and one of the !@#$%^&* (special) characters.",
+        "confirmPassword": "Passwords should match",
+        "required": "{{field}} is required"
       }
     }
   }

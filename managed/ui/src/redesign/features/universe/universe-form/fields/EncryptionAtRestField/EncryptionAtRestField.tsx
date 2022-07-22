@@ -9,6 +9,8 @@ interface EncryptionAtRestFieldProps {
   disabled: boolean;
 }
 
+const EAR_FIELD_NAME = 'instanceConfig.enableEncryptionAtRest';
+
 export const EncryptionAtRestField = ({ disabled }: EncryptionAtRestFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -18,7 +20,7 @@ export const EncryptionAtRestField = ({ disabled }: EncryptionAtRestFieldProps):
       <YBLabel>{t('universeForm.instanceConfig.enableEncryptionAtRest')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'instanceConfig.enableEncryptionAtRest'}
+          name={EAR_FIELD_NAME}
           inputProps={{
             'data-testid': 'enableEncryptionAtRest'
           }}

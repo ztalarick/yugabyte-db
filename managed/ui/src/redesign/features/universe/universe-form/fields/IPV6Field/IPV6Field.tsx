@@ -9,6 +9,8 @@ interface IPV6FieldProps {
   disabled: boolean;
 }
 
+const IPV6_FIELD_NAME = 'advancedConfig.enableIPV6';
+
 export const IPV6Field = ({ disabled }: IPV6FieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -18,7 +20,7 @@ export const IPV6Field = ({ disabled }: IPV6FieldProps): ReactElement => {
       <YBLabel>{t('universeForm.advancedConfig.enableIPV6')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'advancedConfig.enableIPV6'}
+          name={IPV6_FIELD_NAME}
           inputProps={{
             'data-testid': 'enableIPV6'
           }}

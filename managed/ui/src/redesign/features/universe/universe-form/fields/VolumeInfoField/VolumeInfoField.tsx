@@ -13,14 +13,14 @@ const DEFAULT_IOPS_IO1 = 1000;
 const DEFAULT_IOPS_GP3 = 3000;
 const DEFAULT_THROUGHPUT_GP3 = 125;
 
-const FIELD_NAME = 'instanceConfig.deviceInfo';
+const VOLUME_INFO_FIELD_NAME = 'instanceConfig.deviceInfo';
 const PROVIDER_FIELD_NAME = 'cloudConfig.provider';
 
 export const VolumeInfoField: FC = () => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  const fieldValue = useWatch({ name: FIELD_NAME });
+  const fieldValue = useWatch({ name: VOLUME_INFO_FIELD_NAME });
   const instanceType = useWatch({ name: 'instanceConfig.instanceType' });
   const provider = useWatch({ name: PROVIDER_FIELD_NAME });
 
@@ -32,13 +32,13 @@ export const VolumeInfoField: FC = () => {
 
   useUpdateEffect(() => {
     const instance = instanceTypes?.find((item) => item.instanceTypeCode === instanceType);
-    setValue(FIELD_NAME, instance ? getDeviceInfoFromInstance(instance) : null);
+    setValue(VOLUME_INFO_FIELD_NAME, instance ? getDeviceInfoFromInstance(instance) : null);
   }, [instanceType]);
 
   return (
     <Controller
       control={control}
-      name={FIELD_NAME}
+      name={VOLUME_INFO_FIELD_NAME}
       render={({ field }) => (
         <>
           {fieldValue && (
@@ -69,13 +69,9 @@ export const VolumeInfoField: FC = () => {
                           />
                         </Box>
 
-                        <Box
-                          display="flex"
-                          alignItems="center"
-                          px={1}
-                          className="device-info-field__x-symbol"
-                          flexShrink={1}
-                        />
+                        <Box display="flex" alignItems="center" px={1} flexShrink={1}>
+                          x
+                        </Box>
 
                         <Box flex={1}>
                           <YBInput

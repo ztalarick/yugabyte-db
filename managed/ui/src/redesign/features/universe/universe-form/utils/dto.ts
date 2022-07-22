@@ -64,6 +64,7 @@ export interface AvailabilityZone {
   active: boolean;
   subnet: string;
 }
+
 export interface Region {
   uuid: string;
   code: string;
@@ -129,6 +130,7 @@ export enum CloudType {
   cloud = 'cloud-1',
   other = 'other'
 }
+
 interface VolumeDetails {
   volumeSizeGB: number;
   volumeType: 'EBS' | 'SSD' | 'HDD' | 'NVME';
@@ -185,10 +187,14 @@ export interface InstanceType {
   memSizeGB: number;
   instanceTypeDetails: InstanceTypeDetails;
 }
+
+export interface InstanceTypeWithGroup extends InstanceType {
+  groupName: string;
+}
 //Instance COnfig
 
 //Data
-const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
+export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   universeName: '',
   provider: null,
   regionList: [],
@@ -198,7 +204,7 @@ const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   placements: []
 };
 
-const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
+export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   instanceType: null,
   deviceInfo: null,
   instanceTags: [],
@@ -221,7 +227,7 @@ const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   kmsConfig: null
 };
 
-const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
+export const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
   useSystemd: false,
   ybcPackagePath: null,
   awsArnString: null,
@@ -237,7 +243,4 @@ export const DEFAULT_FORM_DATA: UniverseFormData = {
   cloudConfig: DEFAULT_CLOUD_CONFIG,
   instanceConfig: DEFAULT_INSTANCE_CONFIG,
   advancedConfig: DEFAULT_ADVANCED_CONFIG
-  // dbConfig: DEFAULT_DB_CONFIG,
-  // securityConfig: DEFAULT_SECURITY_CONFIG,
-  // hiddenConfig: DEFAULT_HIDDEN_CONFIG
 };

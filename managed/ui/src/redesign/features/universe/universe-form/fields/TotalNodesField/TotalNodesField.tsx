@@ -9,7 +9,7 @@ interface TotalNodesFieldProps {
   disabled?: boolean;
 }
 
-const FIELD_NAME = 'cloudConfig.totalNodes';
+const TOTAL_NODES_FIELD_NAME = 'cloudConfig.totalNodes';
 
 export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -21,7 +21,7 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
       <Box flex={1}>
         <YBInputField
           control={control}
-          name={FIELD_NAME}
+          name={TOTAL_NODES_FIELD_NAME}
           fullWidth
           type="number"
           disabled={disabled}

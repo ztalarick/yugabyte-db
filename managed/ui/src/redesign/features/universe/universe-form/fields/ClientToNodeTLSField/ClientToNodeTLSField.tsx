@@ -9,6 +9,8 @@ interface ClientToNodeTLSFieldProps {
   disabled: boolean;
 }
 
+const CLIENT_NODE_TLS_FIELD_NAME = 'instanceConfig.enableClientToNodeEncrypt';
+
 export const ClientToNodeTLSField = ({ disabled }: ClientToNodeTLSFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -18,7 +20,7 @@ export const ClientToNodeTLSField = ({ disabled }: ClientToNodeTLSFieldProps): R
       <YBLabel>{t('universeForm.instanceConfig.enableClientToNodeTLS')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'instanceConfig.enableClientToNodeEncrypt'}
+          name={CLIENT_NODE_TLS_FIELD_NAME}
           inputProps={{
             'data-testid': 'ClientToNodeTLS'
           }}

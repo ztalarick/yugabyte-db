@@ -13,7 +13,7 @@ interface RegionsFieldProps {
   disabled?: boolean;
 }
 
-const FIELD_NAME = 'cloudConfig.regionList';
+const REGIONS_FIELD_NAME = 'cloudConfig.regionList';
 
 const getOptionLabel = (option: Record<string, string>): string => option?.name;
 
@@ -30,8 +30,8 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
       enabled: !!provider?.uuid, // make sure query won't run when there's no provider defined
       onSuccess: (regions) => {
         // if regions are not selected and there's single region available - automatically preselect it
-        if (_.isEmpty(getValues(FIELD_NAME)) && regions.length === 1) {
-          setValue(FIELD_NAME, [regions[0].uuid], { shouldValidate: true });
+        if (_.isEmpty(getValues(REGIONS_FIELD_NAME)) && regions.length === 1) {
+          setValue(REGIONS_FIELD_NAME, [regions[0].uuid], { shouldValidate: true });
         }
       }
     }
@@ -41,22 +41,23 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
   const regionsListMap = _.keyBy(regionsList, 'uuid');
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
     setValue(
-      FIELD_NAME,
-      (option || []).map((item: any) => item.uuid)
+      REGIONS_FIELD_NAME,
+      (option || []).map((item: any) => item.uuid),
+      { shouldValidate: true }
     );
   };
 
   // reset selected regions on provider change
   useUpdateEffect(() => {
-    setValue(FIELD_NAME, []);
+    setValue(REGIONS_FIELD_NAME, []);
   }, [provider]);
 
   return (
     <Box display="flex" width="100%" flexDirection={'row'}>
       <Controller
-        name={FIELD_NAME}
+        name={REGIONS_FIELD_NAME}
         control={control}
-        render={({ field }) => {
+        render={({ field, fieldState }) => {
           const value = field.value.map((region) => regionsListMap[region]);
           return (
             <>
@@ -71,6 +72,10 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
                   getOptionLabel={getOptionLabel}
                   onChange={handleChange}
                   disabled={disabled}
+                  ybInputProps={{
+                    error: !!fieldState.error,
+                    helperText: fieldState.error?.message
+                  }}
                 />
               </Box>
             </>
