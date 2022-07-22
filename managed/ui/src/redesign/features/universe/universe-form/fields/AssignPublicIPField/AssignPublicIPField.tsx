@@ -10,6 +10,8 @@ interface AssignPublicIPFieldProps {
   disabled: boolean;
 }
 
+const PUBLIC_IP_FIELD_NAME = 'instanceConfig.assignPublicIP';
+
 export const AssignPublicIPField = ({ disabled }: AssignPublicIPFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();

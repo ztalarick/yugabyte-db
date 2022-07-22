@@ -9,6 +9,8 @@ interface EncryptionAtRestFieldProps {
   disabled: boolean;
 }
 
+const EAR_FIELD_NAME = 'instanceConfig.enableEncryptionAtRest';
+
 export const EncryptionAtRestField = ({ disabled }: EncryptionAtRestFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();

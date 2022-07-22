@@ -10,6 +10,8 @@ interface ARNFieldProps {
   disabled?: boolean;
 }
 
+const ARN_FIELD_NAME = 'advancedConfig.awsArnString';
+
 export const ARNField = ({ disabled }: ARNFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();

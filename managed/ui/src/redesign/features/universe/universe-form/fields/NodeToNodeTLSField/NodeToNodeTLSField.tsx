@@ -10,6 +10,8 @@ interface NodeToNodeTLSFieldProps {
   disabled: boolean;
 }
 
+const NODE_NODE_TLS_FIELD_NAME = 'instanceConfig.enableNodeToNodeEncrypt';
+
 export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();

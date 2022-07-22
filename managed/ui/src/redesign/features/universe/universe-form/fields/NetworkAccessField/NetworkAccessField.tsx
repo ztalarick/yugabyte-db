@@ -10,6 +10,8 @@ interface NetworkAccessFieldProps {
   disabled: boolean;
 }
 
+const NETWORK_ACCESS_FIELD_NAME = 'advancedConfig.enableExposingService';
+
 export const NetworkAccessField = ({ disabled }: NetworkAccessFieldProps): ReactElement => {
   const { setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();

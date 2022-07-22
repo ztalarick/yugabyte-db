@@ -21,5 +21,4 @@ export * from './YBTooltip/YBTooltip';
 export * from './YBAutoComplete/YBAutoComplete';
 export * from './YBButton/YBButton';
 export * from './YBFormComponents/YBLabel';
-export * from './YBFormComponents/YBError';
 export * from './YBFormComponents/YBHelper';
