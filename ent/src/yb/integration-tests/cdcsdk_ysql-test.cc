@@ -508,10 +508,12 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     ASSERT_EQ(value, record.row_message().new_tuple(1).datum_int32());
   }
 
-  void AssertKeyValues(const CDCSDKProtoRecordPB& record, const int32_t& key, const vector<std::pair<std::string, uint32_t>>& col_val_vec) {
-    uint32_t iter=1;
+  void AssertKeyValues(
+      const CDCSDKProtoRecordPB& record, const int32_t& key,
+      const vector<std::pair<std::string, uint32_t>>& col_val_vec) {
+    uint32_t iter = 1;
     ASSERT_EQ(key, record.row_message().new_tuple(0).datum_int32());
-    for (auto vec_iter=col_val_vec.begin(); vec_iter!=col_val_vec.end(); ++iter,++vec_iter) {
+    for (auto vec_iter = col_val_vec.begin(); vec_iter != col_val_vec.end(); ++iter, ++vec_iter) {
       ASSERT_EQ(vec_iter->second, record.row_message().new_tuple(iter).datum_int32());
     }
   }
