@@ -272,7 +272,7 @@ Status PopulateCDCSDKIntentRecord(
           SetOperation(row_message, OpType::INSERT, schema);
           col_count = schema.num_key_columns() - 1;
         } else {
-          SetOperation(row_message, OpType::UPDATE, schema);  
+          SetOperation(row_message, OpType::UPDATE, schema);
           *write_id = intent.write_id;
         }
       }
