@@ -127,9 +127,9 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     int32_t value;
   };
 
-  struct  VaryingExpectedRecord {
-    uint32_t  key;
-    vector<std::pair<std::string,uint32_t>>  val_vec;
+  struct VaryingExpectedRecord {
+    uint32_t key;
+    vector<std::pair<std::string, uint32_t>> val_vec;
   };
 
   Result<string> GetUniverseId(Cluster* cluster) {
@@ -275,10 +275,10 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
       uint32_t value = i;
       std::stringstream statement_buff;
       statement_buff << "INSERT INTO $0 VALUES (";
-      for (uint32_t iter=0; iter<num_cols; ++value, ++iter) {
+      for (uint32_t iter = 0; iter < num_cols; ++value, ++iter) {
         statement_buff << value << ",";
-      } 
-      
+      }
+
       std::string statement(statement_buff.str());
       statement.at(statement.size() - 1) = ')';
       RETURN_NOT_OK(conn.ExecuteFormat(statement, kTableName));
