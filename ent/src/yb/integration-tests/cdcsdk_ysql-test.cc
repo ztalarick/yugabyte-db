@@ -336,27 +336,26 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     return Status::OK();
   }
 
-  Status UpdateRows(uint32_t key, std::map<std::string,uint32_t> col_val_map, Cluster* cluster) {
+  Status UpdateRows(uint32_t key, std::map<std::string, uint32_t> col_val_map, Cluster* cluster) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     std::stringstream log_buff;
     log_buff << "Updating row for key " << key << " with";
     for (auto col_value_pair : col_val_map) {
-      log_buff << " (" << col_value_pair.first << ":" << col_value_pair.second << ")"; 
+      log_buff << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
     }
     LOG(INFO) << log_buff.str();
 
     std::stringstream statement_buff;
     statement_buff << "UPDATE $0 SET ";
     for (auto col_value_pair : col_val_map) {
-      statement_buff << col_value_pair.first << "=" << col_value_pair.second << ","; 
+      statement_buff << col_value_pair.first << "=" << col_value_pair.second << ",";
     }
 
     std::string statement(statement_buff.str());
     statement.at(statement.size() - 1) = ' ';
     std::string where_clause("WHERE $1 = $2");
     statement += where_clause;
-    RETURN_NOT_OK(conn.ExecuteFormat(
-        statement, kTableName, "col1", key));
+    RETURN_NOT_OK(conn.ExecuteFormat(statement, kTableName, "col1", key));
     return Status::OK();
   }
 
