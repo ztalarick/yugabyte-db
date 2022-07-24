@@ -127,7 +127,7 @@ libraryDependencies ++= Seq(
   "com.google.inject.extensions" % "guice-multibindings" % "4.2.3",
   "org.mockito" % "mockito-core" % "2.13.0",
   "org.mockito" % "mockito-inline" % "3.8.0" % Test,
-  "org.mindrot" % "jbcrypt" % "0.4",
+  "org.mindrot" % "jbcrypt" % "0.4" % Test,
   "org.postgresql" % "postgresql" % "42.2.25",
   "net.logstash.logback" % "logstash-logback-encoder" % "6.2",
   "org.codehaus.janino" % "janino" % "3.1.6",
@@ -380,7 +380,7 @@ runPlatform := {
   Project.extract(newState).runTask(runPlatformTask, newState)
 }
 
-libraryDependencies += "org.yb" % "yb-client" % "0.8.20-SNAPSHOT"
+libraryDependencies += "org.yb" % "yb-client" % "0.8.21-SNAPSHOT"
 libraryDependencies += "org.yb" % "ybc-client" % "0.0.4"
 
 libraryDependencies ++= Seq(
@@ -395,7 +395,9 @@ libraryDependencies ++= Seq(
   "io.netty" % "netty-tcnative-boringssl-static" % "2.0.44.Final",
   "com.fasterxml.jackson.dataformat" % "jackson-dataformat-xml" % "2.9.10",
   "org.slf4j" % "slf4j-ext" % "1.7.26",
-  "net.minidev" % "json-smart" % "2.4.8"
+  "net.minidev" % "json-smart" % "2.4.8",
+  // Overrides to address vulnerability in swagger-play2
+  "com.typesafe.akka" %% "akka-actor" % "2.5.16"
 )
 // https://mvnrepository.com/artifact/eu.unicredit/sbt-swagger-codegen-lib
 //libraryDependencies += "eu.unicredit" %% "sbt-swagger-codegen-lib" % "0.0.12"
