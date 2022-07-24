@@ -376,11 +376,12 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     return tablets;
   }
 
-  Result<google::protobuf::RepeatedPtrField<master::TabletLocationsPB>> SetUpClusterMultiColumnUsecase(uint32_t num_cols) {
+  Result<google::protobuf::RepeatedPtrField<master::TabletLocationsPB>>
+  SetUpClusterMultiColumnUsecase(uint32_t num_cols) {
     RETURN_NOT_OK(SetUpWithParams(3, 1, false));
-    auto table = EXPECT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName, 
-                                            1, true, false, 0, 
-                                            false, "", "public", num_cols));
+    auto table = EXPECT_RESULT(CreateTable(
+        &test_cluster_, kNamespaceName, kTableName, 1, true, false, 0, false, "", "public",
+        num_cols));
     google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
     RETURN_NOT_OK(test_client()->GetTablets(table, 0, &tablets, nullptr));
     return tablets;
@@ -1027,7 +1028,7 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardUpdateWithAutoCommit))
 // Insert one row, update the inserted row.
 // Expected records: (DDL, INSERT, UPDATE).
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardMultiColUpdateWithAutoCommit)) {
-  uint32_t  num_cols=4;
+  uint32_t num_cols = 4;
   map<std::string, uint32_t> col_val_map;
   auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
   ASSERT_EQ(tablets.size(), 1);
@@ -1044,9 +1045,10 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardMultiColUpdateWithAuto
   const uint32_t expected_count[] = {1, 1, 1, 0, 0, 0};
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
-  VaryingExpectedRecord expected_records[] = {{0, {std::make_pair("col2",0), std::make_pair("col3",0), std::make_pair("col4",0)}}, 
-                                              {1, {std::make_pair("col2",2), std::make_pair("col3",3), std::make_pair("col4",4)}}, 
-                                              {1, {std::make_pair("col2",1), std::make_pair("col3",1)}}};
+  VaryingExpectedRecord expected_records[] = {
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
+      {1, {std::make_pair("col2", 1), std::make_pair("col3", 1)}}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
@@ -1092,9 +1094,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardUpdateRows)) {
 // Insert 3 rows, update 2 of them.
 // Expected records: (DDL, 3 INSERT, 2 UPDATE).
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardUpdateMultiColumn)) {
-  uint32_t  num_cols=4;
+  uint32_t num_cols = 4;
   map<std::string, uint32_t> col_val_map;
-  
+
   auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
   ASSERT_EQ(tablets.size(), 1);
   CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream());
@@ -1112,12 +1114,13 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardUpdateMultiColumn)) {
   const uint32_t expected_count[] = {1, 3, 2, 0, 0, 0};
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
-  VaryingExpectedRecord expected_records[] = {{0, {std::make_pair("col2",0), std::make_pair("col3",0), std::make_pair("col4",0)}}, 
-                                              {1, {std::make_pair("col2",2), std::make_pair("col3",3), std::make_pair("col4",4)}}, 
-                                              {2, {std::make_pair("col2",3), std::make_pair("col3",4), std::make_pair("col4",5)}}, 
-                                              {3, {std::make_pair("col2",4), std::make_pair("col3",5), std::make_pair("col4",6)}}, 
-                                              {1, {std::make_pair("col2",9), std::make_pair("col3",10)}}, 
-                                              {2, {std::make_pair("col2",9), std::make_pair("col3",10)}}};
+  VaryingExpectedRecord expected_records[] = {
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
+      {2, {std::make_pair("col2", 3), std::make_pair("col3", 4), std::make_pair("col4", 5)}},
+      {3, {std::make_pair("col2", 4), std::make_pair("col3", 5), std::make_pair("col4", 6)}},
+      {1, {std::make_pair("col2", 9), std::make_pair("col3", 10)}},
+      {2, {std::make_pair("col2", 9), std::make_pair("col3", 10)}}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 

@@ -248,13 +248,13 @@ Status PopulateCDCSDKIntentRecord(
     // is part of the same row or not.
     Slice primary_key(key.data(), key_size);
     if (prev_key != primary_key || col_count >= schema.num_columns()) {
-      if (col_count >= schema.num_columns())
-        col_count = 0;
+      if (col_count >= schema.num_columns()) col_count = 0;
 
-      if (proto_record.IsInitialized() && row_message->IsInitialized() && row_message->op() == RowMessage_Op_UPDATE) {
+      if (proto_record.IsInitialized() && row_message->IsInitialized() &&
+          row_message->op() == RowMessage_Op_UPDATE) {
         MakeNewProtoRecord(
-          prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
-          reverse_index_key);
+            prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
+            reverse_index_key);
       }
 
       proto_record.Clear();
@@ -272,7 +272,7 @@ Status PopulateCDCSDKIntentRecord(
           SetOperation(row_message, OpType::INSERT, schema);
           col_count = schema.num_key_columns() - 1;
         } else {
-          SetOperation(row_message, OpType::UPDATE, schema);
+          SetOperation(row_message, OpType::UPDATE, schema);  
           *write_id = intent.write_id;
         }
       }
@@ -311,18 +311,21 @@ Status PopulateCDCSDKIntentRecord(
       }
     }
     row_message->set_table(tablet_peer->tablet()->metadata()->table_name());
-    if ((row_message->op() == RowMessage_Op_INSERT && col_count == schema.num_columns()) || (row_message->op() == RowMessage_Op_DELETE)) {
+    if ((row_message->op() == RowMessage_Op_INSERT && col_count == schema.num_columns()) ||
+        (row_message->op() == RowMessage_Op_DELETE)) {
       MakeNewProtoRecord(
-        intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
-        reverse_index_key);
-    } else if (row_message->op() == RowMessage_Op_UPDATE)
+          intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
+          reverse_index_key);
+    } else if (row_message->op() == RowMessage_Op_UPDATE) {
       prev_intent = intent;
+    }
   }
 
-  if (proto_record.IsInitialized() && row_message->IsInitialized() && row_message->op() == RowMessage_Op_UPDATE) {
+  if (proto_record.IsInitialized() && row_message->IsInitialized() &&
+      row_message->op() == RowMessage_Op_UPDATE) {
     MakeNewProtoRecord(
-      prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
-      reverse_index_key);
+        prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
+        reverse_index_key);
   }
 
   return Status::OK();

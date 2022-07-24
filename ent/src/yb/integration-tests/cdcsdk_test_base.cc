@@ -219,11 +219,8 @@ Result<YBTableName> CDCSDKTestBase::CreateTable(
     const int table_oid,
     const bool enum_value,
     const std::string& enum_suffix,
-<<<<<<< HEAD
+    const std::string& schema_name,
     uint32_t  num_cols) {
-=======
-    const std::string& schema_name) {
->>>>>>> master
   auto conn = VERIFY_RESULT(cluster->ConnectToDB(namespace_name));
 
   if (enum_value) {
@@ -241,38 +238,28 @@ Result<YBTableName> CDCSDKTestBase::CreateTable(
     RETURN_NOT_OK(conn.Execute("set yb_enable_create_with_table_oid=true"));
     table_oid_string = Format("table_oid = $0,", table_oid);
   }
-<<<<<<< HEAD
-  
+
   if (num_cols > 2) {
     std::stringstream statement_buff;
-    statement_buff << "CREATE TABLE $0(col1 int PRIMARY KEY, col2 int";
-    std::string  rem_statement(" ) WITH ($1colocated = $2) SPLIT INTO $3 TABLETS");
-    for (uint32_t col_num=3; col_num <= num_cols; ++col_num) {
-        statement_buff << ", col" << col_num << " int";
+    statement_buff << "CREATE TABLE $0.$1(col1 int PRIMARY KEY, col2 int";
+    std::string rem_statement(" ) WITH ($2colocated = $3) SPLIT INTO $4 TABLETS");
+    for (uint32_t col_num = 3; col_num <= num_cols; ++col_num) {
+      statement_buff << ", col" << col_num << " int";
     }
     std::string statement(statement_buff.str() + rem_statement);
 
     RETURN_NOT_OK(conn.ExecuteFormat(
-        statement,
-        table_name, table_oid_string, colocated, num_tablets));
+        statement, schema_name, table_name, table_oid_string, colocated, num_tablets));
   } else {
     RETURN_NOT_OK(conn.ExecuteFormat(
-        "CREATE TABLE $0($1 int $2, $3 $4) WITH ($5colocated = $6) "
-        "SPLIT INTO $7 TABLETS",
-        table_name + enum_suffix, kKeyColumnName, (add_primary_key) ? "PRIMARY KEY" : "",
-        kValueColumnName, enum_value ? ("coupon_discount_type" + enum_suffix) : "int",
+        "CREATE TABLE $0.$1($2 int $3, $4 $5) WITH ($6colocated = $7) "
+        "SPLIT INTO $8 TABLETS",
+        schema_name, table_name + enum_suffix, kKeyColumnName,
+        (add_primary_key) ? "PRIMARY KEY" : "", kValueColumnName,
+        enum_value ? (schema_name + "." + "coupon_discount_type" + enum_suffix) : "int",
         table_oid_string, colocated, num_tablets));
   }
-      
-=======
-  RETURN_NOT_OK(conn.ExecuteFormat(
-      "CREATE TABLE $0.$1($2 int $3, $4 $5) WITH ($6colocated = $7) "
-      "SPLIT INTO $8 TABLETS",
-      schema_name, table_name + enum_suffix, kKeyColumnName, (add_primary_key) ? "PRIMARY KEY" : "",
-      kValueColumnName,
-      enum_value ? (schema_name + "." + "coupon_discount_type" + enum_suffix) : "int",
-      table_oid_string, colocated, num_tablets));
->>>>>>> master
+
   return GetTable(cluster, namespace_name, table_name + enum_suffix);
 }
 
