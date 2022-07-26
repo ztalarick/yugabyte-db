@@ -9,8 +9,6 @@ interface YEDISFieldProps {
   disabled: boolean;
 }
 
-const YEDIS_FIELD_NAME = 'instanceConfig.enableYEDIS';
-
 export const YEDISField = ({ disabled }: YEDISFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();

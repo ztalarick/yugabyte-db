@@ -34,7 +34,6 @@ import YugawareLogs from './pages/YugawareLogs';
 import Importer from './pages/Importer';
 import Releases from './pages/Releases';
 import { isDefinedNotNull, isNullOrEmpty } from './utils/ObjectUtils';
-import { CreateUniverse } from './redesign/features/universe/universe-form/CreateUniverse';
 import { Administration } from './pages/Administration';
 import ToggleFeaturesInTest from './pages/ToggleFeaturesInTest';
 import { ReplicationDetails } from './components/xcluster';

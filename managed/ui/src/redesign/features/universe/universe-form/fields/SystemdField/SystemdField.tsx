@@ -10,8 +10,6 @@ interface SystemDFieldProps {
   disabled: boolean;
 }
 
-const SYSTEMD_FIELD_NAME = 'advancedConfig.useSystemd';
-
 export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();

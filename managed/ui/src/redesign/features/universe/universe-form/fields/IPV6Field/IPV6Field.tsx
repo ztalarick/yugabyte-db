@@ -10,8 +10,6 @@ interface IPV6FieldProps {
   disabled: boolean;
 }
 
-const IPV6_FIELD_NAME = 'advancedConfig.enableIPV6';
-
 export const IPV6Field = ({ disabled }: IPV6FieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();

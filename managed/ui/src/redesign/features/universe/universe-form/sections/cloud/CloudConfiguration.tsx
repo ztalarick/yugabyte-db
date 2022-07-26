@@ -17,7 +17,9 @@ import { getPrimaryCluster } from '../../utils/helpers';
 import { ClusterModes, ClusterType } from '../../utils/dto';
 import { useSectionStyles } from '../../universeMainStyle';
 import {
+  AutoPlacementField,
   UniverseNameField,
+  PlacementsField,
   ProvidersField,
   RegionsField,
   ReplicationFactor,

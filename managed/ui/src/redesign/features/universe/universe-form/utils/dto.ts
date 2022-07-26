@@ -240,7 +240,6 @@ export interface Placement {
   parentRegionName: string;
   parentRegionCode: string;
 }
-
 export interface CommunicationPorts {
   masterHttpPort: number;
   masterRpcPort: number;
@@ -253,6 +252,23 @@ export interface CommunicationPorts {
   ysqlServerHttpPort: number;
   ysqlServerRpcPort: number;
 }
+
+export interface PlacementAZ {
+  uuid: string;
+  name: string;
+  replicationFactor: number;
+  subnet: string;
+  numNodesInAZ: number;
+  isAffinitized: boolean;
+}
+
+export interface RegionInfo {
+  parentRegionId: string;
+  parentRegionName: string;
+  parentRegionCode: string;
+}
+
+export type Placement = (PlacementAZ & RegionInfo) | null;
 
 export interface CloudConfigFormValue {
   universeName: string;

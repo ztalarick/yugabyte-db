@@ -10,8 +10,6 @@ interface YBCFieldProps {
   disabled?: boolean;
 }
 
-const YBC_FIELD_NAME = 'advancedConfig.ybcPackagePath';
-
 export const YBCField = ({ disabled }: YBCFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
