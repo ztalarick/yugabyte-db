@@ -4,12 +4,10 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../components';
-
+import { EAR_FIELD } from '../../utils/constants';
 interface EncryptionAtRestFieldProps {
   disabled: boolean;
 }
-
-const EAR_FIELD_NAME = 'instanceConfig.enableEncryptionAtRest';
 
 export const EncryptionAtRestField = ({ disabled }: EncryptionAtRestFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -20,7 +18,7 @@ export const EncryptionAtRestField = ({ disabled }: EncryptionAtRestFieldProps):
       <YBLabel>{t('universeForm.instanceConfig.enableEncryptionAtRest')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={EAR_FIELD_NAME}
+          name={EAR_FIELD}
           inputProps={{
             'data-testid': 'enableEncryptionAtRest'
           }}

@@ -4,12 +4,11 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBToggleField } from '../../../../../components';
+import { SYSTEMD_FIELD } from '../../utils/constants';
 
 interface SystemDFieldProps {
   disabled: boolean;
 }
-
-const SYSTEMD_FIELD_NAME = 'advancedConfig.useSystemd';
 
 export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -20,7 +19,7 @@ export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
       <YBLabel>{t('universeForm.advancedConfig.enableSystemD')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={SYSTEMD_FIELD_NAME}
+          name={SYSTEMD_FIELD}
           inputProps={{
             'data-testid': 'systemD'
           }}

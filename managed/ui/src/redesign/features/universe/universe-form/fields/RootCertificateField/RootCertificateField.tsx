@@ -7,6 +7,7 @@ import { api, QUERY_KEY } from '../../../../../helpers/api';
 
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
+import { ROOT_CERT_FIELD } from '../../utils/constants';
 
 const getOptionLabel = (option: Record<string, string>): string => option.label ?? '';
 const renderOption = (option: Record<string, string>): string => option.label;
@@ -14,8 +15,6 @@ const renderOption = (option: Record<string, string>): string => option.label;
 interface RootCertificateFieldProps {
   disabled: boolean;
 }
-
-const ROOT_CERT_FIELD_NAME = 'instanceConfig.rootCA';
 
 export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
   const { control, setValue } = useFormContext<UniverseFormData>();
@@ -28,12 +27,12 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
   );
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(ROOT_CERT_FIELD_NAME, option?.uuid);
+    setValue(ROOT_CERT_FIELD, option?.uuid);
   };
 
   return (
     <Controller
-      name={ROOT_CERT_FIELD_NAME}
+      name={ROOT_CERT_FIELD}
       control={control}
       render={({ field, fieldState }) => {
         const value = certificates.find((i) => i.uuid === field.value) ?? '';

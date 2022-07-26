@@ -8,6 +8,7 @@ import { api, QUERY_KEY } from '../../../../../helpers/api';
 import { DEFAULT_INSTANCE_CONFIG, UniverseFormData } from '../../utils/dto';
 import { KmsConfig } from '../../../../../helpers/dtos';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
+import { KMS_CONFIG_FIELD } from '../../utils/constants';
 
 const renderOption = (op: Record<string, string>): string => {
   const option = (op as unknown) as KmsConfig;
@@ -22,8 +23,6 @@ const getOptionLabel = (op: Record<string, string>): string => {
 interface KMSConfigFieldProps {
   disabled: boolean;
 }
-
-const KMS_CONFIG_FIELD_NAME = 'instanceConfig.kmsConfig';
 
 export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
   const { setValue, control } = useFormContext<UniverseFormData>();
@@ -40,16 +39,14 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
     kmsConfigs = kmsConfigs.filter((config: KmsConfig) => config.metadata.provider !== 'HASHICORP');
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(
-      KMS_CONFIG_FIELD_NAME,
-      option?.metadata?.configUUID ?? DEFAULT_INSTANCE_CONFIG.kmsConfig,
-      { shouldValidate: true }
-    );
+    setValue(KMS_CONFIG_FIELD, option?.metadata?.configUUID ?? DEFAULT_INSTANCE_CONFIG.kmsConfig, {
+      shouldValidate: true
+    });
   };
 
   return (
     <Controller
-      name={KMS_CONFIG_FIELD_NAME}
+      name={KMS_CONFIG_FIELD}
       control={control}
       render={({ field, fieldState }) => {
         const value = kmsConfigs.find((i) => i.metadata.configUUID === field.value) ?? '';

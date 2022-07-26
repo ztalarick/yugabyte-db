@@ -7,7 +7,6 @@ export enum clusterModes {
   NEW_ASYNC,
   EDIT_ASYNC
 }
-
 export interface CommunicationPorts {
   masterHttpPort: number;
   masterRpcPort: number;
@@ -21,6 +20,23 @@ export interface CommunicationPorts {
   ysqlServerRpcPort: number;
 }
 
+export interface PlacementAZ {
+  uuid: string;
+  name: string;
+  replicationFactor: number;
+  subnet: string;
+  numNodesInAZ: number;
+  isAffinitized: boolean;
+}
+
+export interface RegionInfo {
+  parentRegionId: string;
+  parentRegionName: string;
+  parentRegionCode: string;
+}
+
+export type Placement = (PlacementAZ & RegionInfo) | null;
+
 export interface CloudConfigFormValue {
   universeName: string;
   provider: ProviderMin | null;
@@ -28,7 +44,7 @@ export interface CloudConfigFormValue {
   totalNodes: number;
   replicationFactor: number;
   autoPlacement: boolean;
-  placements: string[];
+  placements: Placement[];
 }
 
 export interface AccessKey {

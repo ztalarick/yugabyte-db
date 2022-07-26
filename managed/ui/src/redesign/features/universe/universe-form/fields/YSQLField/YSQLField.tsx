@@ -4,13 +4,15 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBHelper, YBPasswordField, YBToggleField } from '../../../../../components';
-
+import {
+  YSQL_FIELD,
+  YSQL_AUTH_FIELD,
+  YSQL_PASSWORD_FIELD,
+  YSQL_CONFIRM_PASSWORD_FIELD
+} from '../../utils/constants';
 interface YSQLFieldProps {
   disabled: boolean;
 }
-
-const YSQL_FIELD_NAME = 'instanceConfig.enableYSQL';
-const YSQL_AUTH_FIELD_NAME = 'instanceConfig.enableYSQLAuth';
 
 export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
   const {
@@ -19,8 +21,8 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
   } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  const ysqlEnabled = useWatch({ name: YSQL_FIELD_NAME });
-  const ysqlAuthEnabled = useWatch({ name: YSQL_AUTH_FIELD_NAME });
+  const ysqlEnabled = useWatch({ name: YSQL_FIELD });
+  const ysqlAuthEnabled = useWatch({ name: YSQL_AUTH_FIELD });
 
   return (
     <Box display="flex" width="100%" flexDirection="column">
@@ -28,7 +30,7 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
         <YBLabel>{t('universeForm.instanceConfig.enableYSQL')}</YBLabel>
         <Box flex={1}>
           <YBToggleField
-            name={YSQL_FIELD_NAME}
+            name={YSQL_FIELD}
             inputProps={{
               'data-testid': 'YSQL'
             }}
@@ -45,7 +47,7 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
             <YBLabel>{t('universeForm.instanceConfig.enableYSQLAuth')}</YBLabel>
             <Box flex={1}>
               <YBToggleField
-                name={YSQL_AUTH_FIELD_NAME}
+                name={YSQL_AUTH_FIELD}
                 inputProps={{
                   'data-testid': 'YSQLAuth'
                 }}
@@ -64,7 +66,7 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
                     <YBLabel>{t('universeForm.instanceConfig.YSQLAuthPassword')}</YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
-                        name="instanceConfig.ysqlPassword"
+                        name={YSQL_PASSWORD_FIELD}
                         control={control}
                         fullWidth
                         inputProps={{
@@ -82,7 +84,7 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
                     <YBLabel>{t('universeForm.instanceConfig.confirmPassword')}</YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
-                        name="instanceConfig.ysqlConfirmPassword"
+                        name={YSQL_CONFIRM_PASSWORD_FIELD}
                         control={control}
                         fullWidth
                         inputProps={{

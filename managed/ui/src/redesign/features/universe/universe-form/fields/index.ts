@@ -1,6 +1,7 @@
 export * from './AccessKeysField/AccessKeysField';
 export * from './ARNField/ARNField';
 export * from './AssignPublicIPField/AssignPublicIPField';
+export * from './AutoPlacementField/AutoPlacementField';
 export * from './ClientToNodeTLSField/ClientToNodeTLSField';
 export * from './DBVersionField/DBVersionField';
 export * from './DeploymentPortsField/DeploymentPortsField';
@@ -10,6 +11,7 @@ export * from './IPV6Field/IPV6Field';
 export * from './KMSConfigField/KMSConfigField';
 export * from './NetworkAccessField/NetworkAccessField';
 export * from './NodeToNodeTLSField/NodeToNodeTLSField';
+export * from './PlacementsField/PlacementsField';
 export * from './ProvidersField/ProvidersField';
 export * from './RegionsField/RegionsField';
 export * from './ReplicationFactorField/ReplicationFactorField';

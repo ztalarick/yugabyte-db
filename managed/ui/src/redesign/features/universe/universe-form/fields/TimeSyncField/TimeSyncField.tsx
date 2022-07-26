@@ -4,12 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { CloudType, UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../components';
+import { TIME_SYNC_FIELD, PROVIDER_FIELD } from '../../utils/constants';
 
 interface TimeSyncFieldProps {
   disabled: boolean;
 }
 
-const PROVIDER_FIELD_NAME = 'instanceConfig.provider';
 const PROVIDER_FRIENDLY_NAME = {
   [CloudType.aws]: 'AWS',
   [CloudType.gcp]: 'GCP',
@@ -20,7 +20,7 @@ export const TimeSyncField = ({ disabled }: TimeSyncFieldProps): ReactElement =>
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  const provider = useWatch({ name: PROVIDER_FIELD_NAME });
+  const provider = useWatch({ name: PROVIDER_FIELD });
 
   const stringMap = { provider: PROVIDER_FRIENDLY_NAME[provider?.code] };
 
@@ -29,7 +29,7 @@ export const TimeSyncField = ({ disabled }: TimeSyncFieldProps): ReactElement =>
       <YBLabel>{t('universeForm.instanceConfig.useTimeSync', stringMap)}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={'instanceConfig.useTimeSync'}
+          name={TIME_SYNC_FIELD}
           inputProps={{
             'data-testid': 'useTimeSync'
           }}

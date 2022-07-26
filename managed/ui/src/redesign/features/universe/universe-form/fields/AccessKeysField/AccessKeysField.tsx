@@ -6,19 +6,17 @@ import { useSelector } from 'react-redux';
 import { YBLabel, YBSelectField } from '../../../../../components';
 import { AccessKey, UniverseFormData } from '../../utils/dto';
 import { useUpdateEffect } from 'react-use';
+import { ACCESS_KEY_FIELD, PROVIDER_FIELD } from '../../utils/constants';
 
 interface AccessKeysFieldProps {
   disabled?: boolean;
 }
 
-const ACCESS_KEYS_FIELD_NAME = 'advancedConfig.accessKeyCode';
-const PROVIDER_FIELD_NAME = 'cloudConfig.provider';
-
 export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElement => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
-  const provider = useWatch({ name: PROVIDER_FIELD_NAME });
-  const fieldVal = useWatch({ name: ACCESS_KEYS_FIELD_NAME });
+  const provider = useWatch({ name: PROVIDER_FIELD });
+  const fieldVal = useWatch({ name: ACCESS_KEY_FIELD });
 
   //all access keys
   const allAccessKeys = useSelector((state: any) => state.cloud.accessKeys);
@@ -31,7 +29,7 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
   useUpdateEffect(() => {
     const defaultVal = accessKeys[0]?.idKey.keyCode;
     if (accessKeys.length && provider?.uuid && defaultVal !== fieldVal) {
-      setValue(ACCESS_KEYS_FIELD_NAME, defaultVal, { shouldValidate: true });
+      setValue(ACCESS_KEY_FIELD, defaultVal, { shouldValidate: true });
     }
   }, [provider?.uuid, accessKeys]);
 
@@ -39,12 +37,7 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
     <Box display="flex" width="100%">
       <YBLabel>{t('universeForm.advancedConfig.accessKey')}</YBLabel>
       <Box flex={1}>
-        <YBSelectField
-          name={ACCESS_KEYS_FIELD_NAME}
-          control={control}
-          fullWidth
-          disabled={disabled}
-        >
+        <YBSelectField name={ACCESS_KEY_FIELD} control={control} fullWidth disabled={disabled}>
           {accessKeys.map((item: AccessKey) => (
             <MenuItem key={item.idKey.keyCode} value={item.idKey.keyCode}>
               {item.idKey.keyCode}

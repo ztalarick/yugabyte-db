@@ -8,12 +8,11 @@ import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 import { api, QUERY_KEY } from '../../../../../helpers/api';
 import { UniverseFormData } from '../../utils/dto';
+import { REGIONS_FIELD } from '../../utils/constants';
 
 interface RegionsFieldProps {
   disabled?: boolean;
 }
-
-const REGIONS_FIELD_NAME = 'cloudConfig.regionList';
 
 const getOptionLabel = (option: Record<string, string>): string => option?.name;
 
@@ -30,8 +29,8 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
       enabled: !!provider?.uuid, // make sure query won't run when there's no provider defined
       onSuccess: (regions) => {
         // if regions are not selected and there's single region available - automatically preselect it
-        if (_.isEmpty(getValues(REGIONS_FIELD_NAME)) && regions.length === 1) {
-          setValue(REGIONS_FIELD_NAME, [regions[0].uuid], { shouldValidate: true });
+        if (_.isEmpty(getValues(REGIONS_FIELD)) && regions.length === 1) {
+          setValue(REGIONS_FIELD, [regions[0].uuid], { shouldValidate: true });
         }
       }
     }
@@ -41,7 +40,7 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
   const regionsListMap = _.keyBy(regionsList, 'uuid');
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
     setValue(
-      REGIONS_FIELD_NAME,
+      REGIONS_FIELD,
       (option || []).map((item: any) => item.uuid),
       { shouldValidate: true }
     );
@@ -49,13 +48,13 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
 
   // reset selected regions on provider change
   useUpdateEffect(() => {
-    setValue(REGIONS_FIELD_NAME, []);
+    setValue(REGIONS_FIELD, []);
   }, [provider]);
 
   return (
     <Box display="flex" width="100%" flexDirection={'row'}>
       <Controller
-        name={REGIONS_FIELD_NAME}
+        name={REGIONS_FIELD}
         control={control}
         render={({ field, fieldState }) => {
           const value = field.value.map((region) => regionsListMap[region]);
