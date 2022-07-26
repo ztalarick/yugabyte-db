@@ -33,12 +33,14 @@
       },
       "cloudConfig": {
         "title": "Cloud Configuration",
+        "nodePlacementTitle": "Node Placement",
         "universeName": "Name",
         "universeNameInUse": "Name already in use",
         "providerField": "Provider",
         "regionsField": "Regions",
         "replicationField": "Replication Factor",
-        "totalNodesField": "Nodes"
+        "totalNodesField": "Total Nodes",
+        "autoPlacementField": "Auto Placement"
       },
       "gFlags": {
         "title": "G-Flags"

@@ -4,12 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { useFormContext } from 'react-hook-form';
 import { YBInputField, YBLabel } from '../../../../../components';
 import { UniverseFormData } from '../../utils/dto';
+import { AWS_ARN_STRING_FIELD } from '../../utils/constants';
 
 interface ARNFieldProps {
   disabled?: boolean;
 }
-
-const ARN_FIELD_NAME = 'advancedConfig.awsArnString';
 
 export const ARNField = ({ disabled }: ARNFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -21,11 +20,10 @@ export const ARNField = ({ disabled }: ARNFieldProps): ReactElement => {
       <Box flex={1}>
         <YBInputField
           control={control}
-          name={ARN_FIELD_NAME}
+          name={AWS_ARN_STRING_FIELD}
           fullWidth
           disabled={disabled}
           inputProps={{
-            autoFocus: true,
             'data-testid': 'awsArnString'
           }}
         />

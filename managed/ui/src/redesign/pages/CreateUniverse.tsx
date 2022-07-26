@@ -1,8 +1,8 @@
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { UniverseForm } from './UniverseForm';
+import { UniverseForm } from '../features/universe/universe-form/UniverseForm';
 import { RouteComponentProps } from 'react-router-dom';
-import { DEFAULT_FORM_DATA, clusterModes } from './utils/dto';
+import { DEFAULT_FORM_DATA, clusterModes } from '../features/universe/universe-form/utils/dto';
 
 interface CreateUniverseProps {}
 

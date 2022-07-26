@@ -7,6 +7,7 @@ import { api, QUERY_KEY } from '../../../../../helpers/api';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 import { DEFAULT_ADVANCED_CONFIG, UniverseFormData } from '../../utils/dto';
 import { sortVersionStrings } from './DBVersionHelper';
+import { SOFTWARE_VERSION_FIELD, PROVIDER_FIELD } from '../../utils/constants';
 
 interface DBVersionFieldProps {
   disabled?: boolean;
@@ -14,9 +15,6 @@ interface DBVersionFieldProps {
 
 const getOptionLabel = (option: Record<string, string>): string => option.label ?? '';
 const renderOption = (option: Record<string, string>): string => option.label;
-
-const DB_VERSION_FIELD_NAME = 'advancedConfig.ybSoftwareVersion';
-const PROVIDER_FIELD_NAME = 'cloudConfig.provider';
 
 const transformData = (data: string[]) => {
   return data.map((item) => ({
@@ -28,7 +26,7 @@ const transformData = (data: string[]) => {
 export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
-  const provider = useWatch({ name: PROVIDER_FIELD_NAME });
+  const provider = useWatch({ name: PROVIDER_FIELD });
 
   const { data, isLoading } = useQuery(
     [QUERY_KEY.getDBVersionsByProvider, provider?.uuid],
@@ -38,8 +36,8 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
       onSuccess: (data) => {
         //pre-select first available db version
         const sorted: Record<string, string>[] = sortVersionStrings(data);
-        if (!getValues(DB_VERSION_FIELD_NAME) && sorted.length) {
-          setValue(DB_VERSION_FIELD_NAME, sorted[0].value, { shouldValidate: true });
+        if (!getValues(SOFTWARE_VERSION_FIELD) && sorted.length) {
+          setValue(SOFTWARE_VERSION_FIELD, sorted[0].value, { shouldValidate: true });
         }
       },
       select: transformData
@@ -47,7 +45,7 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
   );
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(DB_VERSION_FIELD_NAME, option?.value ?? DEFAULT_ADVANCED_CONFIG.ybSoftwareVersion, {
+    setValue(SOFTWARE_VERSION_FIELD, option?.value ?? DEFAULT_ADVANCED_CONFIG.ybSoftwareVersion, {
       shouldValidate: true
     });
   };
@@ -56,7 +54,7 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
 
   return (
     <Controller
-      name={DB_VERSION_FIELD_NAME}
+      name={SOFTWARE_VERSION_FIELD}
       control={control}
       render={({ field, fieldState }) => {
         const value = dbVersions.find((item) => item.value === field.value) ?? '';
