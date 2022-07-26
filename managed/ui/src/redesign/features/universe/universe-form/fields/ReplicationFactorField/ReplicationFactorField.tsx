@@ -4,13 +4,13 @@ import { useFormContext, useController } from 'react-hook-form';
 import { ButtonGroup, Box } from '@material-ui/core';
 import { YBButton, YBLabel } from '../../../../../components';
 import { UniverseFormData } from '../../utils/dto';
+import { REPLICATION_FACTOR_FIELD } from '../../utils/constants';
 
 interface ReplicationFactorProps {
   disabled?: boolean;
 }
 
 const REPLICATION_FACTORS = [1, 3, 5, 7];
-const REPLICATION_FACTOR_FIELD_NAME = 'cloudConfig.replicationFactor';
 
 export const ReplicationFactor = ({ disabled }: ReplicationFactorProps): ReactElement => {
   const { setValue } = useFormContext<UniverseFormData>();
@@ -18,11 +18,11 @@ export const ReplicationFactor = ({ disabled }: ReplicationFactorProps): ReactEl
   const {
     field: { value }
   } = useController({
-    name: REPLICATION_FACTOR_FIELD_NAME
+    name: REPLICATION_FACTOR_FIELD
   });
 
   const handleSelect = (val: number) => {
-    setValue(REPLICATION_FACTOR_FIELD_NAME, val);
+    setValue(REPLICATION_FACTOR_FIELD, val);
   };
 
   return (

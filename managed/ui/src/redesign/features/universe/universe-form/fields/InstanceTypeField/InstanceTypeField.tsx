@@ -18,10 +18,7 @@ import {
   DEFAULT_INSTANCE_TYPES,
   isEphemeralAwsStorageInstance
 } from './InstanceTypeFieldHelper';
-
-const INSTANCE_TYPE_FIELD_NAME = 'instanceConfig.instanceType';
-const PROVIDER_FIELD_NAME = 'cloudConfig.provider';
-const DEVICE_INFO_FIELD_NAME = 'instanceConfig.deviceInfo';
+import { INSTANCE_TYPE_FIELD, PROVIDER_FIELD, DEVICE_INFO_FIELD } from '../../utils/constants';
 
 const getOptionLabel = (op: Record<string, string>): string => {
   if (op) {
@@ -44,11 +41,11 @@ export const InstanceTypeField: FC = () => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  const provider = useWatch({ name: PROVIDER_FIELD_NAME });
-  const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD_NAME });
+  const provider = useWatch({ name: PROVIDER_FIELD });
+  const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(INSTANCE_TYPE_FIELD_NAME, option?.instanceTypeCode, { shouldValidate: true });
+    setValue(INSTANCE_TYPE_FIELD, option?.instanceTypeCode, { shouldValidate: true });
   };
 
   const { data, isLoading } = useQuery(
@@ -61,7 +58,7 @@ export const InstanceTypeField: FC = () => {
         if (provider?.code && data.length) {
           const defaultInstanceType =
             DEFAULT_INSTANCE_TYPES[provider.code] || data[0].instanceTypeCode;
-          setValue(INSTANCE_TYPE_FIELD_NAME, defaultInstanceType, { shouldValidate: true });
+          setValue(INSTANCE_TYPE_FIELD, defaultInstanceType, { shouldValidate: true });
         }
       }
     }
@@ -70,7 +67,7 @@ export const InstanceTypeField: FC = () => {
 
   return (
     <Controller
-      name={INSTANCE_TYPE_FIELD_NAME}
+      name={INSTANCE_TYPE_FIELD}
       control={control}
       render={({ field, fieldState }) => {
         const value =

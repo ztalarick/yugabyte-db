@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Box, Typography, Grid } from '@material-ui/core';
 import { useSectionStyles } from '../../universeMainStyle';
 import {
+  AutoPlacementField,
   UniverseNameField,
+  PlacementsField,
   ProvidersField,
   RegionsField,
   ReplicationFactor,
@@ -40,15 +42,24 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
             </Grid>
           </Grid>
         </Box>
-        <Box mt={2}>
-          <Grid container justifyContent="flex-start" alignItems="flex-end" spacing={3}>
-            <Grid lg={2} item>
-              <TotalNodesField disabled={false} />
-            </Grid>
-            <Grid lg={4} item>
+        <Box mt={2} mb={4}>
+          <Grid container>
+            <Grid lg={6} item>
               <ReplicationFactor disabled={false} />
             </Grid>
           </Grid>
+        </Box>
+        <Typography variant="h5">{t('universeForm.cloudConfig.nodePlacementTitle')}</Typography>
+        <Box mt={2} display="flex" flexDirection="column">
+          <Grid container justifyContent="space-between" alignItems="center">
+            <Grid lg={6} item>
+              <AutoPlacementField disabled={false} />
+            </Grid>
+            <Grid lg={6} item>
+              <TotalNodesField disabled={false} />
+            </Grid>
+          </Grid>
+          <PlacementsField disabled={false} />
         </Box>
       </Box>
     </Box>

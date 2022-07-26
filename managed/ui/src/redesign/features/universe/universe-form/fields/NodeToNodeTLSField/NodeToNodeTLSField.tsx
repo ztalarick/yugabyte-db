@@ -4,12 +4,11 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../components';
+import { NODE_TO_NODE_ENCRYPT_FIELD } from '../../utils/constants';
 
 interface NodeToNodeTLSFieldProps {
   disabled: boolean;
 }
-
-const NODE_NODE_TLS_FIELD_NAME = 'instanceConfig.enableNodeToNodeEncrypt';
 
 export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -20,7 +19,7 @@ export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): React
       <YBLabel>{t('universeForm.instanceConfig.enableNodeToNodeTLS')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={NODE_NODE_TLS_FIELD_NAME}
+          name={NODE_TO_NODE_ENCRYPT_FIELD}
           inputProps={{
             'data-testid': 'NodeToNodeTLS'
           }}

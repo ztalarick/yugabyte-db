@@ -7,12 +7,11 @@ import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 import { api, QUERY_KEY } from '../../../../../helpers/api';
 import { UniverseFormData, Provider, DEFAULT_CLOUD_CONFIG } from '../../utils/dto';
+import { PROVIDER_FIELD } from '../../utils/constants';
 
 interface ProvidersFieldProps {
   disabled?: boolean;
 }
-
-const PROVIDER_FIELD_NAME = 'cloudConfig.provider';
 
 // simplified provider object with bare minimum fields needed in UI
 export type ProviderMin = Pick<Provider, 'uuid' | 'code'>;
@@ -29,16 +28,16 @@ export const ProvidersField = ({ disabled }: ProvidersFieldProps): ReactElement 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
     if (option) {
       const { code, uuid } = option;
-      setValue(PROVIDER_FIELD_NAME, { code, uuid }, { shouldValidate: true });
+      setValue(PROVIDER_FIELD, { code, uuid }, { shouldValidate: true });
     } else {
-      setValue(PROVIDER_FIELD_NAME, DEFAULT_CLOUD_CONFIG.provider, { shouldValidate: true });
+      setValue(PROVIDER_FIELD, DEFAULT_CLOUD_CONFIG.provider, { shouldValidate: true });
     }
   };
 
   return (
     <Box display="flex" width="100%" flexDirection={'row'}>
       <Controller
-        name={PROVIDER_FIELD_NAME}
+        name={PROVIDER_FIELD}
         control={control}
         render={({ field, fieldState }) => {
           const value =

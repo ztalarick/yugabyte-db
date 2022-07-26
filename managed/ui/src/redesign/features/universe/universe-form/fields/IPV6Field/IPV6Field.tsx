@@ -4,12 +4,11 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../components';
+import { IPV6_FIELD } from '../../utils/constants';
 
 interface IPV6FieldProps {
   disabled: boolean;
 }
-
-const IPV6_FIELD_NAME = 'advancedConfig.enableIPV6';
 
 export const IPV6Field = ({ disabled }: IPV6FieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -20,7 +19,7 @@ export const IPV6Field = ({ disabled }: IPV6FieldProps): ReactElement => {
       <YBLabel>{t('universeForm.advancedConfig.enableIPV6')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={IPV6_FIELD_NAME}
+          name={IPV6_FIELD}
           inputProps={{
             'data-testid': 'enableIPV6'
           }}

@@ -4,13 +4,15 @@ import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBHelper, YBPasswordField, YBToggleField } from '../../../../../components';
-
+import {
+  YCQL_AUTH_FIELD,
+  YCQL_FIELD,
+  YCQL_PASSWORD_FIELD,
+  YCQL_CONFIRM_PASSWORD_FIELD
+} from '../../utils/constants';
 interface YCQLFieldProps {
   disabled: boolean;
 }
-
-const YCQL_FIELD_NAME = 'instanceConfig.enableYCQL';
-const YCQL_AUTH_FIELD_NAME = 'instanceConfig.enableYCQLAuth';
 
 export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
   const {
@@ -19,8 +21,8 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
   } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  const ycqlEnabled = useWatch({ name: YCQL_FIELD_NAME });
-  const ycqlAuthEnabled = useWatch({ name: YCQL_AUTH_FIELD_NAME });
+  const ycqlEnabled = useWatch({ name: YCQL_FIELD });
+  const ycqlAuthEnabled = useWatch({ name: YCQL_AUTH_FIELD });
 
   return (
     <Box display="flex" width="100%" flexDirection="column">
@@ -28,7 +30,7 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
         <YBLabel>{t('universeForm.instanceConfig.enableYCQL')}</YBLabel>
         <Box flex={1}>
           <YBToggleField
-            name={YCQL_FIELD_NAME}
+            name={YCQL_FIELD}
             inputProps={{
               'data-testid': 'YCQL'
             }}
@@ -45,7 +47,7 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
             <YBLabel>{t('universeForm.instanceConfig.enableYCQLAuth')}</YBLabel>
             <Box flex={1}>
               <YBToggleField
-                name={YCQL_AUTH_FIELD_NAME}
+                name={YCQL_AUTH_FIELD}
                 inputProps={{
                   'data-testid': 'YCQLAuth'
                 }}
@@ -64,7 +66,7 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
                     <YBLabel>{t('universeForm.instanceConfig.YCQLAuthPassword')}</YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
-                        name="instanceConfig.ycqlPassword"
+                        name={YCQL_PASSWORD_FIELD}
                         control={control}
                         fullWidth
                         inputProps={{
@@ -82,7 +84,7 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
                     <YBLabel>{t('universeForm.instanceConfig.confirmPassword')}</YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
-                        name="instanceConfig.ycqlConfirmPassword"
+                        name={YCQL_CONFIRM_PASSWORD_FIELD}
                         control={control}
                         fullWidth
                         inputProps={{

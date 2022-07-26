@@ -5,11 +5,10 @@ import { Box } from '@material-ui/core';
 import { YBInputField, YBLabel } from '../../../../../components';
 import { api } from '../../../../../helpers/api';
 import { UniverseFormData } from '../../utils/dto';
+import { UNIVERSE_NAME_FIELD } from '../../utils/constants';
 interface UniverseNameFieldProps {
   disabled?: boolean;
 }
-
-const UNIVERSE_NAME_FIELD_NAME = 'cloudConfig.universeName';
 
 export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -36,7 +35,7 @@ export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactEl
       <Box flex={1}>
         <YBInputField
           control={control}
-          name={UNIVERSE_NAME_FIELD_NAME}
+          name={UNIVERSE_NAME_FIELD}
           fullWidth
           rules={{ validate: validateUniverseName }}
           disabled={disabled}

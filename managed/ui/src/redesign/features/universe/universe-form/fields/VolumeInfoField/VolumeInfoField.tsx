@@ -8,21 +8,19 @@ import { CloudType, StorageType, UniverseFormData } from '../../utils/dto';
 import { api, QUERY_KEY } from '../../../../../helpers/api';
 import { YBInput, YBLabel, YBSelect } from '../../../../../components';
 import { getStorageTypeOptions, getDeviceInfoFromInstance } from './VolumeFieldHelper';
+import { PROVIDER_FIELD, DEVICE_INFO_FIELD } from '../../utils/constants';
 
 const DEFAULT_IOPS_IO1 = 1000;
 const DEFAULT_IOPS_GP3 = 3000;
 const DEFAULT_THROUGHPUT_GP3 = 125;
 
-const VOLUME_INFO_FIELD_NAME = 'instanceConfig.deviceInfo';
-const PROVIDER_FIELD_NAME = 'cloudConfig.provider';
-
 export const VolumeInfoField: FC = () => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  const fieldValue = useWatch({ name: VOLUME_INFO_FIELD_NAME });
+  const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
   const instanceType = useWatch({ name: 'instanceConfig.instanceType' });
-  const provider = useWatch({ name: PROVIDER_FIELD_NAME });
+  const provider = useWatch({ name: PROVIDER_FIELD });
 
   const { data: instanceTypes } = useQuery(
     [QUERY_KEY.getInstanceTypes, provider?.uuid],
@@ -32,13 +30,13 @@ export const VolumeInfoField: FC = () => {
 
   useUpdateEffect(() => {
     const instance = instanceTypes?.find((item) => item.instanceTypeCode === instanceType);
-    setValue(VOLUME_INFO_FIELD_NAME, instance ? getDeviceInfoFromInstance(instance) : null);
+    setValue(DEVICE_INFO_FIELD, instance ? getDeviceInfoFromInstance(instance) : null);
   }, [instanceType]);
 
   return (
     <Controller
       control={control}
-      name={VOLUME_INFO_FIELD_NAME}
+      name={DEVICE_INFO_FIELD}
       render={({ field }) => (
         <>
           {fieldValue && (

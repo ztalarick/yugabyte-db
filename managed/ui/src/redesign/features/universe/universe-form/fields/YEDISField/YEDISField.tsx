@@ -4,12 +4,10 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../components';
-
+import { YEDIS_FIELD } from '../../utils/constants';
 interface YEDISFieldProps {
   disabled: boolean;
 }
-
-const YEDIS_FIELD_NAME = 'instanceConfig.enableYEDIS';
 
 export const YEDISField = ({ disabled }: YEDISFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -20,7 +18,7 @@ export const YEDISField = ({ disabled }: YEDISFieldProps): ReactElement => {
       <YBLabel>{t('universeForm.instanceConfig.enableYEDIS')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={YEDIS_FIELD_NAME}
+          name={YEDIS_FIELD}
           inputProps={{
             'data-testid': 'Yedis'
           }}

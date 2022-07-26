@@ -35,11 +35,10 @@ import YugawareLogs from './pages/YugawareLogs';
 import Importer from './pages/Importer';
 import Releases from './pages/Releases';
 import { isDefinedNotNull, isNullOrEmpty } from './utils/ObjectUtils';
-import { CreateUniverse } from './redesign/features/universe/universe-form/CreateUniverse';
 import { Administration } from './pages/Administration';
 import ToggleFeaturesInTest from './pages/ToggleFeaturesInTest';
 import { ReplicationDetails } from './components/xcluster';
-import { EditUniverse } from './redesign/features/universe/universe-form/EditUniverse';
+import { CreateUniverse, EditUniverse } from './redesign/pages';
 
 /**
  * Redirects to base url if no queryParmas is set else redirects to path set in queryParam

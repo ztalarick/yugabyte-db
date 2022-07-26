@@ -4,16 +4,17 @@ import { Controller, useWatch, useFormContext } from 'react-hook-form';
 import { DEFAULT_COMMUNICATION_PORTS, UniverseFormData } from '../../utils/dto';
 import { YBInput, YBToggleField, YBLabel } from '../../../../../components';
 import { useTranslation } from 'react-i18next';
+import {
+  COMMUNICATION_PORTS_FIELD,
+  YCQL_FIELD,
+  YSQL_FIELD,
+  YEDIS_FIELD,
+  CUSTOMIZE_PORT_FIELD
+} from '../../utils/constants';
 
 interface DeploymentPortsFieldids {
   disabled: boolean;
 }
-
-const COMMUNICATION_PORTS_FIELD_NAME = 'advancedConfig.communicationPorts';
-const YCQL_FIELD_NAME = 'instanceConfig.enableYCQL';
-const YSQL_FIELD_NAME = 'instanceConfig.enableYSQL';
-const YEDIS_FIELD_NAME = 'instanceConfig.enableYEDIS';
-const CUSTOMIZE_PORT_FIELD_NAME = 'advancedConfig.customizePort';
 
 const MAX_PORT = 65535;
 
@@ -21,11 +22,11 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  const ysqlEnabled = useWatch({ name: YSQL_FIELD_NAME });
-  const ycqlEnabled = useWatch({ name: YCQL_FIELD_NAME });
-  const yedisEnabled = useWatch({ name: YEDIS_FIELD_NAME });
+  const ysqlEnabled = useWatch({ name: YSQL_FIELD });
+  const ycqlEnabled = useWatch({ name: YCQL_FIELD });
+  const yedisEnabled = useWatch({ name: YEDIS_FIELD });
 
-  const customizePort = useWatch({ name: CUSTOMIZE_PORT_FIELD_NAME });
+  const customizePort = useWatch({ name: CUSTOMIZE_PORT_FIELD });
 
   const portsConfig = [
     { id: 'masterHttpPort', visible: true },
@@ -42,14 +43,14 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
 
   return (
     <Controller
-      name={COMMUNICATION_PORTS_FIELD_NAME}
+      name={COMMUNICATION_PORTS_FIELD}
       render={({ field: { value, onChange } }) => {
         return (
           <Box display="flex" alignItems="flex-start">
             <YBLabel>{t('universeForm.advancedConfig.overridePorts')}</YBLabel>
             <Box flex={1} display="flex" flexDirection="column">
               <YBToggleField
-                name={CUSTOMIZE_PORT_FIELD_NAME}
+                name={CUSTOMIZE_PORT_FIELD}
                 inputProps={{
                   'data-testid': 'customizePort'
                 }}

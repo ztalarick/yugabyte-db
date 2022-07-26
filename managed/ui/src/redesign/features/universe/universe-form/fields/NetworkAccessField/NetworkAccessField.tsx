@@ -4,12 +4,10 @@ import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../components';
-
+import { EXPOSING_SERVICE_FIELD } from '../../utils/constants';
 interface NetworkAccessFieldProps {
   disabled: boolean;
 }
-
-const NETWORK_ACCESS_FIELD_NAME = 'advancedConfig.enableExposingService';
 
 export const NetworkAccessField = ({ disabled }: NetworkAccessFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
@@ -20,7 +18,7 @@ export const NetworkAccessField = ({ disabled }: NetworkAccessFieldProps): React
       <YBLabel>{t('universeForm.advancedConfig.enableNetworkAccess')}</YBLabel>
       <Box flex={1}>
         <YBToggleField
-          name={NETWORK_ACCESS_FIELD_NAME}
+          name={EXPOSING_SERVICE_FIELD}
           inputProps={{
             'data-testid': 'enableNetworkAccess'
           }}
