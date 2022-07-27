@@ -220,7 +220,7 @@ Result<YBTableName> CDCSDKTestBase::CreateTable(
     const bool enum_value,
     const std::string& enum_suffix,
     const std::string& schema_name,
-    uint32_t  num_cols) {
+    uint32_t num_cols) {
   auto conn = VERIFY_RESULT(cluster->ConnectToDB(namespace_name));
 
   if (enum_value) {
