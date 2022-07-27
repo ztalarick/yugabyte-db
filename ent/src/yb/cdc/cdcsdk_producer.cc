@@ -265,8 +265,8 @@ Status PopulateCDCSDKIntentRecord(
         MakeNewProtoRecord(
             prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
             reverse_index_key);
-        
-        columns_read.erase(columns_read.begin(),columns_read.end());
+
+        columns_read.erase(columns_read.begin(), columns_read.end());
       }
 
       proto_record.Clear();
