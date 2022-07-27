@@ -211,8 +211,10 @@ Status PopulateCDCSDKIntentRecord(
   RowMessage* row_message = proto_record.mutable_row_message();
   size_t col_count = 0;
   docdb::IntentKeyValueForCDC prev_intent;
+  std::set<std::string> columns_read;
   for (const auto& intent : intents) {
     Slice key(intent.key_buf);
+    std::string column_name;
     const auto key_size =
         VERIFY_RESULT(docdb::DocKey::EncodedSize(key, docdb::DocKeyPart::kWholeDocKey));
 
@@ -247,7 +249,15 @@ Status PopulateCDCSDKIntentRecord(
     // Compare key hash with previously seen key hash to determine whether the write pair
     // is part of the same row or not.
     Slice primary_key(key.data(), key_size);
-    if (prev_key != primary_key || col_count >= schema.num_columns()) {
+    if (column_id_opt && column_id_opt->type() == docdb::KeyEntryType::kColumnId) {
+      const ColumnSchema& col = VERIFY_RESULT(schema.column_by_id(column_id_opt->GetColumnId()));
+      column_name = col.name();
+    }
+
+    if (prev_key != primary_key || col_count >= schema.num_columns() || /*move_to_next_record ||*/
+        (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) ||
+        (prev_key == primary_key && !column_name.empty() &&
+         columns_read.find(column_name) != columns_read.end())) {
       if (col_count >= schema.num_columns()) col_count = 0;
 
       if (proto_record.IsInitialized() && row_message->IsInitialized() &&
@@ -255,6 +265,8 @@ Status PopulateCDCSDKIntentRecord(
         MakeNewProtoRecord(
             prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
             reverse_index_key);
+        
+        columns_read.erase(columns_read.begin(),columns_read.end());
       }
 
       proto_record.Clear();
@@ -290,7 +302,10 @@ Status PopulateCDCSDKIntentRecord(
             schema_packing_storage, schema, tablet_peer, enum_oid_label_map, &value_slice,
             row_message));
       } else {
-        ++col_count;
+        if (row_message->op() == RowMessage_Op_INSERT) {
+          ++col_count;
+        }
+
         docdb::Value decoded_value;
         RETURN_NOT_OK(decoded_value.Decode(intent.value_buf));
 
@@ -302,6 +317,10 @@ Status PopulateCDCSDKIntentRecord(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
               row_message->add_new_tuple()));
           row_message->add_old_tuple();
+
+          if (row_message->op() == RowMessage_Op_UPDATE) {
+            columns_read.insert(col.name());
+          }
 
         } else if (column_id_opt && column_id_opt->type() != docdb::KeyEntryType::kSystemColumnId) {
           LOG(DFATAL) << "Unexpected value type in key: " << column_id_opt->type()
@@ -316,6 +335,7 @@ Status PopulateCDCSDKIntentRecord(
       MakeNewProtoRecord(
           intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
           reverse_index_key);
+      col_count = schema.num_columns();
     } else if (row_message->op() == RowMessage_Op_UPDATE) {
       prev_intent = intent;
     }
