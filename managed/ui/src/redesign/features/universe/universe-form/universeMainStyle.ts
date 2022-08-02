@@ -99,3 +99,10 @@ export const useFormFieldStyles = makeStyles(() => ({
     opacity: 0.5
   }
 }));
+
+export const useFormFieldStyles = makeStyles(() => ({
+  itemDisabled: {
+    cursor: 'not-allowed',
+    opacity: 0.5
+  }
+}));
