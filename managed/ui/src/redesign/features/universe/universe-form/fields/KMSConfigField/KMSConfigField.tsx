@@ -21,7 +21,7 @@ const getOptionLabel = (op: Record<string, string>): string => {
 };
 
 interface KMSConfigFieldProps {
-  disabled: boolean;
+  disabled?: boolean;
 }
 
 export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
@@ -55,6 +55,7 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
             <YBLabel>{t('universeForm.instanceConfig.kmsConfig')}</YBLabel>
             <Box flex={1}>
               <YBAutoComplete
+                disabled={disabled}
                 loading={isLoading}
                 options={(kmsConfigs as unknown) as Record<string, string>[]}
                 ybInputProps={{

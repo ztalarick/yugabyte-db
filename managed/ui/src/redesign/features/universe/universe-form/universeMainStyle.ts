@@ -42,3 +42,10 @@ export const useSectionStyles = makeStyles((theme) => ({
     borderBottom: '1px solid #e5e5e9'
   }
 }));
+
+export const useFormFieldStyles = makeStyles(() => ({
+  itemDisabled: {
+    cursor: 'not-allowed',
+    opacity: 0.5
+  }
+}));

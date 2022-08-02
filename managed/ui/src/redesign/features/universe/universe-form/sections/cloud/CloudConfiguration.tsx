@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import React, { FC, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Grid } from '@material-ui/core';
 import { useSectionStyles } from '../../universeMainStyle';
@@ -11,23 +11,32 @@ import {
   ReplicationFactor,
   TotalNodesField
 } from '../../fields';
+import { UniverseFormContext } from '../../UniverseForm';
+import { clusterModes } from '../../utils/dto';
 
 interface CloudConfigProps {}
 
 export const CloudConfiguration: FC<CloudConfigProps> = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
+
+  //form context
+  const { isPrimary, mode } = useContext(UniverseFormContext);
+  const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
+
   return (
     <Box className={classes.sectionContainer}>
       <Typography variant="h5">{t('universeForm.cloudConfig.title')}</Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
-        <Box mt={2}>
-          <Grid container>
-            <Grid lg={6} item container>
-              <UniverseNameField disabled={false} />
+        {isPrimary && (
+          <Box mt={2}>
+            <Grid container>
+              <Grid lg={6} item container>
+                <UniverseNameField disabled={isFieldReadOnly} />
+              </Grid>
             </Grid>
-          </Grid>
-        </Box>
+          </Box>
+        )}
         <Box mt={2}>
           <Grid container>
             <Grid lg={6} item container>
@@ -45,7 +54,7 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
         <Box mt={2} mb={4}>
           <Grid container>
             <Grid lg={6} item>
-              <ReplicationFactor disabled={false} />
+              <ReplicationFactor disabled={isFieldReadOnly} />
             </Grid>
           </Grid>
         </Box>
