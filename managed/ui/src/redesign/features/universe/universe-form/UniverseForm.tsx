@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import React, { createContext, FC } from 'react';
 import * as Yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,15 @@ interface UniverseFormProps {
   title: string;
 }
 
+interface UniverseContextProps {
+  mode: clusterModes;
+  isPrimary?: boolean;
+}
+
+export const UniverseFormContext = createContext<UniverseContextProps>({
+  mode: clusterModes.NEW_PRIMARY
+});
+
 export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, title }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
@@ -37,6 +46,9 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
       )
     }),
     cloudConfig: Yup.object({
+      universeName: Yup.string().required(
+        t('universeForm.validation.required', { field: t('universeForm.cloudConfig.universeName') })
+      ),
       provider: Yup.mixed().required(
         t('universeForm.validation.required', {
           field: t('universeForm.cloudConfig.providerField')
@@ -93,38 +105,43 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
 
   const onSubmit = (data: UniverseFormData) => console.log(data);
 
+  //Form Context Values
+  const isPrimary = [clusterModes.NEW_PRIMARY, clusterModes.EDIT_PRIMARY].includes(mode);
+
   return (
     <Box className={classes.mainConatiner}>
-      <FormProvider {...formMethods}>
-        <form onSubmit={formMethods.handleSubmit(onSubmit)}>
-          <Box className={classes.formHeader}>
-            <Typography variant="h4">{title}</Typography>
-          </Box>
-          <Box className={classes.formContainer}>
-            <CloudConfiguration />
-            <InstanceConfiguration />
-            <AdvancedConfiguration />
-            <GFlags />
-            <UserTags />
-          </Box>
-          <Box className={classes.formFooter} mt={4}>
-            <Grid container justifyContent="space-between">
-              <Grid item lg={6}>
-                <Box width="100%" display="flex" justifyContent="flex-start" alignItems="center">
-                  Placeholder to Paint Cost estimation
-                </Box>
+      <UniverseFormContext.Provider value={{ mode, isPrimary }}>
+        <FormProvider {...formMethods}>
+          <form onSubmit={formMethods.handleSubmit(onSubmit)}>
+            <Box className={classes.formHeader}>
+              <Typography variant="h4">{title}</Typography>
+            </Box>
+            <Box className={classes.formContainer}>
+              <CloudConfiguration />
+              <InstanceConfiguration />
+              <AdvancedConfiguration />
+              <GFlags />
+              <UserTags />
+            </Box>
+            <Box className={classes.formFooter} mt={4}>
+              <Grid container justifyContent="space-between">
+                <Grid item lg={6}>
+                  <Box width="100%" display="flex" justifyContent="flex-start" alignItems="center">
+                    Placeholder to Paint Cost estimation
+                  </Box>
+                </Grid>
+                <Grid item lg={6}>
+                  <Box width="100%" display="flex" justifyContent="flex-end">
+                    <YBButton variant="primary" size="large" type="submit">
+                      {t('common.create')}
+                    </YBButton>
+                  </Box>
+                </Grid>
               </Grid>
-              <Grid item lg={6}>
-                <Box width="100%" display="flex" justifyContent="flex-end">
-                  <YBButton variant="primary" size="large" type="submit">
-                    {t('common.create')}
-                  </YBButton>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-        </form>
-      </FormProvider>
+            </Box>
+          </form>
+        </FormProvider>
+      </UniverseFormContext.Provider>
     </Box>
   );
 };

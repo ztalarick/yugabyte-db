@@ -1,24 +1,31 @@
-import React, { FC, ChangeEvent } from 'react';
+import React, { FC, ChangeEvent, useContext } from 'react';
 import { Box } from '@material-ui/core';
-import { Controller, useFormContext } from 'react-hook-form';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { api, QUERY_KEY } from '../../../../../helpers/api';
 
-import { UniverseFormData } from '../../utils/dto';
+import { CloudType, UniverseFormData, clusterModes } from '../../utils/dto';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
-import { ROOT_CERT_FIELD } from '../../utils/constants';
+import { PROVIDER_FIELD, ROOT_CERT_FIELD } from '../../utils/constants';
+import { UniverseFormContext } from '../../UniverseForm';
+import { useFormFieldStyles } from '../../universeMainStyle';
 
 const getOptionLabel = (option: Record<string, string>): string => option.label ?? '';
-const renderOption = (option: Record<string, string>): string => option.label;
-
 interface RootCertificateFieldProps {
   disabled: boolean;
 }
 
-export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
+export const RootCertificateField: FC<RootCertificateFieldProps> = ({ disabled }) => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+  const classes = useFormFieldStyles();
+
+  //form context
+  const { mode } = useContext(UniverseFormContext);
+
+  //provider data
+  const provider = useWatch({ name: PROVIDER_FIELD });
 
   //fetch data
   const { data: certificates = [], isLoading } = useQuery(
@@ -28,6 +35,32 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
     setValue(ROOT_CERT_FIELD, option?.uuid);
+  };
+
+  const renderOption = (option: Record<string, string>): React.ReactNode => {
+    let isDisabled = false;
+
+    if (option?.certType === 'CustomCertHostPath') {
+      if (mode === clusterModes.NEW_PRIMARY) {
+        isDisabled = provider?.code !== CloudType.onprem;
+      } else {
+        isDisabled = provider?.code === CloudType.onprem;
+      }
+    }
+
+    if (isDisabled)
+      return (
+        <Box
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          className={classes.itemDisabled}
+        >
+          {option.label}
+        </Box>
+      );
+    else return <Box>{option.label}</Box>;
   };
 
   return (
@@ -41,6 +74,7 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = () => {
             <YBLabel>{t('universeForm.instanceConfig.rootCertificate')}</YBLabel>
             <Box flex={1}>
               <YBAutoComplete
+                disabled={disabled}
                 loading={isLoading}
                 options={(certificates as unknown) as Record<string, string>[]}
                 getOptionLabel={getOptionLabel}
