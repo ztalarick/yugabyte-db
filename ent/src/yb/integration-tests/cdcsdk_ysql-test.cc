@@ -291,6 +291,32 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     ASSERT_OK(conn.ExecuteFormat("DROP TABLE $0", table_name));
   }
 
+  Status WriteRowsHelper(
+      uint32_t start, uint32_t end, Cluster* cluster, bool flag, uint32_t num_cols) {
+    auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
+    LOG(INFO) << "Writing " << end - start << " row(s) within transaction";
+
+    RETURN_NOT_OK(conn.Execute("BEGIN"));
+    for (uint32_t i = start; i < end; ++i) {
+      uint32_t value = i;
+      std::stringstream statement_buff;
+      statement_buff << "INSERT INTO $0 VALUES (";
+      for (uint32_t iter = 0; iter < num_cols; ++value, ++iter) {
+        statement_buff << value << ",";
+      }
+
+      std::string statement(statement_buff.str());
+      statement.at(statement.size() - 1) = ')';
+      RETURN_NOT_OK(conn.ExecuteFormat(statement, kTableName));
+    }
+    if (flag) {
+      RETURN_NOT_OK(conn.Execute("COMMIT"));
+    } else {
+      RETURN_NOT_OK(conn.Execute("ABORT"));
+    }
+    return Status::OK();
+  }
+
   Status WriteRowsHelper(uint32_t start, uint32_t end, Cluster* cluster, bool flag) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     LOG(INFO) << "Writing " << end - start << " row(s) within transaction";
@@ -356,6 +382,132 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     std::string where_clause("WHERE $1 = $2");
     statement += where_clause;
     RETURN_NOT_OK(conn.ExecuteFormat(statement, kTableName, "col1", key));
+    return Status::OK();
+  }
+
+  Status UpdateRowsHelper(
+      uint32_t start, uint32_t end, Cluster* cluster, bool flag, uint32_t key,
+      std::map<std::string, uint32_t> col_val_map1, std::map<std::string, uint32_t> col_val_map2,
+      uint32_t num_cols) {
+    auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
+    std::stringstream log_buff1, log_buff2;
+    LOG(INFO) << "Writing " << end - start << " row(s) within transaction";
+
+    RETURN_NOT_OK(conn.Execute("BEGIN"));
+
+    for (uint32_t i = start; i < end; ++i) {
+      uint32_t value = i;
+      std::stringstream statement_buff;
+      statement_buff << "INSERT INTO $0 VALUES (";
+      for (uint32_t iter = 0; iter < num_cols; ++value, ++iter) {
+        statement_buff << value << ",";
+      }
+
+      std::string statement(statement_buff.str());
+      statement.at(statement.size() - 1) = ')';
+      RETURN_NOT_OK(conn.ExecuteFormat(statement, kTableName));
+    }
+
+    log_buff1 << "Updating row for key " << key << " with";
+    for (auto col_value_pair : col_val_map1) {
+      log_buff1 << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
+    }
+    LOG(INFO) << log_buff1.str();
+
+    std::stringstream statement_buff1, statement_buff2;
+    statement_buff1 << "UPDATE $0 SET ";
+    for (auto col_value_pair : col_val_map1) {
+      statement_buff1 << col_value_pair.first << "=" << col_value_pair.second << ",";
+    }
+
+    std::string statement1(statement_buff1.str());
+    statement1.at(statement1.size() - 1) = ' ';
+    std::string where_clause("WHERE $1 = $2");
+    statement1 += where_clause;
+    RETURN_NOT_OK(conn.ExecuteFormat(statement1, kTableName, "col1", key));
+
+    log_buff2 << "Updating row for key " << key << " with";
+    for (auto col_value_pair : col_val_map1) {
+      log_buff2 << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
+    }
+    LOG(INFO) << log_buff2.str();
+
+    statement_buff2 << "UPDATE $0 SET ";
+    for (auto col_value_pair : col_val_map2) {
+      statement_buff2 << col_value_pair.first << "=" << col_value_pair.second << ",";
+    }
+
+    std::string statement2(statement_buff2.str());
+    statement2.at(statement2.size() - 1) = ' ';
+    statement2 += where_clause;
+    RETURN_NOT_OK(conn.ExecuteFormat(statement2, kTableName, "col1", key));
+
+    if (flag) {
+      RETURN_NOT_OK(conn.Execute("COMMIT"));
+    } else {
+      RETURN_NOT_OK(conn.Execute("ABORT"));
+    }
+    return Status::OK();
+  }
+
+  Status UpdateDeleteRowsHelper(
+      uint32_t start, uint32_t end, Cluster* cluster, bool flag, uint32_t key,
+      std::map<std::string, uint32_t> col_val_map, uint32_t num_cols) {
+    auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
+    std::stringstream log_buff1, log_buff2;
+    LOG(INFO) << "Writing " << end - start << " row(s) within transaction";
+
+    RETURN_NOT_OK(conn.Execute("BEGIN"));
+
+    for (uint32_t i = start; i < end; ++i) {
+      uint32_t value = i;
+      std::stringstream statement_buff;
+      statement_buff << "INSERT INTO $0 VALUES (";
+      for (uint32_t iter = 0; iter < num_cols; ++value, ++iter) {
+        statement_buff << value << ",";
+      }
+
+      std::string statement(statement_buff.str());
+      statement.at(statement.size() - 1) = ')';
+      RETURN_NOT_OK(conn.ExecuteFormat(statement, kTableName));
+    }
+
+    log_buff1 << "Updating row for key " << key << " with";
+    for (auto col_value_pair : col_val_map) {
+      log_buff1 << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
+    }
+    LOG(INFO) << log_buff1.str();
+
+    std::stringstream statement_buff1, statement_buff2;
+    statement_buff1 << "UPDATE $0 SET ";
+    for (auto col_value_pair : col_val_map) {
+      statement_buff1 << col_value_pair.first << "=" << col_value_pair.second << ",";
+    }
+
+    std::string statement1(statement_buff1.str());
+    statement1.at(statement1.size() - 1) = ' ';
+    std::string where_clause("WHERE $1 = $2");
+    statement1 += where_clause;
+    RETURN_NOT_OK(conn.ExecuteFormat(statement1, kTableName, "col1", key));
+
+    log_buff2 << "Updating row for key " << key << " with";
+    for (auto col_value_pair : col_val_map) {
+      log_buff2 << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
+    }
+    LOG(INFO) << log_buff2.str();
+
+    statement_buff2 << "DELETE FROM $0 ";
+    
+    std::string statement2(statement_buff2.str());
+    statement2.at(statement2.size() - 1) = ' ';
+    statement2 += where_clause;
+    RETURN_NOT_OK(conn.ExecuteFormat(statement2, kTableName, "col1", key));
+
+    if (flag) {
+      RETURN_NOT_OK(conn.Execute("COMMIT"));
+    } else {
+      RETURN_NOT_OK(conn.Execute("ABORT"));
+    }
     return Status::OK();
   }
 
@@ -602,6 +754,12 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
       } break;
       case RowMessage::TRUNCATE: {
         count[5]++;
+      } break;
+      case RowMessage::BEGIN: {
+        count[6]++;
+      } break;
+      case RowMessage::COMMIT: {
+        count[7]++;
       } break;
       default:
         ASSERT_FALSE(true);
@@ -1131,6 +1289,93 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardUpdateMultiColumn)) {
     CheckRecord(record, expected_records[i], count, num_cols);
   }
   LOG(INFO) << "Got " << count[1] << " insert record and " << count[2] << " update record";
+  CheckCount(expected_count, count);
+}
+
+// To test upadtes corresponding to a row packed into one CDC record. This verifies the generated
+// CDC record in case of subsequent updates Expected records: (DDL, 1 INSERT, 2 UPDATE).
+TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate)) {
+  uint32_t num_cols = 4;
+  map<std::string, uint32_t> col_val_map1, col_val_map2;
+
+  auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
+  ASSERT_EQ(tablets.size(), 1);
+  CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream());
+  auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
+  ASSERT_FALSE(set_resp.has_error());
+
+  col_val_map1.insert(pair<std::string, uint32_t>("col2", 9));
+  col_val_map1.insert(pair<std::string, uint32_t>("col3", 10));
+  col_val_map2.insert(pair<std::string, uint32_t>("col2", 10));
+  col_val_map2.insert(pair<std::string, uint32_t>("col3", 11));
+
+  ASSERT_OK(UpdateRowsHelper(
+      1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map1, col_val_map2, num_cols));
+
+  // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE, BEGIN, COMMIT in that order.
+  const uint32_t expected_count[] = {1, 1, 2, 0, 0, 0, 1, 1};
+  uint32_t count[] = {0, 0, 0, 0, 0, 0, 0, 0};
+
+  VaryingExpectedRecord expected_records[] = {
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
+      {1, {std::make_pair("col2", 9), std::make_pair("col3", 10)}},
+      {1, {std::make_pair("col2", 10), std::make_pair("col3", 11)}},
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}}};
+
+  GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
+
+  uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
+  for (uint32_t i = 0; i < record_size; ++i) {
+    const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
+    CheckRecord(record, expected_records[i], count, num_cols);
+  }
+  LOG(INFO) << "Got " << count[1] << " insert record and " << count[2] << " update record";
+  CheckCount(expected_count, count);
+}
+
+// To test upadtes corresponding to a row packed into one CDC record. This verifies the generated
+// CDC record in case of subsequent update and delete operations on same row. Expected records:
+// (DDL, 1 INSERT, 1 UPDATE, 1 DELETE).
+TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByDelete)) {
+  uint32_t num_cols = 4;
+  map<std::string, uint32_t> col_val_map;
+
+  auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
+  ASSERT_EQ(tablets.size(), 1);
+  CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream());
+  auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
+  ASSERT_FALSE(set_resp.has_error());
+
+  col_val_map.insert(pair<std::string, uint32_t>("col2", 9));
+  col_val_map.insert(pair<std::string, uint32_t>("col3", 10));
+
+  ASSERT_OK(UpdateDeleteRowsHelper(
+      1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map, num_cols));
+
+  // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE, BEGIN, COMMIT in
+  // that order.
+  const uint32_t expected_count[] = {1, 1, 1, 1, 0, 0, 1, 1};
+  uint32_t count[] = {0, 0, 0, 0, 0, 0, 0, 0};
+
+  VaryingExpectedRecord expected_records[] = {
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
+      {1, {std::make_pair("col2", 9), std::make_pair("col3", 10)}},
+      {1, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}}};
+
+  GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
+
+  uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
+  for (uint32_t i = 0; i < record_size; ++i) {
+    const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
+    CheckRecord(record, expected_records[i], count, num_cols);
+  }
+  LOG(INFO) << "Got " << count[1] << " insert record, " << count[2] << " update record, and "
+            << count[3] << " delete record";
   CheckCount(expected_count, count);
 }
 
