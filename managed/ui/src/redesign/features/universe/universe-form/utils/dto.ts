@@ -128,10 +128,17 @@ export interface AdvancedConfigFormValue {
   ybSoftwareVersion: string | null;
   communicationPorts: CommunicationPorts;
 }
+
+export interface InstanceTags {
+  name: string;
+  value: string;
+}
+
 export interface UniverseFormData {
   cloudConfig: CloudConfigFormValue;
   instanceConfig: InstanceConfigFormValue;
   advancedConfig: AdvancedConfigFormValue;
+  instanceTags: InstanceTags[];
 }
 
 //Instance Config
@@ -255,8 +262,11 @@ export const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
   communicationPorts: DEFAULT_COMMUNICATION_PORTS
 };
 
+export const DEFAULT_USER_TAGS = [{ name: '', value: '' }];
+
 export const DEFAULT_FORM_DATA: UniverseFormData = {
   cloudConfig: DEFAULT_CLOUD_CONFIG,
   instanceConfig: DEFAULT_INSTANCE_CONFIG,
-  advancedConfig: DEFAULT_ADVANCED_CONFIG
+  advancedConfig: DEFAULT_ADVANCED_CONFIG,
+  instanceTags: DEFAULT_USER_TAGS
 };
