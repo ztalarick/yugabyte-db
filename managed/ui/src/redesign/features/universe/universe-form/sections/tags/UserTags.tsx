@@ -7,6 +7,12 @@ import { UserTagsField } from '../../fields';
 import { CloudType, ClusterType } from '../../utils/dto';
 import { PROVIDER_FIELD } from '../../utils/constants';
 import { useSectionStyles } from '../../universeMainStyle';
+import { UniverseFormData, InstanceTags } from '../../utils/dto';
+import { YBButton, YBInputField } from '../../../../../components';
+import { CloudType } from '../../utils/dto';
+import { UniverseFormContext } from '../../UniverseForm';
+import { USER_TAGS_FIELD, PROVIDER_FIELD } from '../../utils/constants';
+import { ReactComponent as CloseIcon } from '../../../../../assets/close.svg';
 
 interface UserTagsProps {}
 
