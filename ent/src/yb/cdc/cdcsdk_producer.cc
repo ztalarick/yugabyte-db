@@ -19,6 +19,7 @@
 
 #include "yb/docdb/docdb_util.h"
 #include "yb/docdb/doc_key.h"
+#include "yb/docdb/value_type.h"
 
 #include "yb/util/flag_tags.h"
 #include "yb/util/logging.h"
@@ -317,109 +318,6 @@ Status PopulateCDCSDKIntentRecord(
   return Status::OK();
 }
 
-// Populate CDC record corresponding to WAL batch in ReplicateMsg.
-Status PopulateCDCSDKWriteRecord(
-    const ReplicateMsgPtr& msg,
-    const StreamMetadata& metadata,
-    const std::shared_ptr<tablet::TabletPeer>& tablet_peer,
-    const EnumOidLabelMap& enum_oid_label_map,
-    GetChangesResponsePB* resp,
-    const Schema& schema) {
-  SchemaPackingStorage schema_packing_storage;
-  schema_packing_storage.AddSchema(tablet_peer->tablet()->metadata()->schema_version(), schema);
-  const auto& batch = msg->write().write_batch();
-  CDCSDKProtoRecordPB* proto_record = nullptr;
-  RowMessage* row_message = nullptr;
-
-  // Write batch may contain records from different rows.
-  // For CDC, we need to split the batch into 1 CDC record per row of the table.
-  // We'll use DocDB key hash to identify the records that belong to the same row.
-  Slice prev_key;
-
-  // TODO: This function and PopulateCDCSDKIntentRecord have a lot of code in common. They should
-  // be refactored to use some common row-column iterator.
-  for (const auto& write_pair : batch.write_pairs()) {
-    Slice key = write_pair.key();
-    const auto key_size =
-        VERIFY_RESULT(docdb::DocKey::EncodedSize(key, docdb::DocKeyPart::kWholeDocKey));
-
-    Slice value_slice = write_pair.value();
-    RETURN_NOT_OK(docdb::ValueControlFields::Decode(&value_slice));
-    auto value_type = docdb::DecodeValueEntryType(value_slice);
-    value_slice.consume_byte();
-
-    // Compare key hash with previously seen key hash to determine whether the write pair
-    // is part of the same row or not.
-    Slice primary_key(key.data(), key_size);
-    if (prev_key != primary_key) {
-      // Write pair contains record for different row. Create a new CDCRecord in this case.
-      proto_record = resp->add_cdc_sdk_proto_records();
-      row_message = proto_record->mutable_row_message();
-      row_message->set_pgschema_name(schema.SchemaName());
-      row_message->set_table(tablet_peer->tablet()->metadata()->table_name());
-
-      CDCSDKOpIdPB* cdc_sdk_op_id_pb = proto_record->mutable_cdc_sdk_op_id();
-      SetCDCSDKOpId(msg->id().term(), msg->id().index(), 0, "", cdc_sdk_op_id_pb);
-
-      Slice sub_doc_key = key;
-      docdb::SubDocKey decoded_key;
-      RETURN_NOT_OK(decoded_key.DecodeFrom(&sub_doc_key, docdb::HybridTimeRequired::kFalse));
-
-      // Check whether operation is WRITE or DELETE.
-      if (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) {
-        SetOperation(row_message, OpType::DELETE, schema);
-      } else if (value_type == docdb::ValueEntryType::kPackedRow) {
-        SetOperation(row_message, OpType::INSERT, schema);
-      } else {
-        docdb::KeyEntryValue column_id;
-        Slice key_column(key.WithoutPrefix(key_size));
-        RETURN_NOT_OK(docdb::KeyEntryValue::DecodeKey(&key_column, &column_id));
-
-        if (column_id.type() == docdb::KeyEntryType::kSystemColumnId &&
-            value_type == docdb::ValueEntryType::kNullLow) {
-          SetOperation(row_message, OpType::INSERT, schema);
-        } else {
-          SetOperation(row_message, OpType::UPDATE, schema);
-        }
-      }
-
-      RETURN_NOT_OK(
-          AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
-      // Process intent records.
-      row_message->set_commit_time(msg->hybrid_time());
-    }
-    prev_key = primary_key;
-    DCHECK(proto_record);
-
-    if (IsInsertOrUpdate(*row_message)) {
-      if (value_type == docdb::ValueEntryType::kPackedRow) {
-        RETURN_NOT_OK(PopulatePackedRows(
-            schema_packing_storage, schema, tablet_peer, enum_oid_label_map, &value_slice,
-            row_message));
-      } else {
-        docdb::KeyEntryValue column_id;
-        Slice key_column = key.WithoutPrefix(key_size);
-        RETURN_NOT_OK(docdb::KeyEntryValue::DecodeKey(&key_column, &column_id));
-        if (column_id.type() == docdb::KeyEntryType::kColumnId) {
-          const ColumnSchema& col = VERIFY_RESULT(schema.column_by_id(column_id.GetColumnId()));
-          docdb::Value decoded_value;
-          RETURN_NOT_OK(decoded_value.Decode(write_pair.value()));
-
-          RETURN_NOT_OK(AddColumnToMap(
-              tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
-              row_message->add_new_tuple()));
-          row_message->add_old_tuple();
-
-        } else if (column_id.type() != docdb::KeyEntryType::kSystemColumnId) {
-          LOG(DFATAL) << "Unexpected value type in key: " << column_id.type();
-        }
-      }
-    }
-  }
-
-  return Status::OK();
-}
-
 void SetTableProperties(
     const TablePropertiesPB* table_properties,
     CDCSDKTablePropertiesPB* cdc_sdk_table_properties_pb) {
@@ -516,7 +414,8 @@ Status ProcessIntents(
     const std::shared_ptr<tablet::TabletPeer>& tablet_peer,
     std::vector<docdb::IntentKeyValueForCDC>* keyValueIntents,
     docdb::ApplyTransactionState* stream_state,
-    Schema* schema) {
+    Schema* schema,
+    bool external_intents) {
   if (stream_state->key.empty() && stream_state->write_id == 0) {
     CDCSDKProtoRecordPB* proto_record = resp->add_cdc_sdk_proto_records();
     RowMessage* row_message = proto_record->mutable_row_message();
@@ -526,7 +425,8 @@ Status ProcessIntents(
   }
 
   auto tablet = tablet_peer->shared_tablet();
-  RETURN_NOT_OK(tablet->GetIntents(transaction_id, keyValueIntents, stream_state));
+  RETURN_NOT_OK(
+      tablet->GetIntents(transaction_id, keyValueIntents, stream_state, external_intents));
   VLOG(1) << "The size of intentKeyValues for transaction id: " << transaction_id
           << ", with apply record op_id : " << op_id << ", is: " << (*keyValueIntents).size();
 
@@ -628,6 +528,143 @@ void FillDDLInfo(RowMessage* row_message, const SchemaPB& schema, const uint32_t
 
   const TablePropertiesPB* table_properties = &(schema.table_properties());
   SetTableProperties(table_properties, cdc_sdk_table_properties_pb);
+}
+
+// Populate CDC record corresponding to WAL batch in ReplicateMsg.
+Status PopulateCDCSDKWriteRecord(
+    const ReplicateMsgPtr& msg,
+    const StreamMetadata& metadata,
+    const std::shared_ptr<tablet::TabletPeer>& tablet_peer,
+    const EnumOidLabelMap& enum_oid_label_map,
+    GetChangesResponsePB* resp,
+    Schema* schema,
+    ScopedTrackedConsumption* consumption,
+    CDCSDKCheckpointPB* checkpoint,
+    bool* checkpoint_updated,
+    bool* pending_intents,
+    OpId* last_streamed_op_id) {
+  SchemaPackingStorage schema_packing_storage;
+  schema_packing_storage.AddSchema(tablet_peer->tablet()->metadata()->schema_version(), *schema);
+  const auto& batch = msg->write().write_batch();
+  CDCSDKProtoRecordPB* proto_record = nullptr;
+  RowMessage* row_message = nullptr;
+
+  // Write batch may contain records from different rows.
+  // For CDC, we need to split the batch into 1 CDC record per row of the table.
+  // We'll use DocDB key hash to identify the records that belong to the same row.
+  Slice prev_key;
+
+  if (batch.write_pairs().empty() && !batch.apply_external_transactions().empty()) {
+    for (const auto& apply : batch.apply_external_transactions()) {
+      auto txn_id = CHECK_RESULT(FullyDecodeTransactionId(apply.transaction_id()));
+      auto txn_participant = tablet_peer->tablet()->transaction_participant();
+      auto result = GetTransactionStatus(txn_id, tablet_peer->Now(), txn_participant);
+
+      std::vector<docdb::IntentKeyValueForCDC> intents;
+      docdb::ApplyTransactionState new_stream_state;
+      OpId op_id{msg->id().term(), msg->id().index()};
+
+      RETURN_NOT_OK(ProcessIntents(
+          op_id, txn_id, metadata, enum_oid_label_map, resp, consumption, checkpoint, tablet_peer,
+          &intents, &new_stream_state, schema, true));
+
+      if (new_stream_state.write_id != 0 && !new_stream_state.key.empty()) {
+        *pending_intents = true;
+        VLOG(1) << "There are pending intents for the transaction id " << txn_id
+                << " with apply record OpId: " << op_id;
+      } else {
+        last_streamed_op_id->term = msg->id().term();
+        last_streamed_op_id->index = msg->id().index();
+      }
+    }
+  }
+  *checkpoint_updated = true;
+
+  // TODO: This function and PopulateCDCSDKIntentRecord have a lot of code in common. They should
+  // be refactored to use some common row-column iterator.
+  for (const auto& write_pair : batch.write_pairs()) {
+    if (write_pair.key()[0] == docdb::KeyEntryTypeAsChar::kExternalTransactionId)
+      continue;
+
+    Slice key = write_pair.key();
+    const auto key_size =
+        VERIFY_RESULT(docdb::DocKey::EncodedSize(key, docdb::DocKeyPart::kWholeDocKey));
+
+    Slice value_slice = write_pair.value();
+    RETURN_NOT_OK(docdb::ValueControlFields::Decode(&value_slice));
+    auto value_type = docdb::DecodeValueEntryType(value_slice);
+    value_slice.consume_byte();
+
+    // Compare key hash with previously seen key hash to determine whether the write pair
+    // is part of the same row or not.
+    Slice primary_key(key.data(), key_size);
+    if (prev_key != primary_key) {
+      // Write pair contains record for different row. Create a new CDCRecord in this case.
+      proto_record = resp->add_cdc_sdk_proto_records();
+      row_message = proto_record->mutable_row_message();
+      row_message->set_pgschema_name(schema->SchemaName());
+      row_message->set_table(tablet_peer->tablet()->metadata()->table_name());
+
+      CDCSDKOpIdPB* cdc_sdk_op_id_pb = proto_record->mutable_cdc_sdk_op_id();
+      SetCDCSDKOpId(msg->id().term(), msg->id().index(), 0, "", cdc_sdk_op_id_pb);
+
+      Slice sub_doc_key = key;
+      docdb::SubDocKey decoded_key;
+      RETURN_NOT_OK(decoded_key.DecodeFrom(&sub_doc_key, docdb::HybridTimeRequired::kFalse));
+
+      // Check whether operation is WRITE or DELETE.
+      if (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) {
+        SetOperation(row_message, OpType::DELETE, *schema);
+      } else if (value_type == docdb::ValueEntryType::kPackedRow) {
+        SetOperation(row_message, OpType::INSERT, *schema);
+      } else {
+        docdb::KeyEntryValue column_id;
+        Slice key_column(key.WithoutPrefix(key_size));
+        RETURN_NOT_OK(docdb::KeyEntryValue::DecodeKey(&key_column, &column_id));
+
+        if (column_id.type() == docdb::KeyEntryType::kSystemColumnId &&
+            value_type == docdb::ValueEntryType::kNullLow) {
+          SetOperation(row_message, OpType::INSERT, *schema);
+        } else {
+          SetOperation(row_message, OpType::UPDATE, *schema);
+        }
+      }
+
+      RETURN_NOT_OK(
+          AddPrimaryKey(tablet_peer, decoded_key, *schema, enum_oid_label_map, row_message));
+      // Process intent records.
+      row_message->set_commit_time(msg->hybrid_time());
+    }
+    prev_key = primary_key;
+    DCHECK(proto_record);
+
+    if (IsInsertOrUpdate(*row_message)) {
+      if (value_type == docdb::ValueEntryType::kPackedRow) {
+        RETURN_NOT_OK(PopulatePackedRows(
+            schema_packing_storage, *schema, tablet_peer, enum_oid_label_map, &value_slice,
+            row_message));
+      } else {
+        docdb::KeyEntryValue column_id;
+        Slice key_column = key.WithoutPrefix(key_size);
+        RETURN_NOT_OK(docdb::KeyEntryValue::DecodeKey(&key_column, &column_id));
+        if (column_id.type() == docdb::KeyEntryType::kColumnId) {
+          const ColumnSchema& col = VERIFY_RESULT(schema->column_by_id(column_id.GetColumnId()));
+          docdb::Value decoded_value;
+          RETURN_NOT_OK(decoded_value.Decode(write_pair.value()));
+
+          RETURN_NOT_OK(AddColumnToMap(
+              tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
+              row_message->add_new_tuple()));
+          row_message->add_old_tuple();
+
+        } else if (column_id.type() != docdb::KeyEntryType::kSystemColumnId) {
+          LOG(DFATAL) << "Unexpected value type in key: " << column_id.type();
+        }
+      }
+    }
+  }
+
+  return Status::OK();
 }
 
 // CDC get changes is different from 2DC as it doesn't need
@@ -753,7 +790,7 @@ Status GetChangesForCDCSDK(
 
     RETURN_NOT_OK(ProcessIntents(
         op_id, transaction_id, stream_metadata, enum_oid_label_map, resp, &consumption, &checkpoint,
-        tablet_peer, &keyValueIntents, &stream_state, nullptr));
+        tablet_peer, &keyValueIntents, &stream_state, nullptr, false));
 
     if (checkpoint.write_id() == 0 && checkpoint.key().empty()) {
       last_streamed_op_id->term = checkpoint.term();
@@ -832,7 +869,7 @@ Status GetChangesForCDCSDK(
               op_id.index = msg->id().index();
               RETURN_NOT_OK(ProcessIntents(
                   op_id, txn_id, stream_metadata, enum_oid_label_map, resp, &consumption,
-                  &checkpoint, tablet_peer, &intents, &new_stream_state, &current_schema));
+                  &checkpoint, tablet_peer, &intents, &new_stream_state, &current_schema, false));
 
               if (new_stream_state.write_id != 0 && !new_stream_state.key.empty()) {
                 pending_intents = true;
@@ -851,7 +888,8 @@ Status GetChangesForCDCSDK(
 
             if (!batch.has_transaction()) {
               RETURN_NOT_OK(PopulateCDCSDKWriteRecord(
-                  msg, stream_metadata, tablet_peer, enum_oid_label_map, resp, current_schema));
+                  msg, stream_metadata, tablet_peer, enum_oid_label_map, resp, &current_schema,
+                  &consumption, &checkpoint, &checkpoint_updated, &pending_intents, last_streamed_op_id));
 
               SetCheckpoint(
                   msg->id().term(), msg->id().index(), 0, "", 0, &checkpoint, last_streamed_op_id);

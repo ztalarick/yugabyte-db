@@ -431,7 +431,7 @@ Status PrepareApplyExternalIntents(
             apply.second.commit_ht, iter.value(), regular_batch, &write_id));
       }
       if (intents_batch) {
-        intents_batch->SingleDelete(input_key);
+        //intents_batch->SingleDelete(input_key);
       }
 
       iter.Next();
@@ -499,7 +499,7 @@ bool AddExternalPairToWriteBatch(
   Slice key = kv_pair.key();
   key.consume_byte();
   auto txn_id = CHECK_RESULT(DecodeTransactionId(&key));
-  auto it = apply_external_transactions->find(txn_id);
+  /*auto it = apply_external_transactions->find(txn_id);
   if (it != apply_external_transactions->end()) {
     // The same write operation could contain external intents and instruct us to apply them.
     CHECK_OK(PrepareApplyExternalIntentsBatch(
@@ -508,7 +508,7 @@ bool AddExternalPairToWriteBatch(
       external_txns_intents_state->EraseEntry(txn_id);
     }
     return false;
-  }
+  }*/
 
   int write_id = 0;
   if (external_txns_intents_state) {
@@ -771,6 +771,103 @@ Status EnumerateIntents(
 void AppendTransactionKeyPrefix(const TransactionId& transaction_id, KeyBytes* out) {
   out->AppendKeyEntryType(KeyEntryType::kTransactionId);
   out->AppendRawBytes(transaction_id.AsSlice());
+}
+
+Result<ApplyTransactionState> GetExternalIntentsBatch(
+    const TransactionId& transaction_id,
+    const KeyBounds* key_bounds,
+    const ApplyTransactionState* stream_state,
+    rocksdb::DB* intents_db,
+    std::vector<IntentKeyValueForCDC>* key_value_intents) {
+  KeyBytes key_prefix;
+  KeyBytes key_upperbound;
+  Slice key_upperbound_slice;
+
+  auto iter = CreateRocksDBIterator(
+      intents_db, &KeyBounds::kNoBounds, BloomFilterMode::DONT_USE_BLOOM_FILTER,
+      /* user_key_for_filter= */ boost::none, rocksdb::kDefaultQueryId, /* read_filter= */ nullptr,
+      &key_upperbound_slice);
+
+  key_prefix.Clear();
+  key_prefix.AppendKeyEntryType(KeyEntryType::kExternalTransactionId);
+  key_prefix.AppendRawBytes(transaction_id.AsSlice());
+
+  key_upperbound = key_prefix;
+  key_upperbound.AppendKeyEntryType(KeyEntryType::kMaxByte);
+  key_upperbound_slice = key_upperbound.AsSlice();
+
+  iter.Seek(key_prefix);
+
+  DocHybridTimeBuffer doc_ht_buffer;
+  IntraTxnWriteId write_id = 0;
+  if (stream_state != nullptr && stream_state->active() && stream_state->write_id != 0) {
+    iter.Seek(stream_state->key);
+    write_id = stream_state->write_id;
+    iter.Next();
+  }
+
+  const uint64_t max_records = FLAGS_cdc_max_stream_intent_records;
+  const uint64_t write_id_limit = write_id + max_records;
+
+  while (iter.Valid()) {
+    const Slice input_key(iter.key());
+
+    if (!input_key.starts_with(key_prefix.AsSlice())) {
+      break;
+    }
+
+    if (write_id >= write_id_limit) {
+      return ApplyTransactionState{
+          .key = input_key.ToBuffer(),
+          .write_id = write_id,
+          .aborted = {},
+      };
+    }
+
+    auto input_value = iter.value();
+    DocHybridTimeBuffer doc_ht_buffer;
+    RETURN_NOT_OK(input_value.consume_byte(KeyEntryTypeAsChar::kUuid));
+    RETURN_NOT_OK(Uuid::FromSlice(input_value.Prefix(kUuidSize)));
+    input_value.remove_prefix(kUuidSize);
+    RETURN_NOT_OK(input_value.consume_byte(KeyEntryTypeAsChar::kExternalIntents));
+    for (;;) {
+      auto key_size = VERIFY_RESULT(util::FastDecodeUnsignedVarInt(&input_value));
+      if (key_size == 0) {
+        break;
+      }
+      if (input_value.size() < key_size) {
+        return NotEnoughBytes(input_value.size(), key_size, iter.value());
+      }
+      auto output_key = input_value.Prefix(key_size);
+      input_value.remove_prefix(key_size);
+      auto value_size = VERIFY_RESULT(util::FastDecodeUnsignedVarInt(&input_value));
+      if (input_value.size() < value_size) {
+        return NotEnoughBytes(input_value.size(), value_size, iter.value());
+      }
+      auto output_value = input_value.Prefix(value_size);
+      input_value.remove_prefix(value_size);
+      std::array<Slice, 1> key_parts = {{
+          output_key,
+      }};
+      std::array<Slice, 1> value_parts = {{
+          output_value,
+      }};
+
+      IntentKeyValueForCDC intent_metadata;
+      intent_metadata.key = Slice(key_parts, &(intent_metadata.key_buf));
+      intent_metadata.value = Slice(value_parts, &(intent_metadata.value_buf));
+      intent_metadata.reverse_index_key = input_key.ToBuffer();
+      intent_metadata.write_id = write_id;
+      (*key_value_intents).push_back(intent_metadata);
+
+      VLOG(4) << "The size of intentKeyValues in GetIntentList " << (*key_value_intents).size();
+      ++write_id;
+    }
+
+    iter.Next();
+  }
+
+  return ApplyTransactionState{};
 }
 
 Result<ApplyTransactionState> GetIntentsBatch(

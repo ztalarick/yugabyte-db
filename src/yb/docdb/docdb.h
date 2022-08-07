@@ -289,6 +289,13 @@ Result<ApplyTransactionState> GetIntentsBatch(
     rocksdb::DB* intents_db,
     std::vector<IntentKeyValueForCDC>* keyValueIntents);
 
+Result<ApplyTransactionState> GetExternalIntentsBatch(
+    const TransactionId& transaction_id,
+    const KeyBounds* key_bounds,
+    const ApplyTransactionState* stream_state,
+    rocksdb::DB* intents_db,
+    std::vector<IntentKeyValueForCDC>* key_value_intents);
+
 void AppendTransactionKeyPrefix(const TransactionId& transaction_id, docdb::KeyBytes* out);
 
 // Class that is used while combining external intents into single key value pair.
