@@ -36,7 +36,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
   const { t } = useTranslation();
 
   //form context
-  const { isPrimary, mode } = useContext(UniverseFormContext);
+  const { isPrimary, mode } = useContext(UniverseFormContext)[0];
   const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
 
   //field data

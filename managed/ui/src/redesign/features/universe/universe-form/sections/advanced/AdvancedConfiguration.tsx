@@ -29,7 +29,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
   const isYBCEnabled = featureFlags.test.enableYbc || featureFlags.released.enableYbc;
 
   //form context
-  const { isPrimary, mode } = useContext(UniverseFormContext);
+  const { isPrimary, mode } = useContext(UniverseFormContext)[0];
   const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
   const isDbVersionReadOnly = mode !== clusterModes.NEW_PRIMARY;
 

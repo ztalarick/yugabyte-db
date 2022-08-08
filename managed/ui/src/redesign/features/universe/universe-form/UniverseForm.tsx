@@ -1,4 +1,5 @@
 import React, { createContext, FC } from 'react';
+import { useMethods } from 'react-use';
 import * as Yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +15,7 @@ import {
 } from './sections';
 import { UniverseFormData, clusterModes } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
+import { createFormMethods, initialState } from './reducer';
 
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
@@ -21,14 +23,8 @@ interface UniverseFormProps {
   title: string;
 }
 
-interface UniverseContextProps {
-  mode: clusterModes;
-  isPrimary?: boolean;
-}
-
-export const UniverseFormContext = createContext<UniverseContextProps>({
-  mode: clusterModes.NEW_PRIMARY
-});
+export const UniverseFormContext = createContext<any>(initialState);
+export type FormContextMethods = ReturnType<typeof createFormMethods>;
 
 export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, title }) => {
   const classes = useFormMainStyles();
@@ -106,11 +102,11 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
   const onSubmit = (data: UniverseFormData) => console.log(data);
 
   //Form Context Values
-  const isPrimary = [clusterModes.NEW_PRIMARY, clusterModes.EDIT_PRIMARY].includes(mode);
+  // const isPrimary = [clusterModes.NEW_PRIMARY, clusterModes.EDIT_PRIMARY].includes(mode);
 
   return (
     <Box className={classes.mainConatiner}>
-      <UniverseFormContext.Provider value={{ mode, isPrimary }}>
+      <UniverseFormContext.Provider value={useMethods(createFormMethods, initialState)}>
         <FormProvider {...formMethods}>
           <form onSubmit={formMethods.handleSubmit(onSubmit)}>
             <Box className={classes.formHeader}>

@@ -6,6 +6,7 @@ export * from './YBToggle/YBToggle';
 export * from './YBToggle/YBToggleField';
 export * from './YBInput/YBInput';
 export * from './YBInput/YBInputField';
+export * from './YBModal/YBModal';
 export * from './YBPassword/YBPasswordField';
 export * from './YBTooltip/YBTooltip';
 export * from './YBAutoComplete/YBAutoComplete';

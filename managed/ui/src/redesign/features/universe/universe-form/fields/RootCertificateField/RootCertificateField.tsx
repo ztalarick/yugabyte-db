@@ -22,7 +22,7 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({ disabled }
   const classes = useFormFieldStyles();
 
   //form context
-  const { mode } = useContext(UniverseFormContext);
+  const { mode } = useContext(UniverseFormContext)[0];
 
   //provider data
   const provider = useWatch({ name: PROVIDER_FIELD });
