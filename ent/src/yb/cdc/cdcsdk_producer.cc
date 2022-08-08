@@ -554,7 +554,7 @@ Status PopulateCDCSDKWriteRecord(
   // We'll use DocDB key hash to identify the records that belong to the same row.
   Slice prev_key;
 
-  if (batch.write_pairs().empty() && !batch.apply_external_transactions().empty()) {
+  if (!batch.apply_external_transactions().empty()) {
     for (const auto& apply : batch.apply_external_transactions()) {
       auto txn_id = CHECK_RESULT(FullyDecodeTransactionId(apply.transaction_id()));
       auto txn_participant = tablet_peer->tablet()->transaction_participant();

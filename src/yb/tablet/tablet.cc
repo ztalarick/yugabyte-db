@@ -1846,10 +1846,10 @@ Status Tablet::GetIntents(
   docdb::ApplyTransactionState new_stream_state;
 
   if (external_intents) {
-    new_stream_state = VERIFY_RESULT(docdb::GetIntentsBatch(
+    new_stream_state = VERIFY_RESULT(docdb::GetExternalIntentsBatch(
         id, &key_bounds_, stream_state, intents_db_.get(), key_value_intents));
   } else {
-    new_stream_state = VERIFY_RESULT(docdb::GetExternalIntentsBatch(
+    new_stream_state = VERIFY_RESULT(docdb::GetIntentsBatch(
         id, &key_bounds_, stream_state, intents_db_.get(), key_value_intents));
   }
   stream_state->key = new_stream_state.key;
