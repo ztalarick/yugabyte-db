@@ -40,7 +40,11 @@
         "regionsField": "Regions",
         "replicationField": "Replication Factor",
         "totalNodesField": "Total Nodes",
-        "autoPlacementField": "Auto Placement"
+        "autoPlacementField": "Auto Placement",
+        "azNameLabel": "Name",
+        "azNodesLabel": "Individual Nodes",
+        "preferredAZLabel": "Preferred",
+        "addZoneButton": "Add Zone"
       },
       "gFlags": {
         "title": "G-Flags"

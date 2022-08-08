@@ -7,6 +7,57 @@ export enum clusterModes {
   NEW_ASYNC,
   EDIT_ASYNC
 }
+
+export enum ClusterType {
+  PRIMARY = 'PRIMARY',
+  ASYNC = 'ASYNC'
+}
+export interface PlacementCloud {
+  uuid: string;
+  code: string;
+  regionList: PlacementRegion[];
+}
+
+export type FlagsArray = { name: string; value: string }[];
+export type FlagsObject = Record<string, string>;
+
+export interface UserIntent {
+  universeName: string;
+  provider: string;
+  providerType: CloudType;
+  replicationFactor: number;
+  regionList: string[];
+  preferredRegion: string | null;
+  instanceType: string;
+  numNodes: number;
+  ybSoftwareVersion: string | null;
+  accessKeyCode: string | null;
+  deviceInfo: DeviceInfo | null;
+  assignPublicIP: boolean;
+  useTimeSync: boolean;
+  enableYSQL: boolean;
+  enableYSQLAuth: boolean;
+  enableYCQL: boolean;
+  enableYCQLAuth: boolean;
+  enableNodeToNodeEncrypt: boolean;
+  enableClientToNodeEncrypt: boolean;
+  enableVolumeEncryption: boolean;
+  awsArnString: string;
+  useHostname: boolean;
+  // api returns tags as FlagsObject but when creating/editing the universe - it expects tags as FlagsArray
+  masterGFlags: FlagsObject | FlagsArray;
+  tserverGFlags: FlagsObject | FlagsArray;
+  instanceTags: FlagsObject | FlagsArray;
+}
+export interface Cluster {
+  placementInfo: {
+    cloudList: PlacementCloud[];
+  };
+  clusterType: ClusterType;
+  userIntent: UserIntent;
+  uuid: string;
+  index: number;
+}
 export interface CommunicationPorts {
   masterHttpPort: number;
   masterRpcPort: number;
@@ -29,13 +80,31 @@ export interface PlacementAZ {
   isAffinitized: boolean;
 }
 
+export interface PlacementRegion {
+  uuid: string;
+  code: string;
+  name: string;
+  azList: PlacementAZ[];
+}
 export interface RegionInfo {
   parentRegionId: string;
   parentRegionName: string;
   parentRegionCode: string;
 }
 
-export type Placement = (PlacementAZ & RegionInfo) | null;
+// export type Placement = (PlacementAZ & RegionInfo) | null;
+
+export interface Placement {
+  uuid: string;
+  name: string;
+  replicationFactor: number;
+  subnet: string;
+  numNodesInAZ: number;
+  isAffinitized: boolean;
+  parentRegionId: string;
+  parentRegionName: string;
+  parentRegionCode: string;
+}
 
 export interface CloudConfigFormValue {
   universeName: string;
@@ -270,3 +339,94 @@ export const DEFAULT_FORM_DATA: UniverseFormData = {
   advancedConfig: DEFAULT_ADVANCED_CONFIG,
   instanceTags: DEFAULT_USER_TAGS
 };
+
+export enum NodeState {
+  ToBeAdded = 'ToBeAdded',
+  Provisioned = 'Provisioned',
+  SoftwareInstalled = 'SoftwareInstalled',
+  UpgradeSoftware = 'UpgradeSoftware',
+  UpdateGFlags = 'UpdateGFlags',
+  Live = 'Live',
+  Stopping = 'Stopping',
+  Starting = 'Starting',
+  Stopped = 'Stopped',
+  Unreachable = 'Unreachable',
+  ToBeRemoved = 'ToBeRemoved',
+  Removing = 'Removing',
+  Removed = 'Removed',
+  Adding = 'Adding',
+  BeingDecommissioned = 'BeingDecommissioned',
+  Decommissioned = 'Decommissioned'
+}
+
+export interface NodeDetails {
+  nodeIdx: number;
+  nodeName: string | null;
+  nodeUuid: string | null;
+  placementUuid: string;
+  state: NodeState;
+}
+
+export interface EncryptionAtRestConfig {
+  readonly encryptionAtRestEnabled: boolean;
+  readonly kmsConfigUUID: string | null; // KMS config Id in universe json
+  readonly opType: 'ENABLE' | 'DISABLE' | 'UNDEFINED';
+  configUUID?: string; // KMS config Id field for configure/create calls
+  key_op?: 'ENABLE' | 'DISABLE' | 'UNDEFINED'; // operation field for configure/create calls
+  type?: 'DATA_KEY' | 'CMK';
+}
+export interface UniverseDetails {
+  currentClusterType?: ClusterType; // used in universe configure calls
+  clusterOperation?: 'CREATE' | 'EDIT' | 'DELETE';
+  allowInsecure: boolean;
+  backupInProgress: boolean;
+  capability: 'READ_ONLY' | 'EDITS_ALLOWED';
+  clusters: Cluster[];
+  communicationPorts: CommunicationPorts;
+  cmkArn: string;
+  deviceInfo: DeviceInfo | null;
+  encryptionAtRestConfig: EncryptionAtRestConfig;
+  extraDependencies: {
+    installNodeExporter: boolean;
+  };
+  errorString: string | null;
+  expectedUniverseVersion: number;
+  importedState: 'NONE' | 'STARTED' | 'MASTERS_ADDED' | 'TSERVERS_ADDED' | 'IMPORTED';
+  itestS3PackagePath: string;
+  nextClusterIndex: number;
+  nodeDetailsSet: NodeDetails[];
+  nodePrefix: string;
+  resetAZConfig: boolean;
+  rootCA: string | null;
+  universeUUID: string;
+  updateInProgress: boolean;
+  updateSucceeded: boolean;
+  userAZSelected: boolean;
+}
+
+export type UniverseConfigure = Partial<UniverseDetails>;
+
+export interface Resources {
+  azList: string[];
+  ebsPricePerHour: number;
+  memSizeGB: number;
+  numCores: number;
+  numNodes: number;
+  pricePerHour: number;
+  volumeCount: number;
+  volumeSizeGB: number;
+}
+
+export interface UniverseConfig {
+  disableAlertsUntilSecs: string;
+  takeBackups: string;
+}
+export interface Universe {
+  creationDate: string;
+  name: string;
+  resources: Resources;
+  universeConfig: UniverseConfig;
+  universeDetails: UniverseDetails;
+  universeUUID: string;
+  version: number;
+}

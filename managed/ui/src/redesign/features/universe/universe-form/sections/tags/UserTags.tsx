@@ -23,7 +23,7 @@ export const UserTags = (_: UserTagsProps): ReactElement | null => {
   });
 
   //form context
-  const { isPrimary } = useContext(UniverseFormContext);
+  const { isPrimary } = useContext(UniverseFormContext)[0];
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
