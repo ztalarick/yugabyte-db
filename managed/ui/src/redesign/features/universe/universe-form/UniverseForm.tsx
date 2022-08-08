@@ -162,7 +162,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   };
 
   //Form Context Values
-  const isPrimary = [clusterModes.NEW_PRIMARY, clusterModes.EDIT_PRIMARY].includes(mode);
+  // const isPrimary = [clusterModes.NEW_PRIMARY, clusterModes.EDIT_PRIMARY].includes(mode);
 
   return (
     <Box className={classes.mainConatiner}>

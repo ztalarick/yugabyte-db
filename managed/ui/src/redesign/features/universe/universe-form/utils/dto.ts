@@ -240,6 +240,57 @@ export interface Placement {
   parentRegionName: string;
   parentRegionCode: string;
 }
+
+export enum ClusterType {
+  PRIMARY = 'PRIMARY',
+  ASYNC = 'ASYNC'
+}
+export interface PlacementCloud {
+  uuid: string;
+  code: string;
+  regionList: PlacementRegion[];
+}
+
+export type FlagsArray = { name: string; value: string }[];
+export type FlagsObject = Record<string, string>;
+
+export interface UserIntent {
+  universeName: string;
+  provider: string;
+  providerType: CloudType;
+  replicationFactor: number;
+  regionList: string[];
+  preferredRegion: string | null;
+  instanceType: string;
+  numNodes: number;
+  ybSoftwareVersion: string | null;
+  accessKeyCode: string | null;
+  deviceInfo: DeviceInfo | null;
+  assignPublicIP: boolean;
+  useTimeSync: boolean;
+  enableYSQL: boolean;
+  enableYSQLAuth: boolean;
+  enableYCQL: boolean;
+  enableYCQLAuth: boolean;
+  enableNodeToNodeEncrypt: boolean;
+  enableClientToNodeEncrypt: boolean;
+  enableVolumeEncryption: boolean;
+  awsArnString: string;
+  useHostname: boolean;
+  // api returns tags as FlagsObject but when creating/editing the universe - it expects tags as FlagsArray
+  masterGFlags: FlagsObject | FlagsArray;
+  tserverGFlags: FlagsObject | FlagsArray;
+  instanceTags: FlagsObject | FlagsArray;
+}
+export interface Cluster {
+  placementInfo: {
+    cloudList: PlacementCloud[];
+  };
+  clusterType: ClusterType;
+  userIntent: UserIntent;
+  uuid: string;
+  index: number;
+}
 export interface CommunicationPorts {
   masterHttpPort: number;
   masterRpcPort: number;
@@ -262,13 +313,31 @@ export interface PlacementAZ {
   isAffinitized: boolean;
 }
 
+export interface PlacementRegion {
+  uuid: string;
+  code: string;
+  name: string;
+  azList: PlacementAZ[];
+}
 export interface RegionInfo {
   parentRegionId: string;
   parentRegionName: string;
   parentRegionCode: string;
 }
 
-export type Placement = (PlacementAZ & RegionInfo) | null;
+// export type Placement = (PlacementAZ & RegionInfo) | null;
+
+export interface Placement {
+  uuid: string;
+  name: string;
+  replicationFactor: number;
+  subnet: string;
+  numNodesInAZ: number;
+  isAffinitized: boolean;
+  parentRegionId: string;
+  parentRegionName: string;
+  parentRegionCode: string;
+}
 
 export interface CloudConfigFormValue {
   universeName: string;
