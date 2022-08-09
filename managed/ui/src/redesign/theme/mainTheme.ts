@@ -250,6 +250,21 @@ export const mainTheme = createTheme({
         }
       }
     },
+    MuiCheckbox: {
+      root: {
+        color: colors.orange[500],
+        '& .MuiSvgIcon-root': {
+          width: 20,
+          height: 20
+        }
+      },
+      colorPrimary: {
+        color: colors.orange[500],
+        '&&.Mui-checked': {
+          color: colors.orange[500]
+        }
+      }
+    },
     MuiAutocomplete: {
       icon: {
         color: colors.grey[600],

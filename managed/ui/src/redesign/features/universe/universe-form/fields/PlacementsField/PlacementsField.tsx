@@ -2,7 +2,7 @@ import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { Box, Typography, MenuItem } from '@material-ui/core';
-import { YBButton, YBSelect, YBInput, YBLabel } from '../../../../../components';
+import { YBButton, YBSelect, YBInput, YBLabel, YBCheckbox } from '../../../../../components';
 import { useGetAllZones, useGetUnusedZones, useNodePlacements } from './placementHelper';
 import { Placement, UniverseFormData } from '../../utils/dto';
 import {
@@ -39,9 +39,9 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
       <Box flexShrink={1} width="150px">
         <YBLabel>{t('universeForm.cloudConfig.azNodesLabel')}</YBLabel>
       </Box>
-      {/* <Box flexShrink={1} width="100px">
+      <Box flexShrink={1} width="100px">
         <YBLabel>{t('universeForm.cloudConfig.preferredAZLabel')}</YBLabel>
-      </Box> */}
+      </Box>
     </Box>
   );
 
@@ -63,6 +63,8 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
   const renderPlacements = () => {
     return fields.map((field: PlacementWithId, index: number) => {
       const numNodesLabel = `${PLACEMENTS_FIELD}.${index}.numNodesInAZ` as any;
+      const prefferedAZLabel = `${PLACEMENTS_FIELD}.${index}.isAffinitized` as any;
+
       return (
         <Box flex={1} display="flex" mt={1} flexDirection="row" key={field.id}>
           <Box flex={2} mr={0.5}>
@@ -97,15 +99,18 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
               }}
             />
           </Box>
-          {/* <Box
-            flexShrink={1}
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            width="100px"
-          >
-            checkbox
-          </Box> */}
+          <Box flexShrink={1} display="flex" alignItems="center" width="100px">
+            <YBCheckbox
+              size="medium"
+              name={prefferedAZLabel}
+              onChange={(e) => {
+                setValue(prefferedAZLabel, e.target.checked);
+              }}
+              defaultChecked={field.isAffinitized}
+              value={field.isAffinitized}
+              label=""
+            />
+          </Box>
         </Box>
       );
     });
