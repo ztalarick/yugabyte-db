@@ -498,7 +498,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     LOG(INFO) << log_buff2.str();
 
     statement_buff2 << "DELETE FROM $0 ";
-    
+
     std::string statement2(statement_buff2.str());
     statement2.at(statement2.size() - 1) = ' ';
     statement2 += where_clause;
@@ -1327,7 +1327,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
   ASSERT_OK(UpdateRowsHelper(
       1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map1, col_val_map2, num_cols));
 
-  // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE, BEGIN, COMMIT in that order.
+  // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE, BEGIN, COMMIT in
+  // that order.
   const uint32_t expected_count[] = {1, 1, 2, 0, 0, 0, 1, 1};
   uint32_t count[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
