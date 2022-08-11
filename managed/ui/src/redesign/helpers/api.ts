@@ -31,7 +31,11 @@ export enum QUERY_KEY {
   deleteCertificate = 'deleteCertificate',
   getHAConfig = 'getHAConfig',
   getHAReplicationSchedule = 'getHAReplicationSchedule',
-  getHABackups = 'getHABackups'
+  getHABackups = 'getHABackups',
+  validateGflags = 'validateGflags',
+  getMostUsedGflags = 'getMostUsedGflags',
+  getAllGflags = 'getAllGflags',
+  getGflagByName = 'getGlagByName'
 }
 
 class ApiService {

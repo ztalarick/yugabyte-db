@@ -3,7 +3,9 @@
     "common": {
       "create": "Create",
       "genericFailure": "Something went wrong. Please try again.",
-      "requiredField": "Required field"
+      "requiredField": "Required field",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
     },
     "universeForm": {
       "configReadReplica": "Configure Read Replica",
@@ -47,7 +49,27 @@
         "addZoneButton": "Add Zone"
       },
       "gFlags": {
-        "title": "G-Flags"
+        "title": "G-Flags",
+        "addGflags": "Add Flags",
+        "addJson": "Add as JSON",
+        "addToTServer": "Add to T-Server",
+        "addToMaster": "Add to Master",
+        "validationError": "Fix all the errors shown below to proceed",
+        "removeFlag": "Remove Flag",
+        "removeValue": "Remove Value",
+        "incorrectFlagName": "Incorrect flag name",
+        "incorrectFlagValue": "Incorrect flag value",
+        "incorrectFlagMsg": "Flag name is incorrect. Remove Flag",
+        "flagNotBelongError": "This Flag does not belong to {{server}}. Remove Flag",
+        "addValue": "Add value",
+        "flagName": "FLAG NAME",
+        "tServerValue": "T-SERVER VALUE",
+        "masterValue": "MASTER VALUE",
+        "addFlag": "Add Flag",
+        "editFlag": "Edit Flag",
+        "editFlagValue": "Edit Flag Value",
+        "noFlags": "There are no flags assigned to this universe ",
+        "selectedDBVersion": "Selected DB Version : "
       },
       "instanceConfig": {
         "assignPublicIP": "Assign Public IP",
@@ -93,7 +115,8 @@
       "validation": {
         "passwordStrength": "Password must be 8 characters minimum and must contain at least 1 digit, 1 uppercase, 1 lowercase and one of the !@#$%^&* (special) characters.",
         "confirmPassword": "Passwords should match",
-        "required": "{{field}} is required"
+        "required": "{{field}} is required",
+        "fieldRequired": "This field is required"
       }
     }
   }

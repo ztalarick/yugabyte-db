@@ -67,7 +67,11 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
         </Box>
         {provider?.uuid && regionList?.length > 0 && (
           <Box mt={2} display="flex" flexDirection="column">
-            <PlacementsField disabled={false} />
+            <Grid container>
+              <Grid lg={6} item>
+                <PlacementsField disabled={false} />
+              </Grid>
+            </Grid>
           </Box>
         )}
       </Box>

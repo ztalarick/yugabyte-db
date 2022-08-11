@@ -118,7 +118,7 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
 
   if (fields.length) {
     return (
-      <Box display="flex" width="50%" flexDirection="column">
+      <Box display="flex" width="100%" flexDirection="column">
         <Typography variant="h5">{t('universeForm.cloudConfig.nodePlacementTitle')}</Typography>
         {renderHeader}
         {renderPlacements()}
