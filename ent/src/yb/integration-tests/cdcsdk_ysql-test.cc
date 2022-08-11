@@ -87,6 +87,7 @@ DECLARE_uint64(consensus_max_batch_size_bytes);
 DECLARE_uint64(aborted_intent_cleanup_ms);
 DECLARE_int32(cdc_min_replicated_index_considered_stale_secs);
 DECLARE_int32(log_min_seconds_to_retain);
+DECLARE_bool(enable_single_record_update);
 
 namespace yb {
 
@@ -520,6 +521,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
   }
 
   Result<google::protobuf::RepeatedPtrField<master::TabletLocationsPB>> SetUpCluster() {
+    FLAGS_enable_single_record_update = false;
     RETURN_NOT_OK(SetUpWithParams(3, 1, false));
     auto table = EXPECT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
     google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
@@ -529,6 +531,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
 
   Result<google::protobuf::RepeatedPtrField<master::TabletLocationsPB>>
   SetUpClusterMultiColumnUsecase(uint32_t num_cols) {
+    FLAGS_enable_single_record_update = true;
     RETURN_NOT_OK(SetUpWithParams(3, 1, false));
     auto table = EXPECT_RESULT(CreateTable(
         &test_cluster_, kNamespaceName, kTableName, 1, true, false, 0, false, "", "public",

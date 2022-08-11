@@ -31,6 +31,11 @@ TAG_FLAG(stream_truncate_record, runtime);
 
 DECLARE_int64(cdc_intent_retention_ms);
 
+DEFINE_bool(
+    enable_single_record_update, true,
+    "Enable packing updates corresponding to a row in single CDC record");
+TAG_FLAG(enable_single_record_update, runtime);
+
 namespace yb {
 namespace cdc {
 
@@ -212,6 +217,10 @@ Status PopulateCDCSDKIntentRecord(
   size_t col_count = 0;
   docdb::IntentKeyValueForCDC prev_intent;
   std::set<std::string> columns_read;
+  MicrosTime prev_intent_phy_time = 0;
+  bool condition;
+
+  GetAtomicFlag(&FLAGS_enable_single_record_update);
   for (const auto& intent : intents) {
     Slice key(intent.key_buf);
     std::string column_name;
@@ -249,24 +258,33 @@ Status PopulateCDCSDKIntentRecord(
     // Compare key hash with previously seen key hash to determine whether the write pair
     // is part of the same row or not.
     Slice primary_key(key.data(), key_size);
-    if (column_id_opt && column_id_opt->type() == docdb::KeyEntryType::kColumnId) {
-      const ColumnSchema& col = VERIFY_RESULT(schema.column_by_id(column_id_opt->GetColumnId()));
-      column_name = col.name();
+    if (FLAGS_enable_single_record_update) {
+      if (column_id_opt && column_id_opt->type() == docdb::KeyEntryType::kColumnId) {
+        const ColumnSchema& col = VERIFY_RESULT(schema.column_by_id(column_id_opt->GetColumnId()));
+        column_name = col.name();
+      }
+      condition =
+          (prev_key != primary_key) || (col_count >= schema.num_columns()) ||
+          (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) ||
+          ((prev_key == primary_key) && (!column_name.empty()) &&
+           (columns_read.find(column_name) != columns_read.end())) ||
+          prev_intent_phy_time != intent.intent_ht.hybrid_time().GetPhysicalValueMicros();
+    } else {
+      condition = (prev_key != primary_key) || (col_count >= schema.num_columns());
     }
 
-    if (prev_key != primary_key || col_count >= schema.num_columns() || /*move_to_next_record ||*/
-        (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) ||
-        (prev_key == primary_key && !column_name.empty() &&
-         columns_read.find(column_name) != columns_read.end())) {
-      if (col_count >= schema.num_columns()) col_count = 0;
+    if (condition) {
+      if (FLAGS_enable_single_record_update) {
+        if (col_count >= schema.num_columns()) col_count = 0;
 
-      if (proto_record.IsInitialized() && row_message->IsInitialized() &&
-          row_message->op() == RowMessage_Op_UPDATE) {
-        MakeNewProtoRecord(
-            prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
-            reverse_index_key);
+        if (proto_record.IsInitialized() && row_message->IsInitialized() &&
+            row_message->op() == RowMessage_Op_UPDATE) {
+          MakeNewProtoRecord(
+              prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
+              reverse_index_key);
 
-        columns_read.erase(columns_read.begin(), columns_read.end());
+          columns_read.erase(columns_read.begin(), columns_read.end());
+        }
       }
 
       proto_record.Clear();
@@ -296,13 +314,16 @@ Status PopulateCDCSDKIntentRecord(
     }
 
     prev_key = primary_key;
+    prev_intent_phy_time = intent.intent_ht.hybrid_time().GetPhysicalValueMicros();
     if (IsInsertOrUpdate(*row_message)) {
       if (value_type == docdb::ValueEntryType::kPackedRow) {
         col_count += VERIFY_RESULT(PopulatePackedRows(
             schema_packing_storage, schema, tablet_peer, enum_oid_label_map, &value_slice,
             row_message));
       } else {
-        if (row_message->op() == RowMessage_Op_INSERT) {
+        if (FLAGS_enable_single_record_update && row_message->op() == RowMessage_Op_INSERT) {
+          ++col_count;
+        } else {
           ++col_count;
         }
 
@@ -318,7 +339,7 @@ Status PopulateCDCSDKIntentRecord(
               row_message->add_new_tuple()));
           row_message->add_old_tuple();
 
-          if (row_message->op() == RowMessage_Op_UPDATE) {
+          if (FLAGS_enable_single_record_update && row_message->op() == RowMessage_Op_UPDATE) {
             columns_read.insert(col.name());
           }
 
@@ -330,14 +351,24 @@ Status PopulateCDCSDKIntentRecord(
       }
     }
     row_message->set_table(tablet_peer->tablet()->metadata()->table_name());
-    if ((row_message->op() == RowMessage_Op_INSERT && col_count == schema.num_columns()) ||
-        (row_message->op() == RowMessage_Op_DELETE)) {
-      MakeNewProtoRecord(
-          intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
-          reverse_index_key);
-      col_count = schema.num_columns();
-    } else if (row_message->op() == RowMessage_Op_UPDATE) {
-      prev_intent = intent;
+    if (FLAGS_enable_single_record_update) {
+      if ((row_message->op() == RowMessage_Op_INSERT && col_count == schema.num_columns()) ||
+          (row_message->op() == RowMessage_Op_DELETE)) {
+        MakeNewProtoRecord(
+            intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
+            reverse_index_key);
+        col_count = schema.num_columns();
+      } else if (row_message->op() == RowMessage_Op_UPDATE) {
+        prev_intent = intent;
+      }
+    } else {
+      if ((row_message->op() == RowMessage_Op_INSERT && col_count == schema.num_columns()) ||
+          (row_message->op() == RowMessage_Op_UPDATE ||
+           row_message->op() == RowMessage_Op_DELETE)) {
+        MakeNewProtoRecord(
+            intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
+            reverse_index_key);
+      }
     }
   }
 
