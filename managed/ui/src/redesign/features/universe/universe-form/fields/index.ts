@@ -6,6 +6,7 @@ export * from './ClientToNodeTLSField/ClientToNodeTLSField';
 export * from './DBVersionField/DBVersionField';
 export * from './DeploymentPortsField/DeploymentPortsField';
 export * from './EncryptionAtRestField/EncryptionAtRestField';
+export * from './GflagsField/GflagsField';
 export * from './InstanceTypeField/InstanceTypeField';
 export * from './IPV6Field/IPV6Field';
 export * from './KMSConfigField/KMSConfigField';

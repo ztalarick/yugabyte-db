@@ -203,11 +203,18 @@ export interface InstanceTags {
   value: string;
 }
 
+export interface Gflag {
+  Name: string;
+  MASTER?: string | boolean | number;
+  TSERVER?: string | boolean | number;
+}
+
 export interface UniverseFormData {
   cloudConfig: CloudConfigFormValue;
   instanceConfig: InstanceConfigFormValue;
   advancedConfig: AdvancedConfigFormValue;
   instanceTags: InstanceTags[];
+  gFlags: Gflag[];
 }
 
 //Instance Config
@@ -332,12 +339,14 @@ export const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
 };
 
 export const DEFAULT_USER_TAGS = [{ name: '', value: '' }];
+export const DEFAULT_GFLAGS = [];
 
 export const DEFAULT_FORM_DATA: UniverseFormData = {
   cloudConfig: DEFAULT_CLOUD_CONFIG,
   instanceConfig: DEFAULT_INSTANCE_CONFIG,
   advancedConfig: DEFAULT_ADVANCED_CONFIG,
-  instanceTags: DEFAULT_USER_TAGS
+  instanceTags: DEFAULT_USER_TAGS,
+  gFlags: DEFAULT_GFLAGS
 };
 
 export enum NodeState {

@@ -40,5 +40,8 @@ export const ACCESS_KEY_FIELD = 'advancedConfig.accessKeyCode';
 export const SOFTWARE_VERSION_FIELD = 'advancedConfig.ybSoftwareVersion';
 export const COMMUNICATION_PORTS_FIELD = 'advancedConfig.communicationPorts';
 
+//Gflags
+export const GFLAGS_FIELD = 'gFlags';
+
 //Tags
 export const USER_TAGS_FIELD = 'instanceTags';
