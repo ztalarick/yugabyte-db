@@ -251,7 +251,12 @@ export interface PlacementCloud {
   regionList: PlacementRegion[];
 }
 
-export type FlagsArray = { name: string; value: string }[];
+export enum ExposingServiceTypes {
+  EXPOSED = 'EXPOSED',
+  UNEXPOSED = 'UNEXPOSED'
+}
+
+export type FlagsArray = { name: string; value: string | boolean | number | undefined }[];
 export type FlagsObject = Record<string, string>;
 
 export interface UserIntent {
@@ -269,19 +274,21 @@ export interface UserIntent {
   useTimeSync: boolean;
   enableYSQL: boolean;
   enableYSQLAuth: boolean;
-  ysqlPassword: string | null;
+  ysqlPassword?: string | null;
   enableYCQL: boolean;
   enableYCQLAuth: boolean;
-  ycqlPassword: string | null;
+  ycqlPassword?: string | null;
   enableNodeToNodeEncrypt: boolean;
   enableClientToNodeEncrypt: boolean;
   awsArnString: string | null;
   enableYEDIS: boolean;
   enableIPV6: boolean;
-  enableExposingService: string | null;
+  enableExposingService: ExposingServiceTypes | null;
   ybcPackagePath: string | null;
   useSystemd: boolean;
   instanceTags: InstanceTags[];
+  masterGFlags: FlagsArray;
+  tserverGFlags: FlagsArray;
 }
 
 export interface Certificate {
@@ -316,6 +323,7 @@ export interface Cluster {
   };
   clusterType: ClusterType;
   userIntent: UserIntent;
+  regions?: any;
 }
 
 export interface CommunicationPorts {
