@@ -22,6 +22,7 @@ import {
   REPLICATION_FACTOR_FIELD,
   INSTANCE_TYPE_FIELD
 } from '../../utils/constants';
+import { getUserIntent } from '../../utils/helpers';
 
 const getPlacementsFromCluster = (
   cluster?: Cluster,
@@ -142,10 +143,7 @@ export const useNodePlacements = () => {
 
   let payload: any = {};
   const userIntent = {
-    numNodes: Number(totalNodes),
-    regionList,
-    instanceType: instanceType,
-    replicationFactor
+    ...getUserIntent({ formData: getValues() })
   };
 
   if (UniverseConfigureData && getValues(PLACEMENTS_FIELD)?.length) {
