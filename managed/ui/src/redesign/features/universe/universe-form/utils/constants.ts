@@ -6,7 +6,7 @@ export const PROVIDER_FIELD = 'cloudConfig.provider';
 export const REGIONS_FIELD = 'cloudConfig.regionList';
 export const REPLICATION_FACTOR_FIELD = 'cloudConfig.replicationFactor';
 export const AUTO_PLACEMENT_FIELD = 'cloudConfig.autoPlacement';
-export const TOTAL_NODES_FIELD = 'cloudConfig.totalNodes';
+export const TOTAL_NODES_FIELD = 'cloudConfig.numNodes';
 export const PLACEMENTS_FIELD = 'cloudConfig.placements';
 
 //Instance config

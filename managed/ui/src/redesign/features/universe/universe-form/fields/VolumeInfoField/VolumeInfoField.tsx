@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Grid, MenuItem } from '@material-ui/core';
 import { useUpdateEffect } from 'react-use';
 import { CloudType, StorageType, UniverseFormData } from '../../utils/dto';
-import { api, QUERY_KEY } from '../../../../../helpers/api';
+import { api, QUERY_KEY } from '../../utils/api';
 import { YBInput, YBLabel, YBSelect } from '../../../../../components';
 import { getStorageTypeOptions, getDeviceInfoFromInstance } from './VolumeFieldHelper';
 import { PROVIDER_FIELD, DEVICE_INFO_FIELD } from '../../utils/constants';
@@ -43,13 +43,13 @@ export const VolumeInfoField: FC = () => {
             <Box display="flex" flexDirection="column">
               <Box>
                 <Grid container spacing={2}>
-                  <Grid item lg={6}>
+                  <Grid item lg={6} xs={12}>
                     <Box display="flex">
                       <Box display="flex">
                         <YBLabel>{t('universeForm.instanceConfig.volumeInfo')}</YBLabel>
                       </Box>
 
-                      <Box display="flex">
+                      <Box display="flex" flex={1}>
                         <Box flex={1}>
                           <YBInput
                             type="number"
@@ -91,7 +91,7 @@ export const VolumeInfoField: FC = () => {
                     </Box>
                   </Grid>
 
-                  <Grid item lg={6}>
+                  <Grid item lg={6} xs={12}>
                     {fieldValue.storageType && (
                       <Box display="flex">
                         <YBLabel>
@@ -147,7 +147,7 @@ export const VolumeInfoField: FC = () => {
               {fieldValue.storageType && (
                 <Box mt={1}>
                   <Grid container spacing={2}>
-                    <Grid item lg={6}>
+                    <Grid item lg={6} sm={12}>
                       {(fieldValue.storageType === StorageType.IO1 ||
                         fieldValue.storageType === StorageType.GP3) && (
                         <Box display="flex">
@@ -176,7 +176,7 @@ export const VolumeInfoField: FC = () => {
                       )}
                     </Grid>
 
-                    <Grid item lg={6}>
+                    <Grid item lg={6} sm={12}>
                       {fieldValue.storageType === StorageType.GP3 && (
                         <Box display="flex">
                           <YBLabel>
