@@ -1,56 +1,47 @@
 package com.yugabyte.yw.controllers;
 
-import com.google.common.net.HostAndPort;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.inject.Inject;
 import com.yugabyte.yw.common.PlatformServiceException;
-import com.yugabyte.yw.common.cdc.CdcStream;
-import com.yugabyte.yw.common.cdc.CdcStreamCreateResponse;
-import com.yugabyte.yw.common.cdc.CdcStreamDeleteResponse;
 import com.yugabyte.yw.common.cdc.CdcStreamManager;
-import com.yugabyte.yw.common.config.RuntimeConfigFactory;
-import com.yugabyte.yw.common.services.YBClientService;
+import com.yugabyte.yw.common.cdc.model.CdcStream;
+import com.yugabyte.yw.common.cdc.model.CdcStreamCreateResponse;
+import com.yugabyte.yw.common.cdc.model.CdcStreamDeleteResponse;
 import com.yugabyte.yw.forms.PlatformResults;
-import com.yugabyte.yw.models.Customer;
+import com.yugabyte.yw.forms.UniverseCdcStreamDefParams;
 import com.yugabyte.yw.models.Universe;
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
-
-import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yb.client.*;
-import org.yb.log.Log;
-import org.yb.master.MasterDdlOuterClass;
-import org.yb.master.MasterReplicationOuterClass.IdTypePB;
-import org.yb.util.NetUtil;
+import play.libs.Json;
+import play.mvc.Http;
 import play.mvc.Result;
-
-import javax.persistence.Table;
 
 @Api
 public class UniverseCdcStreamController extends AuthenticatedController {
+
   private static final Logger LOG = LoggerFactory.getLogger(UniverseCdcStreamController.class);
 
-  @Inject private RuntimeConfigFactory runtimeConfigFactory;
-  @Inject private CdcStreamManager cdcStreamManager;
+  private final CdcStreamManager cdcStreamManager;
+  private final CloudUtil cloudUtil;
 
-  public Universe checkCloudAndValidateUniverse(UUID customerUUID, UUID universeUUID) {
-    LOG.info("Checking config for customer='{}', universe='{}'", customerUUID, universeUUID);
-    if (!runtimeConfigFactory.globalRuntimeConf().getBoolean("yb.cloud.enabled")) {
-      throw new PlatformServiceException(
-          METHOD_NOT_ALLOWED, "CDC Stream management is not available.");
-    }
-
-    Customer customer = Customer.getOrBadRequest(customerUUID);
-    return Universe.getValidUniverseOrBadRequest(universeUUID, customer);
+  @Inject
+  public UniverseCdcStreamController(CloudUtil cloudUtil, CdcStreamManager cdcStreamManager) {
+    super();
+    this.cloudUtil = cloudUtil;
+    this.cdcStreamManager = cdcStreamManager;
   }
 
   @ApiOperation(value = "List CDC Streams for a cluster", notes = "List CDC Streams for a cluster")
   public Result listCdcStreams(UUID customerUUID, UUID universeUUID) throws Exception {
-    Universe universe = checkCloudAndValidateUniverse(customerUUID, universeUUID);
+    Universe universe = cloudUtil.checkCloudAndValidateUniverse(customerUUID, universeUUID);
 
     List<CdcStream> response = cdcStreamManager.getAllCdcStreams(universe);
     return PlatformResults.withData(response);
@@ -58,22 +49,45 @@ public class UniverseCdcStreamController extends AuthenticatedController {
 
   @ApiOperation(
       value = "Create CDC Stream for a cluster",
-      notes = "Create CDC Stream for a cluster")
+      notes = "Create CDC Stream for a cluster",
+      response = CdcStreamCreateResponse.class)
+  @ApiImplicitParams(
+      @ApiImplicitParam(
+          name = "UniverseCdcStreamDefParams",
+          paramType = "body",
+          dataType = "com.yugabyte.yw.forms.UniverseCdcStreamDefParams",
+          required = true))
   public Result createCdcStream(UUID customerUUID, UUID universeUUID) throws Exception {
-    Universe universe = checkCloudAndValidateUniverse(customerUUID, universeUUID);
+    Universe universe = cloudUtil.checkCloudAndValidateUniverse(customerUUID, universeUUID);
 
-    CdcStreamCreateResponse response = cdcStreamManager.createCdcStream(universe, "yugabyte");
+    UniverseCdcStreamDefParams streamDef = bindCreateCdcStreamParams(ctx(), request());
+
+    CdcStreamCreateResponse response =
+        cdcStreamManager.createCdcStream(universe, streamDef.databaseName);
     return PlatformResults.withData(response);
   }
 
   @ApiOperation(
       value = "Delete a CDC stream for a cluster",
-      notes = "Delete a CDC Stream for a cluster")
+      notes = "Delete a CDC Stream for a cluster",
+      response = CdcStreamDeleteResponse.class)
   public Result deleteCdcStream(UUID customerUUID, UUID universeUUID, String streamId)
       throws Exception {
-    Universe universe = checkCloudAndValidateUniverse(customerUUID, universeUUID);
+    Universe universe = cloudUtil.checkCloudAndValidateUniverse(customerUUID, universeUUID);
 
     CdcStreamDeleteResponse response = cdcStreamManager.deleteCdcStream(universe, streamId);
     return PlatformResults.withData(response);
+  }
+
+  private UniverseCdcStreamDefParams bindCreateCdcStreamParams(
+      Http.Context ctx, Http.Request request) {
+    ObjectMapper mapper = Json.mapper();
+    try {
+      ObjectNode formData = (ObjectNode) request.body().asJson();
+      return Json.mapper().treeToValue(formData, UniverseCdcStreamDefParams.class);
+    } catch (JsonProcessingException exception) {
+      throw new PlatformServiceException(
+          BAD_REQUEST, "JsonProcessingException parsing request body: " + exception.getMessage());
+    }
   }
 }

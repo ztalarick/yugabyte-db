@@ -102,6 +102,7 @@ public abstract class UniverseDefinitionTaskBase extends UniverseTaskBase {
     YQLSERVER,
     YSQLSERVER,
     REDISSERVER,
+    ADDONSERVER,
     EITHER
   }
 
@@ -1696,8 +1697,14 @@ public abstract class UniverseDefinitionTaskBase extends UniverseTaskBase {
     boolean isFallThrough =
         createCreateNodeTasks(
             universe, nodesToBeProvisioned, ignoreNodeStatus, ignoreUseCustomImageConfig);
+
+    // create a list of only isAddon == false nodes
+    // ONLY send those below.
+    Set<NodeDetails> nonAddonNodes =
+        nodesToBeProvisioned.stream().filter(n -> !n.isAddonServer).collect(Collectors.toSet());
+
     return createConfigureNodeTasks(
-        universe, nodesToBeProvisioned, isShellMode, isFallThrough, ignoreUseCustomImageConfig);
+        universe, nonAddonNodes, isShellMode, isFallThrough, ignoreUseCustomImageConfig);
   }
 
   /**

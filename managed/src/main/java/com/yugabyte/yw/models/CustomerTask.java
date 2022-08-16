@@ -263,7 +263,13 @@ public class CustomerTask extends Model {
     UpgradeUniverseYbc,
 
     @EnumValue("DisableYbc")
-    DisableYbc;
+    DisableYbc,
+
+    @EnumValue("CreateAddOn")
+    CreateAddOn,
+
+    @EnumValue("RemoveAddOn")
+    RemoveAddOn;
 
     public String toString(boolean completed) {
       switch (this) {

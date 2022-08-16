@@ -264,6 +264,10 @@ GET     /customers/:cUUID/universes/:uniUUID/cdc_streams                       c
 POST    /customers/:cUUID/universes/:uniUUID/cdc_streams                       com.yugabyte.yw.controllers.UniverseCdcStreamController.createCdcStream(cUUID: java.util.UUID, uniUUID: java.util.UUID)
 DELETE  /customers/:cUUID/universes/:uniUUID/cdc_streams/:streamId             com.yugabyte.yw.controllers.UniverseCdcStreamController.deleteCdcStream(cUUID: java.util.UUID, uniUUID: java.util.UUID, streamId: String)
 
+GET     /customers/:cUUID/universes/:uniUUID/addons                            com.yugabyte.yw.controllers.UniverseAddonServicesController.listAddonServices(cUUID: java.util.UUID, uniUUID: java.util.UUID)
+POST    /customers/:cUUID/universes/:uniUUID/addons                            com.yugabyte.yw.controllers.UniverseAddonServicesController.createAddOnService(cUUID: java.util.UUID, uniUUID: java.util.UUID)
+DELETE  /customers/:cUUID/universes/:uniUUID/addons/:addOnName                 com.yugabyte.yw.controllers.UniverseAddonServicesController.removeAddOnService(cUUID: java.util.UUID, uniUUID: java.util.UUID, addOnName: String)
+
 # Universe performance suggestions
 
 GET     /customers/:cUUID/universes/:uniUUID/unused_indexes                    com.yugabyte.yw.controllers.UniversePerfController.getUnusedIndexes(cUUID: java.util.UUID, uniUUID: java.util.UUID)

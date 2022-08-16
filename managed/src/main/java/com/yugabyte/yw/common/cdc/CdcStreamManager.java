@@ -1,12 +1,20 @@
 package com.yugabyte.yw.common.cdc;
 
-import com.azure.core.annotation.Get;
 import com.cronutils.utils.VisibleForTesting;
+import com.yugabyte.yw.common.cdc.model.CdcStream;
+import com.yugabyte.yw.common.cdc.model.CdcStreamCreateResponse;
+import com.yugabyte.yw.common.cdc.model.CdcStreamDeleteResponse;
 import com.yugabyte.yw.common.services.YBClientService;
 import com.yugabyte.yw.models.Universe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yb.client.*;
+import org.yb.client.CDCStreamInfo;
+import org.yb.client.CreateCDCStreamResponse;
+import org.yb.client.DeleteCDCStreamResponse;
+import org.yb.client.ListCDCStreamsResponse;
+import org.yb.client.ListTablesResponse;
+import org.yb.client.YBClient;
+import org.yb.client.YBTable;
 import org.yb.master.MasterDdlOuterClass;
 import org.yb.master.MasterReplicationOuterClass;
 
@@ -19,6 +27,7 @@ import java.util.List;
 
 @Singleton
 public class CdcStreamManager {
+
   public static final Logger LOG = LoggerFactory.getLogger(CdcStreamManager.class);
 
   private final YBClientService ybClientService;
