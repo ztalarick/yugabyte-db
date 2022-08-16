@@ -3,7 +3,7 @@ import { Box } from '@material-ui/core';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
-import { api, QUERY_KEY } from '../../../../../helpers/api';
+import { api, QUERY_KEY } from '../../utils/api';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 import { DEFAULT_ADVANCED_CONFIG, UniverseFormData } from '../../utils/dto';
 import { sortVersionStrings } from './DBVersionHelper';

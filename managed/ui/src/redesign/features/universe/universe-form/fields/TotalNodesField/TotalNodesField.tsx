@@ -42,7 +42,7 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
   return (
     <Box display="flex" width="100%">
       <YBLabel>{t('universeForm.cloudConfig.totalNodesField')}</YBLabel>
-      <Box width="100px">
+      <Box flex={1}>
         <YBInputField
           control={control}
           name={TOTAL_NODES_FIELD}

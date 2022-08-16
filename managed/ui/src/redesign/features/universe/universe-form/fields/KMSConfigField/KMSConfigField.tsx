@@ -4,7 +4,7 @@ import { Controller, useFormContext } from 'react-hook-form';
 import { useQuery } from 'react-query';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { api, QUERY_KEY } from '../../../../../helpers/api';
+import { api, QUERY_KEY } from '../../utils/api';
 import { DEFAULT_INSTANCE_CONFIG, UniverseFormData } from '../../utils/dto';
 import { KmsConfig } from '../../../../../helpers/dtos';
 import { YBLabel, YBAutoComplete } from '../../../../../components';

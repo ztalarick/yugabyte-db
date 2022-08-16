@@ -123,7 +123,7 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
         {renderHeader}
         {renderPlacements()}
         {unUsedZones.length > 0 && fields.length < replicationFactor && (
-          <Box display="flex" justifyContent={'flex-end'} mr={0.5} mt={1}>
+          <Box display="flex" mr={0.5} mt={1}>
             <YBButton
               style={{ width: '150px' }}
               variant="primary"
