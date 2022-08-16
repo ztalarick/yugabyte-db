@@ -16,6 +16,8 @@ import {
 import { UniverseFormData, clusterModes } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
 import { createFormMethods, initialState } from './reducer';
+import { createUniverse } from './utils/helpers';
+import { api } from './utils/api';
 
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
@@ -29,9 +31,20 @@ export type FormContextMethods = ReturnType<typeof createFormMethods>;
 export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, title }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
+  const universeContextData = useMethods(createFormMethods, initialState);
 
   //Form Validation
   const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
+  const validateUniverseName = async (value_: unknown) => {
+    const value = value_ as string;
+    try {
+      const universeList = await api.findUniverseByName(value);
+      return universeList?.length ? false : true;
+    } catch (error) {
+      // skip exceptions happened due to canceling previous request
+      return !api.isRequestCancelError(error) ? true : false;
+    }
+  };
   const validationSchema = Yup.object({
     advancedConfig: Yup.object({
       accessKeyCode: Yup.mixed().required(
@@ -42,9 +55,17 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
       )
     }),
     cloudConfig: Yup.object({
-      universeName: Yup.string().required(
-        t('universeForm.validation.required', { field: t('universeForm.cloudConfig.universeName') })
-      ),
+      universeName: Yup.string()
+        .required(
+          t('universeForm.validation.required', {
+            field: t('universeForm.cloudConfig.universeName')
+          })
+        )
+        .test(
+          'unique-name-check',
+          t('universeForm.cloudConfig.universeNameInUse'),
+          validateUniverseName
+        ),
       provider: Yup.mixed().required(
         t('universeForm.validation.required', {
           field: t('universeForm.cloudConfig.providerField')
@@ -99,14 +120,13 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
     resolver: yupResolver(validationSchema)
   });
 
-  const onSubmit = (data: UniverseFormData) => console.log(data);
-
-  //Form Context Values
-  // const isPrimary = [clusterModes.NEW_PRIMARY, clusterModes.EDIT_PRIMARY].includes(mode);
+  const onSubmit = (formData: UniverseFormData) => {
+    createUniverse({ mode, formData, universeContextData: universeContextData[0] });
+  };
 
   return (
     <Box className={classes.mainConatiner}>
-      <UniverseFormContext.Provider value={useMethods(createFormMethods, initialState)}>
+      <UniverseFormContext.Provider value={universeContextData}>
         <FormProvider {...formMethods}>
           <form onSubmit={formMethods.handleSubmit(onSubmit)}>
             <Box className={classes.formHeader}>

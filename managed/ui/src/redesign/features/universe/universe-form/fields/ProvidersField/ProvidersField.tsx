@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Controller, useFormContext } from 'react-hook-form';
 import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
-import { api, QUERY_KEY } from '../../../../../helpers/api';
+import { api, QUERY_KEY } from '../../utils/api';
 import { UniverseFormData, Provider, DEFAULT_CLOUD_CONFIG } from '../../utils/dto';
 import { PROVIDER_FIELD } from '../../utils/constants';
 

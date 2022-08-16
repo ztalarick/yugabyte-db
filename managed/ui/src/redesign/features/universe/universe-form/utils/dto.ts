@@ -27,7 +27,6 @@ export interface UserIntent {
   providerType: CloudType;
   replicationFactor: number;
   regionList: string[];
-  preferredRegion: string | null;
   instanceType: string;
   numNodes: number;
   ybSoftwareVersion: string | null;
@@ -37,27 +36,55 @@ export interface UserIntent {
   useTimeSync: boolean;
   enableYSQL: boolean;
   enableYSQLAuth: boolean;
+  ysqlPassword: string | null;
   enableYCQL: boolean;
   enableYCQLAuth: boolean;
+  ycqlPassword: string | null;
   enableNodeToNodeEncrypt: boolean;
   enableClientToNodeEncrypt: boolean;
-  enableVolumeEncryption: boolean;
-  awsArnString: string;
-  useHostname: boolean;
-  // api returns tags as FlagsObject but when creating/editing the universe - it expects tags as FlagsArray
-  masterGFlags: FlagsObject | FlagsArray;
-  tserverGFlags: FlagsObject | FlagsArray;
-  instanceTags: FlagsObject | FlagsArray;
+  awsArnString: string | null;
+  enableYEDIS: boolean;
+  enableIPV6: boolean;
+  enableExposingService: string | null;
+  ybcPackagePath: string | null;
+  useSystemd: boolean;
+  instanceTags: InstanceTags[];
 }
+
+export interface Certificate {
+  uuid: string;
+  customerUUID: string;
+  label: string;
+  startDate: string;
+  expiryDate: string;
+  privateKey: string;
+  certificate: string;
+  certType: 'SelfSigned' | 'CustomCertHostPath';
+}
+
+export interface KmsConfig {
+  credentials: {
+    AWS_ACCESS_KEY_ID: string;
+    AWS_REGION: string;
+    AWS_SECRET_ACCESS_KEY: string;
+    cmk_id: string;
+  };
+  metadata: {
+    configUUID: string;
+    in_use: boolean;
+    name: string;
+    provider: string;
+  };
+}
+
 export interface Cluster {
-  placementInfo: {
+  placementInfo?: {
     cloudList: PlacementCloud[];
   };
   clusterType: ClusterType;
   userIntent: UserIntent;
-  uuid: string;
-  index: number;
 }
+
 export interface CommunicationPorts {
   masterHttpPort: number;
   masterRpcPort: number;
@@ -110,7 +137,7 @@ export interface CloudConfigFormValue {
   universeName: string;
   provider: ProviderMin | null;
   regionList: string[]; // array of region IDs
-  totalNodes: number;
+  numNodes: number;
   replicationFactor: number;
   autoPlacement: boolean;
   placements: Placement[];
@@ -166,7 +193,7 @@ export interface Region {
 export interface InstanceConfigFormValue {
   instanceType: string | null;
   deviceInfo: DeviceInfo | null;
-  instanceTags: string[];
+  instanceTags: InstanceTags[];
   assignPublicIP: boolean;
   useTimeSync: boolean;
   enableClientToNodeEncrypt: boolean;
@@ -191,7 +218,7 @@ export interface AdvancedConfigFormValue {
   ybcPackagePath: string | null;
   awsArnString: string | null;
   enableIPV6: boolean;
-  enableExposingService: boolean;
+  enableExposingService: string | null;
   customizePort: boolean;
   accessKeyCode: string | null;
   ybSoftwareVersion: string | null;
@@ -297,7 +324,7 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   universeName: '',
   provider: null,
   regionList: [],
-  totalNodes: 3,
+  numNodes: 3,
   replicationFactor: 3,
   autoPlacement: true, // "AUTO" is the default value when creating new universe
   placements: []
@@ -331,7 +358,7 @@ export const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
   ybcPackagePath: null,
   awsArnString: null,
   enableIPV6: false,
-  enableExposingService: false,
+  enableExposingService: null,
   customizePort: false,
   accessKeyCode: null,
   ybSoftwareVersion: null,
@@ -377,9 +404,6 @@ export interface NodeDetails {
 }
 
 export interface EncryptionAtRestConfig {
-  readonly encryptionAtRestEnabled: boolean;
-  readonly kmsConfigUUID: string | null; // KMS config Id in universe json
-  readonly opType: 'ENABLE' | 'DISABLE' | 'UNDEFINED';
   configUUID?: string; // KMS config Id field for configure/create calls
   key_op?: 'ENABLE' | 'DISABLE' | 'UNDEFINED'; // operation field for configure/create calls
   type?: 'DATA_KEY' | 'CMK';
@@ -395,9 +419,6 @@ export interface UniverseDetails {
   cmkArn: string;
   deviceInfo: DeviceInfo | null;
   encryptionAtRestConfig: EncryptionAtRestConfig;
-  extraDependencies: {
-    installNodeExporter: boolean;
-  };
   errorString: string | null;
   expectedUniverseVersion: number;
   importedState: 'NONE' | 'STARTED' | 'MASTERS_ADDED' | 'TSERVERS_ADDED' | 'IMPORTED';

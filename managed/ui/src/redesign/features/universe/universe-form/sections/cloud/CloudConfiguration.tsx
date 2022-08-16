@@ -56,11 +56,11 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
           </Grid>
         </Box>
         <Box mt={2}>
-          <Grid container alignItems="center" spacing={3}>
-            <Grid lg={4} item>
+          <Grid container item alignItems="center" lg={6}>
+            <Grid lg={7} item>
               <ReplicationFactor disabled={isFieldReadOnly} />
             </Grid>
-            <Grid lg={8} item>
+            <Grid lg={5} item>
               <TotalNodesField disabled={false} />
             </Grid>
           </Grid>
