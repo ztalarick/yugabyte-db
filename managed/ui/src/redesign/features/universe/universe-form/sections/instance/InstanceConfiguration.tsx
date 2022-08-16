@@ -109,7 +109,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
       </Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={4}>
-          <Grid container spacing={3}>
+          <Grid container>
             <Grid lg={6} item container>
               <InstanceTypeField />
             </Grid>

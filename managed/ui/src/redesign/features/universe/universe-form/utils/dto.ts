@@ -260,7 +260,6 @@ export interface UserIntent {
   providerType: CloudType;
   replicationFactor: number;
   regionList: string[];
-  preferredRegion: string | null;
   instanceType: string;
   numNodes: number;
   ybSoftwareVersion: string | null;
@@ -270,27 +269,55 @@ export interface UserIntent {
   useTimeSync: boolean;
   enableYSQL: boolean;
   enableYSQLAuth: boolean;
+  ysqlPassword: string | null;
   enableYCQL: boolean;
   enableYCQLAuth: boolean;
+  ycqlPassword: string | null;
   enableNodeToNodeEncrypt: boolean;
   enableClientToNodeEncrypt: boolean;
-  enableVolumeEncryption: boolean;
-  awsArnString: string;
-  useHostname: boolean;
-  // api returns tags as FlagsObject but when creating/editing the universe - it expects tags as FlagsArray
-  masterGFlags: FlagsObject | FlagsArray;
-  tserverGFlags: FlagsObject | FlagsArray;
-  instanceTags: FlagsObject | FlagsArray;
+  awsArnString: string | null;
+  enableYEDIS: boolean;
+  enableIPV6: boolean;
+  enableExposingService: string | null;
+  ybcPackagePath: string | null;
+  useSystemd: boolean;
+  instanceTags: InstanceTags[];
 }
+
+export interface Certificate {
+  uuid: string;
+  customerUUID: string;
+  label: string;
+  startDate: string;
+  expiryDate: string;
+  privateKey: string;
+  certificate: string;
+  certType: 'SelfSigned' | 'CustomCertHostPath';
+}
+
+export interface KmsConfig {
+  credentials: {
+    AWS_ACCESS_KEY_ID: string;
+    AWS_REGION: string;
+    AWS_SECRET_ACCESS_KEY: string;
+    cmk_id: string;
+  };
+  metadata: {
+    configUUID: string;
+    in_use: boolean;
+    name: string;
+    provider: string;
+  };
+}
+
 export interface Cluster {
-  placementInfo: {
+  placementInfo?: {
     cloudList: PlacementCloud[];
   };
   clusterType: ClusterType;
   userIntent: UserIntent;
-  uuid: string;
-  index: number;
 }
+
 export interface CommunicationPorts {
   masterHttpPort: number;
   masterRpcPort: number;

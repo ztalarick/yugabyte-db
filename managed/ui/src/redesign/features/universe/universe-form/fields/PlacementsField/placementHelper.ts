@@ -4,7 +4,7 @@ import { useUpdateEffect } from 'react-use';
 import { useQuery } from 'react-query';
 import { useWatch, useFormContext } from 'react-hook-form';
 import { UniverseFormContext } from '../../UniverseForm';
-import { api, QUERY_KEY } from '../../../../../helpers/api';
+import { api, QUERY_KEY } from '../../utils/api';
 import {
   Placement,
   Cluster,
@@ -29,7 +29,7 @@ const getPlacementsFromCluster = (
 ): any[] => {
   let placements: Placement[] = [];
 
-  if (cluster?.placementInfo.cloudList) {
+  if (cluster?.placementInfo?.cloudList) {
     let regions: PlacementRegion[];
     if (providerId) {
       // find exact cloud corresponding to provider ID and take its regions
@@ -55,7 +55,7 @@ const getPlacementsFromCluster = (
   return _.sortBy(placements, 'name');
 };
 
-const getPlacements = (formData: UniverseFormData): PlacementRegion[] => {
+export const getPlacements = (formData: UniverseFormData): PlacementRegion[] => {
   // remove gaps from placements list
   const placements: NonNullable<Placement>[] = _.cloneDeep(
     _.compact(formData.cloudConfig.placements)
