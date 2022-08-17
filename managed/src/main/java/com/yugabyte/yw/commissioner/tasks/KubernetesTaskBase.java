@@ -257,6 +257,10 @@ public abstract class KubernetesTaskBase extends UniverseDefinitionTaskBase {
     getRunnableTask().addSubTaskGroup(podsWait);
   }
 
+  /*
+  Performs the updates to the helm charts to modify the master addresses as well as
+  update the instance type.
+  */
   public void upgradePodsTask(
       KubernetesPlacement newPlacement,
       String masterAddresses,
@@ -390,7 +394,14 @@ public abstract class KubernetesTaskBase extends UniverseDefinitionTaskBase {
             tserverPartition,
             isReadOnlyCluster);
         String podName =
-            getPodName(partition, azCode, serverType, nodePrefix, isMultiAz, newNamingStyle);
+            getPodName(
+                partition,
+                azCode,
+                serverType,
+                nodePrefix,
+                isMultiAz,
+                newNamingStyle,
+                isReadOnlyCluster);
         createKubernetesWaitForPodTask(
             KubernetesWaitForPod.CommandType.WAIT_FOR_POD,
             podName,
@@ -560,10 +571,12 @@ public abstract class KubernetesTaskBase extends UniverseDefinitionTaskBase {
       ServerType serverType,
       String nodePrefix,
       boolean isMultiAz,
-      boolean newNamingStyle) {
+      boolean newNamingStyle,
+      boolean isReadOnlyCluster) {
     String sType = serverType == ServerType.MASTER ? "yb-master" : "yb-tserver";
     String helmFullName =
-        PlacementInfoUtil.getHelmFullNameWithSuffix(isMultiAz, nodePrefix, azCode, newNamingStyle);
+        PlacementInfoUtil.getHelmFullNameWithSuffix(
+            isMultiAz, nodePrefix, azCode, newNamingStyle, isReadOnlyCluster);
     return String.format("%s%s-%d", helmFullName, sType, partition);
   }
 
