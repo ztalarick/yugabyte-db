@@ -2,7 +2,6 @@ import React, { FC, useContext } from 'react';
 import _ from 'lodash';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { useWatch } from 'react-hook-form';
 import { Box, Typography, Grid } from '@material-ui/core';
 import {
   UniverseNameField,
@@ -27,7 +26,6 @@ import {
 } from '../../fields';
 import { UniverseFormContext } from '../../UniverseForm';
 import { clusterModes } from '../../utils/dto';
-import { PROVIDER_FIELD, REGIONS_FIELD } from '../../utils/constants';
 
 interface CloudConfigProps {}
 

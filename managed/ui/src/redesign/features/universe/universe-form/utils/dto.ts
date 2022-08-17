@@ -284,7 +284,7 @@ export interface UserIntent {
   enableYEDIS: boolean;
   enableIPV6: boolean;
   enableExposingService: ExposingServiceTypes | null;
-  ybcPackagePath: string | null;
+  ybcPackagePath?: string | null;
   useSystemd: boolean;
   instanceTags: InstanceTags[];
   masterGFlags: FlagsArray;
