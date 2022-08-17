@@ -1,6 +1,5 @@
 import React, { FC, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useWatch } from 'react-hook-form';
 import { Box, Typography, Grid } from '@material-ui/core';
 import { useSectionStyles } from '../../universeMainStyle';
 import {
@@ -13,7 +12,6 @@ import {
 } from '../../fields';
 import { UniverseFormContext } from '../../UniverseForm';
 import { clusterModes } from '../../utils/dto';
-import { PROVIDER_FIELD, REGIONS_FIELD } from '../../utils/constants';
 
 interface CloudConfigProps {}
 
@@ -21,8 +19,6 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
 
-  const provider = useWatch({ name: PROVIDER_FIELD });
-  const regionList = useWatch({ name: REGIONS_FIELD });
   //form context
   const { isPrimary, mode } = useContext(UniverseFormContext)[0];
 
@@ -30,7 +26,32 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
 
   return (
     <Box className={classes.sectionContainer}>
-      <Typography variant="h5">{t('universeForm.cloudConfig.title')}</Typography>
+      <Grid container spacing={3}>
+        <Grid item lg={6}>
+          <Box mt={1} mb={4}>
+            <Typography variant="h5">{t('universeForm.cloudConfig.title')}</Typography>
+          </Box>
+          {isPrimary && (
+            <Box mt={1}>
+              <UniverseNameField disabled={isFieldReadOnly} />
+            </Box>
+          )}
+          <Box mt={1}>
+            <ProvidersField disabled={false} />
+          </Box>
+          <Box mt={1}>
+            <RegionsField disabled={false} />
+          </Box>
+          <Box mt={1} flexDirection={'row'} display="flex" alignItems="center">
+            <TotalNodesField disabled={false} />
+            <ReplicationFactor disabled={isFieldReadOnly} />
+          </Box>
+        </Grid>
+        <Grid item lg={6}>
+          <PlacementsField disabled={false} />
+        </Grid>
+      </Grid>
+      {/* <Typography variant="h5">{t('universeForm.cloudConfig.title')}</Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         {isPrimary && (
           <Box mt={2}>
@@ -74,7 +95,7 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
             </Grid>
           </Box>
         )}
-      </Box>
+      </Box> */}
     </Box>
   );
 };

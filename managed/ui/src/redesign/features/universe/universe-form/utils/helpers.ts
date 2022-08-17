@@ -32,14 +32,24 @@ const transitToUniverse = (universeUUID: string | undefined) => {
   if (universeUUID) browserHistory.push(`/universes/${universeUUID}/tasks`);
 };
 
-const convertFlags = (flagsArray: Gflag[], isMaster: boolean): FlagsArray => {
-  const flags = flagsArray.map((flag: Gflag) => {
-    return { name: flag?.Name, value: flag[isMaster ? 'MASTER' : 'TSERVER'] };
+const transformFlagsToMasterTserver = (
+  flagsArray: Gflag[]
+): { masterGFlags: FlagsArray; tserverGFlags: FlagsArray } => {
+  const masterGFlags: FlagsArray = [],
+    tserverGFlags: FlagsArray = [];
+  flagsArray.forEach((flag: Gflag) => {
+    if (flag?.hasOwnProperty('MASTER'))
+      masterGFlags.push({ name: flag?.Name, value: flag['MASTER'] });
+    if (flag?.hasOwnProperty('TSERVER'))
+      tserverGFlags.push({ name: flag?.Name, value: flag['TSERVER'] });
   });
-  return flags;
+
+  return { masterGFlags, tserverGFlags };
 };
 
 export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
+  const { masterGFlags, tserverGFlags } = transformFlagsToMasterTserver(formData.gFlags);
+
   let intent: UserIntent = {
     universeName: formData.cloudConfig.universeName,
     provider: formData.cloudConfig.provider?.uuid as string,
@@ -64,10 +74,9 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     ybSoftwareVersion: formData.advancedConfig.ybSoftwareVersion,
     enableIPV6: formData.advancedConfig.enableIPV6,
     enableExposingService: formData.advancedConfig.enableExposingService,
-    ybcPackagePath: formData.advancedConfig.ybcPackagePath,
     useSystemd: formData.advancedConfig.useSystemd,
-    masterGFlags: convertFlags(formData.gFlags, true),
-    tserverGFlags: convertFlags(formData.gFlags, false)
+    masterGFlags,
+    tserverGFlags
   };
 
   if (formData.instanceConfig.enableYSQLAuth && formData.instanceConfig.ysqlPassword)
@@ -81,11 +90,13 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
 
 export const createUniverse = async ({
   formData,
-  universeContextData
+  universeContextData,
+  featureFlags
 }: {
   mode: clusterModes;
   formData: UniverseFormData;
   universeContextData: UniverseFormContextState;
+  featureFlags: any;
 }) => {
   let response;
   try {
@@ -95,6 +106,7 @@ export const createUniverse = async ({
       rootCA: formData.instanceConfig.rootCA,
       userAZSelected: false,
       resetAZConfig: false,
+      enableYbc: featureFlags.released.enableYbc || featureFlags.test.enableYbc,
       communicationPorts: formData.advancedConfig.communicationPorts,
       encryptionAtRestConfig: {
         key_op: formData.instanceConfig.enableEncryptionAtRest ? 'ENABLE' : 'UNDEFINED'
