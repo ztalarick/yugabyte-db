@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { Box, Typography, MenuItem } from '@material-ui/core';
 import { YBButton, YBSelect, YBInput, YBLabel, YBCheckbox } from '../../../../../components';
+import { PlacementStatus } from './PlacementStatus';
 import { useGetAllZones, useGetUnusedZones, useNodePlacements } from './placementHelper';
-import { Placement, UniverseFormData } from '../../utils/dto';
+import { Placement, UniverseFormData, CloudType } from '../../utils/dto';
 import {
   TOTAL_NODES_FIELD,
   REPLICATION_FACTOR_FIELD,
-  PLACEMENTS_FIELD
+  PLACEMENTS_FIELD,
+  PROVIDER_FIELD
 } from '../../utils/constants';
 interface PlacementsFieldProps {
   disabled: boolean;
@@ -20,6 +22,7 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
+  const provider = useWatch({ name: PROVIDER_FIELD });
 
   //custom hooks
   const allZones = useGetAllZones(); //returns all AZ
@@ -32,12 +35,16 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
   });
 
   const renderHeader = (
-    <Box flex={1} mt={2} display="flex" flexDirection="row">
+    <Box flex={1} mt={1} display="flex" flexDirection="row">
       <Box flex={2}>
         <YBLabel>{t('universeForm.cloudConfig.azNameLabel')}</YBLabel>
       </Box>
       <Box flexShrink={1} width="150px">
-        <YBLabel>{t('universeForm.cloudConfig.azNodesLabel')}</YBLabel>
+        <YBLabel>
+          {provider?.code === CloudType.kubernetes
+            ? t('universeForm.cloudConfig.azPodsLabel')
+            : t('universeForm.cloudConfig.azNodesLabel')}
+        </YBLabel>
       </Box>
       <Box flexShrink={1} width="100px">
         <YBLabel>{t('universeForm.cloudConfig.preferredAZLabel')}</YBLabel>
@@ -118,25 +125,33 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
 
   if (fields.length) {
     return (
-      <Box display="flex" width="100%" flexDirection="column">
-        <Typography variant="h5">{t('universeForm.cloudConfig.nodePlacementTitle')}</Typography>
+      <Box mt={1} display="flex" width="100%" flexDirection="column">
+        <Typography variant="h5">{t('universeForm.cloudConfig.azHeader')}</Typography>
         {renderHeader}
         {renderPlacements()}
         {unUsedZones.length > 0 && fields.length < replicationFactor && (
-          <Box display="flex" mr={0.5} mt={1}>
+          <Box display="flex" justifyContent={'flex-start'} mr={0.5} mt={1}>
             <YBButton
               style={{ width: '150px' }}
               variant="primary"
-              onClick={() => append({ ...unUsedZones[0], numNodesInAZ: 1, replicationFactor: 1 })}
+              onClick={() =>
+                append({
+                  ...unUsedZones[0],
+                  numNodesInAZ: 1,
+                  replicationFactor: 1,
+                  isAffinitized: true
+                })
+              }
             >
               {t('universeForm.cloudConfig.addZoneButton')}
             </YBButton>
           </Box>
         )}
+        <PlacementStatus />
       </Box>
     );
   }
 
-  if (isLoading) return <>Loading..</>;
+  if (isLoading) return <>Loading Placements..</>;
   return <></>;
 };

@@ -5,7 +5,8 @@ import { Box, makeStyles } from '@material-ui/core';
 export enum YBHelperVariants {
   error = 'ERROR',
   warning = 'WARNING',
-  primary = 'PRIMARY'
+  primary = 'PRIMARY',
+  success = 'SUCCESS'
 }
 interface YBHelperProps {
   variant?: YBHelperVariants;
@@ -24,6 +25,9 @@ const useYBHelperStyles = makeStyles((theme) => ({
   },
   error: {
     color: theme.palette.error[500]
+  },
+  success: {
+    color: theme.palette.success[500]
   }
 }));
 
@@ -34,7 +38,8 @@ export const YBHelper = ({ children, variant = YBHelperVariants.primary }: YBHel
       className={clsx(
         variant === YBHelperVariants.primary && classes.primary,
         variant === YBHelperVariants.warning && classes.warning,
-        variant === YBHelperVariants.error && classes.error
+        variant === YBHelperVariants.error && classes.error,
+        variant === YBHelperVariants.success && classes.success
       )}
     >
       {children}
