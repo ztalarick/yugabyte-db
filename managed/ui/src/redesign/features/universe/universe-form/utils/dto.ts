@@ -51,7 +51,7 @@ export interface UserIntent {
   enableYEDIS: boolean;
   enableIPV6: boolean;
   enableExposingService: ExposingServiceTypes | null;
-  ybcPackagePath: string | null;
+  ybcPackagePath?: string | null;
   useSystemd: boolean;
   instanceTags: InstanceTags[];
   masterGFlags: FlagsArray;
@@ -440,6 +440,7 @@ export interface UniverseDetails {
   updateInProgress: boolean;
   updateSucceeded: boolean;
   userAZSelected: boolean;
+  enableYbc: boolean;
 }
 
 export type UniverseConfigure = Partial<UniverseDetails>;

@@ -42,11 +42,23 @@
         "regionsField": "Regions",
         "replicationField": "Replication Factor",
         "totalNodesField": "Total Nodes",
+        "totalPodsField": "Total Pods",
         "autoPlacementField": "Auto Placement",
         "azNameLabel": "Name",
         "azNodesLabel": "Individual Nodes",
+        "azPodsLabel": "Individual Pods",
         "preferredAZLabel": "Preferred",
-        "addZoneButton": "Add Zone"
+        "addZoneButton": "Add Zone",
+        "azHeader": "Availability Zones",
+        "placementStatus": {
+          "singleRF": "Primary data placement is not redundant, universe cannot survive even 1 node failure",
+          "azWarning": "Primary data placement is not geo-redundant, universe cannot survive even 1 availability zone failure",
+          "regionWarning": "Primary data placement is geo-redundant, universe can survive at least 1 availability zone failure",
+          "multiRegion": "Primary data placement is fully geo-redundant, universe can survive at least 1 region failure ",
+          "notEnoughNodesConfigured": "Not Enough Nodes Configured",
+          "notEnoughNodes": "Not Enough Nodes",
+          "noFieldsChanged": "At Least One Field Must Be Modified"
+        }
       },
       "gFlags": {
         "title": "G-Flags",

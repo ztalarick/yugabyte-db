@@ -4,12 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Box } from '@material-ui/core';
 import { YBInputField, YBLabel } from '../../../../../components';
-import { UniverseFormData } from '../../utils/dto';
+import { UniverseFormData, CloudType } from '../../utils/dto';
 import {
   TOTAL_NODES_FIELD,
   AUTO_PLACEMENT_FIELD,
   REPLICATION_FACTOR_FIELD,
-  PLACEMENTS_FIELD
+  PLACEMENTS_FIELD,
+  PROVIDER_FIELD
 } from '../../utils/constants';
 
 interface TotalNodesFieldProps {
@@ -20,6 +21,7 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
+  const provider = useWatch({ name: PROVIDER_FIELD });
   const autoPlacement = useWatch({ name: AUTO_PLACEMENT_FIELD });
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
   const placements = useWatch({ name: PLACEMENTS_FIELD });
@@ -41,12 +43,16 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
 
   return (
     <Box display="flex" width="100%">
-      <YBLabel>{t('universeForm.cloudConfig.totalNodesField')}</YBLabel>
+      <YBLabel>
+        {provider?.code === CloudType.kubernetes
+          ? t('universeForm.cloudConfig.totalPodsField')
+          : t('universeForm.cloudConfig.totalNodesField')}
+      </YBLabel>
       <Box flex={1}>
         <YBInputField
           control={control}
           name={TOTAL_NODES_FIELD}
-          fullWidth
+          // fullWidth
           type="number"
           disabled={!autoPlacement ? true : disabled}
           inputProps={{

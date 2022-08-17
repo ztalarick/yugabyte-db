@@ -449,23 +449,21 @@ export const GFlagsField = ({
 
   const renderModal = () => {
     const gflagSchema = Yup.object().shape({
-      flagvalue: Yup.mixed().required(t('universeForm.universeForm.validation.fieldRequired'))
+      flagvalue: Yup.mixed().required(t('universeForm.validation.fieldRequired'))
     });
     const modalTitle =
       selectedProps?.mode === CREATE
         ? selectedProps?.label
         : t('universeForm.gFlags.editFlagValue');
     const modalLabel =
-      selectedProps?.mode === CREATE
-        ? t('universeForm.gFlags.addFlag')
-        : t('universeForm.common.confirm');
+      selectedProps?.mode === CREATE ? t('universeForm.gFlags.addFlag') : t('common.confirm');
     return (
       <YBModalForm
         title={modalTitle}
         visible={toggleModal}
         submitLabel={modalLabel}
         formName="ADDGFlagForm"
-        cancelLabel={t('universeForm.common.cancel')}
+        cancelLabel={t('common.cancel')}
         error={formError}
         validationSchema={gflagSchema}
         showCancelButton={true}

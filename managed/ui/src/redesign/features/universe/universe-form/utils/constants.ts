@@ -1,4 +1,4 @@
-// Universe Form Fields Path
+// ------------Universe Form Fields Path Start------------
 
 //Cloud config
 export const UNIVERSE_NAME_FIELD = 'cloudConfig.universeName';
@@ -45,3 +45,8 @@ export const GFLAGS_FIELD = 'gFlags';
 
 //Tags
 export const USER_TAGS_FIELD = 'instanceTags';
+
+// ------------Universe Form Fields Path End------------
+
+//Other form related constants
+export const MIN_PLACEMENTS_FOR_GEO_REDUNDANCY = 3;

@@ -172,7 +172,11 @@ export const useNodePlacements = () => {
     [QUERY_KEY.universeConfigure, payload],
     () => api.universeConfigure(payload),
     {
-      enabled: needPlacement && totalNodes >= replicationFactor && !_.isEmpty(regionList),
+      enabled:
+        needPlacement &&
+        totalNodes >= replicationFactor &&
+        !_.isEmpty(regionList) &&
+        !_.isEmpty(instanceType),
       onSuccess: (data) => {
         const cluster = _.find(data.clusters, { clusterType: ClusterType.PRIMARY }); // TODO: revise logic for async cluster case
         const zones = getPlacementsFromCluster(cluster);

@@ -1,6 +1,7 @@
 import React, { createContext, FC } from 'react';
-import { useMethods } from 'react-use';
 import * as Yup from 'yup';
+import { useMethods } from 'react-use';
+import { useSelector } from 'react-redux';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
@@ -32,6 +33,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
   const classes = useFormMainStyles();
   const { t } = useTranslation();
   const universeContextData = useMethods(createFormMethods, initialState);
+  const featureFlags = useSelector((state: any) => state.featureFlags);
 
   //Form Validation
   const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
@@ -121,7 +123,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
   });
 
   const onSubmit = (formData: UniverseFormData) => {
-    createUniverse({ mode, formData, universeContextData: universeContextData[0] });
+    createUniverse({ mode, formData, universeContextData: universeContextData[0], featureFlags });
   };
 
   return (
