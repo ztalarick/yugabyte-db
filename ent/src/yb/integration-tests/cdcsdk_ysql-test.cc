@@ -428,7 +428,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     RETURN_NOT_OK(conn.ExecuteFormat(statement1, kTableName, "col1", key));
 
     log_buff2 << "Updating row for key " << key << " with";
-    for (auto col_value_pair : col_val_map1) {
+    for (auto col_value_pair : col_val_map2) {
       log_buff2 << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
     }
     LOG(INFO) << log_buff2.str();
@@ -1313,7 +1313,13 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
   uint32_t num_cols = 4;
   map<std::string, uint32_t> col_val_map1, col_val_map2;
 
-  auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
+  FLAGS_enable_single_record_update = true;
+  ASSERT_OK(SetUpWithParams(3, 1, false));
+  auto table = EXPECT_RESULT(CreateTable(
+      &test_cluster_, kNamespaceName, kTableName, 1, true, false, 0, false, "", "public",
+      num_cols));
+  google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
+  ASSERT_OK(test_client()->GetTablets(table, 0, &tablets, nullptr));
   ASSERT_EQ(tablets.size(), 1);
   CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream());
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
@@ -1326,6 +1332,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
 
   ASSERT_OK(UpdateRowsHelper(
       1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map1, col_val_map2, num_cols));
+  ASSERT_OK(test_client()->FlushTables(
+      {table.table_id()}, /* add_indexes = */ false,
+      /* timeout_secs = */ 30, /* is_compaction = */ false));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE, BEGIN, COMMIT in
   // that order.
@@ -1358,7 +1367,13 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByDelete
   uint32_t num_cols = 4;
   map<std::string, uint32_t> col_val_map;
 
-  auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
+  FLAGS_enable_single_record_update = true;
+  ASSERT_OK(SetUpWithParams(3, 1, false));
+  auto table = EXPECT_RESULT(CreateTable(
+      &test_cluster_, kNamespaceName, kTableName, 1, true, false, 0, false, "", "public",
+      num_cols));
+  google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
+  ASSERT_OK(test_client()->GetTablets(table, 0, &tablets, nullptr));
   ASSERT_EQ(tablets.size(), 1);
   CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream());
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
@@ -1369,6 +1384,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByDelete
 
   ASSERT_OK(UpdateDeleteRowsHelper(
       1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map, num_cols));
+  ASSERT_OK(test_client()->FlushTables(
+      {table.table_id()}, /* add_indexes = */ false,
+      /* timeout_secs = */ 30, /* is_compaction = */ false));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE, BEGIN, COMMIT in
   // that order.
@@ -1402,7 +1420,13 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
   uint32_t num_cols = 4;
   map<std::string, uint32_t> col_val_map1, col_val_map2;
 
-  auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
+  FLAGS_enable_single_record_update = true;
+  ASSERT_OK(SetUpWithParams(3, 1, false));
+  auto table = EXPECT_RESULT(CreateTable(
+      &test_cluster_, kNamespaceName, kTableName, 1, true, false, 0, false, "", "public",
+      num_cols));
+  google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
+  ASSERT_OK(test_client()->GetTablets(table, 0, &tablets, nullptr));
   ASSERT_EQ(tablets.size(), 1);
   CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream());
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
@@ -1413,6 +1437,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
 
   ASSERT_OK(UpdateRowsHelper(
       1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map1, col_val_map2, num_cols));
+  ASSERT_OK(test_client()->FlushTables(
+      {table.table_id()}, /* add_indexes = */ false,
+      /* timeout_secs = */ 30, /* is_compaction = */ false));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE, BEGIN, COMMIT in
   // that order.

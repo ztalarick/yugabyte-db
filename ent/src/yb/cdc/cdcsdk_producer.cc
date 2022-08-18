@@ -218,7 +218,7 @@ Status PopulateCDCSDKIntentRecord(
   docdb::IntentKeyValueForCDC prev_intent;
   std::set<std::string> columns_read;
   MicrosTime prev_intent_phy_time = 0;
-  bool condition;
+  bool new_cdc_record_needed;
 
   GetAtomicFlag(&FLAGS_enable_single_record_update);
   for (const auto& intent : intents) {
@@ -263,17 +263,16 @@ Status PopulateCDCSDKIntentRecord(
         const ColumnSchema& col = VERIFY_RESULT(schema.column_by_id(column_id_opt->GetColumnId()));
         column_name = col.name();
       }
-      condition =
+      new_cdc_record_needed =
           (prev_key != primary_key) || (col_count >= schema.num_columns()) ||
           (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) ||
-          ((prev_key == primary_key) && (!column_name.empty()) &&
-           (columns_read.find(column_name) != columns_read.end())) ||
+          ((!column_name.empty()) && (columns_read.find(column_name) != columns_read.end())) ||
           prev_intent_phy_time != intent.intent_ht.hybrid_time().GetPhysicalValueMicros();
     } else {
-      condition = (prev_key != primary_key) || (col_count >= schema.num_columns());
+      new_cdc_record_needed = (prev_key != primary_key) || (col_count >= schema.num_columns());
     }
 
-    if (condition) {
+    if (new_cdc_record_needed) {
       if (FLAGS_enable_single_record_update) {
         if (col_count >= schema.num_columns()) col_count = 0;
 
@@ -321,11 +320,7 @@ Status PopulateCDCSDKIntentRecord(
             schema_packing_storage, schema, tablet_peer, enum_oid_label_map, &value_slice,
             row_message));
       } else {
-        if (FLAGS_enable_single_record_update && row_message->op() == RowMessage_Op_INSERT) {
-          ++col_count;
-        } else {
-          ++col_count;
-        }
+        ++col_count;
 
         docdb::Value decoded_value;
         RETURN_NOT_OK(decoded_value.Decode(intent.value_buf));
