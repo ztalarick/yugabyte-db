@@ -1395,6 +1395,49 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByDelete
   CheckCount(expected_count, count);
 }
 
+// To test upadtes corresponding to a row packed into one CDC record. This verifies the generated
+// CDC record in case of subsequent update and update operations on different columns of same row.
+// Expected records: (DDL, 1 INSERT, 1 UPDATE, 1 UPDATE).
+TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdateSameRow)) {
+  uint32_t num_cols = 4;
+  map<std::string, uint32_t> col_val_map1, col_val_map2;
+
+  auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
+  ASSERT_EQ(tablets.size(), 1);
+  CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream());
+  auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
+  ASSERT_FALSE(set_resp.has_error());
+
+  col_val_map1.insert(pair<std::string, uint32_t>("col2", 9));
+  col_val_map2.insert(pair<std::string, uint32_t>("col3", 11));
+
+  ASSERT_OK(UpdateRowsHelper(
+      1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map1, col_val_map2, num_cols));
+
+  // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE, BEGIN, COMMIT in
+  // that order.
+  const uint32_t expected_count[] = {1, 1, 2, 0, 0, 0, 1, 1};
+  uint32_t count[] = {0, 0, 0, 0, 0, 0, 0, 0};
+
+  VaryingExpectedRecord expected_records[] = {
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
+      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
+      {1, {std::make_pair("col2", 9)}},
+      {1, {std::make_pair("col3", 11)}},
+      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}}};
+
+  GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
+
+  uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
+  for (uint32_t i = 0; i < record_size; ++i) {
+    const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
+    CheckRecord(record, expected_records[i], count, num_cols);
+  }
+  LOG(INFO) << "Got " << count[1] << " insert record and " << count[2] << " update record";
+  CheckCount(expected_count, count);
+}
+
 // Insert one row, delete inserted row.
 // Expected records: (DDL, INSERT, DELETE).
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardDeleteWithAutoCommit)) {
