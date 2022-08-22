@@ -198,7 +198,7 @@ struct TabletCheckpointInfo {
 struct CDCStateMetadataInfo {
   ProducerTabletInfo producer_tablet_info;
 
-  mutable std::string commit_timestamp;
+  mutable uint64_t commit_timestamp;
   mutable std::shared_ptr<Schema>  current_schema;
   mutable OpId last_streamed_op_id;
 
@@ -277,7 +277,7 @@ class CDCServiceImpl::Impl {
 
   void UpdateCDCStateMetadata(
       const ProducerTabletInfo& producer_tablet,
-      const std::string& timestamp,
+      const uint64_t& timestamp,
       const std::shared_ptr<Schema>& schema,
       const OpId& op_id) {
     std::lock_guard<decltype(mutex_)> l(mutex_);
@@ -305,7 +305,7 @@ class CDCServiceImpl::Impl {
     }
     CDCStateMetadataInfo info = CDCStateMetadataInfo {
       .producer_tablet_info = producer_tablet,
-      .commit_timestamp = {},
+      .commit_timestamp = 0,
       .current_schema = std::make_shared<Schema>(),
       .last_streamed_op_id = OpId(),
       .mem_tracker = nullptr,
@@ -314,7 +314,7 @@ class CDCServiceImpl::Impl {
     return info.current_schema;
   }
 
-  std::string GetCommitTime(const ProducerTabletInfo &producer_tablet) {
+  uint64_t GetCommitTime(const ProducerTabletInfo &producer_tablet) {
     std::lock_guard<decltype(mutex_)> l(mutex_);
     auto it = cdc_state_metadata_.find(producer_tablet);
 
@@ -548,7 +548,7 @@ class CDCServiceImpl::Impl {
         });
         cdc_state_metadata_.emplace(CDCStateMetadataInfo{
             .producer_tablet_info = producer_info,
-            .commit_timestamp = {},
+            .commit_timestamp = 0,
             .current_schema = std::make_shared<Schema>(),
             .last_streamed_op_id = OpId(),
             .mem_tracker = nullptr,
@@ -1388,7 +1388,7 @@ void CDCServiceImpl::GetChanges(const GetChangesRequestPB* req,
             &CDCServiceImpl::UpdateChildrenTabletsOnSplitOp, this, producer_tablet, _1, session),
         mem_tracker, &msgs_holder, resp, &last_readable_index, get_changes_deadline);
   } else {
-    std::string commit_timestamp = impl_->GetCommitTime(producer_tablet);
+    uint64_t commit_timestamp = impl_->GetCommitTime(producer_tablet);
     OpId last_streamed_op_id;
     auto cached_schema = impl_->GetOrAddSchema(producer_tablet, req->need_schema_info());
     auto namespace_name = tablet_peer->tablet()->metadata()->namespace_name();
@@ -1413,7 +1413,7 @@ void CDCServiceImpl::GetChanges(const GetChangesRequestPB* req,
             enum_map_result.ok(), enum_map_result.status(), resp->mutable_error(),
             CDCErrorPB::INTERNAL_ERROR, context);
       }
-      // Clean all the records which got added in the resp, till the enum cache miss failure is
+      // Clean all the records which got added in the resp, till the \enum cache miss failure is
       // encountered.
       resp->clear_cdc_sdk_proto_records();
       status = GetChangesForCDCSDK(

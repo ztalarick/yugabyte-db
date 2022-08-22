@@ -212,7 +212,7 @@ Status PopulateCDCSDKIntentRecord(
     IntraTxnWriteId* write_id,
     std::string* reverse_index_key,
     Schema* old_schema,
-    const std::string& commit_time) {
+    uint64_t* commit_time) {
   Schema& schema = old_schema ? *old_schema : *tablet_peer->tablet()->schema();
   SchemaPackingStorage schema_packing_storage;
   schema_packing_storage.AddSchema(tablet_peer->tablet()->metadata()->schema_version(), schema);
@@ -279,7 +279,8 @@ Status PopulateCDCSDKIntentRecord(
 
       // Write pair contains record for different row. Create a new CDCRecord in this case.
       row_message->set_transaction_id(transaction_id.ToString());
-      row_message->set_commit_time(boost::lexical_cast<uint64_t>(commit_time));
+      row_message->set_commit_time(*commit_time);
+      //row_message->set_commit_time(intent.intent_ht.hybrid_time().ToUint64());
       RETURN_NOT_OK(
           AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
     }
@@ -520,7 +521,7 @@ Status ProcessIntents(
     std::vector<docdb::IntentKeyValueForCDC>* keyValueIntents,
     docdb::ApplyTransactionState* stream_state,
     Schema* schema,
-    const std::string& commit_time) {
+    uint64_t* commit_time) {
   if (stream_state->key.empty() && stream_state->write_id == 0) {
     CDCSDKProtoRecordPB* proto_record = resp->add_cdc_sdk_proto_records();
     RowMessage* row_message = proto_record->mutable_row_message();
@@ -659,7 +660,7 @@ Status GetChangesForCDCSDK(
     const EnumOidLabelMap& enum_oid_label_map,
     consensus::ReplicateMsgsHolder* msgs_holder,
     GetChangesResponsePB* resp,
-    std::string* commit_timestamp,
+    uint64_t* commit_timestamp,
     std::shared_ptr<Schema>* cached_schema,
     OpId* last_streamed_op_id,
     int64_t* last_readable_opid_index,
@@ -769,7 +770,7 @@ Status GetChangesForCDCSDK(
 
     RETURN_NOT_OK(ProcessIntents(
         op_id, transaction_id, stream_metadata, enum_oid_label_map, resp, &consumption, &checkpoint,
-        tablet_peer, &keyValueIntents, &stream_state, nullptr, *commit_timestamp));
+        tablet_peer, &keyValueIntents, &stream_state, nullptr, commit_timestamp));
 
     if (checkpoint.write_id() == 0 && checkpoint.key().empty()) {
       last_streamed_op_id->term = checkpoint.term();
@@ -849,7 +850,7 @@ Status GetChangesForCDCSDK(
               RETURN_NOT_OK(ProcessIntents(
                   op_id, txn_id, stream_metadata, enum_oid_label_map, resp, &consumption,
                   &checkpoint, tablet_peer, &intents, &new_stream_state, &current_schema,
-                  *commit_timestamp));
+                  commit_timestamp));
 
               if (new_stream_state.write_id != 0 && !new_stream_state.key.empty()) {
                 pending_intents = true;

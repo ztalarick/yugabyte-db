@@ -73,7 +73,7 @@ Status GetChangesForCDCSDK(
     const EnumOidLabelMap& enum_oid_label_map,
     consensus::ReplicateMsgsHolder* msgs_holder,
     GetChangesResponsePB* resp,
-    std::string* commit_timestamp,
+    uint64_t* commit_timestamp,
     std::shared_ptr<Schema>* cached_schema,
     OpId* last_streamed_op_id,
     int64_t* last_readable_opid_index = nullptr,
