@@ -314,6 +314,25 @@ class CDCServiceImpl::Impl {
     return info.current_schema;
   }
 
+  std::string GetCommitTime(const ProducerTabletInfo &producer_tablet) {
+    std::lock_guard<decltype(mutex_)> l(mutex_);
+    auto it = cdc_state_metadata_.find(producer_tablet);
+
+    if (it != cdc_state_metadata_.end()) {
+      return it->commit_timestamp;
+    }
+
+    CDCStateMetadataInfo info = CDCStateMetadataInfo {
+      .producer_tablet_info = producer_tablet,
+      .commit_timestamp = {},
+      .current_schema = std::make_shared<Schema>(),
+      .last_streamed_op_id = OpId(),
+      .mem_tracker = nullptr,
+    };
+    cdc_state_metadata_.emplace(info);
+    return info.commit_timestamp;
+  }
+
   void AddTabletCheckpoint(
       OpId op_id,
       const CDCStreamId& stream_id,
@@ -1369,7 +1388,7 @@ void CDCServiceImpl::GetChanges(const GetChangesRequestPB* req,
             &CDCServiceImpl::UpdateChildrenTabletsOnSplitOp, this, producer_tablet, _1, session),
         mem_tracker, &msgs_holder, resp, &last_readable_index, get_changes_deadline);
   } else {
-    std::string commit_timestamp;
+    std::string commit_timestamp = impl_->GetCommitTime(producer_tablet);
     OpId last_streamed_op_id;
     auto cached_schema = impl_->GetOrAddSchema(producer_tablet, req->need_schema_info());
     auto namespace_name = tablet_peer->tablet()->metadata()->namespace_name();
