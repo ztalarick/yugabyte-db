@@ -116,21 +116,32 @@ public class UniverseTaskParams extends AbstractTaskParams {
     public boolean installNodeExporter = true;
   }
 
-  @JsonProperty(value = "targetXClusterConfigs", access = JsonProperty.Access.READ_ONLY)
+  /**
+   * @deprecated Replaced by {@link
+   *     UniverseDefinitionTaskParams.XClusterInfo#getTargetXClusterConfigs()}, so all the xCluster
+   *     related info are in the same JSON object
+   */
+  @Deprecated
   @ApiModelProperty(value = "The target universe's xcluster replication relationships")
+  @JsonProperty(value = "targetXClusterConfigs", access = JsonProperty.Access.READ_ONLY)
   public List<UUID> getTargetXClusterConfigs() {
     if (universeUUID == null) {
       return new ArrayList<>();
     }
-    return new ArrayList<>(
-        XClusterConfig.getByTargetUniverseUUID(universeUUID)
-            .stream()
-            .map(xClusterConfig -> xClusterConfig.uuid)
-            .collect(Collectors.toList()));
+    return XClusterConfig.getByTargetUniverseUUID(universeUUID)
+        .stream()
+        .map(xClusterConfig -> xClusterConfig.uuid)
+        .collect(Collectors.toList());
   }
 
-  @JsonProperty(value = "sourceXClusterConfigs", access = JsonProperty.Access.READ_ONLY)
+  /**
+   * @deprecated Replaced by {@link
+   *     UniverseDefinitionTaskParams.XClusterInfo#getSourceXClusterConfigs()}, so all the xCluster
+   *     related info are in the same JSON object
+   */
+  @Deprecated
   @ApiModelProperty(value = "The source universe's xcluster replication relationships")
+  @JsonProperty(value = "sourceXClusterConfigs", access = JsonProperty.Access.READ_ONLY)
   public List<UUID> getSourceXClusterConfigs() {
     if (universeUUID == null) {
       return Collections.emptyList();
@@ -156,6 +167,14 @@ public class UniverseTaskParams extends AbstractTaskParams {
   // Previous version used for task info.
   @ApiModelProperty(value = "Previous software version")
   public String ybPrevSoftwareVersion;
+
+  @ApiModelProperty public boolean enableYbc = false;
+
+  @ApiModelProperty public String ybcSoftwareVersion = null;
+
+  @ApiModelProperty public boolean installYbc = false;
+
+  @ApiModelProperty public boolean ybcInstalled = false;
 
   // Expected version of the universe for operation execution. Set to -1 if an operation should
   // not verify expected version of the universe.

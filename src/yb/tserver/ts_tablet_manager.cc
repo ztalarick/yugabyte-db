@@ -190,9 +190,6 @@ DEFINE_test_flag(bool, pause_apply_tablet_split, false,
 DEFINE_test_flag(bool, skip_deleting_split_tablets, false,
                  "Skip deleting tablets which have been split.");
 
-DEFINE_test_flag(bool, skip_post_split_compaction, false,
-                 "Skip processing post split compaction.");
-
 DEFINE_int32(verify_tablet_data_interval_sec, 0,
              "The tick interval time for the tablet data integrity verification background task. "
              "This defaults to 0, which means disable the background task.");
@@ -289,9 +286,7 @@ THREAD_POOL_METRICS_DEFINE(
     server, admin_triggered_compaction_pool, "Thread pool for tablet compaction jobs.");
 
 using consensus::ConsensusMetadata;
-using consensus::ConsensusStatePB;
 using consensus::RaftConfigPB;
-using consensus::RaftPeerPB;
 using consensus::StartRemoteBootstrapRequestPB;
 using log::Log;
 using master::ReportedTabletPB;
@@ -317,8 +312,6 @@ using tablet::TABLET_DATA_TOMBSTONED;
 using tablet::TabletDataState;
 using tablet::TabletPeer;
 using tablet::TabletPeerPtr;
-using tablet::TabletStatusListener;
-using tablet::TabletStatusPB;
 
 constexpr int32_t kDefaultTserverBlockCacheSizePercentage = 50;
 
@@ -372,6 +365,10 @@ TSTabletManager::TSTabletManager(FsManager* fs_manager,
                .set_min_threads(1)
                .unlimited_threads()
                .Build(&raft_pool_));
+  CHECK_OK(ThreadPoolBuilder("log-sync")
+               .set_min_threads(1)
+               .unlimited_threads()
+               .Build(&log_sync_pool_));
   CHECK_OK(ThreadPoolBuilder("prepare")
                .set_min_threads(1)
                .unlimited_threads()
@@ -396,16 +393,16 @@ TSTabletManager::TSTabletManager(FsManager* fs_manager,
                .set_metrics(std::move(read_metrics))
                .Build(&read_pool_));
   CHECK_OK(ThreadPoolBuilder("tablet-split-compaction")
-              .set_max_threads(FLAGS_post_split_trigger_compaction_pool_max_threads)
-              .set_max_queue_size(FLAGS_post_split_trigger_compaction_pool_max_queue_size)
-              .set_metrics(THREAD_POOL_METRICS_INSTANCE(
-                  server_->metric_entity(), post_split_trigger_compaction_pool))
-              .Build(&post_split_trigger_compaction_pool_));
+               .set_max_threads(FLAGS_post_split_trigger_compaction_pool_max_threads)
+               .set_max_queue_size(FLAGS_post_split_trigger_compaction_pool_max_queue_size)
+               .set_metrics(THREAD_POOL_METRICS_INSTANCE(
+                   server_->metric_entity(), post_split_trigger_compaction_pool))
+               .Build(&post_split_trigger_compaction_pool_));
   CHECK_OK(ThreadPoolBuilder("admin-compaction")
-              .set_max_threads(std::max(docdb::GetGlobalRocksDBPriorityThreadPoolSize(), 0))
-              .set_metrics(THREAD_POOL_METRICS_INSTANCE(
-                  server_->metric_entity(), admin_triggered_compaction_pool))
-              .Build(&admin_triggered_compaction_pool_));
+               .set_max_threads(std::max(docdb::GetGlobalRocksDBPriorityThreadPoolSize(), 0))
+               .set_metrics(THREAD_POOL_METRICS_INSTANCE(
+                   server_->metric_entity(), admin_triggered_compaction_pool))
+               .Build(&admin_triggered_compaction_pool_));
   ts_split_op_apply_ = METRIC_ts_split_op_apply.Instantiate(server_->metric_entity(), 0);
   ts_split_compaction_added_ =
       METRIC_ts_split_compaction_added.Instantiate(server_->metric_entity(), 0);
@@ -1052,7 +1049,7 @@ Status TSTabletManager::StartRemoteBootstrap(const StartRemoteBootstrapRequestPB
   // - first mark as closing
   // - then wait for num_tablets_being_remote_bootstrapped_ == 0
   ++num_tablets_being_remote_bootstrapped_;
-  auto private_addr = req.source_private_addr()[0].host();
+  auto private_addr = req.bootstrap_source_private_addr()[0].host();
   auto decrement_num_rbs_se = ScopeExit([this, &private_addr](){
     {
       std::lock_guard<RWMutex> lock(mutex_);
@@ -1067,10 +1064,20 @@ Status TSTabletManager::StartRemoteBootstrap(const StartRemoteBootstrapRequestPB
   LongOperationTracker tracker("StartRemoteBootstrap", 5s);
 
   const string& tablet_id = req.tablet_id();
-  const string& bootstrap_peer_uuid = req.bootstrap_peer_uuid();
+  const string& bootstrap_peer_uuid = req.bootstrap_source_peer_uuid();
   HostPort bootstrap_peer_addr = HostPortFromPB(DesiredHostPort(
-      req.source_broadcast_addr(), req.source_private_addr(), req.source_cloud_info(),
-      server_->MakeCloudInfoPB()));
+      req.bootstrap_source_broadcast_addr(), req.bootstrap_source_private_addr(),
+      req.bootstrap_source_cloud_info(), server_->MakeCloudInfoPB()));
+
+  ServerRegistrationPB tablet_leader_peer_conn_info;
+  if (!req.is_served_by_tablet_leader()) {
+    *tablet_leader_peer_conn_info.mutable_broadcast_addresses() =
+        req.tablet_leader_broadcast_addr();
+    *tablet_leader_peer_conn_info.mutable_private_rpc_addresses() =
+        req.tablet_leader_private_addr();
+    *tablet_leader_peer_conn_info.mutable_cloud_info() = req.tablet_leader_cloud_info();
+  }
+
   int64_t leader_term = req.caller_term();
 
   const string kLogPrefix = TabletLogPrefix(tablet_id);
@@ -1122,6 +1129,7 @@ Status TSTabletManager::StartRemoteBootstrap(const StartRemoteBootstrapRequestPB
   RETURN_NOT_OK(rb_client->Start(bootstrap_peer_uuid,
                                  &server_->proxy_cache(),
                                  bootstrap_peer_addr,
+                                 tablet_leader_peer_conn_info,
                                  &meta,
                                  this));
 
@@ -1434,13 +1442,16 @@ void TSTabletManager::OpenTablet(const RaftGroupMetadataPtr& meta,
           &TSTabletManager::AllowedHistoryCutoff, this, _1),
       .transaction_manager_provider = [server = server_]() -> client::TransactionManager& {
         return server->TransactionManager();
-      }
+      },
+      .post_split_compaction_pool = post_split_trigger_compaction_pool_.get(),
+      .split_compaction_added = ts_split_compaction_added_
     };
     tablet::BootstrapTabletData data = {
       .tablet_init_data = tablet_init_data,
       .listener = tablet_peer->status_listener(),
       .append_pool = append_pool(),
       .allocation_pool = allocation_pool_.get(),
+      .log_sync_pool = log_sync_pool(),
       .retryable_requests = &retryable_requests,
     };
     s = BootstrapTablet(data, &tablet, &log, &bootstrap_info);
@@ -1493,21 +1504,6 @@ void TSTabletManager::OpenTablet(const RaftGroupMetadataPtr& meta,
       LOG(WARNING) << kLogPrefix << "Trace:" << std::endl
                    << Trace::CurrentTrace()->DumpToString(true);
     }
-  }
-
-  if (PREDICT_TRUE(!FLAGS_TEST_skip_post_split_compaction)) {
-    auto status =
-        tablet->TriggerPostSplitCompactionIfNeeded([&]() {
-          return post_split_trigger_compaction_pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
-        });
-    if (status.ok()) {
-      ts_split_compaction_added_->Increment();
-    } else {
-      LOG_WITH_PREFIX(WARNING) << "Failed to submit compaction for post-split tablet:"
-          << status.ToString();
-    }
-  } else {
-    LOG(INFO) << "Skipping post split compaction " << meta->raft_group_id();
   }
 
   if (tablet->ShouldDisableLbMove()) {
@@ -1621,6 +1617,9 @@ void TSTabletManager::CompleteShutdown() {
 
   if (raft_pool_) {
     raft_pool_->Shutdown();
+  }
+  if (log_sync_pool_) {
+    log_sync_pool_->Shutdown();
   }
   if (tablet_prepare_pool_) {
     tablet_prepare_pool_->Shutdown();

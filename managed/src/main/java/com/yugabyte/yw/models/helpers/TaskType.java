@@ -207,6 +207,8 @@ public enum TaskType {
 
   UpdateSoftwareVersion("subtasks.UpdateSoftwareVersion"),
 
+  UpdateYbcSoftwareVersion("subtasks.UpdateYbcSoftwareVersion"),
+
   VerifyNodeSSHAccess("subtasks.VerifyNodeSSHAccess"),
 
   WaitForDataMove("subtasks.WaitForDataMove"),
@@ -263,6 +265,8 @@ public enum TaskType {
   XClusterConfigSync("subtasks.xcluster.XClusterConfigSync"),
 
   XClusterConfigUpdateMasterAddresses("subtasks.xcluster.XClusterConfigUpdateMasterAddresses"),
+
+  XClusterInfoPersist("subtasks.xcluster.XClusterInfoPersist"),
 
   // Tasks belonging to subtasks.cloud classpath
   CloudAccessKeyCleanup("subtasks.cloud.CloudAccessKeyCleanup"),
@@ -368,7 +372,9 @@ public enum TaskType {
 
   RunHooks("subtasks.RunHooks"),
 
-  UpdateUniverseTags("subtasks.UpdateUniverseTags");
+  UpdateUniverseTags("subtasks.UpdateUniverseTags"),
+
+  UpgradeYbc("subtasks.UpgradeYbc");
 
   private String relativeClassPath;
 

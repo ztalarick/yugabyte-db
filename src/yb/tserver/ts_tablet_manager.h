@@ -157,6 +157,7 @@ class TSTabletManager : public tserver::TabletPeerLookupIf, public tablet::Table
   ThreadPool* raft_pool() const { return raft_pool_.get(); }
   ThreadPool* read_pool() const { return read_pool_.get(); }
   ThreadPool* append_pool() const { return append_pool_.get(); }
+  ThreadPool* log_sync_pool() const { return log_sync_pool_.get(); }
 
   // Create a new tablet and register it with the tablet manager. The new tablet
   // is persisted on disk and opened before this method returns.
@@ -547,6 +548,9 @@ class TSTabletManager : public tserver::TabletPeerLookupIf, public tablet::Table
 
   TSTabletManagerStatePB state_ GUARDED_BY(mutex_);
 
+  // Thread pool used to perform fsync operations corresponding to log::Log of each tablet_peer
+  std::unique_ptr<ThreadPool> log_sync_pool_;
+
   // Thread pool used to open the tablets async, whether bootstrap is required or not.
   std::unique_ptr<ThreadPool> open_tablet_pool_;
 
@@ -569,6 +573,8 @@ class TSTabletManager : public tserver::TabletPeerLookupIf, public tablet::Table
   std::unique_ptr<ThreadPool> read_pool_;
 
   // Thread pool for manually triggering compactions for tablets created from a split.
+  // This is used by a tablet method to schedule compactions on the child tablets after
+  // a split so each tablet has a reference to this pool.
   std::unique_ptr<ThreadPool> post_split_trigger_compaction_pool_;
 
   // Thread pool for admin triggered compactions for tablets.

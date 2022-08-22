@@ -21,10 +21,12 @@ import com.yugabyte.yw.commissioner.Common;
 import com.yugabyte.yw.commissioner.tasks.DestroyUniverse;
 import com.yugabyte.yw.commissioner.tasks.ReadOnlyClusterDelete;
 import com.yugabyte.yw.commissioner.tasks.ReadOnlyKubernetesClusterDelete;
+import com.yugabyte.yw.commissioner.tasks.XClusterConfigTaskBase;
 import com.yugabyte.yw.common.KubernetesManagerFactory;
 import com.yugabyte.yw.common.PlacementInfoUtil;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.Util;
+import com.yugabyte.yw.common.YbcManager;
 import com.yugabyte.yw.common.certmgmt.CertConfigType;
 import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
@@ -97,6 +99,8 @@ public class UniverseCRUDHandler {
   @Inject PasswordPolicyService passwordPolicyService;
 
   @Inject UpgradeUniverseHandler upgradeUniverseHandler;
+
+  @Inject YbcManager ybcManager;
 
   private enum OpType {
     CONFIGURE,
@@ -247,11 +251,19 @@ public class UniverseCRUDHandler {
                     .filter(n -> n.isActive() && defaultRegion.code.equals(n.cloudInfo.region))
                     .count();
         if (nodesInDefRegion < intent.replicationFactor) {
-          throw new PlatformServiceException(
-              BAD_REQUEST,
-              String.format(
-                  "Could not pick %d masters, only %d nodes available in default region %s.",
-                  intent.replicationFactor, nodesInDefRegion, defaultRegion.name));
+          if (taskParams.mastersInDefaultRegion) {
+            throw new PlatformServiceException(
+                BAD_REQUEST,
+                String.format(
+                    "Could not pick %d masters, only %d nodes available in default region %s.",
+                    intent.replicationFactor, nodesInDefRegion, defaultRegion.name));
+          } else {
+            throw new PlatformServiceException(
+                BAD_REQUEST,
+                String.format(
+                    "Could not pick %d nodes in default region %s to place enough data replicas.",
+                    intent.replicationFactor, defaultRegion.name));
+          }
         }
       }
     }
@@ -372,6 +384,12 @@ public class UniverseCRUDHandler {
     }
   }
 
+  public void setUpXClusterSettings(UniverseDefinitionTaskParams taskParams) {
+    taskParams.xClusterInfo.sourceRootCertDirPath =
+        XClusterConfigTaskBase.getProducerCertsDir(
+            taskParams.getPrimaryCluster().userIntent.provider);
+  }
+
   public UniverseResp createUniverse(Customer customer, UniverseDefinitionTaskParams taskParams) {
     LOG.info("Create for {}.", customer.uuid);
 
@@ -477,6 +495,13 @@ public class UniverseCRUDHandler {
 
     // Create a new universe. This makes sure that a universe of this name does not already exist
     // for this customer id.
+    if (taskParams.enableYbc) {
+      taskParams.ybcSoftwareVersion =
+          StringUtils.isNotBlank(taskParams.ybcSoftwareVersion)
+              ? taskParams.ybcSoftwareVersion
+              : ybcManager.getStableYbcVersion();
+    }
+
     Universe universe = Universe.create(taskParams, customer.getCustomerId());
     LOG.info("Created universe {} : {}.", universe.universeUUID, universe.name);
 
@@ -518,6 +543,8 @@ public class UniverseCRUDHandler {
               BAD_REQUEST, "IPV6 not supported for platform deployed VMs.");
         }
       }
+
+      setUpXClusterSettings(taskParams);
 
       checkForCertificates(customer, taskParams);
 

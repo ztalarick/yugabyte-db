@@ -1,6 +1,5 @@
-/*
- * Copyright (c) YugaByte, Inc.
- */
+// Copyright (c) YugaByte, Inc.
+
 package model
 
 import "fmt"
@@ -76,7 +75,7 @@ type NodeDetails struct {
 	InstanceType string       `json:"instanceType"`
 	InstanceName string       `json:"instanceName"`
 	NodeName     string       `json:"nodeName"`
-	NodeConfigs  []NodeConfig `json:"nodeConfigurations"`
+	NodeConfigs  []NodeConfig `json:"nodeConfigs"`
 }
 
 type NodeConfig struct {

@@ -7,12 +7,13 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"net/http"
 	"net/http/httptest"
 	"node-agent/model"
 	"os"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -103,7 +104,7 @@ func testHandler(w http.ResponseWriter, r *http.Request) {
 func registerNodeTestHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if vars["cuuid"] != "c1234" {
-		http.Error(w, "{\"success\": false, \"error\": \"Bade Request\"}", 400)
+		http.Error(w, "{\"success\": false, \"error\": \"Bad Request\"}", 400)
 		return
 	}
 	data, err := json.Marshal(GetTestRegisterResponse())

@@ -385,6 +385,8 @@ class TabletPeer : public std::enable_shared_from_this<TabletPeer>,
 
   OpId cdc_sdk_min_checkpoint_op_id();
 
+  CoarseTimePoint cdc_sdk_min_checkpoint_op_id_expiration();
+
   Status SetCDCSDKRetainOpIdAndTime(
       const OpId& cdc_sdk_op_id, const MonoDelta& cdc_sdk_op_id_expiration);
 
@@ -399,6 +401,10 @@ class TabletPeer : public std::enable_shared_from_this<TabletPeer>,
   bool CanBeDeleted();
 
   std::string LogPrefix() const;
+
+  // Called from RemoteBootstrapSession and RemoteBootstrapAnchorSession to change role of the
+  // new peer post RBS.
+  Status ChangeRole(const std::string& requestor_uuid);
 
  protected:
   friend class RefCountedThreadSafe<TabletPeer>;

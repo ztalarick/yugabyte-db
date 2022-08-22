@@ -69,6 +69,9 @@ import com.yugabyte.yw.commissioner.tasks.subtasks.UpdateAndPersistGFlags;
 import com.yugabyte.yw.commissioner.tasks.subtasks.UpdateMountedDisks;
 import com.yugabyte.yw.commissioner.tasks.subtasks.UpdatePlacementInfo;
 import com.yugabyte.yw.commissioner.tasks.subtasks.UpdateSoftwareVersion;
+import com.yugabyte.yw.commissioner.tasks.subtasks.UpdateYbcSoftwareVersion;
+import com.yugabyte.yw.commissioner.tasks.subtasks.UpgradeYbc;
+import com.yugabyte.yw.commissioner.tasks.subtasks.UpgradeYbc;
 import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForDataMove;
 import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForEncryptionKeyInMemory;
 import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForFollowerLag;
@@ -86,6 +89,7 @@ import com.yugabyte.yw.commissioner.tasks.subtasks.xcluster.DeleteBootstrapIds;
 import com.yugabyte.yw.commissioner.tasks.subtasks.xcluster.DeleteReplication;
 import com.yugabyte.yw.commissioner.tasks.subtasks.xcluster.DeleteXClusterConfigEntry;
 import com.yugabyte.yw.commissioner.tasks.subtasks.xcluster.XClusterConfigUpdateMasterAddresses;
+import com.yugabyte.yw.commissioner.tasks.subtasks.xcluster.XClusterInfoPersist;
 import com.yugabyte.yw.common.DnsManager;
 import com.yugabyte.yw.common.NodeManager;
 import com.yugabyte.yw.common.ShellResponse;
@@ -696,6 +700,19 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
     return subTaskGroup;
   }
 
+  public SubTaskGroup createUpdateYbcTask(String ybcSoftwareVersion) {
+    SubTaskGroup subTaskGroup = getTaskExecutor().createSubTaskGroup("FinalizeYbcUpdate", executor);
+    UpdateYbcSoftwareVersion.Params params = new UpdateYbcSoftwareVersion.Params();
+    params.universeUUID = taskParams().universeUUID;
+    params.ybcSoftwareVersion = ybcSoftwareVersion;
+    UpdateYbcSoftwareVersion task = createTask(UpdateYbcSoftwareVersion.class);
+    task.initialize(params);
+    task.setUserTaskUUID(userTaskUUID);
+    subTaskGroup.addSubTask(task);
+    getRunnableTask().addSubTaskGroup(subTaskGroup);
+    return subTaskGroup;
+  }
+
   public SubTaskGroup createMarkUniverseForHealthScriptReUploadTask() {
     SubTaskGroup subTaskGroup =
         getTaskExecutor().createSubTaskGroup("MarkUniverseForHealthScriptReUpload", executor);
@@ -826,10 +843,13 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
   }
 
   /** Create a task to ping yb-controller servers on each node */
-  public SubTaskGroup createWaitForYbcServerTask() {
+  public SubTaskGroup createWaitForYbcServerTask(Set<NodeDetails> nodeDetailsSet) {
     SubTaskGroup subTaskGroup = getTaskExecutor().createSubTaskGroup("WaitForYbcServer", executor);
     WaitForYbcServer task = createTask(WaitForYbcServer.class);
-    task.initialize(taskParams());
+    WaitForYbcServer.Params params = new WaitForYbcServer.Params();
+    params.universeUUID = taskParams().universeUUID;
+    params.nodeDetailsSet = nodeDetailsSet;
+    task.initialize(params);
     subTaskGroup.addSubTask(task);
     getRunnableTask().addSubTaskGroup(subTaskGroup);
     return subTaskGroup;
@@ -1120,6 +1140,12 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
     params.process = processType.toString().toLowerCase();
     params.command = command;
     params.sleepAfterCmdMills = sleepAfterCmdMillis;
+
+    params.enableYbc = taskParams().enableYbc;
+    params.ybcSoftwareVersion = taskParams().ybcSoftwareVersion;
+    params.installYbc = taskParams().installYbc;
+    params.ybcInstalled = taskParams().ybcInstalled;
+
     // Set the InstanceType
     params.instanceType = node.cloudInfo.instance_type;
     params.checkVolumesAttached = processType == ServerType.TSERVER && command.equals("start");
@@ -2028,6 +2054,29 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
   }
 
   /**
+   * Creates a task to upgrade desired ybc version on a universe.
+   *
+   * @param universeUUID universe on which ybc need to be upgraded
+   * @param ybcVersion desired ybc version
+   * @param validateOnlyMasterLeader flag to check only if master leader node's ybc is upgraded or
+   *     not
+   */
+  public SubTaskGroup createUpgradeYbcTask(
+      UUID universeUUID, String ybcVersion, boolean validateOnlyMasterLeader) {
+    SubTaskGroup subTaskGroup = getTaskExecutor().createSubTaskGroup("UpgradeYbc", executor);
+    UpgradeYbc task = createTask(UpgradeYbc.class);
+    UpgradeYbc.Params params = new UpgradeYbc.Params();
+    params.universeUUID = universeUUID;
+    params.ybcVersion = ybcVersion;
+    params.validateOnlyMasterLeader = validateOnlyMasterLeader;
+    task.initialize(params);
+    task.setUserTaskUUID(userTaskUUID);
+    subTaskGroup.addSubTask(task);
+    getRunnableTask().addSubTaskGroup(subTaskGroup);
+    return subTaskGroup;
+  }
+
+  /**
    * Creates a task list to manipulate the DNS record available for this universe.
    *
    * @param eventType the type of manipulation to do on the DNS records.
@@ -2756,7 +2805,7 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
   }
 
   protected SubTaskGroup createTransferXClusterCertsRemoveTasks(
-      XClusterConfig xClusterConfig, File producerCertsDir, boolean ignoreErrors) {
+      XClusterConfig xClusterConfig, File sourceRootCertDirPath, boolean ignoreErrors) {
     SubTaskGroup subTaskGroup =
         getTaskExecutor().createSubTaskGroup("TransferXClusterCerts", executor);
     Universe targetUniverse = Universe.getOrBadRequest(xClusterConfig.targetUniverseUUID);
@@ -2768,9 +2817,7 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
       transferParams.azUuid = node.azUuid;
       transferParams.action = TransferXClusterCerts.Params.Action.REMOVE;
       transferParams.replicationGroupName = xClusterConfig.getReplicationGroupName();
-      if (producerCertsDir != null) {
-        transferParams.producerCertsDirOnTarget = producerCertsDir;
-      }
+      transferParams.producerCertsDirOnTarget = sourceRootCertDirPath;
       transferParams.ignoreErrors = ignoreErrors;
 
       TransferXClusterCerts transferXClusterCertsTask = createTask(TransferXClusterCerts.class);
@@ -2782,9 +2829,17 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
   }
 
   protected SubTaskGroup createTransferXClusterCertsRemoveTasks(
-      XClusterConfig xClusterConfig, File producerCertsDir) {
+      XClusterConfig xClusterConfig, File sourceRootCertDirPath) {
     return createTransferXClusterCertsRemoveTasks(
-        xClusterConfig, producerCertsDir, false /* ignoreErrors */);
+        xClusterConfig, sourceRootCertDirPath, false /* ignoreErrors */);
+  }
+
+  protected SubTaskGroup createTransferXClusterCertsRemoveTasks(XClusterConfig xClusterConfig) {
+    return createTransferXClusterCertsRemoveTasks(
+        xClusterConfig,
+        Universe.getOrBadRequest(xClusterConfig.targetUniverseUUID)
+            .getUniverseDetails()
+            .getSourceRootCertDirPath());
   }
 
   protected void createDeleteXClusterConfigSubtasks(XClusterConfig xClusterConfig) {
@@ -2799,12 +2854,18 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
 
     // If target universe is destroyed, ignore creating this subtask.
     if (xClusterConfig.targetUniverseUUID != null) {
-      // Delete the source universe root cert from the target universe.
-      createTransferXClusterCertsRemoveTasks(
-              xClusterConfig,
-              null /* producerCertsDir */,
-              xClusterConfig.status == XClusterConfig.XClusterConfigStatusType.DeletedUniverse)
-          .setSubTaskGroupType(UserTaskDetails.SubTaskGroupType.DeleteXClusterReplication);
+      File sourceRootCertDirPath =
+          Universe.getOrBadRequest(xClusterConfig.targetUniverseUUID)
+              .getUniverseDetails()
+              .getSourceRootCertDirPath();
+      // Delete the source universe root cert from the target universe if it is transferred.
+      if (sourceRootCertDirPath != null) {
+        createTransferXClusterCertsRemoveTasks(
+                xClusterConfig,
+                sourceRootCertDirPath,
+                xClusterConfig.status == XClusterConfig.XClusterConfigStatusType.DeletedUniverse)
+            .setSubTaskGroupType(UserTaskDetails.SubTaskGroupType.DeleteXClusterReplication);
+      }
     }
 
     // Delete the xCluster config from DB.
@@ -2850,6 +2911,82 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
     }
     if (subTaskGroup.getSubTaskCount() > 0) {
       getRunnableTask().addSubTaskGroup(subTaskGroup);
+    }
+  }
+
+  protected SubTaskGroup createTransferXClusterCertsCopyTasks(
+      Collection<NodeDetails> nodes,
+      String replicationGroupName,
+      File certificate,
+      File sourceRootCertDirPath) {
+    SubTaskGroup subTaskGroup =
+        getTaskExecutor().createSubTaskGroup("TransferXClusterCerts", executor);
+    for (NodeDetails node : nodes) {
+      TransferXClusterCerts.Params transferParams = new TransferXClusterCerts.Params();
+      transferParams.universeUUID = taskParams().universeUUID;
+      transferParams.nodeName = node.nodeName;
+      transferParams.azUuid = node.azUuid;
+      transferParams.rootCertPath = certificate;
+      transferParams.action = TransferXClusterCerts.Params.Action.COPY;
+      transferParams.replicationGroupName = replicationGroupName;
+      transferParams.producerCertsDirOnTarget = sourceRootCertDirPath;
+
+      TransferXClusterCerts transferXClusterCertsTask = createTask(TransferXClusterCerts.class);
+      transferXClusterCertsTask.initialize(transferParams);
+      subTaskGroup.addSubTask(transferXClusterCertsTask);
+    }
+    getRunnableTask().addSubTaskGroup(subTaskGroup);
+    return subTaskGroup;
+  }
+
+  protected SubTaskGroup createXClusterInfoPersistTask(
+      UniverseDefinitionTaskParams.XClusterInfo xClusterInfo) {
+    SubTaskGroup subTaskGroup =
+        getTaskExecutor().createSubTaskGroup("XClusterInfoPersist", executor);
+    XClusterInfoPersist.Params xClusterInfoPersistParams = new XClusterInfoPersist.Params();
+    xClusterInfoPersistParams.universeUUID = taskParams().universeUUID;
+    xClusterInfoPersistParams.xClusterInfo = xClusterInfo;
+
+    XClusterInfoPersist task = createTask(XClusterInfoPersist.class);
+    task.initialize(xClusterInfoPersistParams);
+    subTaskGroup.addSubTask(task);
+    getRunnableTask().addSubTaskGroup(subTaskGroup);
+    return subTaskGroup;
+  }
+
+  protected SubTaskGroup createXClusterInfoPersistTask() {
+    return createXClusterInfoPersistTask(getUniverse().getUniverseDetails().xClusterInfo);
+  }
+
+  protected void unlockXClusterUniverses(
+      Set<UUID> lockedXClusterUniversesUuidSet, boolean ignoreErrors) {
+    if (lockedXClusterUniversesUuidSet == null) {
+      return;
+    }
+    Exception firstException = null;
+    for (UUID universeUuid : lockedXClusterUniversesUuidSet) {
+      try {
+        // Unlock the universe.
+        unlockUniverseForUpdate(universeUuid);
+      } catch (Exception e) {
+        // Log the error message, and continue to unlock as many universes as possible.
+        log.error(
+            "{} hit error : could not unlock universe {} that was locked because of "
+                + "participating in an XCluster config: {}",
+            getName(),
+            universeUuid,
+            e.getMessage());
+        if (firstException == null) {
+          firstException = e;
+        }
+      }
+    }
+    if (firstException != null) {
+      if (!ignoreErrors) {
+        throw new RuntimeException(firstException);
+      } else {
+        log.debug("Error ignored");
+      }
     }
   }
   // --------------------------------------------------------------------------------

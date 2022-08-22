@@ -80,14 +80,11 @@ using consensus::kMinimumTerm;
 using consensus::MakeOpId;
 using consensus::ReplicateMsg;
 using consensus::ReplicateMsgPtr;
-using log::Log;
 using log::LogAnchorRegistry;
 using log::LogTestBase;
-using log::ReadableLogSegment;
 using log::AppendSync;
 using server::Clock;
 using server::LogicalClock;
-using tserver::WriteRequestPB;
 
 struct BootstrapReport {
   // OpIds replayed using Play... functions.
@@ -225,12 +222,15 @@ class BootstrapTest : public LogTestBase {
       .tablet_splitter = nullptr,
       .allowed_history_cutoff_provider = {},
       .transaction_manager_provider = nullptr,
+      .post_split_compaction_pool = nullptr,
+      .split_compaction_added = nullptr
     };
     BootstrapTabletData data = {
       .tablet_init_data = tablet_init_data,
       .listener = listener.get(),
       .append_pool = log_thread_pool_.get(),
       .allocation_pool = log_thread_pool_.get(),
+      .log_sync_pool = log_thread_pool_.get(),
       .retryable_requests = nullptr,
       .test_hooks = test_hooks_
     };
