@@ -81,6 +81,12 @@ using namespace std::placeholders;
 DEFINE_int32(cdc_max_stream_intent_records, 1000,
              "Max number of intent records allowed in single cdc batch. ");
 
+DEFINE_bool(
+    disable_immediate_gc_for_xcluster, false,
+    "disable immediate garbage collection of changes received on xcluster target so that CDC "
+    "streams created on target could stream these changes further");
+TAG_FLAG(disable_immediate_gc_for_xcluster, advanced);
+
 namespace yb {
 namespace docdb {
 
@@ -430,8 +436,8 @@ Status PrepareApplyExternalIntents(
         RETURN_NOT_OK(PrepareApplyExternalIntentsBatch(
             apply.second.commit_ht, iter.value(), regular_batch, &write_id));
       }
-      if (intents_batch) {
-        //intents_batch->SingleDelete(input_key);
+      if (intents_batch && !FLAGS_disable_immediate_gc_for_xcluster) {
+        intents_batch->SingleDelete(input_key);
       }
 
       iter.Next();
@@ -499,16 +505,18 @@ bool AddExternalPairToWriteBatch(
   Slice key = kv_pair.key();
   key.consume_byte();
   auto txn_id = CHECK_RESULT(DecodeTransactionId(&key));
-  /*auto it = apply_external_transactions->find(txn_id);
-  if (it != apply_external_transactions->end()) {
-    // The same write operation could contain external intents and instruct us to apply them.
-    CHECK_OK(PrepareApplyExternalIntentsBatch(
-        it->second.commit_ht, key_value, regular_write_batch, &it->second.write_id));
-    if (external_txns_intents_state) {
-      external_txns_intents_state->EraseEntry(txn_id);
+  if (!FLAGS_disable_immediate_gc_for_xcluster) {
+    auto it = apply_external_transactions->find(txn_id);
+    if (it != apply_external_transactions->end()) {
+      // The same write operation could contain external intents and instruct us to apply them.
+      CHECK_OK(PrepareApplyExternalIntentsBatch(
+          it->second.commit_ht, key_value, regular_write_batch, &it->second.write_id));
+      if (external_txns_intents_state) {
+        external_txns_intents_state->EraseEntry(txn_id);
+      }
+      return false;
     }
-    return false;
-  }*/
+  }
 
   int write_id = 0;
   if (external_txns_intents_state) {
@@ -553,6 +561,7 @@ bool PrepareExternalWriteBatch(
     rocksdb::WriteBatch* intents_write_batch,
     ExternalTxnIntentsState* external_txns_intents_state) {
   CHECK(put_batch.read_pairs().empty());
+  GetAtomicFlag(&FLAGS_disable_immediate_gc_for_xcluster);
 
   auto apply_external_transactions = ProcessApplyExternalTransactions(put_batch);
 
