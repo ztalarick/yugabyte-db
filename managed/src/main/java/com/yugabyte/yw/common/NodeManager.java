@@ -1449,7 +1449,7 @@ public class NodeManager extends DevopsBase {
             }
           }
           if (type == NodeCommandType.Create) {
-            commandArgs.add("--as_json");
+            // commandArgs.add("--as_json");
           }
           break;
         }

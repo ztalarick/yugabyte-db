@@ -564,7 +564,7 @@ class CreateInstancesMethod(AbstractInstancesMethod):
                                  action="store_true",
                                  default=True,
                                  help="Delete the root volume on VM termination")
-        self.parser.add_argument("-j", "--as_json", action="store_true")
+        # self.parser.add_argument("-j", "--as_json", action="store_true")
 
     def callback(self, args):
         host_info = self.cloud.get_host_info(args)

@@ -12,7 +12,6 @@ const nodeActionExpectedResult = {
   REMOVE: 'Removed',
   RELEASE: 'Unreachable',
   DELETE: 'Unreachable',
-  ADD: 'Live'
 };
 class NodeActionModal extends Component {
   static propTypes = {
@@ -29,6 +28,7 @@ class NodeActionModal extends Component {
       preformGetUniversePerNodeStatus(universeUUID).then((response) => {
         if (response.payload && response.payload.data) {
           const node = response.payload.data[nodeName];
+          console.log('HELLO RAJ');
           if (
             actionType === 'DELETE' ||
             node.node_status === nodeActionExpectedResult[actionType]

@@ -44,6 +44,7 @@ class NodeDetails extends Component {
       this.props.getUniversePerNodeStatus(uuid);
       this.props.getMasterLeader(uuid);
       if (hasLiveNodes(currentUniverse.data)) {
+        console.log('hello');
         this.props.getUniversePerNodeMetrics(uuid);
       }
       
@@ -129,20 +130,25 @@ class NodeDetails extends Component {
         isLoading = false;
       }
 
-      console.log('selectedNodeName', selectedNodeName);
-      console.log('selectedNodeAction', selectedNodeAction);
-
+     
       if (selectedNodeName && selectedNodeName === nodeDetail.nodeName) {
         isActionsDisabled = true;
+        console.log('selectedNodeName is success', getPromiseState(universePerNodeAllowedActions).isSuccess());
+        console.log('poll node actions', universePerNodeAllowedActions?.data);
+        console.log('nodeStatus', nodeStatus);
+        console.log('nodeActionExpectedResult', nodeActionExpectedResult[selectedNodeAction]);
         if (getPromiseState(universePerNodeAllowedActions).isSuccess() &&
           isNonEmptyArray(universePerNodeAllowedActions.data) &&
-          (nodeStatus === nodeActionExpectedResult[selectedNodeAction]
-            || nodeStatus === nodeActionExpectedResult[DEFAULT])
-          ) {
+          nodeStatus === nodeActionExpectedResult[selectedNodeAction]
+        ) {
+            if (selectedNodeAction === "DELETE") {
+              window.location.reload();
+            }
             isActionsDisabled = false;
             allowedNodeActions = universePerNodeAllowedActions.data;
         }
       }
+      
       
       let instanceName = '';
       const nodeName = nodeDetail.nodeName;
