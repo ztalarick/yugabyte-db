@@ -26,12 +26,14 @@ import {
   fetchCustomerTasksFailure
 } from '../../../actions/tasks';
 
-function mapStateToProps(state, ownProps) {
+function mapStateToProps(state) {
+  console.log('NodeDetailsContainer State', state);
   return {
     universe: state.universe,
     customer: state.customer,
     providers: state.cloud.providers,
-    tasks: ownProps.tasks
+    selectedNodeName: state.universe.getNodeNameWithAction?.nodeName,
+    selectedNodeAction: state.universe.getNodeNameWithAction?.actionType
   };
 }
 
@@ -68,7 +70,7 @@ const mapDispatchToProps = (dispatch) => {
       });
     },
 
-    getMyNodeAllowedActions: (uuid, nodeName) => {
+    selectedNodeAllowedActions: (uuid, nodeName) => {
       dispatch(getUniversePerNodeAllowedActions(uuid, nodeName)).then((actionResponse) => {
         dispatch(getUniversePerNodeAllowedActionsResponse(actionResponse.payload));
       });

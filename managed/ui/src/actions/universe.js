@@ -82,6 +82,9 @@ export const GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS_RESPONSE = 'GET_UNIVERSE_PER_
 export const GET_UNIVERSE_PER_NODE_METRICS = 'GET_UNIVERSE_PER_NODE_METRICS';
 export const GET_UNIVERSE_PER_NODE_METRICS_RESPONSE = 'GET_UNIVERSE_PER_NODE_METRICS_RESPONSE';
 
+// Node Actions
+export const SET_NODE_NAME_FOR_SELECTED_ACTION = 'SET_NODE_NAME_FOR_SELECTED_ACTION';
+
 //Validation Tasks
 export const CHECK_IF_UNIVERSE_EXISTS = 'CHECK_IF_UNIVERSE_EXISTS';
 
@@ -395,6 +398,15 @@ export function resetUniverseTasks() {
 export function closeUniverseDialog() {
   return {
     type: CLOSE_UNIVERSE_DIALOG
+  };
+}
+
+export function setNodeForSelectedAction(nodeName, actionType) {
+  console.log("nodeName", nodeName);
+  return {
+    type: SET_NODE_NAME_FOR_SELECTED_ACTION,
+    nodeName,
+    actionType
   };
 }
 

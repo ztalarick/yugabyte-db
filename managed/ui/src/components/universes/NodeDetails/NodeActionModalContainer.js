@@ -8,6 +8,7 @@ import {
   getUniversePerNodeStatusResponse,
   getUniversePerNodeAllowedActions,
   getUniversePerNodeAllowedActionsResponse,
+  setNodeForSelectedAction,
   performUniverseNodeAction,
   performUniverseNodeActionResponse
 } from '../../../actions/universe';
@@ -21,10 +22,14 @@ function mapStateToProps(state) {
 const mapDispatchToProps = (dispatch) => {
   return {
 
-    getMyNodeAllowedActions: (uuid, nodeName) => {
+    selectedNodeAllowedActions: (uuid, nodeName) => {
       dispatch(getUniversePerNodeAllowedActions(uuid, nodeName)).then((actionResponse) => {
         dispatch(getUniversePerNodeAllowedActionsResponse(actionResponse.payload));
       });
+    },
+    
+    setNodeForSelectedAction: (nodeName, actionType) => {
+      dispatch(setNodeForSelectedAction(nodeName, actionType));
     },
 
     performUniverseNodeAction: (universeUUID, nodeName, actionType) => {

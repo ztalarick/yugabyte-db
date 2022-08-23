@@ -42,6 +42,7 @@ import {
   GET_UNIVERSE_PER_NODE_METRICS_RESPONSE,
   GET_MASTER_LEADER,
   GET_MASTER_LEADER_RESPONSE,
+  SET_NODE_NAME_FOR_SELECTED_ACTION,
   RESET_MASTER_LEADER,
   PERFORM_UNIVERSE_NODE_ACTION,
   PERFORM_UNIVERSE_NODE_ACTION_RESPONSE,
@@ -95,6 +96,7 @@ const INITIAL_STATE = {
   universeList: getInitialState([]),
   error: null,
   formSubmitSuccess: false,
+  getNodeNameWithAction: null,
   universeConfigTemplate: getInitialState({}),
   universeResourceTemplate: getInitialState({}),
   currentPlacementStatus: null,
@@ -149,6 +151,15 @@ export default function (state = INITIAL_STATE, action) {
         universeConfigTemplate: getInitialState({}),
         universeResourceTemplate: getInitialState({})
       };
+    
+    case SET_NODE_NAME_FOR_SELECTED_ACTION:
+      return {
+        ...state,
+        getNodeNameWithAction: action.nodeName ? {
+          nodeName: action.nodeName,
+          actionType: action.actionType
+        } : {}
+      }
 
     // Read Replica Operations
     case ADD_READ_REPLICA:

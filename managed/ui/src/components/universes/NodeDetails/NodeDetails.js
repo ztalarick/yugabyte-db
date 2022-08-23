@@ -19,33 +19,24 @@ import {
 } from '../../../utils/UniverseUtils';
 import { hasLiveNodes } from '../../../utils/UniverseUtils';
 import { YBLoading } from '../../common/indicators';
-import {
-  hasPendingTasksForUniverse,
-} from '../helpers/universeHelpers';
 
 const nodeActionExpectedResult = {
   START: 'Live',
   STOP: 'Stopped',
-  REMOVE: 'Unreachable',
+  REMOVE: 'Removed',
   RELEASE: 'Unreachable',
-  DELETE: 'Unreachable'
+  DELETE: 'Unreachable',
+  ADD: 'Live',
+  DEFAULT: 'Unreachable'
 };
-
-const nodeActions = {
-  STOP: 'STOP',
-  START: 'START',
-  REMOVE: 'REMOVE',
-  DELETE: 'DELETE',
-  ADD: 'ADD'
-}
+const DEFAULT = "DEFAULT";
 class NodeDetails extends Component {
   componentDidMount() {
     const {
       universe: { 
-        currentUniverse,
-        universePerNodeStatus 
+        currentUniverse, 
       },
-      location
+      selectedNodeName
     } = this.props;
     if (getPromiseState(currentUniverse).isSuccess()) {
       console.log('ENNA DA IDHU123');
@@ -55,10 +46,9 @@ class NodeDetails extends Component {
       if (hasLiveNodes(currentUniverse.data)) {
         this.props.getUniversePerNodeMetrics(uuid);
       }
-      const clickedNodeName = location?.state?.nodeName;
-      console.log('clickedNodeName', clickedNodeName);
-      if (clickedNodeName) {
-        this.props.getMyNodeAllowedActions(uuid, clickedNodeName);
+      
+      if (selectedNodeName) {
+        this.props.selectedNodeAllowedActions(uuid, selectedNodeName);
       }
 
       const universeDetails = currentUniverse.data.universeDetails;
@@ -74,11 +64,6 @@ class NodeDetails extends Component {
         this.props.fetchNodeListByReplicaProvider(readOnlyClusterProvider);
       }
     }
-  }
-
-  componentDidUpdate(prevProps) {
-
-    
   }
 
   componentWillUnmount() {
@@ -98,7 +83,9 @@ class NodeDetails extends Component {
         universeMasterLeader
       },
       customer,
-      providers
+      providers,
+      selectedNodeName,
+      selectedNodeAction
     } = this.props;
     const universeDetails = currentUniverse.data.universeDetails;
     const nodeDetails = universeDetails.nodeDetailsSet;
@@ -125,14 +112,8 @@ class NodeDetails extends Component {
       let tserverAlive = false;
       let isLoading = universeCreated;
       let isActionsDisabled = false;
-      const propsLocationState = this.props.location;
-      const clickedNodeName = propsLocationState?.state?.nodeName;
-      const clickedAction = propsLocationState?.state?.clickedAction;
-      
       let allowedNodeActions  = nodeDetail.allowedActions;
 
-      // console.log('universePerNodeStatus', universePerNodeStatus);
-      // console.log('universePerNodeAllowedActions', universePerNodeAllowedActions);
       if (
         getPromiseState(universePerNodeStatus).isSuccess() &&
         isNonEmptyObject(universePerNodeStatus.data) &&
@@ -148,19 +129,20 @@ class NodeDetails extends Component {
         isLoading = false;
       }
 
-      if (clickedNodeName === nodeDetail.nodeName) {
-        console.log('Action Disabled for node', nodeDetail.nodeName);
-        console.log('Action Disabled for node', universePerNodeStatus.data);
+      console.log('selectedNodeName', selectedNodeName);
+      console.log('selectedNodeAction', selectedNodeAction);
+
+      if (selectedNodeName && selectedNodeName === nodeDetail.nodeName) {
         isActionsDisabled = true;
         if (getPromiseState(universePerNodeAllowedActions).isSuccess() &&
           isNonEmptyArray(universePerNodeAllowedActions.data) &&
-          nodeStatus === nodeActionExpectedResult[clickedAction]
+          (nodeStatus === nodeActionExpectedResult[selectedNodeAction]
+            || nodeStatus === nodeActionExpectedResult[DEFAULT])
           ) {
             isActionsDisabled = false;
             allowedNodeActions = universePerNodeAllowedActions.data;
         }
       }
-
       
       let instanceName = '';
       const nodeName = nodeDetail.nodeName;

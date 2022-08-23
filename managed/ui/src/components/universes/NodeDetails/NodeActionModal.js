@@ -9,11 +9,11 @@ import { NodeAction } from '../../universes';
 const nodeActionExpectedResult = {
   START: 'Live',
   STOP: 'Stopped',
-  REMOVE: 'Unreachable',
+  REMOVE: 'Removed',
   RELEASE: 'Unreachable',
-  DELETE: 'Unreachable'
+  DELETE: 'Unreachable',
+  ADD: 'Live'
 };
-
 class NodeActionModal extends Component {
   static propTypes = {
     nodeInfo: PropTypes.object.isRequired,
@@ -23,8 +23,7 @@ class NodeActionModal extends Component {
   pollNodeStatusUpdate = (universeUUID, actionType, nodeName, payload) => {
     const { preformGetUniversePerNodeStatus,
       preformGetUniversePerNodeStatusResponse,
-      performGetUniversePerNodeAllowedActions,
-      performGetUniversePerNodeAllowedActionsResponse
+      selectedNodeAllowedActions
      } = this.props;
     this.interval = setTimeout(() => {
       preformGetUniversePerNodeStatus(universeUUID).then((response) => {
@@ -36,14 +35,8 @@ class NodeActionModal extends Component {
           ) {
             clearInterval(this.interval);
             console.log('THE ALLOWED ACTIONS CALL IS MADE');
-            this.props.getMyNodeAllowedActions(universeUUID, nodeName);
+            selectedNodeAllowedActions(universeUUID, nodeName);
             preformGetUniversePerNodeStatusResponse(response.payload);
-            // performGetUniversePerNodeAllowedActions(universeUUID, nodeName).then((response) => {
-            //   if (response.payload && response.payload.data) {
-            //     performGetUniversePerNodeAllowedActionsResponse(response.payload);
-            //   }
-            // })
-            
             return;
           }
           preformGetUniversePerNodeStatusResponse(response.payload);
@@ -83,10 +76,12 @@ class NodeActionModal extends Component {
 
     
     onHide();
+    this.props.setNodeForSelectedAction(nodeInfo.name, actionType);
     const location = {
       pathname: '/universes/' + universeUUID + '/nodes',
       state: { clickedAction: actionType, nodeName:  nodeInfo.name }
     }
+    
     browserHistory.push(location);
     // browserHistory.push('/universes/' + universeUUID + '/nodes');
   };
