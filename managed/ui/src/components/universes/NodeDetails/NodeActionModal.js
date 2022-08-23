@@ -3,7 +3,7 @@
 import React, { Component } from 'react';
 import { YBModal } from '../../common/forms/fields';
 import PropTypes from 'prop-types';
-import { browserHistory } from 'react-router';
+import { browserHistory, withRouter } from 'react-router';
 import { NodeAction } from '../../universes';
 
 const nodeActionExpectedResult = {
@@ -14,14 +14,18 @@ const nodeActionExpectedResult = {
   DELETE: 'Unreachable'
 };
 
-export default class NodeActionModal extends Component {
+class NodeActionModal extends Component {
   static propTypes = {
     nodeInfo: PropTypes.object.isRequired,
     actionType: PropTypes.string
   };
 
   pollNodeStatusUpdate = (universeUUID, actionType, nodeName, payload) => {
-    const { preformGetUniversePerNodeStatus, preformGetUniversePerNodeStatusResponse } = this.props;
+    const { preformGetUniversePerNodeStatus,
+      preformGetUniversePerNodeStatusResponse,
+      performGetUniversePerNodeAllowedActions,
+      performGetUniversePerNodeAllowedActionsResponse
+     } = this.props;
     this.interval = setTimeout(() => {
       preformGetUniversePerNodeStatus(universeUUID).then((response) => {
         if (response.payload && response.payload.data) {
@@ -31,13 +35,23 @@ export default class NodeActionModal extends Component {
             node.node_status === nodeActionExpectedResult[actionType]
           ) {
             clearInterval(this.interval);
+            console.log('THE ALLOWED ACTIONS CALL IS MADE');
+            this.props.getMyNodeAllowedActions(universeUUID, nodeName);
             preformGetUniversePerNodeStatusResponse(response.payload);
+            // performGetUniversePerNodeAllowedActions(universeUUID, nodeName).then((response) => {
+            //   if (response.payload && response.payload.data) {
+            //     performGetUniversePerNodeAllowedActionsResponse(response.payload);
+            //   }
+            // })
+            
             return;
           }
           preformGetUniversePerNodeStatusResponse(response.payload);
           this.pollNodeStatusUpdate(universeUUID, actionType, nodeName, payload);
         }
-      });
+      },
+      );
+
     }, 1500);
   };
 
@@ -66,8 +80,15 @@ export default class NodeActionModal extends Component {
         );
       }
     });
+
+    
     onHide();
-    browserHistory.push('/universes/' + universeUUID + '/nodes');
+    const location = {
+      pathname: '/universes/' + universeUUID + '/nodes',
+      state: { clickedAction: actionType, nodeName:  nodeInfo.name }
+    }
+    browserHistory.push(location);
+    // browserHistory.push('/universes/' + universeUUID + '/nodes');
   };
 
   render() {
@@ -92,3 +113,6 @@ export default class NodeActionModal extends Component {
     );
   }
 }
+
+
+export default withRouter(NodeActionModal)

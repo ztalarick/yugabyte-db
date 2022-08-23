@@ -193,7 +193,8 @@ export default class NodeDetailsTable extends Component {
       const actions_disabled = isDisabled(
         customer.currentCustomer.data.features,
         'universes.actions'
-      );
+      ) || row.isActionsDisabled;
+      // || nodeDetails.isActionDisabled;
       const hideQueries =
         !isNotHidden(customer.currentCustomer.data.features, 'universes.details.queries') ||
         !row.isTServer;

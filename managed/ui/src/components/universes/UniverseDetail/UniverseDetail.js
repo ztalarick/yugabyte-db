@@ -368,7 +368,9 @@ class UniverseDetail extends Component {
             unmountOnExit={true}
             disabled={isDisabled(currentCustomer.data.features, 'universes.details.nodes')}
           >
-            <NodeDetailsContainer />
+            <NodeDetailsContainer 
+              tasks={tasks}
+            />
           </Tab.Pane>
         ),
 

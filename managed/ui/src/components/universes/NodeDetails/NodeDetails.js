@@ -2,7 +2,7 @@
 
 import React, { Component, Fragment } from 'react';
 import _ from 'lodash';
-
+import { withRouter } from 'react-router';
 import { NodeDetailsTable } from '../../universes';
 import {
   isNonEmptyArray,
@@ -19,18 +19,46 @@ import {
 } from '../../../utils/UniverseUtils';
 import { hasLiveNodes } from '../../../utils/UniverseUtils';
 import { YBLoading } from '../../common/indicators';
+import {
+  hasPendingTasksForUniverse,
+} from '../helpers/universeHelpers';
 
-export default class NodeDetails extends Component {
+const nodeActionExpectedResult = {
+  START: 'Live',
+  STOP: 'Stopped',
+  REMOVE: 'Unreachable',
+  RELEASE: 'Unreachable',
+  DELETE: 'Unreachable'
+};
+
+const nodeActions = {
+  STOP: 'STOP',
+  START: 'START',
+  REMOVE: 'REMOVE',
+  DELETE: 'DELETE',
+  ADD: 'ADD'
+}
+class NodeDetails extends Component {
   componentDidMount() {
     const {
-      universe: { currentUniverse }
+      universe: { 
+        currentUniverse,
+        universePerNodeStatus 
+      },
+      location
     } = this.props;
     if (getPromiseState(currentUniverse).isSuccess()) {
+      console.log('ENNA DA IDHU123');
       const uuid = currentUniverse.data.universeUUID;
       this.props.getUniversePerNodeStatus(uuid);
       this.props.getMasterLeader(uuid);
       if (hasLiveNodes(currentUniverse.data)) {
         this.props.getUniversePerNodeMetrics(uuid);
+      }
+      const clickedNodeName = location?.state?.nodeName;
+      console.log('clickedNodeName', clickedNodeName);
+      if (clickedNodeName) {
+        this.props.getMyNodeAllowedActions(uuid, clickedNodeName);
       }
 
       const universeDetails = currentUniverse.data.universeDetails;
@@ -48,17 +76,24 @@ export default class NodeDetails extends Component {
     }
   }
 
+  componentDidUpdate(prevProps) {
+
+    
+  }
+
   componentWillUnmount() {
     this.props.resetMasterLeader();
   }
 
   render() {
+  
     const {
       universe: {
         currentUniverse,
         nodeInstanceList,
         replicaNodeInstanceList,
         universePerNodeStatus,
+        universePerNodeAllowedActions,
         universePerNodeMetrics,
         universeMasterLeader
       },
@@ -89,6 +124,15 @@ export default class NodeDetails extends Component {
       let masterAlive = false;
       let tserverAlive = false;
       let isLoading = universeCreated;
+      let isActionsDisabled = false;
+      const propsLocationState = this.props.location;
+      const clickedNodeName = propsLocationState?.state?.nodeName;
+      const clickedAction = propsLocationState?.state?.clickedAction;
+      
+      let allowedNodeActions  = nodeDetail.allowedActions;
+
+      // console.log('universePerNodeStatus', universePerNodeStatus);
+      // console.log('universePerNodeAllowedActions', universePerNodeAllowedActions);
       if (
         getPromiseState(universePerNodeStatus).isSuccess() &&
         isNonEmptyObject(universePerNodeStatus.data) &&
@@ -104,6 +148,20 @@ export default class NodeDetails extends Component {
         isLoading = false;
       }
 
+      if (clickedNodeName === nodeDetail.nodeName) {
+        console.log('Action Disabled for node', nodeDetail.nodeName);
+        console.log('Action Disabled for node', universePerNodeStatus.data);
+        isActionsDisabled = true;
+        if (getPromiseState(universePerNodeAllowedActions).isSuccess() &&
+          isNonEmptyArray(universePerNodeAllowedActions.data) &&
+          nodeStatus === nodeActionExpectedResult[clickedAction]
+          ) {
+            isActionsDisabled = false;
+            allowedNodeActions = universePerNodeAllowedActions.data;
+        }
+      }
+
+      
       let instanceName = '';
       const nodeName = nodeDetail.nodeName;
 
@@ -158,9 +216,10 @@ export default class NodeDetails extends Component {
         privateIP: nodeDetail.cloudInfo.private_ip,
         publicIP: nodeDetail.cloudInfo.public_ip,
         nodeStatus: nodeStatus,
-        allowedActions: nodeDetail.allowedActions,
+        allowedActions: allowedNodeActions,
         cloudInfo: nodeDetail.cloudInfo,
         isLoading: isLoading,
+        isActionsDisabled,
         isMasterAlive: masterAlive,
         isTserverAlive: tserverAlive,
         placementUUID: nodeDetail.placementUuid,
@@ -208,3 +267,5 @@ export default class NodeDetails extends Component {
     );
   }
 }
+
+export default withRouter(NodeDetails);

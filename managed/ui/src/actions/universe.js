@@ -77,6 +77,8 @@ export const CONFIGURE_UNIVERSE_RESOURCES_RESPONSE = 'CONFIGURE_UNIVERSE_RESOURC
 // Universe per-node status
 export const GET_UNIVERSE_PER_NODE_STATUS = 'GET_UNIVERSE_PER_NODE_STATUS';
 export const GET_UNIVERSE_PER_NODE_STATUS_RESPONSE = 'GET_UNIVERSE_PER_NODE_STATUS_RESPONSE';
+export const GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS = 'GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS';
+export const GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS_RESPONSE = 'GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS_RESPONSE';
 export const GET_UNIVERSE_PER_NODE_METRICS = 'GET_UNIVERSE_PER_NODE_METRICS';
 export const GET_UNIVERSE_PER_NODE_METRICS_RESPONSE = 'GET_UNIVERSE_PER_NODE_METRICS_RESPONSE';
 
@@ -493,6 +495,23 @@ export function getUniversePerNodeStatusResponse(response) {
   };
 }
 
+export function getUniversePerNodeAllowedActions(universeUUID, nodeName) {
+  const requestUrl = `${getCustomerEndpoint()}/universes/${universeUUID}/node/${nodeName}/allowed_actions`;
+  const request = axios.get(requestUrl);
+  return {
+    type: GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS,
+    payload: request
+  };
+}
+
+export function getUniversePerNodeAllowedActionsResponse(response) {
+  return {
+    type: GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS_RESPONSE,
+    payload: response
+  };
+}
+
+
 export function getUniversePerNodeMetrics(universeUUID) {
   const requestUrl = `${getCustomerEndpoint()}/universes/${universeUUID}/tablet-servers`;
   const request = axios.get(requestUrl);
@@ -747,6 +766,24 @@ export function fetchSlowQueries(universeUUID, cancelFn) {
   }
 
   return request;
+}
+
+export function fetchUnusedIndexesSuggestions(universeUUID) {
+  const customerUUID = localStorage.getItem('customerId');
+  const endpoint = `${ROOT_URL}/customers/${customerUUID}/universes/${universeUUID}/unused_indexes`;
+  return axios.get(endpoint);
+}
+
+export function fetchQueryLoadSkewSuggestions(universeUUID) {
+  const customerUUID = localStorage.getItem('customerId');
+  const endpoint = `${ROOT_URL}/customers/${customerUUID}/universes/${universeUUID}/query_distribution_suggestions`;
+  return axios.get(endpoint);
+}
+
+export function fetchRangeShardingSuggestions(universeUUID) {
+  const customerUUID = localStorage.getItem('customerId');
+  const endpoint = `${ROOT_URL}/customers/${customerUUID}/universes/${universeUUID}/range_hash`;
+  return axios.get(endpoint);
 }
 
 export function resetSlowQueries(universeUUID) {

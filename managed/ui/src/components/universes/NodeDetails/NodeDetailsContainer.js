@@ -3,8 +3,11 @@
 import { NodeDetails } from '../../universes';
 import { connect } from 'react-redux';
 import {
+  fetchUniverseMetadata,
   getUniversePerNodeStatus,
   getUniversePerNodeStatusResponse,
+  getUniversePerNodeAllowedActions,
+  getUniversePerNodeAllowedActionsResponse,
   getUniversePerNodeMetrics,
   getUniversePerNodeMetricsResponse,
   getMasterLeader,
@@ -17,12 +20,18 @@ import {
   getNodesInstancesForProviderResponse,
   getNodesInstancesForReadReplicaProviderResponse
 } from '../../../actions/cloud';
+import {
+  fetchCustomerTasks,
+  fetchCustomerTasksSuccess,
+  fetchCustomerTasksFailure
+} from '../../../actions/tasks';
 
-function mapStateToProps(state) {
+function mapStateToProps(state, ownProps) {
   return {
     universe: state.universe,
     customer: state.customer,
-    providers: state.cloud.providers
+    providers: state.cloud.providers,
+    tasks: ownProps.tasks
   };
 }
 
@@ -38,6 +47,16 @@ const mapDispatchToProps = (dispatch) => {
       dispatch(resetMasterLeader());
     },
 
+    fetchCustomerTasks: () => {
+      return dispatch(fetchCustomerTasks()).then((response) => {
+        if (!response.error) {
+          return dispatch(fetchCustomerTasksSuccess(response.payload));
+        } else {
+          return dispatch(fetchCustomerTasksFailure(response.payload));
+        }
+      });
+    },
+
     /**
      * Get per-node status for a universe.
      *
@@ -46,6 +65,12 @@ const mapDispatchToProps = (dispatch) => {
     getUniversePerNodeStatus: (uuid) => {
       dispatch(getUniversePerNodeStatus(uuid)).then((perNodeResponse) => {
         dispatch(getUniversePerNodeStatusResponse(perNodeResponse.payload));
+      });
+    },
+
+    getMyNodeAllowedActions: (uuid, nodeName) => {
+      dispatch(getUniversePerNodeAllowedActions(uuid, nodeName)).then((actionResponse) => {
+        dispatch(getUniversePerNodeAllowedActionsResponse(actionResponse.payload));
       });
     },
 
@@ -59,6 +84,10 @@ const mapDispatchToProps = (dispatch) => {
       dispatch(getNodeInstancesForProvider(pUUID)).then((response) => {
         dispatch(getNodesInstancesForProviderResponse(response.payload));
       });
+    },
+
+    fetchUniverseMetadata: () => {
+      dispatch(fetchUniverseMetadata());
     },
 
     fetchNodeListByReplicaProvider: (pUUID) => {

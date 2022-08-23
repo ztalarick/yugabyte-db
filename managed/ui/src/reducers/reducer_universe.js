@@ -36,6 +36,8 @@ import {
   FETCH_UNIVERSE_METADATA,
   GET_UNIVERSE_PER_NODE_STATUS,
   GET_UNIVERSE_PER_NODE_STATUS_RESPONSE,
+  GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS,
+  GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS_RESPONSE,
   GET_UNIVERSE_PER_NODE_METRICS,
   GET_UNIVERSE_PER_NODE_METRICS_RESPONSE,
   GET_MASTER_LEADER,
@@ -102,6 +104,7 @@ const INITIAL_STATE = {
   deleteReadReplica: getInitialState([]),
   universeTasks: getInitialState([]),
   universePerNodeStatus: getInitialState({}),
+  universePerNodeAllowedActions: getInitialState({}),
   universePerNodeMetrics: getInitialState({}),
   universeMasterLeader: getInitialState({}),
   rollingUpgrade: getInitialState({}),
@@ -188,6 +191,10 @@ export default function (state = INITIAL_STATE, action) {
       return setLoadingState(state, 'universePerNodeStatus', {});
     case GET_UNIVERSE_PER_NODE_STATUS_RESPONSE:
       return setPromiseResponse(state, 'universePerNodeStatus', action);
+    case GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS:
+      return setLoadingState(state, 'universePerNodeAllowedActions', {});
+    case GET_UNIVERSE_PER_NODE_ALLOWED_ACTIONS_RESPONSE:
+      return setPromiseResponse(state, 'universePerNodeAllowedActions', action);
     case GET_UNIVERSE_PER_NODE_METRICS:
       return setLoadingState(state, 'universePerNodeMetrics', {});
     case GET_UNIVERSE_PER_NODE_METRICS_RESPONSE:

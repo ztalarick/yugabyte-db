@@ -6,6 +6,8 @@ import { connect } from 'react-redux';
 import {
   getUniversePerNodeStatus,
   getUniversePerNodeStatusResponse,
+  getUniversePerNodeAllowedActions,
+  getUniversePerNodeAllowedActionsResponse,
   performUniverseNodeAction,
   performUniverseNodeActionResponse
 } from '../../../actions/universe';
@@ -18,6 +20,13 @@ function mapStateToProps(state) {
 
 const mapDispatchToProps = (dispatch) => {
   return {
+
+    getMyNodeAllowedActions: (uuid, nodeName) => {
+      dispatch(getUniversePerNodeAllowedActions(uuid, nodeName)).then((actionResponse) => {
+        dispatch(getUniversePerNodeAllowedActionsResponse(actionResponse.payload));
+      });
+    },
+
     performUniverseNodeAction: (universeUUID, nodeName, actionType) => {
       return dispatch(performUniverseNodeAction(universeUUID, nodeName, actionType));
     },
@@ -29,7 +38,13 @@ const mapDispatchToProps = (dispatch) => {
     },
     preformGetUniversePerNodeStatusResponse: (payload) => {
       dispatch(getUniversePerNodeStatusResponse(payload));
-    }
+    },
+    performGetUniversePerNodeAllowedActions: (universeUUID, nodeName) => {
+      return dispatch(getUniversePerNodeAllowedActions(universeUUID, nodeName));
+    },
+    performGetUniversePerNodeAllowedActionsResponse: (payload) => {
+      dispatch(getUniversePerNodeAllowedActionsResponse(payload));
+    },
   };
 };
 

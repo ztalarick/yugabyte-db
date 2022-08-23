@@ -50,6 +50,15 @@ import play.libs.Json;
 import play.mvc.Result;
 import play.mvc.Results;
 
+import com.yugabyte.yw.common.NodeActionType;
+import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
+import com.yugabyte.yw.models.helpers.NodeDetails;
+import com.yugabyte.yw.forms.NodeDetailsResp;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.gson.Gson;
+
 @Api(
     value = "Node instances",
     authorizations = @Authorization(AbstractPlatformController.API_KEY_AUTH))
@@ -331,6 +340,67 @@ public class NodeInstanceController extends AuthenticatedController {
             taskUUID);
     return new YBPTask(taskUUID).asResult();
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  @ApiOperation(value = "Update a node", response = YBPTask.class)
+  @ApiImplicitParams({
+    @ApiImplicitParam(
+        name = "Node action",
+        value = "Node action data to be updated",
+        required = true,
+        dataType = "com.yugabyte.yw.forms.NodeActionFormData",
+        paramType = "body")
+  })
+  public Result getNodeAllowedActions(UUID customerUUID, UUID universeUUID, String nodeName) {
+    JsonNode resultNode;
+    Customer customer = Customer.getOrBadRequest(customerUUID);
+    Universe universe = Universe.getOrBadRequest(universeUUID);
+    // universe.getNodeOrBadRequest(nodeName);
+
+    UniverseDefinitionTaskParams universeDetails = universe.getUniverseDetails();
+    NodeDetails currentNode = universe.getNode(nodeName);
+    NodeDetailsResp nodeDetails = new NodeDetailsResp(currentNode, universe);
+
+    Set<NodeActionType> allowedActions = nodeDetails.getAllowedActions();
+
+    String jsonActions = new Gson().toJson(allowedActions);
+    LOG.info(
+        "{} Node",
+        jsonActions);
+
+    ObjectMapper mapper = new ObjectMapper();
+    resultNode = mapper.valueToTree(allowedActions);
+    // try {
+    //    ObjectMapper mapper = new ObjectMapper();
+    //   resultNode = mapper.valueToTree(allowedActions);
+    // } catch (JsonProcessingException e) {
+    //   throw new PlatformServiceException(BAD_REQUEST, "Invalid JSON");
+    // }
+
+    // // Get alive status
+    // JsonNode result = universeInfoHandler.status(universe);
+    return PlatformResults.withData(resultNode);
+  }
+
+
+
+
+
+
+
 
   private NodeInstance findNodeOrThrow(Provider provider, String instanceIP) {
     List<NodeInstance> nodesInProvider = NodeInstance.listByProvider(provider.uuid);
