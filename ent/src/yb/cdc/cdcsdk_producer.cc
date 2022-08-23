@@ -216,14 +216,11 @@ Status PopulateCDCSDKIntentRecord(
   RowMessage* row_message = proto_record.mutable_row_message();
   size_t col_count = 0;
   docdb::IntentKeyValueForCDC prev_intent;
-  std::set<std::string> columns_read;
   MicrosTime prev_intent_phy_time = 0;
-  bool new_cdc_record_needed;
+  bool new_cdc_record_needed = false;
 
-  GetAtomicFlag(&FLAGS_enable_single_record_update);
   for (const auto& intent : intents) {
     Slice key(intent.key_buf);
-    std::string column_name;
     const auto key_size =
         VERIFY_RESULT(docdb::DocKey::EncodedSize(key, docdb::DocKeyPart::kWholeDocKey));
 
@@ -258,15 +255,10 @@ Status PopulateCDCSDKIntentRecord(
     // Compare key hash with previously seen key hash to determine whether the write pair
     // is part of the same row or not.
     Slice primary_key(key.data(), key_size);
-    if (FLAGS_enable_single_record_update) {
-      if (column_id_opt && column_id_opt->type() == docdb::KeyEntryType::kColumnId) {
-        const ColumnSchema& col = VERIFY_RESULT(schema.column_by_id(column_id_opt->GetColumnId()));
-        column_name = col.name();
-      }
+    if (GetAtomicFlag(&FLAGS_enable_single_record_update)) {
       new_cdc_record_needed =
           (prev_key != primary_key) || (col_count >= schema.num_columns()) ||
           (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) ||
-          ((!column_name.empty()) && (columns_read.find(column_name) != columns_read.end())) ||
           prev_intent_phy_time != intent.intent_ht.hybrid_time().GetPhysicalValueMicros();
     } else {
       new_cdc_record_needed = (prev_key != primary_key) || (col_count >= schema.num_columns());
@@ -281,8 +273,6 @@ Status PopulateCDCSDKIntentRecord(
           MakeNewProtoRecord(
               prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
               reverse_index_key);
-
-          columns_read.erase(columns_read.begin(), columns_read.end());
         }
       }
 
@@ -334,10 +324,6 @@ Status PopulateCDCSDKIntentRecord(
               row_message->add_new_tuple()));
           row_message->add_old_tuple();
 
-          if (FLAGS_enable_single_record_update && row_message->op() == RowMessage_Op_UPDATE) {
-            columns_read.insert(col.name());
-          }
-
         } else if (column_id_opt && column_id_opt->type() != docdb::KeyEntryType::kSystemColumnId) {
           LOG(DFATAL) << "Unexpected value type in key: " << column_id_opt->type()
                       << " key: " << decoded_key.ToString()
@@ -367,8 +353,8 @@ Status PopulateCDCSDKIntentRecord(
     }
   }
 
-  if (proto_record.IsInitialized() && row_message->IsInitialized() &&
-      row_message->op() == RowMessage_Op_UPDATE) {
+  if (FLAGS_enable_single_record_update && proto_record.IsInitialized() &&
+      row_message->IsInitialized() && row_message->op() == RowMessage_Op_UPDATE) {
     MakeNewProtoRecord(
         prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
         reverse_index_key);

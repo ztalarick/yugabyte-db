@@ -453,7 +453,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
 
   Status UpdateDeleteRowsHelper(
       uint32_t start, uint32_t end, Cluster* cluster, bool flag, uint32_t key,
-      std::map<std::string, uint32_t> col_val_map, uint32_t num_cols) {
+      const std::map<std::string, uint32_t>& col_val_map, uint32_t num_cols) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     std::stringstream log_buff1, log_buff2;
     LOG(INFO) << "Writing " << end - start << " row(s) within transaction";
@@ -492,7 +492,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     RETURN_NOT_OK(conn.ExecuteFormat(statement1, kTableName, "col1", key));
 
     log_buff2 << "Updating row for key " << key << " with";
-    for (auto col_value_pair : col_val_map) {
+    for (auto& col_value_pair : col_val_map) {
       log_buff2 << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
     }
     LOG(INFO) << log_buff2.str();
@@ -1315,8 +1315,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardMultiColUpdateWithAuto
   ASSERT_FALSE(set_resp.has_error());
 
   ASSERT_OK(WriteRows(1 /* start */, 2 /* end */, &test_cluster_, num_cols));
-  col_val_map.insert(pair<std::string, uint32_t>("col2", 1));
-  col_val_map.insert(pair<std::string, uint32_t>("col3", 1));
+  col_val_map.insert({"col2", 1});
+  col_val_map.insert({"col3", 1});
   ASSERT_OK(UpdateRows(1 /* key */, col_val_map, &test_cluster_));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE in that order.
