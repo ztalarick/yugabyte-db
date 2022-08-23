@@ -14,12 +14,23 @@
     overflow: auto;
   }
 
+  table code,
+  li > code,
   p > code {
     white-space: nowrap;
     padding: 0 4px;
     border-width: 0 !important;
     font-size: 90% !important;
     line-height: 20px;
+    color: inherit !important;
+  }
+
+  p > a {
+    &:hover {
+      >code {
+        text-decoration: underline;
+      }
+    }
   }
 
   h1 > code,
@@ -32,12 +43,30 @@
     margin: 0 0 2px;
   }
 
-  a > code {
-    color: inherit !important;
-    margin: 0;
-    padding: 0 4px !important;
-    line-height: 18px;
-    font-size: 90% !important;
+  a {
+    >code {
+      color: inherit !important;
+      margin: 0 -4px;
+      padding: 0 4px !important;
+      line-height: 18px;
+      font-size: 90% !important;
+    }
+  }
+
+  *:not(.tabs-name) > li:not(.nav-item) > a,
+  p > a,
+  td > a {
+    position: relative;
+    z-index: 1;
+
+    >code {
+      position: relative;
+      z-index: -1;
+    }
+  }
+
+  *:not(.tabs-name) > li:not(.nav-item) > a:hover > code {
+    text-decoration: underline;
   }
 
   pre {
