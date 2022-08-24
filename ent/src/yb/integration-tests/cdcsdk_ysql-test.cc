@@ -363,11 +363,11 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     return Status::OK();
   }
 
-  Status UpdateRows(uint32_t key, std::map<std::string, uint32_t> col_val_map, Cluster* cluster) {
+  Status UpdateRows(uint32_t key, std::map<std::string, uint32_t>& col_val_map, Cluster* cluster) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     std::stringstream log_buff;
     log_buff << "Updating row for key " << key << " with";
-    for (auto col_value_pair : col_val_map) {
+    for (auto& col_value_pair : col_val_map) {
       log_buff << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
     }
     LOG(INFO) << log_buff.str();
@@ -388,7 +388,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
 
   Status UpdateRowsHelper(
       uint32_t start, uint32_t end, Cluster* cluster, bool flag, uint32_t key,
-      std::map<std::string, uint32_t> col_val_map1, std::map<std::string, uint32_t> col_val_map2,
+      std::map<std::string, uint32_t>& col_val_map1, std::map<std::string, uint32_t>& col_val_map2,
       uint32_t num_cols) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     std::stringstream log_buff1, log_buff2;
@@ -410,14 +410,14 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     }
 
     log_buff1 << "Updating row for key " << key << " with";
-    for (auto col_value_pair : col_val_map1) {
+    for (auto& col_value_pair : col_val_map1) {
       log_buff1 << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
     }
     LOG(INFO) << log_buff1.str();
 
     std::stringstream statement_buff1, statement_buff2;
     statement_buff1 << "UPDATE $0 SET ";
-    for (auto col_value_pair : col_val_map1) {
+    for (auto& col_value_pair : col_val_map1) {
       statement_buff1 << col_value_pair.first << "=" << col_value_pair.second << ",";
     }
 
@@ -428,13 +428,13 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     RETURN_NOT_OK(conn.ExecuteFormat(statement1, kTableName, "col1", key));
 
     log_buff2 << "Updating row for key " << key << " with";
-    for (auto col_value_pair : col_val_map2) {
+    for (auto& col_value_pair : col_val_map2) {
       log_buff2 << " (" << col_value_pair.first << ":" << col_value_pair.second << ")";
     }
     LOG(INFO) << log_buff2.str();
 
     statement_buff2 << "UPDATE $0 SET ";
-    for (auto col_value_pair : col_val_map2) {
+    for (auto& col_value_pair : col_val_map2) {
       statement_buff2 << col_value_pair.first << "=" << col_value_pair.second << ",";
     }
 
@@ -1324,9 +1324,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardMultiColUpdateWithAuto
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
   VaryingExpectedRecord expected_records[] = {
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
-      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
-      {1, {std::make_pair("col2", 1), std::make_pair("col3", 1)}}};
+      {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}},
+      {1, {{"col2", 2}, {"col3", 3}, {"col4", 4}}},
+      {1, {{"col2", 1}, {"col3", 1}}}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
@@ -1429,10 +1429,10 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
   ASSERT_FALSE(set_resp.has_error());
 
-  col_val_map1.insert(pair<std::string, uint32_t>("col2", 9));
-  col_val_map1.insert(pair<std::string, uint32_t>("col3", 10));
-  col_val_map2.insert(pair<std::string, uint32_t>("col2", 10));
-  col_val_map2.insert(pair<std::string, uint32_t>("col3", 11));
+  col_val_map1.insert({"col2", 9});
+  col_val_map1.insert({"col3", 10});
+  col_val_map2.insert({"col2", 10});
+  col_val_map2.insert({"col3", 11});
 
   ASSERT_OK(UpdateRowsHelper(
       1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map1, col_val_map2, num_cols));
@@ -1446,12 +1446,12 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
   uint32_t count[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   VaryingExpectedRecord expected_records[] = {
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
-      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
-      {1, {std::make_pair("col2", 9), std::make_pair("col3", 10)}},
-      {1, {std::make_pair("col2", 10), std::make_pair("col3", 11)}},
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}}};
+      {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}},
+      {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}},
+      {1, {{"col2", 2}, {"col3", 3}, {"col4", 4}}},
+      {1, {{"col2", 9}, {"col3", 10}}},
+      {1, {{"col2", 10}, {"col3", 11}}},
+      {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
@@ -1483,8 +1483,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByDelete
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
   ASSERT_FALSE(set_resp.has_error());
 
-  col_val_map.insert(pair<std::string, uint32_t>("col2", 9));
-  col_val_map.insert(pair<std::string, uint32_t>("col3", 10));
+  col_val_map.insert({"col2", 9});
+  col_val_map.insert({"col3", 10});
 
   ASSERT_OK(UpdateDeleteRowsHelper(
       1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map, num_cols));
@@ -1498,12 +1498,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByDelete
   uint32_t count[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   VaryingExpectedRecord expected_records[] = {
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
-      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
-      {1, {std::make_pair("col2", 9), std::make_pair("col3", 10)}},
-      {1, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}}};
+      {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}}, {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}},
+      {1, {{"col2", 2}, {"col3", 3}, {"col4", 4}}}, {1, {{"col2", 9}, {"col3", 10}}},
+      {1, {{"col2", 0}, {"col3", 0}, {"col4", 0}}}, {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
@@ -1536,8 +1533,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
   ASSERT_FALSE(set_resp.has_error());
 
-  col_val_map1.insert(pair<std::string, uint32_t>("col2", 9));
-  col_val_map2.insert(pair<std::string, uint32_t>("col3", 11));
+  col_val_map1.insert({"col2", 9});
+  col_val_map2.insert({"col3", 11});
 
   ASSERT_OK(UpdateRowsHelper(
       1 /* start */, 2 /* end */, &test_cluster_, true, 1, col_val_map1, col_val_map2, num_cols));
@@ -1551,12 +1548,12 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate
   uint32_t count[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   VaryingExpectedRecord expected_records[] = {
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}},
-      {1, {std::make_pair("col2", 2), std::make_pair("col3", 3), std::make_pair("col4", 4)}},
-      {1, {std::make_pair("col2", 9)}},
-      {1, {std::make_pair("col3", 11)}},
-      {0, {std::make_pair("col2", 0), std::make_pair("col3", 0), std::make_pair("col4", 0)}}};
+      {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}},
+      {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}},
+      {1, {{"col2", 2}, {"col3", 3}, {"col4", 4}}},
+      {1, {{"col2", 9}}},
+      {1, {{"col3", 11}}},
+      {0, {{"col2", 0}, {"col3", 0}, {"col4", 0}}}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
