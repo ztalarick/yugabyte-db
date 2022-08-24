@@ -528,6 +528,7 @@ Status ProcessIntents(
     row_message->set_op(RowMessage_Op_BEGIN);
     row_message->set_transaction_id(transaction_id.ToString());
     row_message->set_table(tablet_peer->tablet()->metadata()->table_name());
+    row_message->set_commit_time(*commit_time);
   }
 
   auto tablet = tablet_peer->shared_tablet();
@@ -578,6 +579,7 @@ Status ProcessIntents(
     row_message->set_op(RowMessage_Op_COMMIT);
     row_message->set_transaction_id(transaction_id.ToString());
     row_message->set_table(tablet_peer->tablet()->metadata()->table_name());
+    row_message->set_commit_time(*commit_time);
 
     CDCSDKOpIdPB* cdc_sdk_op_id_pb = proto_record->mutable_cdc_sdk_op_id();
     SetCDCSDKOpId(op_id.term, op_id.index, 0, "", cdc_sdk_op_id_pb);
