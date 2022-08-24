@@ -280,7 +280,7 @@ Status PopulateCDCSDKIntentRecord(
       // Write pair contains record for different row. Create a new CDCRecord in this case.
       row_message->set_transaction_id(transaction_id.ToString());
       row_message->set_commit_time(*commit_time);
-      //row_message->set_commit_time(intent.intent_ht.hybrid_time().ToUint64());
+      row_message->set_record_time(intent.intent_ht.hybrid_time().ToUint64());
       RETURN_NOT_OK(
           AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
     }
@@ -391,6 +391,7 @@ Status PopulateCDCSDKWriteRecord(
           AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
       // Process intent records.
       row_message->set_commit_time(msg->hybrid_time());
+      row_message->set_record_time(msg->hybrid_time());
     }
     prev_key = primary_key;
     DCHECK(proto_record);
@@ -596,6 +597,7 @@ Status PopulateCDCSDKSnapshotRecord(
   row_message->set_op(RowMessage_Op_READ);
   row_message->set_pgschema_name(schema.SchemaName());
   row_message->set_commit_time(time.read.ToUint64());
+  row_message->set_record_time(time.read.ToUint64());
 
   DatumMessagePB* cdc_datum_message = nullptr;
 
