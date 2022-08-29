@@ -1450,7 +1450,7 @@ void CDCServiceImpl::GetChanges(const GetChangesRequestPB* req,
             enum_map_result.ok(), enum_map_result.status(), resp->mutable_error(),
             CDCErrorPB::INTERNAL_ERROR, context);
       }
-      // Clean all the records which got added in the resp, till the \enum cache miss failure is
+      // Clean all the records which got added in the resp, till the enum cache miss failure is
       // encountered.
       resp->clear_cdc_sdk_proto_records();
       status = GetChangesForCDCSDK(

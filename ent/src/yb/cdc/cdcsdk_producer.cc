@@ -500,6 +500,21 @@ Status PopulateCDCSDKTruncateRecord(
   return Status::OK();
 }
 
+Status PopulateCDCSDKSafepointOpRecord(
+    const uint64_t timestamp, const string& table_name, CDCSDKProtoRecordPB* proto_record,
+    const Schema& schema) {
+  RowMessage* row_message = nullptr;
+
+  row_message = proto_record->mutable_row_message();
+  row_message->set_op(RowMessage_Op_SAFEPOINT);
+  row_message->set_pgschema_name(schema.SchemaName());
+  row_message->set_commit_time(timestamp);
+  row_message->set_record_time(timestamp);
+  row_message->set_table(table_name);
+
+  return Status::OK();
+}
+
 void SetTermIndex(int64_t term, int64_t index, CDCSDKCheckpointPB* checkpoint) {
   checkpoint->set_term(term);
   checkpoint->set_index(index);
@@ -791,6 +806,7 @@ Status GetChangesForCDCSDK(
     // the 'last_readable_opid_index'.
     consensus::ReadOpsResult read_ops;
     do {
+      uint64_t current_time = tablet_peer->Now().ToUint64();
       read_ops = VERIFY_RESULT(tablet_peer->consensus()->ReadReplicatedMessagesForCDC(
           last_seen_op_id, last_readable_opid_index, deadline));
 
@@ -808,6 +824,9 @@ Status GetChangesForCDCSDK(
       bool schema_streamed = false;
 
       if (read_ops.messages.empty()) {
+        string table_name = tablet_peer->tablet()->metadata()->table_name();
+        RETURN_NOT_OK(PopulateCDCSDKSafepointOpRecord(
+            current_time, table_name, resp->add_cdc_sdk_proto_records(), current_schema));
         VLOG_WITH_FUNC(1) << "Did not get any messages with current batch of 'read_ops'."
                           << "last_seen_op_id: " << last_seen_op_id << ", last_readable_opid_index "
                           << *last_readable_opid_index;
@@ -944,8 +963,24 @@ Status GetChangesForCDCSDK(
     consumption.Add(resp->SpaceUsedLong());
   }
 
+  if (resp->cdc_sdk_proto_records_size() > 0 &&
+      resp->cdc_sdk_proto_records(resp->cdc_sdk_proto_records_size() - 1).row_message().op() !=
+          RowMessage_Op_SAFEPOINT &&
+      resp->cdc_sdk_proto_records(resp->cdc_sdk_proto_records_size() - 1).has_row_message() &&
+      resp->cdc_sdk_proto_records(resp->cdc_sdk_proto_records_size() - 1)
+          .row_message()
+          .has_commit_time()) {
+    auto last_record_commit_time =
+        resp->cdc_sdk_proto_records(resp->cdc_sdk_proto_records_size() - 1)
+            .row_message()
+            .commit_time();
+    RETURN_NOT_OK(PopulateCDCSDKSafepointOpRecord(
+        last_record_commit_time,
+        resp->cdc_sdk_proto_records(resp->cdc_sdk_proto_records_size() - 1).row_message().table(),
+        resp->add_cdc_sdk_proto_records(), **cached_schema));
+  }
   checkpoint_updated ? resp->mutable_cdc_sdk_checkpoint()->CopyFrom(checkpoint)
-                       : resp->mutable_cdc_sdk_checkpoint()->CopyFrom(from_op_id);
+                     : resp->mutable_cdc_sdk_checkpoint()->CopyFrom(from_op_id);
 
   if (last_streamed_op_id->index > 0) {
     last_streamed_op_id->ToPB(resp->mutable_checkpoint()->mutable_op_id());
