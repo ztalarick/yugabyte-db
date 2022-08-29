@@ -363,7 +363,8 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     return Status::OK();
   }
 
-  Status UpdateRows(uint32_t key, std::map<std::string, uint32_t>& col_val_map, Cluster* cluster) {
+  Status UpdateRows(
+      uint32_t key, const std::map<std::string, uint32_t>& col_val_map, Cluster* cluster) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     std::stringstream log_buff;
     log_buff << "Updating row for key " << key << " with";
@@ -388,8 +389,8 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
 
   Status UpdateRowsHelper(
       uint32_t start, uint32_t end, Cluster* cluster, bool flag, uint32_t key,
-      std::map<std::string, uint32_t>& col_val_map1, std::map<std::string, uint32_t>& col_val_map2,
-      uint32_t num_cols) {
+      const std::map<std::string, uint32_t>& col_val_map1,
+      const std::map<std::string, uint32_t>& col_val_map2, uint32_t num_cols) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     std::stringstream log_buff1, log_buff2;
     LOG(INFO) << "Writing " << end - start << " row(s) within transaction";
