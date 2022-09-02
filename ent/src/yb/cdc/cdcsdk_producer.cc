@@ -526,7 +526,11 @@ Status ProcessIntents(
   }
 
   auto tablet = tablet_peer->shared_tablet();
-  RETURN_NOT_OK(tablet->GetIntents(transaction_id, keyValueIntents, stream_state));
+  auto docdb = tablet->doc_db();
+  auto doc_read_context = std::make_shared<docdb::DocReadContext>(
+      schema, tablet_peer->tablet()->metadata()->schema_version());
+  RETURN_NOT_OK(tablet->GetIntents(
+      transaction_id, keyValueIntents, stream_state, schema, docdb, *doc_read_context));
   VLOG(1) << "The size of intentKeyValues for transaction id: " << transaction_id
           << ", with apply record op_id : " << op_id << ", is: " << (*keyValueIntents).size();
 

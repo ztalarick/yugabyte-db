@@ -228,6 +228,7 @@ void PrepareTransactionWriteBatch(
 struct IntentKeyValueForCDC {
   Slice key;
   Slice value;
+  QLValuePB old_value;
   std::string key_buf, value_buf;
   std::string reverse_index_key;
   IntraTxnWriteId write_id = 0;
@@ -287,7 +288,10 @@ Result<ApplyTransactionState> GetIntentsBatch(
     const KeyBounds* key_bounds,
     const ApplyTransactionState* stream_state,
     rocksdb::DB* intents_db,
-    std::vector<IntentKeyValueForCDC>* keyValueIntents);
+    std::vector<IntentKeyValueForCDC>* keyValueIntents,
+    Schema* schema,
+    const docdb::DocDB& docdb,
+    const docdb::DocReadContext& doc_read_context);
 
 void AppendTransactionKeyPrefix(const TransactionId& transaction_id, docdb::KeyBytes* out);
 

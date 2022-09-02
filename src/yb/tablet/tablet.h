@@ -303,7 +303,8 @@ class Tablet : public AbstractTablet, public TransactionIntentApplier {
 
   Status GetIntents(
       const TransactionId& id, std::vector<docdb::IntentKeyValueForCDC>* keyValueIntents,
-      docdb::ApplyTransactionState* stream_state);
+      docdb::ApplyTransactionState* stream_state, Schema* schema, const docdb::DocDB& docdb,
+      const docdb::DocReadContext& doc_read_context);
 
   // Apply all of the row operations associated with this transaction.
   Status ApplyRowOperations(

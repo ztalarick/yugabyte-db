@@ -1829,16 +1829,17 @@ Status Tablet::RemoveIntents(const RemoveIntentsData& data, const TransactionIdS
 
 // We batch this as some tx could be very large and may not fit in one batch
 Status Tablet::GetIntents(
-    const TransactionId& id,
-    std::vector<docdb::IntentKeyValueForCDC>* key_value_intents,
-    docdb::ApplyTransactionState* stream_state) {
+    const TransactionId& id, std::vector<docdb::IntentKeyValueForCDC>* key_value_intents,
+    docdb::ApplyTransactionState* stream_state, Schema* schema, const docdb::DocDB& docdb,
+    const docdb::DocReadContext& doc_read_context) {
   auto scoped_read_operation = CreateNonAbortableScopedRWOperation();
   RETURN_NOT_OK(scoped_read_operation);
 
   docdb::ApplyTransactionState new_stream_state;
 
-  new_stream_state = VERIFY_RESULT(
-      docdb::GetIntentsBatch(id, &key_bounds_, stream_state, intents_db_.get(), key_value_intents));
+  new_stream_state = VERIFY_RESULT(docdb::GetIntentsBatch(
+      id, &key_bounds_, stream_state, intents_db_.get(), key_value_intents, schema, docdb,
+      doc_read_context));
   stream_state->key = new_stream_state.key;
   stream_state->write_id = new_stream_state.write_id;
 

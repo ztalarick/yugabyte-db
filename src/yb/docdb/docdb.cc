@@ -23,15 +23,18 @@
 
 #include "yb/common/hybrid_time.h"
 #include "yb/common/row_mark.h"
+#include "yb/common/schema.h"
 #include "yb/common/transaction.h"
 
 #include "yb/docdb/conflict_resolution.h"
 #include "yb/docdb/cql_operation.h"
+#include "yb/docdb/doc_ql_scanspec.h"
 #include "yb/docdb/docdb-internal.h"
 #include "yb/docdb/docdb.pb.h"
 #include "yb/docdb/docdb_debug.h"
 #include "yb/docdb/doc_kv_util.h"
 #include "yb/docdb/docdb_rocksdb_util.h"
+#include "yb/docdb/doc_rowwise_iterator.h"
 #include "yb/docdb/docdb_types.h"
 #include "yb/docdb/intent.h"
 #include "yb/docdb/intent_aware_iterator.h"
@@ -60,6 +63,7 @@
 #include "yb/util/status_format.h"
 #include "yb/util/status_log.h"
 
+#include "yb/util/test_macros.h"
 #include "yb/yql/cql/ql/util/errcodes.h"
 
 using std::endl;
@@ -778,7 +782,10 @@ Result<ApplyTransactionState> GetIntentsBatch(
     const KeyBounds* key_bounds,
     const ApplyTransactionState* stream_state,
     rocksdb::DB* intents_db,
-    std::vector<IntentKeyValueForCDC>* key_value_intents) {
+    std::vector<IntentKeyValueForCDC>* key_value_intents,
+    Schema* schema,
+    const docdb::DocDB& docdb,
+    const docdb::DocReadContext& doc_read_context) {
   KeyBytes txn_reverse_index_prefix;
   Slice transaction_id_slice = transaction_id.AsSlice();
   AppendTransactionKeyPrefix(transaction_id, &txn_reverse_index_prefix);
@@ -863,10 +870,42 @@ Result<ApplyTransactionState> GetIntentsBatch(
             intent_metadata.value = Slice(value_parts, &(intent_metadata.value_buf));
             intent_metadata.reverse_index_key = key_slice.ToBuffer();
             intent_metadata.write_id = write_id;
+
+            const auto key_size = VERIFY_RESULT(
+                docdb::DocKey::EncodedSize(intent_metadata.key, docdb::DocKeyPart::kWholeDocKey));
+
+            docdb::SubDocKey decoded_key;
+            QLTableRow table_row;
+            RETURN_NOT_OK(decoded_key.DecodeFrom(&intent_metadata.key, docdb::HybridTimeRequired::kFalse));
+            docdb::KeyEntryValue column_id;
+            Schema  generated_schema;
+            auto doc_ht = VERIFY_RESULT(DocHybridTime::DecodeFromEnd(intent.doc_ht));
+            Slice key_column = intent_metadata.key.WithoutPrefix(key_size);
+            if (!key_column.empty()) {
+              RETURN_NOT_OK(docdb::KeyEntryValue::DecodeKey(&key_column, &column_id));
+            }
+
+            RETURN_NOT_OK(schema->CreateProjectionByIdsIgnoreMissing(
+                vector<ColumnId>(1,column_id.GetColumnId()), &generated_schema));
+
+            DocQLScanSpec spec(generated_schema, decoded_key, rocksdb::kDefaultQueryId);
+
+            DocRowwiseIterator iter(
+                generated_schema, doc_read_context, TransactionOperationContext(), docdb,
+                CoarseTimePoint::max(),
+                ReadHybridTime::SingleTime(doc_ht.hybrid_time().Decremented()), nullptr);
+
+            RETURN_NOT_OK(iter.Init(spec));
+
+            if (VERIFY_RESULT(iter.HasNext())) {
+              RETURN_NOT_OK(iter.NextRow(&table_row));
+              intent_metadata.old_value = table_row.TestValue(0).value;
+            }
+
             (*key_value_intents).push_back(intent_metadata);
 
             VLOG(4) << "The size of intentKeyValues in GetIntentList "
-                      << (*key_value_intents).size();
+                    << (*key_value_intents).size();
             ++write_id;
           }
         }
