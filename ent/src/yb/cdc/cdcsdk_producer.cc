@@ -19,6 +19,8 @@
 
 #include "yb/docdb/docdb_util.h"
 #include "yb/docdb/doc_key.h"
+#include "yb/docdb/doc_reader.h"
+#include "yb/docdb/doc_read_context.h"
 
 #include "yb/util/flag_tags.h"
 #include "yb/util/logging.h"
@@ -65,11 +67,15 @@ Status AddColumnToMap(
     const ColumnSchema& col_schema,
     const Value& col,
     const EnumOidLabelMap& enum_oid_label_map,
-    DatumMessagePB* cdc_datum_message) {
+    DatumMessagePB* cdc_datum_message, QLValuePB* old_ql_value_passed) {
   cdc_datum_message->set_column_name(col_schema.name());
   QLValuePB ql_value;
   if (tablet_peer->tablet()->table_type() == PGSQL_TABLE_TYPE) {
-    col.ToQLValuePB(col_schema.type(), &ql_value);
+    if (old_ql_value_passed) {
+      ql_value = *old_ql_value_passed;
+    } else {
+      col.ToQLValuePB(col_schema.type(), &ql_value);
+    }
     if (!IsNull(ql_value) && col_schema.pg_type_oid() != 0 /*kInvalidOid*/) {
       RETURN_NOT_OK(docdb::SetValueFromQLBinaryWrapper(
           ql_value, col_schema.pg_type_oid(), enum_oid_label_map, cdc_datum_message));
@@ -104,14 +110,14 @@ Status AddPrimaryKey(
   for (const auto& col : decoded_key.doc_key().hashed_group()) {
     DatumMessagePB* tuple = AddTuple(row_message);
     RETURN_NOT_OK(
-        AddColumnToMap(tablet_peer, tablet_schema.column(i), col, enum_oid_label_map, tuple));
+        AddColumnToMap(tablet_peer, tablet_schema.column(i), col, enum_oid_label_map, tuple, nullptr));
     i++;
   }
 
   for (const auto& col : decoded_key.doc_key().range_group()) {
     DatumMessagePB* tuple = AddTuple(row_message);
     RETURN_NOT_OK(
-        AddColumnToMap(tablet_peer, tablet_schema.column(i), col, enum_oid_label_map, tuple));
+        AddColumnToMap(tablet_peer, tablet_schema.column(i), col, enum_oid_label_map, tuple, nullptr));
     i++;
   }
   return Status::OK();
@@ -174,6 +180,44 @@ void MakeNewProtoRecord(
   }
 }
 
+Status PopulateBeforeImage(
+    const std::shared_ptr<tablet::TabletPeer>& tablet_peer, const Slice& sub_doc_key,
+    const ReadHybridTime& read_time, DatumMessagePB* old_tuple, const ColumnSchema& col_schema,
+    const EnumOidLabelMap& enum_oid_label_map) {
+  const TransactionOperationContext& txn_op_context = TransactionOperationContext();
+  auto tablet = tablet_peer->shared_tablet();
+  auto docdb = tablet->doc_db();
+  auto doc_from_rocksdb_opt = VERIFY_RESULT(TEST_GetSubDocument(
+      sub_doc_key, docdb, rocksdb::kDefaultQueryId, txn_op_context, CoarseTimePoint::max(),
+      read_time));
+
+  if (doc_from_rocksdb_opt) {
+    LOG(INFO) << "RKNRKN in cdcsdk_producer The before image in docdb is "
+              << doc_from_rocksdb_opt->ToString();
+
+    // docdb::Value decoded_value;
+    // RETURN_NOT_OK(decoded_value.Decode(doc_from_rocksdb_opt->ToString()));
+    // PrimitiveValue val(doc_from_rocksdb_opt->ToString());
+    QLValuePB ql_value;
+    doc_from_rocksdb_opt->ToQLValuePB(col_schema.type(), &ql_value);
+    /*if (tablet_peer->tablet()->table_type() == PGSQL_TABLE_TYPE) {
+      //doc_from_rocksdb_opt->ToQLValuePB(col_schema.type(), &ql_value);
+      if (!IsNull(ql_value) && col_schema.pg_type_oid() != 0 ) {
+        RETURN_NOT_OK(docdb::SetValueFromQLBinaryWrapper(
+            ql_value, col_schema.pg_type_oid(), enum_oid_label_map, old_tuple));
+      } else {
+        old_tuple->set_column_type(col_schema.pg_type_oid());
+      }
+    }*/
+    RETURN_NOT_OK(AddColumnToMap(tablet_peer, col_schema, PrimitiveValue(), enum_oid_label_map, old_tuple, &ql_value));
+
+  } else {
+    LOG(INFO) << "RKNRKN in cdcsdk_producer doc from docdb is empty";
+  }
+
+  return Status::OK();
+}
+
 Result<size_t> PopulatePackedRows(
     const SchemaPackingStorage& schema_packing_storage, const Schema& schema,
     const std::shared_ptr<tablet::TabletPeer>& tablet_peer,
@@ -191,7 +235,7 @@ Result<size_t> PopulatePackedRows(
     }
     const ColumnSchema& col = VERIFY_RESULT(schema.column_by_id(column_data.id));
     RETURN_NOT_OK(
-        AddColumnToMap(tablet_peer, col, pv, enum_oid_label_map, row_message->add_new_tuple()));
+        AddColumnToMap(tablet_peer, col, pv, enum_oid_label_map, row_message->add_new_tuple(), nullptr));
     row_message->add_old_tuple();
   }
 
@@ -298,8 +342,27 @@ Status PopulateCDCSDKIntentRecord(
 
           RETURN_NOT_OK(AddColumnToMap(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
-              row_message->add_new_tuple()));
-          row_message->add_old_tuple();
+              row_message->add_new_tuple(), nullptr));
+
+          // auto tablet = tablet_peer->shared_tablet();
+          RETURN_NOT_OK(PopulateBeforeImage(
+              tablet_peer, intent.key,
+              ReadHybridTime::SingleTime(intent.doc_ht.hybrid_time().Decremented()),
+              row_message->add_old_tuple(), col, enum_oid_label_map));
+
+          /*const TransactionOperationContext& txn_op_context = TransactionOperationContext();
+          auto docdb = tablet->doc_db();
+          auto doc_from_rocksdb_opt = VERIFY_RESULT(TEST_GetSubDocument(
+              intent.key, docdb, rocksdb::kDefaultQueryId, txn_op_context, CoarseTimePoint::max(),
+              ReadHybridTime::SingleTime(intent.doc_ht.hybrid_time().Decremented())));
+
+          if (doc_from_rocksdb_opt) {
+              LOG(INFO) << "RKNRKN in cdcsdk_producer The before image in docdb is "
+                        << doc_from_rocksdb_opt->ToString();
+            } else {
+              LOG(INFO) << "RKNRKN in cdcsdk_producer doc from docdb is empty" ;
+            }*/
+          // row_message->add_old_tuple();
 
         } else if (column_id_opt && column_id_opt->type() != docdb::KeyEntryType::kSystemColumnId) {
           LOG(DFATAL) << "Unexpected value type in key: " << column_id_opt->type()
@@ -407,8 +470,12 @@ Status PopulateCDCSDKWriteRecord(
 
           RETURN_NOT_OK(AddColumnToMap(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
-              row_message->add_new_tuple()));
-          row_message->add_old_tuple();
+              row_message->add_new_tuple(), nullptr));
+          RETURN_NOT_OK(PopulateBeforeImage(
+              tablet_peer, key_column,
+              ReadHybridTime::FromUint64(msg->hybrid_time()-1),
+              row_message->add_old_tuple(), col, enum_oid_label_map));
+          //row_message->add_old_tuple();
 
         } else if (column_id.type() != docdb::KeyEntryType::kSystemColumnId) {
           LOG(DFATAL) << "Unexpected value type in key: " << column_id.type();
@@ -527,10 +594,11 @@ Status ProcessIntents(
 
   auto tablet = tablet_peer->shared_tablet();
   auto docdb = tablet->doc_db();
-  auto doc_read_context = std::make_shared<docdb::DocReadContext>(
-      schema, tablet_peer->tablet()->metadata()->schema_version());
+  //auto doc_read_context = std::make_shared<docdb::DocReadContext>(
+      //schema, tablet_peer->tablet()->metadata()->schema_version());
+  //TransactionOperationContext txn_op_context = GetReadOperationTransactionContext();
   RETURN_NOT_OK(tablet->GetIntents(
-      transaction_id, keyValueIntents, stream_state, schema, docdb, *doc_read_context));
+      transaction_id, keyValueIntents, stream_state, schema, docdb, docdb::DocReadContext()));
   VLOG(1) << "The size of intentKeyValues for transaction id: " << transaction_id
           << ", with apply record op_id : " << op_id << ", is: " << (*keyValueIntents).size();
 

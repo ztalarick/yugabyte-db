@@ -35,6 +35,7 @@
 #include "yb/docdb/doc_kv_util.h"
 #include "yb/docdb/docdb_rocksdb_util.h"
 #include "yb/docdb/doc_rowwise_iterator.h"
+#include "yb/docdb/docdb_test_util.h"
 #include "yb/docdb/docdb_types.h"
 #include "yb/docdb/intent.h"
 #include "yb/docdb/intent_aware_iterator.h"
@@ -865,21 +866,51 @@ Result<ApplyTransactionState> GetIntentsBatch(
                 decoded_value.body,
             }};
 
+            auto doc_ht = VERIFY_RESULT(DocHybridTime::DecodeFromEnd(intent.doc_ht));
+
             IntentKeyValueForCDC intent_metadata;
-            intent_metadata.key = Slice(key_parts, &(intent_metadata.key_buf));
-            intent_metadata.value = Slice(value_parts, &(intent_metadata.value_buf));
+            //intent_metadata.key = Slice(key_parts, &(intent_metadata.key_buf));
+            Slice(key_parts, &(intent_metadata.key_buf));
+            intent_metadata.key = intent.doc_path;
+            //intent_metadata.value = Slice(value_parts, &(intent_metadata.value_buf));
+            Slice(value_parts, &(intent_metadata.value_buf));
+            intent_metadata.value = decoded_value.body;
             intent_metadata.reverse_index_key = key_slice.ToBuffer();
             intent_metadata.write_id = write_id;
+            intent_metadata.doc_ht = doc_ht;
 
-            const auto key_size = VERIFY_RESULT(
-                docdb::DocKey::EncodedSize(intent_metadata.key, docdb::DocKeyPart::kWholeDocKey));
+            //const auto key_size = VERIFY_RESULT(
+                //docdb::DocKey::EncodedSize(intent_metadata.key, docdb::DocKeyPart::kWholeDocKey));
 
-            docdb::SubDocKey decoded_key;
-            QLTableRow table_row;
-            RETURN_NOT_OK(decoded_key.DecodeFrom(&intent_metadata.key, docdb::HybridTimeRequired::kFalse));
-            docdb::KeyEntryValue column_id;
+            /*docdb::SubDocKey subdoc_key;
+            CHECK_OK(subdoc_key.FullyDecodeFrom(intent_iter.key()));
+            subdoc_key.remove_hybrid_time();
+            // TODO(dtxn) Pass real TransactionOperationContext when we need to support cross-shard
+            // transactions write intents resolution during DocDbState capturing.
+            // For now passing kNonTransactionalOperationContext in order to fail if there are any
+            // intents, since this is not supported.
+            auto encoded_subdoc_key = subdoc_key.EncodeWithoutHt();*/
+
+            // QLTableRow table_row;
+            //RETURN_NOT_OK(
+                //decoded_key.DecodeFrom(&intent_metadata.key, docdb::HybridTimeRequired::kFalse));
+
+            const TransactionOperationContext& txn_op_context = TransactionOperationContext();
+
+            auto doc_from_rocksdb_opt = VERIFY_RESULT(TEST_GetSubDocument(
+                intent.doc_path, docdb, rocksdb::kDefaultQueryId, txn_op_context,
+                CoarseTimePoint::max(),
+                ReadHybridTime::SingleTime(doc_ht.hybrid_time().Decremented())));
+
+            if (doc_from_rocksdb_opt) {
+              LOG(INFO) << "RKNRKN The before image in docdb is "
+                        << doc_from_rocksdb_opt->ToString();
+            } else {
+              LOG(INFO) << "RKNRKN doc from docdb is empty" ; 
+            }
+
+            /*docdb::KeyEntryValue column_id;
             Schema  generated_schema;
-            auto doc_ht = VERIFY_RESULT(DocHybridTime::DecodeFromEnd(intent.doc_ht));
             Slice key_column = intent_metadata.key.WithoutPrefix(key_size);
             if (!key_column.empty()) {
               RETURN_NOT_OK(docdb::KeyEntryValue::DecodeKey(&key_column, &column_id));
@@ -900,7 +931,7 @@ Result<ApplyTransactionState> GetIntentsBatch(
             if (VERIFY_RESULT(iter.HasNext())) {
               RETURN_NOT_OK(iter.NextRow(&table_row));
               intent_metadata.old_value = table_row.TestValue(0).value;
-            }
+            }*/
 
             (*key_value_intents).push_back(intent_metadata);
 
