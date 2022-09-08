@@ -20,6 +20,8 @@
 #include "yb/docdb/docdb_util.h"
 #include "yb/docdb/doc_key.h"
 #include "yb/docdb/doc_reader.h"
+#include "yb/docdb/doc_rowwise_iterator.h"
+#include "yb/server/hybrid_clock.h"
 
 #include "yb/util/flag_tags.h"
 #include "yb/util/logging.h"
@@ -64,7 +66,7 @@ template <class Value>
 Status AddColumnToMap(
     const std::shared_ptr<tablet::TabletPeer>& tablet_peer, const ColumnSchema& col_schema,
     const Value& col, const EnumOidLabelMap& enum_oid_label_map, DatumMessagePB* cdc_datum_message,
-    QLValuePB* old_ql_value_passed) {
+    const QLValuePB* old_ql_value_passed) {
   cdc_datum_message->set_column_name(col_schema.name());
   QLValuePB ql_value;
   if (tablet_peer->tablet()->table_type() == PGSQL_TABLE_TYPE) {
@@ -178,13 +180,44 @@ void MakeNewProtoRecord(
 }
 
 Status PopulateBeforeImage(
-    const std::shared_ptr<tablet::TabletPeer>& tablet_peer, const Slice& sub_doc_key,
-    const ReadHybridTime& read_time, DatumMessagePB* old_tuple, const ColumnSchema& col_schema,
-    const EnumOidLabelMap& enum_oid_label_map) {
-  const TransactionOperationContext& txn_op_context = TransactionOperationContext();
+    const std::shared_ptr<tablet::TabletPeer>& tablet_peer, const ReadHybridTime& read_time,
+    RowMessage& row_message, const EnumOidLabelMap& enum_oid_label_map,
+    const docdb::SubDocKey& decoded_primary_key, const Schema& schema,
+    const SchemaVersion schema_version) {
+  // const TransactionOperationContext& txn_op_context = TransactionOperationContext();
   auto tablet = tablet_peer->shared_tablet();
   auto docdb = tablet->doc_db();
-  auto doc_from_rocksdb_opt = VERIFY_RESULT(TEST_GetSubDocument(
+
+  docdb::DocReadContext doc_read_context(schema, schema_version);
+  docdb::DocRowwiseIterator iter(
+      schema, doc_read_context, TransactionOperationContext(), docdb,
+      CoarseTimePoint::max() /* deadline */, read_time);
+
+  const docdb::DocKey& doc_key = decoded_primary_key.doc_key();
+  docdb::DocQLScanSpec spec(schema, doc_key, rocksdb::kDefaultQueryId);
+  RETURN_NOT_OK(iter.Init(spec));
+
+  QLTableRow row;
+  QLValue ql_value;
+  if (VERIFY_RESULT(iter.HasNext())) RETURN_NOT_OK(iter.NextRow(&row));
+
+  LOG(INFO) << "RKNRKN number of columns in the output row: " << row.ColumnCount();
+  std::vector<ColumnSchema> columns(schema.columns());
+
+  if (row.ColumnCount() == columns.size()) {
+    for (size_t index = 0; index < row.ColumnCount(); ++index) {
+      RETURN_NOT_OK(row.GetValue(schema.column_id(index), &ql_value));
+      if (!ql_value.IsNull()) {
+        RETURN_NOT_OK(AddColumnToMap(
+            tablet_peer, columns[index], PrimitiveValue(), enum_oid_label_map,
+            row_message.add_old_tuple(), &ql_value.value()));
+        LOG(INFO) << "RKNRKN before image with rowwise iterator in cdcsdk producer is "
+                  << ql_value.int32_value();
+      }
+    }
+  }
+
+  /*auto doc_from_rocksdb_opt = VERIFY_RESULT(TEST_GetSubDocument(
       sub_doc_key, docdb, rocksdb::kDefaultQueryId, txn_op_context, CoarseTimePoint::max(),
       read_time));
 
@@ -200,7 +233,7 @@ Status PopulateBeforeImage(
 
   } else {
     VLOG(1) << "The before image for key " << sub_doc_key.ToDebugHexString() << " is empty";
-  }
+  }*/
 
   return Status::OK();
 }
@@ -308,8 +341,20 @@ Status PopulateCDCSDKIntentRecord(
 
       // Write pair contains record for different row. Create a new CDCRecord in this case.
       row_message->set_transaction_id(transaction_id.ToString());
-      RETURN_NOT_OK(
-          AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+
+      if (row_message->op() == RowMessage_Op_DELETE) {
+        MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
+        LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
+        auto hybrid_time =
+            server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(micros, logical_value)
+                .Decremented();
+        RETURN_NOT_OK(PopulateBeforeImage(
+            tablet_peer, ReadHybridTime::SingleTime(hybrid_time), *row_message, enum_oid_label_map,
+            decoded_key, schema, tablet_peer->tablet()->metadata()->schema_version()));
+      } else {
+        RETURN_NOT_OK(
+            AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+      }
     }
 
     prev_key = primary_key;
@@ -331,13 +376,24 @@ Status PopulateCDCSDKIntentRecord(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
               row_message->add_new_tuple(), nullptr));
 
+          LOG(INFO) << "RKNRKNRKN The intent hybrid time is "
+                    << intent.doc_ht.hybrid_time().ToString();
           if (row_message->op() == RowMessage_Op_UPDATE) {
+            MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
+            LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
+            auto hybrid_time = server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(
+                micros - 1, logical_value);
+            //.Decremented();
+            LOG(INFO) << "RKNRKNRKN The logical value is " << logical_value << ", micros value is "
+                      << micros << " and the hybrid time is " << hybrid_time.ToString();
             RETURN_NOT_OK(PopulateBeforeImage(
-                tablet_peer, intent.key,
-                ReadHybridTime::SingleTime(intent.doc_ht.hybrid_time().Decremented()),
-                row_message->add_old_tuple(), col, enum_oid_label_map));
-          }
+                tablet_peer, ReadHybridTime::SingleTime(hybrid_time), *row_message,
+                enum_oid_label_map, decoded_key, schema,
+                tablet_peer->tablet()->metadata()->schema_version()));
 
+          } else {
+            row_message->add_old_tuple();
+          }
         } else if (column_id_opt && column_id_opt->type() != docdb::KeyEntryType::kSystemColumnId) {
           LOG(DFATAL) << "Unexpected value type in key: " << column_id_opt->type()
                       << " key: " << decoded_key.ToString()
@@ -385,6 +441,10 @@ Status PopulateCDCSDKWriteRecord(
     auto value_type = docdb::DecodeValueEntryType(value_slice);
     value_slice.consume_byte();
 
+    Slice sub_doc_key = key;
+    docdb::SubDocKey decoded_key;
+    RETURN_NOT_OK(decoded_key.DecodeFrom(&sub_doc_key, docdb::HybridTimeRequired::kFalse));
+
     // Compare key hash with previously seen key hash to determine whether the write pair
     // is part of the same row or not.
     Slice primary_key(key.data(), key_size);
@@ -397,10 +457,6 @@ Status PopulateCDCSDKWriteRecord(
 
       CDCSDKOpIdPB* cdc_sdk_op_id_pb = proto_record->mutable_cdc_sdk_op_id();
       SetCDCSDKOpId(msg->id().term(), msg->id().index(), 0, "", cdc_sdk_op_id_pb);
-
-      Slice sub_doc_key = key;
-      docdb::SubDocKey decoded_key;
-      RETURN_NOT_OK(decoded_key.DecodeFrom(&sub_doc_key, docdb::HybridTimeRequired::kFalse));
 
       // Check whether operation is WRITE or DELETE.
       if (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) {
@@ -420,8 +476,15 @@ Status PopulateCDCSDKWriteRecord(
         }
       }
 
-      RETURN_NOT_OK(
-          AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+      if (row_message->op() == RowMessage_Op_DELETE) {
+        RETURN_NOT_OK(PopulateBeforeImage(
+            tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), *row_message,
+            enum_oid_label_map, decoded_key, schema,
+            tablet_peer->tablet()->metadata()->schema_version()));
+      } else {
+        RETURN_NOT_OK(
+            AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+      }
       // Process intent records.
       row_message->set_commit_time(msg->hybrid_time());
     }
@@ -447,8 +510,11 @@ Status PopulateCDCSDKWriteRecord(
               row_message->add_new_tuple(), nullptr));
           if (row_message->op() == RowMessage_Op_UPDATE) {
             RETURN_NOT_OK(PopulateBeforeImage(
-                tablet_peer, key_column, ReadHybridTime::FromUint64(msg->hybrid_time() - 1),
-                row_message->add_old_tuple(), col, enum_oid_label_map));
+                tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), *row_message,
+                enum_oid_label_map, decoded_key, schema,
+                tablet_peer->tablet()->metadata()->schema_version()));
+          } else {
+            row_message->add_old_tuple();
           }
         } else if (column_id.type() != docdb::KeyEntryType::kSystemColumnId) {
           LOG(DFATAL) << "Unexpected value type in key: " << column_id.type();
