@@ -147,6 +147,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class AsyncYBClient implements AutoCloseable {
 
   public static final Logger LOG = LoggerFactory.getLogger(AsyncYBClient.class);
+
+  private static final int SHUTDOWN_TIMEOUT_SEC = 15;
   public static final int SLEEP_TIME = 500;
   public static final byte[] EMPTY_ARRAY = new byte[0];
   public static final long NO_TIMESTAMP = -1;
@@ -2387,7 +2389,7 @@ public class AsyncYBClient implements AutoCloseable {
       public ArrayList<Void> call(final ArrayList<Void> arg) {
         LOG.debug("Releasing all remaining resources");
         timer.stop();
-        eventLoopGroup.shutdownGracefully();
+        eventLoopGroup.shutdownGracefully(0, SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
         SystemUtil.forceShutdownExecutor(executor);
         return arg;
       }
