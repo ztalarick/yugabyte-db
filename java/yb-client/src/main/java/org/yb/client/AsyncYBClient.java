@@ -2388,11 +2388,6 @@ public class AsyncYBClient implements AutoCloseable {
         LOG.debug("Releasing all remaining resources");
         timer.stop();
         eventLoopGroup.shutdownGracefully();
-        try {
-          eventLoopGroup.terminationFuture().sync();
-        } catch (InterruptedException e) {
-          LOG.warn("Failed to wait for graceful shutdown of event loop group");
-        }
         SystemUtil.forceShutdownExecutor(executor);
         return arg;
       }
