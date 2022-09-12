@@ -2382,17 +2382,11 @@ public class AsyncYBClient implements AutoCloseable {
     checkIsClosed();
     closed = true;
 
-    // This is part of step 2.  We need to execute this in its own thread
-    // because Netty gets stuck in an infinite loop if you try to shut it
-    // down from within a thread of its own thread pool.  They don't want
-    // to fix this so as a workaround we always shut Netty's thread pool
-    // down from another thread.
-    final class ShutdownThread extends Thread {
-      ShutdownThread() {
-        super("AsyncYBClient@" + AsyncYBClient.super.hashCode() + " shutdown");
-      }
-      public void run() {
-        // This terminates the Executor.
+    // 2. Release all other resources.
+    final class ReleaseResourcesCB implements Callback<ArrayList<Void>, ArrayList<Void>> {
+      public ArrayList<Void> call(final ArrayList<Void> arg) {
+        LOG.debug("Releasing all remaining resources");
+        timer.stop();
         eventLoopGroup.shutdownGracefully();
         try {
           eventLoopGroup.terminationFuture().sync();
@@ -2400,15 +2394,6 @@ public class AsyncYBClient implements AutoCloseable {
           LOG.warn("Failed to wait for graceful shutdown of event loop group");
         }
         SystemUtil.forceShutdownExecutor(executor);
-      }
-    }
-
-    // 2. Release all other resources.
-    final class ReleaseResourcesCB implements Callback<ArrayList<Void>, ArrayList<Void>> {
-      public ArrayList<Void> call(final ArrayList<Void> arg) {
-        LOG.debug("Releasing all remaining resources");
-        timer.stop();
-        new ShutdownThread().start();
         return arg;
       }
       public String toString() {
