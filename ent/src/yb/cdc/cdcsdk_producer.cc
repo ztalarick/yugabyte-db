@@ -181,7 +181,7 @@ void MakeNewProtoRecord(
 
 Status PopulateBeforeImage(
     const std::shared_ptr<tablet::TabletPeer>& tablet_peer, const ReadHybridTime& read_time,
-    RowMessage& row_message, const EnumOidLabelMap& enum_oid_label_map,
+    RowMessage* row_message, const EnumOidLabelMap& enum_oid_label_map,
     const docdb::SubDocKey& decoded_primary_key, const Schema& schema,
     const SchemaVersion schema_version) {
   // const TransactionOperationContext& txn_op_context = TransactionOperationContext();
@@ -209,7 +209,7 @@ Status PopulateBeforeImage(
       if (!ql_value.IsNull()) {
         RETURN_NOT_OK(AddColumnToMap(
             tablet_peer, columns[index], PrimitiveValue(), enum_oid_label_map,
-            row_message.add_old_tuple(), &ql_value.value()));
+            row_message->add_old_tuple(), &ql_value.value()));
       }
     }
   }
@@ -328,7 +328,7 @@ Status PopulateCDCSDKIntentRecord(
             server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(micros, logical_value)
                 .Decremented();
         RETURN_NOT_OK(PopulateBeforeImage(
-            tablet_peer, ReadHybridTime::SingleTime(hybrid_time), *row_message, enum_oid_label_map,
+            tablet_peer, ReadHybridTime::SingleTime(hybrid_time), row_message, enum_oid_label_map,
             decoded_key, schema, tablet_peer->tablet()->metadata()->schema_version()));
       } else {
         RETURN_NOT_OK(
@@ -362,7 +362,7 @@ Status PopulateCDCSDKIntentRecord(
                                    micros - 1, logical_value)
                                    .Decremented();
             RETURN_NOT_OK(PopulateBeforeImage(
-                tablet_peer, ReadHybridTime::SingleTime(hybrid_time), *row_message,
+                tablet_peer, ReadHybridTime::SingleTime(hybrid_time), row_message,
                 enum_oid_label_map, decoded_key, schema,
                 tablet_peer->tablet()->metadata()->schema_version()));
 
@@ -453,7 +453,7 @@ Status PopulateCDCSDKWriteRecord(
 
       if (row_message->op() == RowMessage_Op_DELETE) {
         RETURN_NOT_OK(PopulateBeforeImage(
-            tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), *row_message,
+            tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), row_message,
             enum_oid_label_map, decoded_key, schema,
             tablet_peer->tablet()->metadata()->schema_version()));
       } else {
@@ -485,7 +485,7 @@ Status PopulateCDCSDKWriteRecord(
               row_message->add_new_tuple(), nullptr));
           if (row_message->op() == RowMessage_Op_UPDATE) {
             RETURN_NOT_OK(PopulateBeforeImage(
-                tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), *row_message,
+                tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), row_message,
                 enum_oid_label_map, decoded_key, schema,
                 tablet_peer->tablet()->metadata()->schema_version()));
           } else {
