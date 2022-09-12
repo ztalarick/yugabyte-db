@@ -53,6 +53,7 @@ import com.stumbleupon.async.Callback;
 import com.stumbleupon.async.Deferred;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -3221,7 +3222,8 @@ public class AsyncYBClient implements AutoCloseable {
         .channel(NioSocketChannel.class)
         .option(ChannelOption.SO_KEEPALIVE, true)
         .option(ChannelOption.TCP_NODELAY, true)
-        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, TCP_CONNECT_TIMEOUT_MILLIS);
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, TCP_CONNECT_TIMEOUT_MILLIS)
+        .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
       if (SystemUtil.IS_LINUX) {
         // No support for TCP_KEEPIDLE on MacOs
         bootstrap.option(EpollChannelOption.TCP_KEEPIDLE, TCP_KEEP_IDLE_INTERVALS);

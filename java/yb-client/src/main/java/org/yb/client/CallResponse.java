@@ -32,6 +32,7 @@
 package org.yb.client;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.DefaultByteBufHolder;
 import org.yb.annotations.InterfaceAudience;
 import org.yb.rpc.RpcHeader;
 import org.yb.util.Slice;
@@ -43,8 +44,7 @@ import java.util.List;
  * access to sidecars and decoded protobufs from the message.
  */
 @InterfaceAudience.Private
-final class CallResponse {
-  private final ByteBuf buf;
+final class CallResponse extends DefaultByteBufHolder {
   private final RpcHeader.ResponseHeader header;
   private final int totalResponseSize;
 
@@ -65,7 +65,7 @@ final class CallResponse {
    * the amount of bytes specified by its length prefix.
    */
   public CallResponse(final ByteBuf buf) {
-    this.buf = buf;
+    super(buf);
 
     this.totalResponseSize = buf.readInt();
     if (this.totalResponseSize > 0) {
@@ -156,8 +156,9 @@ final class CallResponse {
   // Reads the message after the header if not read yet
   private void cacheMessage() {
     if (this.message != null) return;
-    final int length = Bytes.readVarInt32(buf);
-    this.message = nextBytes(buf, length);
+    ByteBuf content = content();
+    final int length = Bytes.readVarInt32(content);
+    this.message = nextBytes(content, length);
   }
 
   // Accounts for a parent slice's offset when making a new one with relative offsets.

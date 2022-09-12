@@ -48,7 +48,6 @@ import org.yb.util.Slice;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -810,51 +809,6 @@ public final class Bytes {
     return new String(buf);
   }
 
-  // Ugly stuff
-  // ----------
-  // Background: when using ReplayingDecoder (which makes it easy to deal with
-  // unframed RPC responses), the ChannelBuffer we manipulate is in fact a
-  // ReplayingDecoderBuffer, a package-private class that Netty uses.  This
-  // class, for some reason, throws UnsupportedOperationException on its
-  // array() method.  This method is unfortunately the only way to easily dump
-  // the contents of a ChannelBuffer, which is useful for debugging or logging
-  // unexpected buffers.  An issue (NETTY-346) has been filed to get access to
-  // the buffer, but the resolution was useless: instead of making the array()
-  // method work, a new internalBuffer() method was added on ReplayingDecoder,
-  // which would require that we keep a reference on the ReplayingDecoder all
-  // along in order to properly convert the buffer to a string.
-  // So we instead use ugly reflection to gain access to the underlying buffer
-  // while taking into account that the implementation of Netty has changed
-  // over time, so depending which version of Netty we're working with, we do
-  // a different hack.  Yes this is horrible, but it's for the greater good as
-  // this is what allows us to debug unexpected buffers when deserializing RPCs
-  // and what's more important than being able to debug unexpected stuff?
-  private static final Class<?> ReplayingDecoderBuffer;
-  private static final Field RDB_buffer;
-
-  static {
-    Class<?> replayingDecoderBufferClass;
-    try {
-      replayingDecoderBufferClass = Class.forName("io.netty.handler.codec" +
-        ".ReplayingDecoderByteBuf");
-    } catch (ClassNotFoundException e) {
-      try {
-        // Class was called ReplayingDecoderBuffer in netty versions prior to 4.0.28.Final
-        replayingDecoderBufferClass = Class.forName("io.netty.handler.codec" +
-          ".ReplayingDecoderBuffer");
-      } catch (ClassNotFoundException e1) {
-        throw new RuntimeException("static initializer failed", e1);
-      }
-    }
-    try {
-      ReplayingDecoderBuffer = replayingDecoderBufferClass;
-      RDB_buffer = ReplayingDecoderBuffer.getDeclaredField("buffer");
-      RDB_buffer.setAccessible(true);
-    } catch (Exception e) {
-      throw new RuntimeException("static initializer failed", e);
-    }
-  }
-
   /**
    * Pretty-prints all the bytes of a buffer into a human-readable string.
    * @param buf The (possibly {@code null}) buffer to pretty-print.
@@ -864,20 +818,8 @@ public final class Bytes {
     if (buf == null) {
       return "null";
     }
-    byte[] array;
-    try {
-      if (buf.getClass() != ReplayingDecoderBuffer) {
-        array = buf.array();
-      } else {  // Netty 3.5.0 and before.
-        final ByteBuf wrapped_buf = (ByteBuf) RDB_buffer.get(buf);
-        array = wrapped_buf.array();
-      }
-    } catch (UnsupportedOperationException e) {
-      return "(failed to extract content of buffer of type "
-          + buf.getClass().getName() + ')';
-    } catch (IllegalAccessException e) {
-      throw new AssertionError("Should not happen: " + e);
-    }
+    byte[] array = new byte[buf.readableBytes()];
+    buf.getBytes(buf.readerIndex(), array);
     return pretty(array);
   }
 
