@@ -201,7 +201,6 @@ Status PopulateBeforeImage(
   QLValue ql_value;
   if (VERIFY_RESULT(iter.HasNext())) RETURN_NOT_OK(iter.NextRow(&row));
 
-  LOG(INFO) << "RKNRKN number of columns in the output row: " << row.ColumnCount();
   std::vector<ColumnSchema> columns(schema.columns());
 
   if (row.ColumnCount() == columns.size()) {
@@ -211,29 +210,9 @@ Status PopulateBeforeImage(
         RETURN_NOT_OK(AddColumnToMap(
             tablet_peer, columns[index], PrimitiveValue(), enum_oid_label_map,
             row_message.add_old_tuple(), &ql_value.value()));
-        LOG(INFO) << "RKNRKN before image with rowwise iterator in cdcsdk producer is "
-                  << ql_value.int32_value();
       }
     }
   }
-
-  /*auto doc_from_rocksdb_opt = VERIFY_RESULT(TEST_GetSubDocument(
-      sub_doc_key, docdb, rocksdb::kDefaultQueryId, txn_op_context, CoarseTimePoint::max(),
-      read_time));
-
-  if (doc_from_rocksdb_opt) {
-    VLOG(1) << "The before image for key " << sub_doc_key.ToDebugHexString() << " is "
-            << doc_from_rocksdb_opt->ToString();
-
-    QLValuePB ql_value;
-    doc_from_rocksdb_opt->ToQLValuePB(col_schema.type(), &ql_value);
-
-    RETURN_NOT_OK(AddColumnToMap(
-        tablet_peer, col_schema, PrimitiveValue(), enum_oid_label_map, old_tuple, &ql_value));
-
-  } else {
-    VLOG(1) << "The before image for key " << sub_doc_key.ToDebugHexString() << " is empty";
-  }*/
 
   return Status::OK();
 }
@@ -376,16 +355,12 @@ Status PopulateCDCSDKIntentRecord(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
               row_message->add_new_tuple(), nullptr));
 
-          LOG(INFO) << "RKNRKNRKN The intent hybrid time is "
-                    << intent.doc_ht.hybrid_time().ToString();
           if (row_message->op() == RowMessage_Op_UPDATE) {
             MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
             LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
             auto hybrid_time = server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(
-                micros - 1, logical_value);
-            //.Decremented();
-            LOG(INFO) << "RKNRKNRKN The logical value is " << logical_value << ", micros value is "
-                      << micros << " and the hybrid time is " << hybrid_time.ToString();
+                                   micros - 1, logical_value)
+                                   .Decremented();
             RETURN_NOT_OK(PopulateBeforeImage(
                 tablet_peer, ReadHybridTime::SingleTime(hybrid_time), *row_message,
                 enum_oid_label_map, decoded_key, schema,
