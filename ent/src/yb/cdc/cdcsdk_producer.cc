@@ -330,6 +330,11 @@ Status PopulateCDCSDKIntentRecord(
         RETURN_NOT_OK(PopulateBeforeImage(
             tablet_peer, ReadHybridTime::SingleTime(hybrid_time), row_message, enum_oid_label_map,
             decoded_key, schema, tablet_peer->tablet()->metadata()->schema_version()));
+
+        if (row_message->old_tuple_size() == 0) {
+          RETURN_NOT_OK(
+              AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+        }
       } else {
         RETURN_NOT_OK(
             AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
@@ -456,6 +461,11 @@ Status PopulateCDCSDKWriteRecord(
             tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), row_message,
             enum_oid_label_map, decoded_key, schema,
             tablet_peer->tablet()->metadata()->schema_version()));
+
+        if (row_message->old_tuple_size() == 0) {
+          RETURN_NOT_OK(
+              AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+        }
       } else {
         RETURN_NOT_OK(
             AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
