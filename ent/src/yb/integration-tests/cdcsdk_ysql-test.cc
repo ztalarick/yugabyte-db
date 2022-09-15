@@ -564,11 +564,6 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
       case RowMessage::UPDATE: {
         AssertKeyValue(record, expected_records.key, expected_records.value);
         if (validate_old_tuple) {
-          LOG(INFO) << "RKNRKN record key & value are "
-                    << record.row_message().old_tuple(0).datum_int32() << " , "
-                    << record.row_message().old_tuple(1).datum_int32() << " and "
-                    << "expected key & value are " << expected_before_image_records.key << " , "
-                    << expected_before_image_records.value;
           AssertBeforeImageKeyValue(
               record, expected_before_image_records.key, expected_before_image_records.value);
         }
@@ -1232,9 +1227,6 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestModifyPrimaryKeyBeforeImage))
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
   uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
-  LOG(INFO) << "RKNRKNRKN Total records in response are " << record_size
-            << " vs expected record array size of "
-            << sizeof(expected_records) / sizeof(expected_records[0]);
   for (uint32_t i = 0; i < record_size; ++i) {
     const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
     CheckRecord(record, expected_records[i], count, true, expected_before_image_records[i]);
@@ -1369,9 +1361,6 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultiShardUpdateBeforeImage))
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
   uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
-  LOG(INFO) << "RKNRKNRKN Total records in response are " << record_size
-            << " vs expected record array size of "
-            << sizeof(expected_records) / sizeof(expected_records[0]);
   for (uint32_t i = 0; i < record_size; ++i) {
     const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
     CheckRecord(record, expected_records[i], count, true, expected_before_image_records[i]);
@@ -1425,9 +1414,6 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSingleMultiShardUpdateBeforeI
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
   uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
-  LOG(INFO) << "RKNRKNRKN Total records in response are " << record_size
-            << " vs expected record array size of "
-            << sizeof(expected_records) / sizeof(expected_records[0]);
   for (uint32_t i = 0; i < record_size; ++i) {
     const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
     CheckRecord(record, expected_records[i], count, true, expected_before_image_records[i]);
@@ -1482,9 +1468,6 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultiSingleShardUpdateBeforeI
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
   uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
-  LOG(INFO) << "RKNRKNRKN Total records in response are " << record_size
-            << " vs expected record array size of "
-            << sizeof(expected_records) / sizeof(expected_records[0]);
   for (uint32_t i = 0; i < record_size; ++i) {
     const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
     CheckRecord(record, expected_records[i], count, true, expected_before_image_records[i]);
