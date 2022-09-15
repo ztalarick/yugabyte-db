@@ -347,14 +347,6 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
     return Status::OK();
   }
 
-  Status AddColumn(std::string column_name, Cluster* cluster) {
-    auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
-    LOG(INFO) << "Adding the column " << column_name;
-    RETURN_NOT_OK(conn.ExecuteFormat(
-        "ALTER TABLE $0 ADD COLUMN $1 INT", kTableName, column_name));
-    return Status::OK();
-  }
-
   Status UpdatePrimaryKey(uint32_t key, uint32_t value, Cluster* cluster) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     LOG(INFO) << "Updating primary key " << key << " with value " << value;
@@ -501,9 +493,15 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
       const CDCSDKProtoRecordPB& record, const int32_t& key, const int32_t& value,
       const bool& validate_third_column = false, const int32_t& value2 = 0) {
     ASSERT_EQ(key, record.row_message().new_tuple(0).datum_int32());
-    ASSERT_EQ(value, record.row_message().new_tuple(1).datum_int32());
-    if (validate_third_column) {
-      ASSERT_EQ(value2, record.row_message().new_tuple(2).datum_int32());
+    if (value != INT_MAX) {
+      ASSERT_EQ(value, record.row_message().new_tuple(1).datum_int32());
+    }
+    if (validate_third_column && value2 != INT_MAX) {
+      if (value == INT_MAX) {
+        ASSERT_EQ(value2, record.row_message().new_tuple(1).datum_int32());
+      } else {
+        ASSERT_EQ(value2, record.row_message().new_tuple(2).datum_int32());
+      }
     }
   }
 
@@ -511,9 +509,15 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
       const CDCSDKProtoRecordPB& record, const int32_t& key, const int32_t& value,
       const bool& validate_third_column = false, const int32_t& value2 = 0) {
     ASSERT_EQ(key, record.row_message().old_tuple(0).datum_int32());
-    ASSERT_EQ(value, record.row_message().old_tuple(1).datum_int32());
-    if (validate_third_column) {
-      ASSERT_EQ(value, record.row_message().old_tuple(2).datum_int32());
+    if (value != INT_MAX) {
+      ASSERT_EQ(value, record.row_message().old_tuple(1).datum_int32());
+    }
+    if (validate_third_column && value2 != INT_MAX) {
+      if (value == INT_MAX) {
+        ASSERT_EQ(value2, record.row_message().old_tuple(1).datum_int32());
+      } else {
+        ASSERT_EQ(value2, record.row_message().old_tuple(2).datum_int32());
+      }
     }
   }
 
@@ -625,13 +629,6 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
           AssertKeyValue(
               record, expected_records.key, expected_records.value, true, expected_records.value2);
           if (validate_old_tuple) {
-            LOG(INFO) << "RKNRKN record key & value are "
-                      << record.row_message().old_tuple(0).datum_int32() << " , "
-                      << record.row_message().old_tuple(1).datum_int32() << " , "
-                      << record.row_message().old_tuple(2).datum_int32() << " and "
-                      << "expected key, value & value2 are " << expected_before_image_records.key
-                      << " , " << expected_before_image_records.value << " , "
-                      << expected_before_image_records.value2;
             AssertBeforeImageKeyValue(
                 record, expected_before_image_records.key, expected_before_image_records.value,
                 true, expected_before_image_records.value2);
@@ -639,11 +636,6 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
         } else {
           AssertKeyValue(record, expected_records.key, expected_records.value);
           if (validate_old_tuple) {
-            LOG(INFO) << "RKNRKN record key & value are "
-                      << record.row_message().old_tuple(0).datum_int32() << " , "
-                      << record.row_message().old_tuple(1).datum_int32() << " and "
-                      << "expected key & value are " << expected_before_image_records.key << " , "
-                      << expected_before_image_records.value;
             AssertBeforeImageKeyValue(
                 record, expected_before_image_records.key, expected_before_image_records.value);
           }
@@ -1252,45 +1244,45 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestModifyPrimaryKeyBeforeImage))
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSchemaChangeBeforeImage)) {
-  auto tablets = ASSERT_RESULT(SetUpCluster());
+  ASSERT_OK(SetUpWithParams(3, 1, false));
+  auto table = ASSERT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
+  google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
+  ASSERT_OK(test_client()->GetTablets(table, 0, &tablets, nullptr));
   ASSERT_EQ(tablets.size(), 1);
   CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream());
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
   ASSERT_FALSE(set_resp.has_error());
 
-  ASSERT_OK(WriteRows(1 /* start */, 2 /* end */, &test_cluster_));
-  ASSERT_OK(UpdateRows(1 /* key */, 3 /* value */, &test_cluster_));
-  ASSERT_OK(AddColumn("value2", &test_cluster_));
-  ASSERT_OK(UpdateRows(1 /* key */, 4 /* value */, &test_cluster_));
+  auto conn = ASSERT_RESULT(test_cluster_.ConnectToDB(kNamespaceName));
 
-  auto conn = test_cluster_.ConnectToDB(kNamespaceName);
-  ASSERT_OK((*conn).ExecuteFormat(
-      "INSERT INTO $0($1, $2, $3) VALUES ($3, $4, $6)", kTableName, kKeyColumnName,
-      kValueColumnName, "value2", 4, 5, 6));
-  ASSERT_OK(UpdateRows(1 /* key */, 99 /* value */, &test_cluster_));
-  ASSERT_OK(UpdateRows(4 /* key */, 99 /* value */, &test_cluster_));
-
-  ASSERT_OK((*conn).ExecuteFormat(
-      "UPDATE $0 SET $1 = $2 WHERE $3 = $4", kTableName, "value2", 66, kKeyColumnName, 1));
-  ASSERT_OK((*conn).ExecuteFormat(
-      "UPDATE $0 SET $1 = $2 WHERE $3 = $4", kTableName, "value2", 66, kKeyColumnName, 4));
+  ASSERT_OK(conn.Execute("INSERT INTO test_table VALUES (1, 2)"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value = 3 WHERE key = 1"));
+  ASSERT_OK(conn.Execute("ALTER TABLE test_table ADD COLUMN value2 INT"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value = 4 WHERE key = 1"));
+  ASSERT_OK(conn.Execute("INSERT INTO test_table VALUES (4, 5, 6)"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value = 99 WHERE key = 1"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value = 99 WHERE key = 4"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value2 = 66 WHERE key = 1"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value2 = 66 WHERE key = 4"));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE in that order.
-  const uint32_t expected_count[] = {2, 2, 6, 0, 0, 0};
+  const uint32_t expected_count[] = {3, 2, 6, 0, 0, 0};
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
   ExpectedRecordWithThreeColumns expected_records[] = {
-      {0, 0, 0}, {1, 2, 0},  {1, 3, 0},  {0, 0, 0},   {1, 4, 0},
-      {4, 5, 6}, {1, 99, 0}, {4, 99, 0}, {1, 99, 66}, {4, 99, 66}};
-  ExpectedRecordWithThreeColumns expected_before_image_records[] = {
-      {}, {}, {1, 2, 0}, {}, {1, 3, 0}, {}, {1, 3, 0}, {4, 5, 6}, {1, 99, 0}, {4, 99, 6}};
+      {0, 0, 0},        {0, 0, 0},        {1, 2, INT_MAX}, {1, 3, INT_MAX},
+      {0, 0, INT_MAX},  {1, 4, INT_MAX},  {4, 5, 6},       {1, 99, INT_MAX},
+      {4, 99, INT_MAX}, {1, INT_MAX, 66}, {4, INT_MAX, 66}};
+  ExpectedRecordWithThreeColumns expected_before_image_records[] = {{},        {},
+                                                                    {},        {1, 2, INT_MAX},
+                                                                    {},        {1, 3, INT_MAX},
+                                                                    {},        {1, 4, INT_MAX},
+                                                                    {4, 5, 6}, {1, 99, INT_MAX},
+                                                                    {4, 99, 6}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
   uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
-  LOG(INFO) << "RKNRKNRKN Total records in response are " << record_size
-            << " vs expected record array size of "
-            << sizeof(expected_records) / sizeof(expected_records[0]);
   for (uint32_t i = 0; i < record_size; ++i) {
     const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
     if (i < 5) {
