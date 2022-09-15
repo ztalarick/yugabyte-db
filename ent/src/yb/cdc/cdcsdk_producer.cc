@@ -96,7 +96,6 @@ DatumMessagePB* AddTuple(RowMessage* row_message) {
     row_message->add_new_tuple();
   } else {
     tuple = row_message->add_new_tuple();
-    row_message->add_old_tuple();
   }
   return tuple;
 }
