@@ -96,6 +96,7 @@ DatumMessagePB* AddTuple(RowMessage* row_message) {
     row_message->add_new_tuple();
   } else {
     tuple = row_message->add_new_tuple();
+    if (row_message->op() == RowMessage_Op_INSERT) row_message->add_old_tuple();
   }
   return tuple;
 }
@@ -183,7 +184,6 @@ Status PopulateBeforeImage(
     RowMessage* row_message, const EnumOidLabelMap& enum_oid_label_map,
     const docdb::SubDocKey& decoded_primary_key, const Schema& schema,
     const SchemaVersion schema_version) {
-  // const TransactionOperationContext& txn_op_context = TransactionOperationContext();
   auto tablet = tablet_peer->shared_tablet();
   auto docdb = tablet->doc_db();
 
@@ -211,8 +211,13 @@ Status PopulateBeforeImage(
             row_message->add_old_tuple(), &ql_value.value()));
       }
     }
+  } else {
+    if (row_message->op() != RowMessage_Op_DELETE) {
+      for (size_t index = 0; index < schema.num_columns(); ++index) {
+        row_message->add_old_tuple();
+      }
+    }
   }
-
   return Status::OK();
 }
 
@@ -333,6 +338,10 @@ Status PopulateCDCSDKIntentRecord(
         if (row_message->old_tuple_size() == 0) {
           RETURN_NOT_OK(
               AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+        } else {
+          for (size_t index = 0; index < schema.num_columns(); ++index) {
+            row_message->add_new_tuple();
+          }
         }
       } else {
         RETURN_NOT_OK(
@@ -369,7 +378,7 @@ Status PopulateCDCSDKIntentRecord(
                 tablet_peer, ReadHybridTime::SingleTime(hybrid_time), row_message,
                 enum_oid_label_map, decoded_key, schema,
                 tablet_peer->tablet()->metadata()->schema_version()));
-
+            
           } else {
             row_message->add_old_tuple();
           }
@@ -464,6 +473,10 @@ Status PopulateCDCSDKWriteRecord(
         if (row_message->old_tuple_size() == 0) {
           RETURN_NOT_OK(
               AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+        } else {
+          for (size_t index = 0; index < schema.num_columns(); ++index) {
+            row_message->add_new_tuple();
+          }
         }
       } else {
         RETURN_NOT_OK(
