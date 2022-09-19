@@ -390,7 +390,6 @@ Status PopulateCDCSDKIntentRecord(
                 tablet_peer, ReadHybridTime::SingleTime(hybrid_time), row_message,
                 enum_oid_label_map, decoded_key, schema,
                 tablet_peer->tablet()->metadata()->schema_version()));
-            
           } else {
             row_message->add_old_tuple();
           }
