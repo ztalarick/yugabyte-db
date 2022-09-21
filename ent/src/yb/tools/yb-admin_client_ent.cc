@@ -1228,7 +1228,8 @@ Status ClusterAdminClient::WriteUniverseKeyToFile(
 }
 
 Status ClusterAdminClient::CreateCDCSDKDBStream(
-  const TypedNamespaceName& ns, const std::string& checkpoint_type) {
+    const TypedNamespaceName& ns, const std::string& checkpoint_type,
+    const std::string& record_type) {
   HostPort ts_addr = VERIFY_RESULT(GetFirstRpcAddressForTS());
   auto cdc_proxy = std::make_unique<cdc::CDCServiceProxy>(proxy_cache_.get(), ts_addr);
 
@@ -1236,7 +1237,24 @@ Status ClusterAdminClient::CreateCDCSDKDBStream(
   cdc::CreateCDCStreamResponsePB resp;
 
   req.set_namespace_name(ns.name);
-  req.set_record_type(cdc::CDCRecordType::CHANGE);
+  if (record_type == yb::ToString("KEY_ONLY")) {
+    req.set_record_type(cdc::CDCRecordType::KEY_ONLY);
+  } else if (record_type == yb::ToString("FULL_ROW_OLD_AND_NEW_IMAGES")) {
+    req.set_record_type(cdc::CDCRecordType::FULL_ROW_OLD_AND_NEW_IMAGES);
+  } else if (record_type == yb::ToString("FULL_ROW_OLD_IMAGE")) {
+    req.set_record_type(cdc::CDCRecordType::FULL_ROW_OLD_IMAGE);
+  } else if (record_type == yb::ToString("FULL_ROW_NEW_IMAGE")) {
+    req.set_record_type(cdc::CDCRecordType::FULL_ROW_NEW_IMAGE);
+  } else if (record_type == yb::ToString("MODIFIED_COLUMNS_OLD_AND_NEW_IMAGES")) {
+    req.set_record_type(cdc::CDCRecordType::MODIFIED_COLUMNS_OLD_AND_NEW_IMAGES);
+  } else if (record_type == yb::ToString("MODIFIED_COLUMN_OLD_IMAGE")) {
+    req.set_record_type(cdc::CDCRecordType::MODIFIED_COLUMN_OLD_IMAGE);
+  } else if (record_type == yb::ToString("MODIFIED_COLUMNS_NEW_IMAGE")) {
+    req.set_record_type(cdc::CDCRecordType::MODIFIED_COLUMNS_NEW_IMAGE);
+  } else {
+    req.set_record_type(cdc::CDCRecordType::CHANGE);
+  }
+
   req.set_record_format(cdc::CDCRecordFormat::PROTO);
   req.set_source_type(cdc::CDCRequestSource::CDCSDK);
   if (checkpoint_type == yb::ToString("EXPLICIT")) {
