@@ -296,7 +296,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
 
   Status WriteAndUpdateRowsHelper(
       uint32_t start, uint32_t end, Cluster* cluster, bool flag,
-      const std::unordered_multimap<uint32_t, uint32_t>& col_val_map) {
+      const std::unordered_multimap<uint32_t, uint32_t>& col_val_map, const std::string& table_id) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     LOG(INFO) << "Writing " << end - start << " row(s) within transaction";
 
@@ -305,6 +305,9 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
           "INSERT INTO $0($1, $2) VALUES ($3, $4)", kTableName, kKeyColumnName, kValueColumnName, i,
           i + 1));
     }
+    RETURN_NOT_OK(test_client()->FlushTables(
+        {table_id}, /* add_indexes = */ false,
+        /* timeout_secs = */ 30, /* is_compaction = */ false));
 
     RETURN_NOT_OK(conn.Execute("BEGIN"));
     for (auto& col_value_pair : col_val_map) {
@@ -314,6 +317,9 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
           "UPDATE $0 SET $1 = $2 WHERE $3 = $4", kTableName, kValueColumnName,
           col_value_pair.second, kKeyColumnName, col_value_pair.first));
     }
+    RETURN_NOT_OK(test_client()->FlushTables(
+        {table_id}, /* add_indexes = */ false,
+        /* timeout_secs = */ 30, /* is_compaction = */ false));
 
     if (flag) {
       RETURN_NOT_OK(conn.Execute("COMMIT"));
@@ -1456,20 +1462,14 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultiShardUpdateBeforeImage))
   col_val_map.insert({1, 88});
   col_val_map.insert({1, 888});
 
-  ASSERT_OK(
-      WriteAndUpdateRowsHelper(1 /* start */, 2 /* end */, &test_cluster_, true, col_val_map));
-  ASSERT_OK(test_client()->FlushTables(
-      {table.table_id()}, /* add_indexes = */ false,
-      /* timeout_secs = */ 30, /* is_compaction = */ false));
+  ASSERT_OK(WriteAndUpdateRowsHelper(
+      1 /* start */, 2 /* end */, &test_cluster_, true, col_val_map, table.table_id()));
 
   col_val_map.clear();
   col_val_map.insert({1, 999});
   col_val_map.insert({2, 99});
-  ASSERT_OK(
-      WriteAndUpdateRowsHelper(2 /* start */, 3 /* end */, &test_cluster_, true, col_val_map));
-  ASSERT_OK(test_client()->FlushTables(
-      {table.table_id()}, /* add_indexes = */ false,
-      /* timeout_secs = */ 30, /* is_compaction = */ false));
+  ASSERT_OK(WriteAndUpdateRowsHelper(
+      2 /* start */, 3 /* end */, &test_cluster_, true, col_val_map, table.table_id()));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE in that order.
   const uint32_t expected_count[] = {1, 2, 4, 0, 0, 0};
@@ -1510,20 +1510,14 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSingleMultiShardUpdateBeforeI
   col_val_map.insert({2, 88});
   col_val_map.insert({2, 888});
 
-  ASSERT_OK(
-      WriteAndUpdateRowsHelper(2 /* start */, 3 /* end */, &test_cluster_, true, col_val_map));
-  ASSERT_OK(test_client()->FlushTables(
-      {table.table_id()}, /* add_indexes = */ false,
-      /* timeout_secs = */ 30, /* is_compaction = */ false));
+  ASSERT_OK(WriteAndUpdateRowsHelper(
+      2 /* start */, 3 /* end */, &test_cluster_, true, col_val_map, table.table_id()));
 
   col_val_map.clear();
   col_val_map.insert({2, 999});
   col_val_map.insert({3, 99});
-  ASSERT_OK(
-      WriteAndUpdateRowsHelper(3 /* start */, 4 /* end */, &test_cluster_, true, col_val_map));
-  ASSERT_OK(test_client()->FlushTables(
-      {table.table_id()}, /* add_indexes = */ false,
-      /* timeout_secs = */ 30, /* is_compaction = */ false));
+  ASSERT_OK(WriteAndUpdateRowsHelper(
+      3 /* start */, 4 /* end */, &test_cluster_, true, col_val_map, table.table_id()));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE in that order.
   const uint32_t expected_count[] = {1, 3, 6, 0, 0, 0};
@@ -1560,20 +1554,14 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultiSingleShardUpdateBeforeI
   col_val_map.insert({1, 88});
   col_val_map.insert({1, 888});
 
-  ASSERT_OK(
-      WriteAndUpdateRowsHelper(1 /* start */, 2 /* end */, &test_cluster_, true, col_val_map));
-  ASSERT_OK(test_client()->FlushTables(
-      {table.table_id()}, /* add_indexes = */ false,
-      /* timeout_secs = */ 30, /* is_compaction = */ false));
+  ASSERT_OK(WriteAndUpdateRowsHelper(
+      1 /* start */, 2 /* end */, &test_cluster_, true, col_val_map, table.table_id()));
 
   col_val_map.clear();
   col_val_map.insert({1, 999});
   col_val_map.insert({2, 99});
-  ASSERT_OK(
-      WriteAndUpdateRowsHelper(2 /* start */, 3 /* end */, &test_cluster_, true, col_val_map));
-  ASSERT_OK(test_client()->FlushTables(
-      {table.table_id()}, /* add_indexes = */ false,
-      /* timeout_secs = */ 30, /* is_compaction = */ false));
+  ASSERT_OK(WriteAndUpdateRowsHelper(
+      2 /* start */, 3 /* end */, &test_cluster_, true, col_val_map, table.table_id()));
 
   ASSERT_OK(WriteRows(3 /* start */, 4 /* end */, &test_cluster_));
   ASSERT_OK(UpdateRows(3 /* key */, 5 /* value */, &test_cluster_));
