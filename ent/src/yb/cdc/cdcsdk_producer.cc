@@ -343,7 +343,7 @@ Status PopulateCDCSDKIntentRecord(
         }
       }
     }
-    row_message->set_table(tablet_peer->tablet()->metadata()->table_name());
+    row_message->set_table(table_name);
     if (FLAGS_enable_single_record_update) {
       if ((row_message->op() == RowMessage_Op_INSERT && col_count == schema.num_columns()) ||
           (row_message->op() == RowMessage_Op_DELETE)) {
