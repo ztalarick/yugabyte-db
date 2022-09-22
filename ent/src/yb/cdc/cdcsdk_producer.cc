@@ -85,7 +85,7 @@ Status AddColumnToMap(
   return Status::OK();
 }
 
-DatumMessagePB* AddTuple(RowMessage* row_message) {
+DatumMessagePB* AddTuple(RowMessage* row_message, const StreamMetadata& metadata) {
   if (!row_message) {
     return nullptr;
   }
@@ -96,25 +96,28 @@ DatumMessagePB* AddTuple(RowMessage* row_message) {
     row_message->add_new_tuple();
   } else {
     tuple = row_message->add_new_tuple();
-    if (row_message->op() == RowMessage_Op_INSERT) row_message->add_old_tuple();
+    if ((metadata.record_type == cdc::CDCRecordType::CHANGE) ||
+        ((metadata.record_type == cdc::CDCRecordType::ALL) &&
+         (row_message->op() == RowMessage_Op_INSERT)))
+      row_message->add_old_tuple();
   }
   return tuple;
 }
 
 Status AddPrimaryKey(
     const std::shared_ptr<tablet::TabletPeer>& tablet_peer, const docdb::SubDocKey& decoded_key,
-    const Schema& tablet_schema, const EnumOidLabelMap& enum_oid_label_map,
-    RowMessage* row_message) {
+    const Schema& tablet_schema, const EnumOidLabelMap& enum_oid_label_map, RowMessage* row_message,
+    const StreamMetadata& metadata) {
   size_t i = 0;
   for (const auto& col : decoded_key.doc_key().hashed_group()) {
-    DatumMessagePB* tuple = AddTuple(row_message);
+    DatumMessagePB* tuple = AddTuple(row_message, metadata);
     RETURN_NOT_OK(AddColumnToMap(
         tablet_peer, tablet_schema.column(i), col, enum_oid_label_map, tuple, nullptr));
     i++;
   }
 
   for (const auto& col : decoded_key.doc_key().range_group()) {
-    DatumMessagePB* tuple = AddTuple(row_message);
+    DatumMessagePB* tuple = AddTuple(row_message, metadata);
     RETURN_NOT_OK(AddColumnToMap(
         tablet_peer, tablet_schema.column(i), col, enum_oid_label_map, tuple, nullptr));
     i++;
@@ -337,7 +340,8 @@ Status PopulateCDCSDKIntentRecord(
       // Write pair contains record for different row. Create a new CDCRecord in this case.
       row_message->set_transaction_id(transaction_id.ToString());
 
-      if (row_message->op() == RowMessage_Op_DELETE) {
+      if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
+          (row_message->op() == RowMessage_Op_DELETE)) {
         MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
         LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
         auto hybrid_time =
@@ -348,16 +352,16 @@ Status PopulateCDCSDKIntentRecord(
             decoded_key, schema, tablet_peer->tablet()->metadata()->schema_version()));
 
         if (row_message->old_tuple_size() == 0) {
-          RETURN_NOT_OK(
-              AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+          RETURN_NOT_OK(AddPrimaryKey(
+              tablet_peer, decoded_key, schema, enum_oid_label_map, row_message, metadata));
         } else {
           for (size_t index = 0; index < schema.num_columns(); ++index) {
             row_message->add_new_tuple();
           }
         }
       } else {
-        RETURN_NOT_OK(
-            AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+        RETURN_NOT_OK(AddPrimaryKey(
+            tablet_peer, decoded_key, schema, enum_oid_label_map, row_message, metadata));
       }
     }
 
@@ -380,7 +384,8 @@ Status PopulateCDCSDKIntentRecord(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
               row_message->add_new_tuple(), nullptr));
 
-          if (row_message->op() == RowMessage_Op_UPDATE) {
+          if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
+              (row_message->op() == RowMessage_Op_UPDATE)) {
             MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
             LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
             auto hybrid_time = server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(
@@ -488,23 +493,24 @@ Status PopulateCDCSDKWriteRecord(
         }
       }
 
-      if (row_message->op() == RowMessage_Op_DELETE) {
+      if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
+          (row_message->op() == RowMessage_Op_DELETE)) {
         RETURN_NOT_OK(PopulateBeforeImage(
             tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), row_message,
             enum_oid_label_map, decoded_key, schema,
             tablet_peer->tablet()->metadata()->schema_version()));
 
         if (row_message->old_tuple_size() == 0) {
-          RETURN_NOT_OK(
-              AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+          RETURN_NOT_OK(AddPrimaryKey(
+              tablet_peer, decoded_key, schema, enum_oid_label_map, row_message, metadata));
         } else {
           for (size_t index = 0; index < schema.num_columns(); ++index) {
             row_message->add_new_tuple();
           }
         }
       } else {
-        RETURN_NOT_OK(
-            AddPrimaryKey(tablet_peer, decoded_key, schema, enum_oid_label_map, row_message));
+        RETURN_NOT_OK(AddPrimaryKey(
+            tablet_peer, decoded_key, schema, enum_oid_label_map, row_message, metadata));
       }
       // Process intent records.
       row_message->set_commit_time(msg->hybrid_time());
@@ -529,7 +535,8 @@ Status PopulateCDCSDKWriteRecord(
           RETURN_NOT_OK(AddColumnToMap(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
               row_message->add_new_tuple(), nullptr));
-          if (row_message->op() == RowMessage_Op_UPDATE) {
+          if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
+              (row_message->op() == RowMessage_Op_UPDATE)) {
             RETURN_NOT_OK(PopulateBeforeImage(
                 tablet_peer, ReadHybridTime::FromUint64(msg->hybrid_time() - 1), row_message,
                 enum_oid_label_map, decoded_key, schema,
