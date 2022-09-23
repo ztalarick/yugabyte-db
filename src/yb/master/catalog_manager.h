@@ -946,7 +946,7 @@ class CatalogManager :
 
   void CheckTableDeleted(const TableInfoPtr& table) override;
 
-  bool ShouldSplitValidCandidate(
+  Status ShouldSplitValidCandidate(
       const TabletInfo& tablet_info, const TabletReplicaDriveInfo& drive_info) const override;
 
   Status GetAllAffinitizedZones(vector<AffinitizedZonesSet>* affinitized_zones) override;
@@ -1472,6 +1472,11 @@ class CatalogManager :
     return false;
   }
 
+  virtual bool IsCdcSdkEnabled(const TableInfo& table_info) {
+    // Default value.
+    return false;
+  }
+
   virtual bool IsTablePartOfBootstrappingCdcStream(const TableInfo& table_info) const override {
     // Default value.
     return false;
@@ -1600,7 +1605,7 @@ class CatalogManager :
   scoped_refptr<SysConfigInfo> transaction_tables_config_ =
       nullptr; // No GUARD, only write on Load.
 
-  Master *master_;
+  Master* const master_;
   Atomic32 closing_;
 
   std::unique_ptr<SysCatalogTable> sys_catalog_;
