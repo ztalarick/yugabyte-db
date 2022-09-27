@@ -1434,8 +1434,17 @@ void CDCServiceImpl::GetChanges(const GetChangesRequestPB* req,
   }
 
   // Store information about the last server read & remote client ACK.
-  uint64_t last_record_hybrid_time = resp->records_size() > 0 ?
-      resp->records(resp->records_size() - 1).time() : 0;
+  uint64_t last_record_hybrid_time =
+      resp->records_size() > 0 ? resp->records(resp->records_size() - 1).time() : 0;
+
+  if (resp->cdc_sdk_proto_records_size() > 0 &&
+      resp->cdc_sdk_proto_records(resp->cdc_sdk_proto_records_size() - 1)
+          .row_message()
+          .has_commit_time()) {
+    last_record_hybrid_time = resp->cdc_sdk_proto_records(resp->cdc_sdk_proto_records_size() - 1)
+                                  .row_message()
+                                  .commit_time();
+  }
 
   if (record.checkpoint_type == IMPLICIT) {
     if (UpdateCheckpointRequired(record, cdc_sdk_op_id)) {
@@ -2284,15 +2293,15 @@ void CDCServiceImpl::UpdateCdcReplicatedIndex(const UpdateCdcReplicatedIndexRequ
 
 Status CDCServiceImpl::UpdateCdcReplicatedIndexEntry(
     const string& tablet_id, int64 replicated_index, const OpId& cdc_sdk_replicated_op,
-    const MonoDelta& cdc_sdk_op_id_expiration) {
+    const MonoDelta& cdc_sdk_op_id_expiration, const uint64_t cdc_retention_time_before_image) {
   auto tablet_peer = VERIFY_RESULT(context_->GetServingTablet(tablet_id));
   if (!tablet_peer->log_available()) {
     return STATUS(TryAgain, "Tablet peer is not ready to set its log cdc index");
   }
 
   RETURN_NOT_OK(tablet_peer->set_cdc_min_replicated_index(replicated_index));
-  RETURN_NOT_OK(
-      tablet_peer->SetCDCSDKRetainOpIdAndTime(cdc_sdk_replicated_op, cdc_sdk_op_id_expiration));
+  RETURN_NOT_OK(tablet_peer->SetCDCSDKRetainOpIdAndTime(
+      cdc_sdk_replicated_op, cdc_sdk_op_id_expiration, cdc_retention_time_before_image));
 
   if (PREDICT_FALSE(FLAGS_TEST_cdc_inject_replication_index_update_failure)) {
     return STATUS(InternalError, "Simulated error when setting the replication index");
@@ -2309,11 +2318,14 @@ void CDCServiceImpl::RollbackCdcReplicatedIndexEntry(const string& tablet_id) {
   }
 
   const TabletCDCCheckpointInfo kOpIdMax;
-  WARN_NOT_OK((**tablet_peer).set_cdc_min_replicated_index(kOpIdMax.cdc_op_id.index),
-              "Unable to update min index for tablet $0 " + tablet_id);
-  WARN_NOT_OK((**tablet_peer).SetCDCSDKRetainOpIdAndTime(
-                kOpIdMax.cdc_op_id, kOpIdMax.cdc_sdk_op_id_expiration),
-              "Unable to update op id and expiration time for tablet $0 " + tablet_id);
+  WARN_NOT_OK(
+      (**tablet_peer).set_cdc_min_replicated_index(kOpIdMax.cdc_op_id.index),
+      "Unable to update min index for tablet $0 " + tablet_id);
+  WARN_NOT_OK(
+      (**tablet_peer)
+          .SetCDCSDKRetainOpIdAndTime(
+              kOpIdMax.cdc_op_id, kOpIdMax.cdc_sdk_op_id_expiration, kuint64max),
+      "Unable to update op id and expiration time for tablet $0 " + tablet_id);
 }
 
 Result<OpId> CDCServiceImpl::TabletLeaderLatestEntryOpId(const TabletId& tablet_id) {

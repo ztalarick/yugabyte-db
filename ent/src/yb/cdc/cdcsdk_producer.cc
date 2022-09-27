@@ -260,7 +260,8 @@ Status PopulateCDCSDKIntentRecord(
     ScopedTrackedConsumption* consumption,
     IntraTxnWriteId* write_id,
     std::string* reverse_index_key,
-    Schema* old_schema) {
+    Schema* old_schema,
+    const uint64_t& commit_time) {
   bool colocated = tablet_peer->tablet()->metadata()->colocated();
   Schema& schema = old_schema ? *old_schema : *tablet_peer->tablet()->schema();
   SchemaVersion schema_version = tablet_peer->tablet()->metadata()->schema_version();
@@ -339,16 +340,18 @@ Status PopulateCDCSDKIntentRecord(
 
       // Write pair contains record for different row. Create a new CDCRecord in this case.
       row_message->set_transaction_id(transaction_id.ToString());
+      row_message->set_commit_time(intent.doc_ht.hybrid_time().ToUint64());
 
       if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
           (row_message->op() == RowMessage_Op_DELETE)) {
-        MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
+        /*MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
         LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
         auto hybrid_time =
             server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(micros, logical_value)
-                .Decremented();
+                .Decremented();*/
+        auto hybrid_time = commit_time - 1;
         RETURN_NOT_OK(PopulateBeforeImage(
-            tablet_peer, ReadHybridTime::SingleTime(hybrid_time), row_message, enum_oid_label_map,
+            tablet_peer, ReadHybridTime::FromUint64(hybrid_time), row_message, enum_oid_label_map,
             decoded_key, schema, tablet_peer->tablet()->metadata()->schema_version()));
 
         if (row_message->old_tuple_size() == 0) {
@@ -603,6 +606,7 @@ Status PopulateCDCSDKDDLRecord(
   row_message->set_schema_version(msg->change_metadata_request().schema_version());
   row_message->set_new_table_name(msg->change_metadata_request().new_table_name());
   row_message->set_pgschema_name(schema.SchemaName());
+  row_message->set_commit_time(msg->hybrid_time());
   SetTableProperties(table_properties, cdc_sdk_table_properties_pb);
 
   return Status::OK();
@@ -650,7 +654,8 @@ Status ProcessIntents(
     const std::shared_ptr<tablet::TabletPeer>& tablet_peer,
     std::vector<docdb::IntentKeyValueForCDC>* keyValueIntents,
     docdb::ApplyTransactionState* stream_state,
-    Schema* schema) {
+    Schema* schema,
+    const uint64_t& commit_time) {
   if (stream_state->key.empty() && stream_state->write_id == 0) {
     CDCSDKProtoRecordPB* proto_record = resp->add_cdc_sdk_proto_records();
     RowMessage* row_message = proto_record->mutable_row_message();
@@ -696,7 +701,7 @@ Status ProcessIntents(
   // Need to populate the CDCSDKRecords
   RETURN_NOT_OK(PopulateCDCSDKIntentRecord(
       op_id, transaction_id, *keyValueIntents, metadata, tablet_peer, enum_oid_label_map, resp,
-      consumption, &write_id, &reverse_index_key, schema));
+      consumption, &write_id, &reverse_index_key, schema, commit_time));
 
   SetTermIndex(op_id.term, op_id.index, checkpoint);
 
@@ -893,13 +898,30 @@ Status GetChangesForCDCSDK(
     docdb::ApplyTransactionState stream_state;
     stream_state.key = from_op_id.key();
     stream_state.write_id = from_op_id.write_id();
+    OpId last_seen_op_id;
+    last_seen_op_id.term = from_op_id.term();
+    last_seen_op_id.index = from_op_id.index();
+    consensus::ReadOpsResult read_ops;
+    uint64_t commit_timestamp = 0;
+
+    read_ops = VERIFY_RESULT(tablet_peer->consensus()->ReadReplicatedMessagesForCDC(
+        last_seen_op_id, last_readable_opid_index, deadline, true));
+
+    if (read_ops.messages.size() != 1) {
+      LOG(WARNING) << "Reading more than one raft log message while reading intents";
+    }
+
+    if (read_ops.messages[0]->op_type() == consensus::OperationType::UPDATE_TRANSACTION_OP &&
+        read_ops.messages[0]->has_hybrid_time()) {
+      commit_timestamp = read_ops.messages[0]->hybrid_time();
+    }
 
     RETURN_NOT_OK(reverse_index_key_slice.consume_byte(docdb::KeyEntryTypeAsChar::kTransactionId));
     auto transaction_id = VERIFY_RESULT(DecodeTransactionId(&reverse_index_key_slice));
 
     RETURN_NOT_OK(ProcessIntents(
         op_id, transaction_id, stream_metadata, enum_oid_label_map, resp, &consumption, &checkpoint,
-        tablet_peer, &keyValueIntents, &stream_state, nullptr));
+        tablet_peer, &keyValueIntents, &stream_state, nullptr, commit_timestamp));
 
     if (checkpoint.write_id() == 0 && checkpoint.key().empty()) {
       last_streamed_op_id->term = checkpoint.term();
@@ -978,7 +1000,8 @@ Status GetChangesForCDCSDK(
               op_id.index = msg->id().index();
               RETURN_NOT_OK(ProcessIntents(
                   op_id, txn_id, stream_metadata, enum_oid_label_map, resp, &consumption,
-                  &checkpoint, tablet_peer, &intents, &new_stream_state, &current_schema));
+                  &checkpoint, tablet_peer, &intents, &new_stream_state, &current_schema,
+                  msg->transaction_state().commit_hybrid_time()));
 
               if (new_stream_state.write_id != 0 && !new_stream_state.key.empty()) {
                 pending_intents = true;

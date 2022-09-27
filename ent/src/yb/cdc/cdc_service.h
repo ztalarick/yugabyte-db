@@ -81,6 +81,7 @@ struct TabletCDCCheckpointInfo {
   OpId cdc_sdk_op_id = OpId::Invalid();
   MonoDelta cdc_sdk_op_id_expiration = MonoDelta::kZero;
   int64_t cdc_sdk_latest_active_time = 0;
+  uint64_t cdc_retention_time_before_image = kuint64max;
 };
 
 using TabletIdCDCCheckpointMap = std::unordered_map<TabletId, TabletCDCCheckpointInfo>;
@@ -134,7 +135,8 @@ class CDCServiceImpl : public CDCServiceIf {
 
   Status UpdateCdcReplicatedIndexEntry(
       const string& tablet_id, int64 replicated_index, const OpId& cdc_sdk_replicated_op,
-      const MonoDelta& cdc_sdk_op_id_expiration);
+      const MonoDelta& cdc_sdk_op_id_expiration,
+      const uint64_t cdc_retention_time_before_image = kint64max);
 
   void RollbackCdcReplicatedIndexEntry(const string& tablet_id);
 

@@ -383,12 +383,15 @@ class TabletPeer : public std::enable_shared_from_this<TabletPeer>,
 
   Status set_cdc_sdk_min_checkpoint_op_id(const OpId& cdc_sdk_min_checkpoint_op_id);
 
+  Status set_cdc_retention_time_before_image(const HybridTime cdc_retention_time_before_image);
+
   OpId cdc_sdk_min_checkpoint_op_id();
 
   CoarseTimePoint cdc_sdk_min_checkpoint_op_id_expiration();
 
   Status SetCDCSDKRetainOpIdAndTime(
-      const OpId& cdc_sdk_op_id, const MonoDelta& cdc_sdk_op_id_expiration);
+      const OpId& cdc_sdk_op_id, const MonoDelta& cdc_sdk_op_id_expiration,
+      const uint64_t cdc_retention_time_before_image_int);
 
   Result<MonoDelta> GetCDCSDKIntentRetainTime(const int64_t& cdc_sdk_latest_active_time);
 
