@@ -1090,6 +1090,20 @@ Status GetChangesForCDCSDK(
     consumption.Add(resp->SpaceUsedLong());
   }
 
+  auto ht_of_last_returned_message =
+      messages.empty() ? HybridTime::kInvalid : HybridTime(messages.back()->hybrid_time());
+  auto have_more_messages = PREDICT_FALSE(FLAGS_TEST_xcluster_simulate_have_more_records)
+                                ? HaveMoreMessages::kTrue
+                                : read_ops.have_more_messages;
+  auto safe_time_result =
+      GetSafeTimeForTarget(tablet_peer, ht_of_last_returned_message, have_more_messages);
+  if (safe_time_result.ok()) {
+    resp->set_safe_hybrid_time((*safe_time_result).ToUint64());
+  } else {
+    YB_LOG_EVERY_N_SECS(WARNING, 10)
+        << "Could not compute safe time: " << safe_time_result.status();
+  }
+
   checkpoint_updated ? resp->mutable_cdc_sdk_checkpoint()->CopyFrom(checkpoint)
                        : resp->mutable_cdc_sdk_checkpoint()->CopyFrom(from_op_id);
 
