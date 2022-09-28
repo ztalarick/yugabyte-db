@@ -2582,7 +2582,7 @@ HybridTime TSTabletManager::AllowedHistoryCutoff(tablet::RaftGroupMetadata* meta
     }
     result = std::min(result, it->second);
   }
-  result = std::min(result, metadata->cdc_retention_time_before_image());
+  result = std::min(result, metadata->cdc_safe_time());
   return result;
 }
 

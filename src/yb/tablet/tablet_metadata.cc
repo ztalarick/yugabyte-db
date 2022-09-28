@@ -1088,9 +1088,9 @@ OpId RaftGroupMetadata::cdc_sdk_min_checkpoint_op_id() const {
   return cdc_sdk_min_checkpoint_op_id_;
 }
 
-HybridTime RaftGroupMetadata::cdc_retention_time_before_image() const {
+HybridTime RaftGroupMetadata::cdc_safe_time() const {
   std::lock_guard<MutexType> lock(data_mutex_);
-  return cdc_retention_time_before_image_;
+  return cdc_safe_time_;
 }
 
 Status RaftGroupMetadata::set_cdc_sdk_min_checkpoint_op_id(const OpId& cdc_min_checkpoint_op_id) {
@@ -1101,11 +1101,10 @@ Status RaftGroupMetadata::set_cdc_sdk_min_checkpoint_op_id(const OpId& cdc_min_c
   return Flush();
 }
 
-Status RaftGroupMetadata::set_cdc_retention_time_before_image(
-    const HybridTime cdc_retention_time_before_image) {
+Status RaftGroupMetadata::set_cdc_safe_time(const HybridTime cdc_safe_time) {
   {
     std::lock_guard<MutexType> lock(data_mutex_);
-    cdc_retention_time_before_image_ = cdc_retention_time_before_image;
+    cdc_safe_time_ = cdc_safe_time;
   }
   return Flush();
 }

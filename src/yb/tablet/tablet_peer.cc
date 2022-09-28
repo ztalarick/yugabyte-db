@@ -1044,11 +1044,9 @@ Status TabletPeer::set_cdc_sdk_min_checkpoint_op_id(const OpId& cdc_sdk_min_chec
   return Status::OK();
 }
 
-Status TabletPeer::set_cdc_retention_time_before_image(
-    const HybridTime cdc_retention_time_before_image) {
-  LOG_WITH_PREFIX(INFO) << "Setting CDCSDK min checkpoint opId to "
-                        << cdc_retention_time_before_image.ToString();
-  RETURN_NOT_OK(meta_->set_cdc_retention_time_before_image(cdc_retention_time_before_image));
+Status TabletPeer::set_cdc_safe_time(const HybridTime cdc_safe_time) {
+  LOG_WITH_PREFIX(INFO) << "Setting CDCSDK min checkpoint opId to " << cdc_safe_time.ToString();
+  RETURN_NOT_OK(meta_->set_cdc_safe_time(cdc_safe_time));
   return Status::OK();
 }
 
@@ -1075,20 +1073,20 @@ OpId TabletPeer::GetLatestCheckPoint() {
 
 Status TabletPeer::SetCDCSDKRetainOpIdAndTime(
     const OpId& cdc_sdk_op_id, const MonoDelta& cdc_sdk_op_id_expiration,
-    const uint64_t cdc_retention_time_before_image_int) {
+    const uint64_t safe_time_int) {
   if (cdc_sdk_op_id == OpId::Invalid()) {
     return Status::OK();
   }
 
-  HybridTime cdc_retention_time_before_image;
-  if (cdc_retention_time_before_image_int == 0) {
+  HybridTime cdc_safe_time;
+  if (safe_time_int == 0) {
     return Status::OK();
   } else {
-    RETURN_NOT_OK(cdc_retention_time_before_image.FromUint64(cdc_retention_time_before_image_int));
+    RETURN_NOT_OK(cdc_safe_time.FromUint64(safe_time_int));
   }
 
   RETURN_NOT_OK(set_cdc_sdk_min_checkpoint_op_id(cdc_sdk_op_id));
-  RETURN_NOT_OK(set_cdc_retention_time_before_image(cdc_retention_time_before_image));
+  RETURN_NOT_OK(set_cdc_safe_time(cdc_safe_time));
 
   {
     std::lock_guard<simple_spinlock> lock(lock_);

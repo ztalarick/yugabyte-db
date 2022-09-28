@@ -248,6 +248,23 @@ Result<size_t> PopulatePackedRows(
   return packing.columns();
 }
 
+HybridTime GetSafeTimeForTarget(
+    const HybridTime leader_safe_time,
+    HybridTime ht_of_last_returned_message,
+    HaveMoreMessages have_more_messages) {
+  if (have_more_messages) {
+    return ht_of_last_returned_message;
+  }
+
+  if (ht_of_last_returned_message.is_valid()) {
+    if (!leader_safe_time.is_valid() || ht_of_last_returned_message > leader_safe_time) {
+      return ht_of_last_returned_message;
+    }
+  }
+
+  return leader_safe_time;
+}
+
 // Populate CDC record corresponding to WAL batch in ReplicateMsg.
 Status PopulateCDCSDKIntentRecord(
     const OpId& op_id,
@@ -807,6 +824,16 @@ Status GetChangesForCDCSDK(
   CDCSDKCheckpointPB checkpoint;
   bool checkpoint_updated = false;
 
+  auto leader_safe_time = tablet_peer->LeaderSafeTime();
+  if (!leader_safe_time.ok()) {
+    YB_LOG_EVERY_N_SECS(WARNING, 10)
+        << "Could not compute safe time: " << leader_safe_time.status();
+    leader_safe_time = HybridTime::kInvalid;
+  }
+
+  auto ht_of_last_returned_message = HybridTime::kInvalid;
+  HaveMoreMessages have_more_messages(false);
+
   // It is snapshot call.
   if (from_op_id.write_id() == -1) {
     auto txn_participant = tablet_peer->tablet()->transaction_participant();
@@ -949,6 +976,7 @@ Status GetChangesForCDCSDK(
       if (txn_participant) {
         request_scope = VERIFY_RESULT(RequestScope::Create(txn_participant));
       }
+      have_more_messages = read_ops.have_more_messages;
 
       Schema current_schema;
       bool pending_intents = false;
@@ -962,6 +990,7 @@ Status GetChangesForCDCSDK(
       }
 
       for (const auto& msg : read_ops.messages) {
+        bool exit_early = false;
         last_seen_op_id.term = msg->id().term();
         last_seen_op_id.index = msg->id().index();
 
@@ -1050,6 +1079,7 @@ Status GetChangesForCDCSDK(
             SetCheckpoint(
                 msg->id().term(), msg->id().index(), 0, "", 0, &checkpoint, last_streamed_op_id);
             checkpoint_updated = true;
+            exit_early = true;
           }
           break;
 
@@ -1070,6 +1100,12 @@ Status GetChangesForCDCSDK(
         }
 
         if (pending_intents) break;
+
+        if (exit_early) {
+          have_more_messages = HaveMoreMessages::kTrue;
+          break;
+        }
+        ht_of_last_returned_message = HybridTime(msg->hybrid_time());
       }
       if (read_ops.messages.size() > 0) {
         *msgs_holder = consensus::ReplicateMsgsHolder(
@@ -1090,19 +1126,9 @@ Status GetChangesForCDCSDK(
     consumption.Add(resp->SpaceUsedLong());
   }
 
-  auto ht_of_last_returned_message =
-      messages.empty() ? HybridTime::kInvalid : HybridTime(messages.back()->hybrid_time());
-  auto have_more_messages = PREDICT_FALSE(FLAGS_TEST_xcluster_simulate_have_more_records)
-                                ? HaveMoreMessages::kTrue
-                                : read_ops.have_more_messages;
-  auto safe_time_result =
-      GetSafeTimeForTarget(tablet_peer, ht_of_last_returned_message, have_more_messages);
-  if (safe_time_result.ok()) {
-    resp->set_safe_hybrid_time((*safe_time_result).ToUint64());
-  } else {
-    YB_LOG_EVERY_N_SECS(WARNING, 10)
-        << "Could not compute safe time: " << safe_time_result.status();
-  }
+  auto safe_time =
+      GetSafeTimeForTarget(leader_safe_time.get(), ht_of_last_returned_message, have_more_messages);
+  resp->set_safe_hybrid_time(safe_time.ToUint64());
 
   checkpoint_updated ? resp->mutable_cdc_sdk_checkpoint()->CopyFrom(checkpoint)
                        : resp->mutable_cdc_sdk_checkpoint()->CopyFrom(from_op_id);

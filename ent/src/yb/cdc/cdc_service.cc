@@ -833,6 +833,7 @@ void CDCServiceImpl::CreateEntryInCdcStateTable(
                                         master::kCdcCheckpoint, op_id.ToString());
   auto column_id = cdc_state_table->ColumnId(master::kCdcData);
   cdc_state_table->AddMapColumnValue(cdc_state_table_write_req, column_id, "active_time", "0");
+  cdc_state_table->AddMapColumnValue(cdc_state_table_write_req, column_id, "safe_time", "0");
   ops->push_back(std::move(cdc_state_table_op));
 
   impl_->AddTabletCheckpoint(op_id, stream_id, tablet_id, producer_entries_modified);
@@ -1068,6 +1069,7 @@ Result<SetCDCCheckpointResponsePB> CDCServiceImpl::SetCDCCheckpoint(
 
   ProducerTabletInfo producer_tablet{"" /* UUID */, req.stream_id(), req.tablet_id()};
   OpId checkpoint;
+  uint64_t safe_time = kuint64max;
   bool set_latest_entry = req.bootstrap();
 
   if (set_latest_entry) {
@@ -1096,8 +1098,16 @@ Result<SetCDCCheckpointResponsePB> CDCServiceImpl::SetCDCCheckpoint(
           STATUS(ServiceUnavailable, err_message), CDCError(CDCErrorPB::LEADER_NOT_READY));
     }
     checkpoint = tablet_peer->log()->GetLatestEntryOpId();
+    safe_time = tablet_peer->LeaderSafeTime()->ToUint64();
   } else {
     checkpoint = OpId::FromPB(req.checkpoint().op_id());
+    if (req.has_safe_time()) {
+      if (safe_time > 0) {
+        safe_time = req.safe_time();
+      } else if (safe_time == 0) {
+        safe_time = kuint64max;
+      }
+    }
   }
   auto session = client()->NewSession();
   session->SetDeadline(deadline);
@@ -1105,11 +1115,11 @@ Result<SetCDCCheckpointResponsePB> CDCServiceImpl::SetCDCCheckpoint(
   RETURN_NOT_OK_SET_CODE(
       UpdateCheckpointAndActiveTime(
           producer_tablet, checkpoint, checkpoint, session, GetCurrentTimeMicros(),
-          CDCRequestSource::CDCSDK, true),
+          CDCRequestSource::CDCSDK, true, safe_time),
       CDCError(CDCErrorPB::INTERNAL_ERROR));
 
   if (req.has_initial_checkpoint() || set_latest_entry) {
-    auto result = SetInitialCheckPoint(checkpoint, req.tablet_id(), tablet_peer);
+    auto result = SetInitialCheckPoint(checkpoint, req.tablet_id(), tablet_peer, safe_time);
     RETURN_NOT_OK_SET_CODE(result, CDCError(CDCErrorPB::INTERNAL_ERROR));
   }
   return SetCDCCheckpointResponsePB();
@@ -1451,7 +1461,8 @@ void CDCServiceImpl::GetChanges(const GetChangesRequestPB* req,
       RPC_STATUS_RETURN_ERROR(
           UpdateCheckpointAndActiveTime(
               producer_tablet, OpId::FromPB(resp->checkpoint().op_id()), op_id, session,
-              last_record_hybrid_time, record.source_type),
+              last_record_hybrid_time, record.source_type, false,
+              resp->has_safe_hybrid_time() ? resp->safe_hybrid_time() : kuint64max),
           resp->mutable_error(), CDCErrorPB::INTERNAL_ERROR, context);
     }
 
@@ -1482,8 +1493,7 @@ Status CDCServiceImpl::UpdatePeersCdcMinReplicatedIndex(
     update_index_req.add_tablet_ids(tablet_id);
     update_index_req.add_replicated_indices(cdc_checkpoint_min.cdc_op_id.index);
     update_index_req.add_replicated_terms(cdc_checkpoint_min.cdc_op_id.term);
-    update_index_req.add_cdc_retention_time_before_image(
-        cdc_checkpoint_min.cdc_retention_time_before_image);
+    update_index_req.add_cdc_sdk_safe_time(cdc_checkpoint_min.safe_time);
     cdc_checkpoint_min.cdc_sdk_op_id.ToPB(update_index_req.add_cdc_sdk_consumed_ops());
     update_index_req.add_cdc_sdk_ops_expiration_ms(
         cdc_checkpoint_min.cdc_sdk_op_id_expiration.ToMilliseconds());
@@ -1702,19 +1712,27 @@ void SetMinCDCSDKCheckpoint(const OpId& checkpoint, OpId* cdc_sdk_op_id) {
   }
 }
 
-void SetMinCDCSDKLastReplicatedTime(
-    const uint64_t& last_replicated_time, uint64_t* cdc_retention_time_before_image) {
-  if (*cdc_retention_time_before_image != 0) {
-    *cdc_retention_time_before_image = min(*cdc_retention_time_before_image, last_replicated_time);
+void SetMinCDCSDKSafeTime(const uint64_t& safe_time, uint64_t* cdc_sdk_min_safe_time) {
+  if (*cdc_sdk_min_safe_time != 0) {
+    *cdc_sdk_min_safe_time = min(*cdc_sdk_min_safe_time, safe_time);
   } else {
-    *cdc_retention_time_before_image = last_replicated_time;
+    *cdc_sdk_min_safe_time = safe_time;
+  }
+}
+
+void SetMinCDCSDKLastReplicatedTime(
+    const uint64_t& safe_time, uint64_t* cdc_safe_time_for_retention) {
+  if (*cdc_safe_time_for_retention != 0) {
+    *cdc_safe_time_for_retention = min(*cdc_safe_time_for_retention, safe_time);
+  } else {
+    *cdc_safe_time_for_retention = safe_time;
   }
 }
 
 void PopulateTabletMinCheckpointAndLatestActiveTime(
     const string& tablet_id, const OpId& checkpoint, CDCRequestSource cdc_source_type,
     const int64_t& last_active_time, TabletIdCDCCheckpointMap* tablet_min_checkpoint_index,
-    const uint64_t last_replicated_time = 0) {
+    const uint64_t safe_time = 0) {
   auto& tablet_info = (*tablet_min_checkpoint_index)[tablet_id];
 
   tablet_info.cdc_op_id = min(tablet_info.cdc_op_id, checkpoint);
@@ -1728,8 +1746,7 @@ void PopulateTabletMinCheckpointAndLatestActiveTime(
   //
   if (cdc_source_type == CDCSDK) {
     SetMinCDCSDKCheckpoint(checkpoint, &tablet_info.cdc_sdk_op_id);
-    SetMinCDCSDKLastReplicatedTime(
-        last_replicated_time, &tablet_info.cdc_retention_time_before_image);
+    SetMinCDCSDKLastReplicatedTime(safe_time, &tablet_info.safe_time);
     tablet_info.cdc_sdk_latest_active_time =
         max(tablet_info.cdc_sdk_latest_active_time, last_active_time);
   }
@@ -1737,13 +1754,14 @@ void PopulateTabletMinCheckpointAndLatestActiveTime(
 
 Status CDCServiceImpl::SetInitialCheckPoint(
     const OpId& checkpoint, const string& tablet_id,
-    const std::shared_ptr<tablet::TabletPeer>& tablet_peer) {
+    const std::shared_ptr<tablet::TabletPeer>& tablet_peer, uint64_t safe_time) {
   VLOG(1) << "Setting the checkpoint is " << checkpoint.ToString()
           << " and the latest entry OpID is " << tablet_peer->log()->GetLatestEntryOpId();
   auto result = PopulateTabletCheckPointInfo(tablet_id);
   RETURN_NOT_OK_SET_CODE(result, CDCError(CDCErrorPB::INTERNAL_ERROR));
   TabletIdCDCCheckpointMap& tablet_min_checkpoint_map = *result;
   auto& tablet_op_id = tablet_min_checkpoint_map[tablet_id];
+  SetMinCDCSDKSafeTime(safe_time, &tablet_op_id.safe_time);
   SetMinCDCSDKCheckpoint(checkpoint, &tablet_op_id.cdc_sdk_op_id);
   tablet_op_id.cdc_sdk_op_id_expiration =
       MonoDelta::FromMilliseconds(GetAtomicFlag(&FLAGS_cdc_intent_retention_ms));
@@ -1756,7 +1774,8 @@ Status CDCServiceImpl::SetInitialCheckPoint(
   // Update the minimum checkpoint op_id for LEADER for intent cleanup for CDCSDK Stream type.
   RETURN_NOT_OK_SET_CODE(
       tablet_peer->SetCDCSDKRetainOpIdAndTime(
-          tablet_op_id.cdc_sdk_op_id, tablet_op_id.cdc_sdk_op_id_expiration),
+          tablet_op_id.cdc_sdk_op_id, tablet_op_id.cdc_sdk_op_id_expiration,
+          tablet_op_id.safe_time),
       CDCError(CDCErrorPB::INTERNAL_ERROR));
 
   //  Even if the flag is enable_update_local_peer_min_index is set, for the first time
@@ -1807,9 +1826,13 @@ Result<TabletIdCDCCheckpointMap> CDCServiceImpl::PopulateTabletCheckPointInfo(
       last_replicated_time_str = timestamp_ql_value.timestamp_value().ToFormattedString();
     }
 
-    uint64_t last_replicated_time = 0;
-    if (!last_replicated_time_str.empty()) {
-      last_replicated_time = VERIFY_RESULT(CheckedStoInt<uint64_t>(last_replicated_time_str));
+    uint64_t safe_time = 0;
+    if (!row.column(4).IsNull()) {
+      for (int index = 0; index < row.column(4).map_value().keys_size(); ++index) {
+        if (row.column(4).map_value().keys(index).string_value() == "safe_time")
+          safe_time = VERIFY_RESULT(
+              CheckedStoInt<int64_t>(row.column(4).map_value().values(index).string_value()));
+      }
     }
 
     int64_t last_active_time_cdc_state_table;
@@ -1842,7 +1865,7 @@ Result<TabletIdCDCCheckpointMap> CDCServiceImpl::PopulateTabletCheckPointInfo(
         auto& tablet_info = tablet_min_checkpoint_map[tablet_id];
         tablet_info.cdc_op_id = OpId::Max();
         tablet_info.cdc_sdk_op_id = OpId::Max();
-        tablet_info.cdc_retention_time_before_image = kuint64max;
+        tablet_info.safe_time = kuint64max;
       }
       continue;
     }
@@ -1879,7 +1902,7 @@ Result<TabletIdCDCCheckpointMap> CDCServiceImpl::PopulateTabletCheckPointInfo(
                   << ", hence we are adding default entries to tablet_min_checkpoint_map";
           auto& tablet_info = tablet_min_checkpoint_map[tablet_id];
           tablet_info.cdc_sdk_op_id = OpId::Max();
-          tablet_info.cdc_retention_time_before_image = kuint64max;
+          tablet_info.safe_time = kuint64max;
         }
         continue;
       }
@@ -1890,7 +1913,7 @@ Result<TabletIdCDCCheckpointMap> CDCServiceImpl::PopulateTabletCheckPointInfo(
     if (op_id != OpId::Invalid()) {
       PopulateTabletMinCheckpointAndLatestActiveTime(
           tablet_id, op_id, record.source_type, latest_active_time, &tablet_min_checkpoint_map,
-          last_replicated_time);
+          safe_time);
     }
   }
 
@@ -1959,8 +1982,7 @@ void CDCServiceImpl::UpdateTabletPeersWithMinReplicatedIndex(
           "UpdatePeersCdcMinReplicatedIndex failed");
     } else {
       s = tablet_peer->SetCDCSDKRetainOpIdAndTime(
-          tablet_info.cdc_sdk_op_id, tablet_info.cdc_sdk_op_id_expiration,
-          tablet_info.cdc_retention_time_before_image);
+          tablet_info.cdc_sdk_op_id, tablet_info.cdc_sdk_op_id_expiration, tablet_info.safe_time);
       if (!s.ok()) {
         LOG(WARNING) << "Unable to set CDCSDK min checkpoint for tablet peer "
                      << tablet_peer->permanent_uuid() << " and tablet " << tablet_peer->tablet_id()
@@ -2273,8 +2295,9 @@ void CDCServiceImpl::UpdateCdcReplicatedIndex(const UpdateCdcReplicatedIndexRequ
         req->replicated_index(),
         OpId::Max(),
         MonoDelta::FromMilliseconds(GetAtomicFlag(&FLAGS_cdc_intent_retention_ms)),
-        (req->cdc_retention_time_before_image()) > 0 ? req->cdc_retention_time_before_image()
-                                                     : kuint64max);
+        req->has_cdc_sdk_safe_time()
+            ? ((req->cdc_sdk_safe_time()) > 0 ? req->cdc_sdk_safe_time() : kuint64max)
+            : kuint64max);
     RPC_STATUS_RETURN_ERROR(s, resp->mutable_error(), CDCErrorPB::INVALID_REQUEST, context);
     rollback_tablet_id_vec.clear();
     context.RespondSuccess();
@@ -2308,8 +2331,9 @@ void CDCServiceImpl::UpdateCdcReplicatedIndex(const UpdateCdcReplicatedIndexRequ
         req->replicated_indices(i),
         cdc_sdk_op,
         cdc_sdk_op_id_expiration,
-        req->cdc_retention_times_before_image(i) > 0 ? req->cdc_retention_times_before_image(i)
-                                                     : kuint64max);
+        req->has_cdc_sdk_safe_times()
+            ? (req->cdc_sdk_safe_times(i) > 0 ? req->cdc_sdk_safe_times(i) : kuint64max)
+            : kuint64max);
     RPC_STATUS_RETURN_ERROR(s, resp->mutable_error(), CDCErrorPB::INVALID_REQUEST, context);
   }
 
@@ -2319,7 +2343,7 @@ void CDCServiceImpl::UpdateCdcReplicatedIndex(const UpdateCdcReplicatedIndexRequ
 
 Status CDCServiceImpl::UpdateCdcReplicatedIndexEntry(
     const string& tablet_id, int64 replicated_index, const OpId& cdc_sdk_replicated_op,
-    const MonoDelta& cdc_sdk_op_id_expiration, const uint64_t cdc_retention_time_before_image) {
+    const MonoDelta& cdc_sdk_op_id_expiration, const uint64_t safe_time) {
   auto tablet_peer = VERIFY_RESULT(context_->GetServingTablet(tablet_id));
   if (!tablet_peer->log_available()) {
     return STATUS(TryAgain, "Tablet peer is not ready to set its log cdc index");
@@ -2327,7 +2351,7 @@ Status CDCServiceImpl::UpdateCdcReplicatedIndexEntry(
 
   RETURN_NOT_OK(tablet_peer->set_cdc_min_replicated_index(replicated_index));
   RETURN_NOT_OK(tablet_peer->SetCDCSDKRetainOpIdAndTime(
-      cdc_sdk_replicated_op, cdc_sdk_op_id_expiration, cdc_retention_time_before_image));
+      cdc_sdk_replicated_op, cdc_sdk_op_id_expiration, safe_time));
 
   if (PREDICT_FALSE(FLAGS_TEST_cdc_inject_replication_index_update_failure)) {
     return STATUS(InternalError, "Simulated error when setting the replication index");
@@ -3108,7 +3132,8 @@ Status CDCServiceImpl::UpdateCheckpointAndActiveTime(
     const client::YBSessionPtr& session,
     uint64_t last_record_hybrid_time,
     const CDCRequestSource& request_source,
-    const bool force_update) {
+    const bool force_update,
+    const uint64_t& safe_time) {
   bool update_cdc_state = impl_->UpdateCheckpoint(producer_tablet, sent_op_id, commit_op_id);
   if (update_cdc_state || force_update) {
     auto cdc_state = VERIFY_RESULT(GetCdcStateTable());
@@ -3130,6 +3155,7 @@ Status CDCServiceImpl::UpdateCheckpointAndActiveTime(
       auto last_active_time = GetCurrentTimeMicros();
       auto column_id = cdc_state->ColumnId(master::kCdcData);
       cdc_state->AddMapColumnValue(req, column_id, "active_time", ToString(last_active_time));
+      cdc_state->AddMapColumnValue(req, column_id, "safe_time", ToString(safe_time));
 
       VLOG(2) << "Updating cdc state table with: checkpoint: " << commit_op_id.ToString()
               << ", last active time: " << last_active_time

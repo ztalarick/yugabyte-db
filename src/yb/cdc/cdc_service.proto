@@ -421,8 +421,8 @@ message UpdateCdcReplicatedIndexRequestPB {
   repeated OpIdPB cdc_sdk_consumed_ops = 7;
   repeated uint64 cdc_sdk_ops_expiration_ms = 8;
   repeated bytes stream_ids = 9;
-  optional uint64 cdc_retention_time_before_image = 9; [default = 0]
-  repeated uint64 cdc_retention_times_before_image = 10 [default = 0];
+  optional uint64 cdc_sdk_safe_time = 10 [default = 0];
+  repeated uint64 cdc_sdk_safe_times = 11;
 }
 
 message UpdateCdcReplicatedIndexResponsePB {
@@ -471,6 +471,7 @@ message SetCDCCheckpointRequestPB {
   optional bytes tablet_id = 4;
   optional bool initial_checkpoint = 5 [default = false];
   optional bool bootstrap = 6 [default = false];
+  optional uint64 safe_time = 7 [default = 0];
 }
 
 message SetCDCCheckpointResponsePB {
