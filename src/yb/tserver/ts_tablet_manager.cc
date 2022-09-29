@@ -2541,6 +2541,9 @@ Status TSTabletManager::UpdateSnapshotsInfo(const master::TSSnapshotsInfoPB& inf
 HybridTime TSTabletManager::AllowedHistoryCutoff(tablet::RaftGroupMetadata* metadata) {
   auto schedules = metadata->SnapshotSchedules();
   if (schedules.empty()) {
+    if (metadata->cdc_safe_time().is_valid()) {
+      return metadata->cdc_safe_time();
+    }
     return HybridTime::kMax;
   }
   std::vector<SnapshotScheduleId> schedules_to_remove;

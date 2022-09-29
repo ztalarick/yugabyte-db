@@ -248,7 +248,7 @@ Result<size_t> PopulatePackedRows(
   return packing.columns();
 }
 
-HybridTime GetSafeTimeForTarget(
+HybridTime GetCDCSDKSafeTimeForTarget(
     const HybridTime leader_safe_time,
     HybridTime ht_of_last_returned_message,
     HaveMoreMessages have_more_messages) {
@@ -366,10 +366,12 @@ Status PopulateCDCSDKIntentRecord(
         auto hybrid_time =
             server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(micros, logical_value)
                 .Decremented();*/
-        auto hybrid_time = commit_time - 1;
-        RETURN_NOT_OK(PopulateBeforeImage(
-            tablet_peer, ReadHybridTime::FromUint64(hybrid_time), row_message, enum_oid_label_map,
-            decoded_key, schema, tablet_peer->tablet()->metadata()->schema_version()));
+        if (commit_time > 0) {
+          auto hybrid_time = commit_time - 1;
+          RETURN_NOT_OK(PopulateBeforeImage(
+              tablet_peer, ReadHybridTime::FromUint64(hybrid_time), row_message, enum_oid_label_map,
+              decoded_key, schema, tablet_peer->tablet()->metadata()->schema_version()));
+        }
 
         if (row_message->old_tuple_size() == 0) {
           RETURN_NOT_OK(AddPrimaryKey(
@@ -406,15 +408,22 @@ Status PopulateCDCSDKIntentRecord(
 
           if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
               (row_message->op() == RowMessage_Op_UPDATE)) {
-            MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
+            /*MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
             LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
             auto hybrid_time = server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(
                                    micros - 1, logical_value)
-                                   .Decremented();
-            RETURN_NOT_OK(PopulateBeforeImage(
-                tablet_peer, ReadHybridTime::SingleTime(hybrid_time), row_message,
-                enum_oid_label_map, decoded_key, schema,
-                tablet_peer->tablet()->metadata()->schema_version()));
+                                   .Decremented();*/
+            if (commit_time > 0) {
+              auto hybrid_time = commit_time - 1;
+              RETURN_NOT_OK(PopulateBeforeImage(
+                  tablet_peer, ReadHybridTime::FromUint64(hybrid_time), row_message,
+                  enum_oid_label_map, decoded_key, schema,
+                  tablet_peer->tablet()->metadata()->schema_version()));
+            } else {
+              for (size_t index = 0; index < schema.num_columns(); ++index) {
+                row_message->add_old_tuple();
+              }
+            }
           } else {
             row_message->add_old_tuple();
           }
@@ -1126,8 +1135,8 @@ Status GetChangesForCDCSDK(
     consumption.Add(resp->SpaceUsedLong());
   }
 
-  auto safe_time =
-      GetSafeTimeForTarget(leader_safe_time.get(), ht_of_last_returned_message, have_more_messages);
+  auto safe_time = GetCDCSDKSafeTimeForTarget(
+      leader_safe_time.get(), ht_of_last_returned_message, have_more_messages);
   resp->set_safe_hybrid_time(safe_time.ToUint64());
 
   checkpoint_updated ? resp->mutable_cdc_sdk_checkpoint()->CopyFrom(checkpoint)

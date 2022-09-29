@@ -135,7 +135,7 @@ class CDCServiceImpl : public CDCServiceIf {
 
   Status UpdateCdcReplicatedIndexEntry(
       const string& tablet_id, int64 replicated_index, const OpId& cdc_sdk_replicated_op,
-      const MonoDelta& cdc_sdk_op_id_expiration, const uint64_t cdc_safe_time = kint64max);
+      const MonoDelta& cdc_sdk_op_id_expiration, const uint64_t cdc_safe_time = kuint64max);
 
   void RollbackCdcReplicatedIndexEntry(const string& tablet_id);
 
@@ -343,7 +343,7 @@ class CDCServiceImpl : public CDCServiceIf {
 
   Status SetInitialCheckPoint(
       const OpId& checkpoint, const string& tablet_id,
-      const std::shared_ptr<tablet::TabletPeer>& tablet_peer, uint64_t safe_time = 0);
+      const std::shared_ptr<tablet::TabletPeer>& tablet_peer, uint64_t safe_time = kuint64max);
 
   Status UpdateChildrenTabletsOnSplitOp(
       const ProducerTabletInfo& producer_tablet,

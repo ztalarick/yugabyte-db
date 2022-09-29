@@ -371,13 +371,14 @@ Result<ReadOpsResult> LogCache::ReadOps(
   int64_t to_index;
   result.preceding_op = VERIFY_RESULT(LookupOpId(after_op_index));
 
-  if (fetch_single_entry) {
-    next_index = to_index = after_op_index;
-  }
   std::unique_lock<simple_spinlock> l(lock_);
   next_index = after_op_index + 1;
   to_index = to_op_index > 0 ? std::min(to_op_index + 1, next_sequential_op_index_)
                              : next_sequential_op_index_;
+
+  if (fetch_single_entry) {
+    next_index = to_index = after_op_index;
+  }
 
   // Remove the deadline if the GetChanges deadline feature is disabled.
   if (!ANNOTATE_UNPROTECTED_READ(FLAGS_get_changes_honor_deadline)) {
