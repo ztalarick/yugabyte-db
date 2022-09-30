@@ -155,6 +155,9 @@ class ClusterAdminClient : public yb::tools::ClusterAdminClient {
 
   Status DisableTabletSplitsDuringRestore(CoarseTimePoint deadline);
 
+  Result<rapidjson::Document> RestoreSnapshotScheduleDeprecated(
+      const SnapshotScheduleId& schedule_id, HybridTime restore_at);
+
   std::string GetDBTypeName(const master::SysNamespaceEntryPB& pb);
   // Map: Old name -> New name.
   typedef std::unordered_map<NamespaceName, NamespaceName> NSNameToNameMap;
