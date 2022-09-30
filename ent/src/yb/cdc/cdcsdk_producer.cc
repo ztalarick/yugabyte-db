@@ -1077,7 +1077,6 @@ Status GetChangesForCDCSDK(
       }
 
       for (const auto& msg : read_ops.messages) {
-        bool exit_early = false;
         last_seen_op_id.term = msg->id().term();
         last_seen_op_id.index = msg->id().index();
 
@@ -1156,7 +1155,6 @@ Status GetChangesForCDCSDK(
             SetCheckpoint(
                 msg->id().term(), msg->id().index(), 0, "", 0, &checkpoint, last_streamed_op_id);
             checkpoint_updated = true;
-            exit_early = true;
           }
           break;
 
@@ -1178,10 +1176,6 @@ Status GetChangesForCDCSDK(
 
         if (pending_intents) break;
 
-        if (exit_early) {
-          have_more_messages = HaveMoreMessages::kTrue;
-          break;
-        }
         ht_of_last_returned_message = HybridTime(msg->hybrid_time());
       }
       if (read_ops.messages.size() > 0) {

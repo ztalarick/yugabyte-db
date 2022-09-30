@@ -1048,7 +1048,7 @@ Status TabletPeer::set_cdc_sdk_min_checkpoint_op_id(const OpId& cdc_sdk_min_chec
 }
 
 Status TabletPeer::set_cdc_safe_time(const HybridTime cdc_safe_time) {
-  LOG_WITH_PREFIX(INFO) << "Setting CDCSDK min checkpoint opId to " << cdc_safe_time.ToString();
+  LOG_WITH_PREFIX(INFO) << "Setting CDCSDK safe time to " << cdc_safe_time;
   RETURN_NOT_OK(meta_->set_cdc_safe_time(cdc_safe_time));
   return Status::OK();
 }
