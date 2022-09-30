@@ -289,6 +289,7 @@ Status PopulateCDCSDKIntentRecord(
   docdb::IntentKeyValueForCDC prev_intent;
   MicrosTime prev_intent_phy_time = 0;
   bool new_cdc_record_needed = false;
+  docdb::SubDocKey prev_decoded_key;
 
   for (const auto& intent : intents) {
     Slice key(intent.key_buf);
@@ -303,8 +304,8 @@ Status PopulateCDCSDKIntentRecord(
       column_id_opt = column_id;
     }
 
-    Slice sub_doc_key = key;
     docdb::SubDocKey decoded_key;
+    Slice sub_doc_key = key;
     RETURN_NOT_OK(decoded_key.DecodeFrom(&sub_doc_key, docdb::HybridTimeRequired::kFalse));
 
     Slice value_slice = intent.value_buf;
@@ -337,10 +338,27 @@ Status PopulateCDCSDKIntentRecord(
 
     if (new_cdc_record_needed) {
       if (FLAGS_enable_single_record_update) {
-        if (col_count >= schema.num_columns()) col_count = 0;
+        col_count = 0;
 
         if (proto_record.IsInitialized() && row_message->IsInitialized() &&
             row_message->op() == RowMessage_Op_UPDATE) {
+          if (metadata.record_type == cdc::CDCRecordType::ALL) {
+            if (commit_time > 0) {
+              auto hybrid_time = commit_time - 1;
+              RETURN_NOT_OK(PopulateBeforeImage(
+                  tablet_peer, ReadHybridTime::FromUint64(hybrid_time), row_message,
+                  enum_oid_label_map, prev_decoded_key, schema,
+                  tablet_peer->tablet()->metadata()->schema_version()));
+            } else {
+              for (size_t index = 0; index < schema.num_columns(); ++index) {
+                row_message->add_old_tuple();
+              }
+            }
+          } else {
+            for (int index = 0; index < row_message->new_tuple_size(); ++index) {
+              row_message->add_old_tuple();
+            }
+          }
           MakeNewProtoRecord(
               prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
               reverse_index_key);
@@ -429,27 +447,6 @@ Status PopulateCDCSDKIntentRecord(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
               row_message->add_new_tuple(), nullptr));
 
-          if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
-              (row_message->op() == RowMessage_Op_UPDATE)) {
-            /*MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
-            LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
-            auto hybrid_time = server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(
-                                   micros - 1, logical_value)
-                                   .Decremented();*/
-            if (commit_time > 0) {
-              auto hybrid_time = commit_time - 1;
-              RETURN_NOT_OK(PopulateBeforeImage(
-                  tablet_peer, ReadHybridTime::FromUint64(hybrid_time), row_message,
-                  enum_oid_label_map, decoded_key, schema,
-                  tablet_peer->tablet()->metadata()->schema_version()));
-            } else {
-              for (size_t index = 0; index < schema.num_columns(); ++index) {
-                row_message->add_old_tuple();
-              }
-            }
-          } else {
-            row_message->add_old_tuple();
-          }
         } else if (column_id_opt && column_id_opt->type() != docdb::KeyEntryType::kSystemColumnId) {
           LOG(DFATAL) << "Unexpected value type in key: " << column_id_opt->type()
                       << " key: " << decoded_key.ToString()
@@ -467,11 +464,28 @@ Status PopulateCDCSDKIntentRecord(
         col_count = schema.num_columns();
       } else if (row_message->op() == RowMessage_Op_UPDATE) {
         prev_intent = intent;
+        prev_decoded_key = decoded_key;
       }
     } else {
       if ((row_message->op() == RowMessage_Op_INSERT && col_count == schema.num_columns()) ||
           (row_message->op() == RowMessage_Op_UPDATE ||
            row_message->op() == RowMessage_Op_DELETE)) {
+        if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
+            (row_message->op() == RowMessage_Op_UPDATE)) {
+          if (commit_time > 0) {
+            auto hybrid_time = commit_time - 1;
+            RETURN_NOT_OK(PopulateBeforeImage(
+                tablet_peer, ReadHybridTime::FromUint64(hybrid_time), row_message,
+                enum_oid_label_map, decoded_key, schema,
+                tablet_peer->tablet()->metadata()->schema_version()));
+          } else {
+            for (size_t index = 0; index < schema.num_columns(); ++index) {
+              row_message->add_old_tuple();
+            }
+          }
+        } else {
+          row_message->add_old_tuple();
+        }
         MakeNewProtoRecord(
             intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
             reverse_index_key);
@@ -482,6 +496,22 @@ Status PopulateCDCSDKIntentRecord(
   if (FLAGS_enable_single_record_update && proto_record.IsInitialized() &&
       row_message->IsInitialized() && row_message->op() == RowMessage_Op_UPDATE) {
     row_message->set_table(table_name);
+    if (metadata.record_type == cdc::CDCRecordType::ALL) {
+      if (commit_time > 0) {
+        auto hybrid_time = commit_time - 1;
+        RETURN_NOT_OK(PopulateBeforeImage(
+            tablet_peer, ReadHybridTime::FromUint64(hybrid_time), row_message, enum_oid_label_map,
+            prev_decoded_key, schema, tablet_peer->tablet()->metadata()->schema_version()));
+      } else {
+        for (size_t index = 0; index < schema.num_columns(); ++index) {
+          row_message->add_old_tuple();
+        }
+      }
+    } else {
+      for (int index = 0; index < row_message->new_tuple_size(); ++index) {
+        row_message->add_old_tuple();
+      }
+    }
     MakeNewProtoRecord(
         prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
         reverse_index_key);
