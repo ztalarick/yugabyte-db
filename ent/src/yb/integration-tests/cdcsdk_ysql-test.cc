@@ -1850,10 +1850,10 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultiShardUpdateBeforeImage))
   const uint32_t expected_count[] = {1, 2, 4, 0, 0, 0};
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
-  ExpectedRecord expected_records[] = {{0, 0}, {1, 2}, {0, 0},  {1, 88},  {1, 888}, {0, 0},
-                                       {2, 3}, {0, 0}, {2, 99}, {1, 999}, {0, 0}};
-  ExpectedRecord expected_before_image_records[] = {{}, {}, {},     {1, 2},   {1, 2}, {},
-                                                    {}, {}, {2, 3}, {1, 888}, {}};
+  ExpectedRecord expected_records[] = {{0, 0}, {1, 2}, {0, 0},   {1, 88}, {1, 888}, {0, 0},
+                                       {2, 3}, {0, 0}, {1, 999}, {2, 99}, {0, 0}};
+  ExpectedRecord expected_before_image_records[] = {{}, {}, {},       {1, 2}, {1, 2}, {},
+                                                    {}, {}, {1, 888}, {2, 3}, {}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
@@ -1898,10 +1898,10 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSingleMultiShardUpdateBeforeI
   const uint32_t expected_count[] = {1, 3, 6, 0, 0, 0};
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
-  ExpectedRecord expected_records[] = {{0, 0},   {1, 2}, {1, 3}, {1, 4}, {2, 3},  {0, 0},   {2, 88},
-                                       {2, 888}, {0, 0}, {3, 4}, {0, 0}, {3, 99}, {2, 999}, {0, 0}};
+  ExpectedRecord expected_records[] = {{0, 0},   {1, 2}, {1, 3}, {1, 4}, {2, 3},   {0, 0},  {2, 88},
+                                       {2, 888}, {0, 0}, {3, 4}, {0, 0}, {2, 999}, {3, 99}, {0, 0}};
   ExpectedRecord expected_before_image_records[] = {
-      {}, {}, {1, 2}, {1, 3}, {}, {}, {2, 3}, {2, 3}, {}, {}, {}, {3, 4}, {2, 888}, {}};
+      {}, {}, {1, 2}, {1, 3}, {}, {}, {2, 3}, {2, 3}, {}, {}, {}, {2, 888}, {3, 4}, {}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
@@ -1946,11 +1946,11 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultiSingleShardUpdateBeforeI
   const uint32_t expected_count[] = {1, 3, 6, 0, 0, 0};
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
-  ExpectedRecord expected_records[] = {{0, 0}, {1, 2}, {0, 0}, {1, 88}, {1, 888},
-                                       {0, 0}, {2, 3}, {0, 0}, {2, 99}, {1, 999},
+  ExpectedRecord expected_records[] = {{0, 0}, {1, 2}, {0, 0}, {1, 88},  {1, 888},
+                                       {0, 0}, {2, 3}, {0, 0}, {1, 999}, {2, 99},
                                        {0, 0}, {3, 4}, {3, 5}, {3, 6}};
   ExpectedRecord expected_before_image_records[] = {
-      {}, {}, {}, {1, 2}, {1, 2}, {}, {}, {}, {2, 3}, {1, 888}, {}, {}, {3, 4}, {3, 5}};
+      {}, {}, {}, {1, 2}, {1, 2}, {}, {}, {}, {1, 888}, {2, 3}, {}, {}, {3, 4}, {3, 5}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
