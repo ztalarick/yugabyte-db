@@ -10,15 +10,16 @@ export const CreateUniverse: FC<RouteComponentProps<{}, CreateUniverseProps>> = 
   const { t } = useTranslation();
   const isPrimary = props?.location?.pathname === '/universe/new';
 
-  return (
-    <UniverseForm
-      defaultFormData={DEFAULT_FORM_DATA}
-      mode={isPrimary ? clusterModes.NEW_PRIMARY : clusterModes.NEW_ASYNC}
-      title={
-        isPrimary
-          ? t('universeForm.createUniverse')
-          : `Universe Name >> ${t('universeForm.configReadReplica')}`
-      }
-    />
-  );
+  return <div></div>;
+  // return (
+  //   <UniverseForm
+  //     defaultFormData={DEFAULT_FORM_DATA}
+  //     mode={isPrimary ? clusterModes.NEW_PRIMARY : clusterModes.NEW_ASYNC}
+  //     title={
+  //       isPrimary
+  //         ? t('universeForm.createUniverse')
+  //         : `Universe Name >> ${t('universeForm.configReadReplica')}`
+  //     }
+  //   />
+  // );
 };

@@ -15,8 +15,8 @@ import {
   YBCField
 } from '../../fields';
 import { PROVIDER_FIELD } from '../../utils/constants';
-import { CloudType, clusterModes } from '../../utils/dto';
-import { UniverseFormContext } from '../../UniverseForm';
+import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 
 interface AdvancedConfigProps {}
 
@@ -29,9 +29,11 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
   const isYBCEnabled = featureFlags.test.enableYbc || featureFlags.released.enableYbc;
 
   //form context
-  const { isPrimary, mode } = useContext(UniverseFormContext)[0];
-  const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isDbVersionReadOnly = mode !== clusterModes.NEW_PRIMARY;
+  const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
+  // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
+  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType == ClusterType.PRIMARY;
+  // const isDbVersionReadOnly = mode !== clusterModes.NEW_PRIMARY;
+  const isDbVersionReadOnly = mode !== ClusterModes.CREATE && clusterType !== ClusterType.PRIMARY;
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
