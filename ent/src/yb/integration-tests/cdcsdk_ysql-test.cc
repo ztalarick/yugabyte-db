@@ -351,7 +351,7 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
 
   Status WriteAndUpdateRowsHelper(
       uint32_t start, uint32_t end, Cluster* cluster, bool flag,
-      const std::unordered_multimap<uint32_t, uint32_t>& col_val_map, const std::string& table_id) {
+      const std::multimap<uint32_t, uint32_t>& col_val_map, const std::string& table_id) {
     auto conn = VERIFY_RESULT(cluster->ConnectToDB(kNamespaceName));
     LOG(INFO) << "Writing " << end - start << " row(s) within transaction";
 
@@ -1781,7 +1781,7 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultiShardUpdateBeforeImage))
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
   ASSERT_FALSE(set_resp.has_error());
 
-  std::unordered_multimap<uint32_t, uint32_t> col_val_map;
+  std::multimap<uint32_t, uint32_t> col_val_map;
   col_val_map.insert({1, 88});
   col_val_map.insert({1, 888});
 
@@ -1829,7 +1829,7 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSingleMultiShardUpdateBeforeI
   ASSERT_OK(UpdateRows(1 /* key */, 3 /* value */, &test_cluster_));
   ASSERT_OK(UpdateRows(1 /* key */, 4 /* value */, &test_cluster_));
 
-  std::unordered_multimap<uint32_t, uint32_t> col_val_map;
+  std::multimap<uint32_t, uint32_t> col_val_map;
   col_val_map.insert({2, 88});
   col_val_map.insert({2, 888});
 
@@ -1873,7 +1873,7 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultiSingleShardUpdateBeforeI
   auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
   ASSERT_FALSE(set_resp.has_error());
 
-  std::unordered_multimap<uint32_t, uint32_t> col_val_map;
+  std::multimap<uint32_t, uint32_t> col_val_map;
   col_val_map.insert({1, 88});
   col_val_map.insert({1, 888});
 
