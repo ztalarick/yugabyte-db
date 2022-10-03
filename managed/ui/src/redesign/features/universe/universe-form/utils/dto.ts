@@ -241,6 +241,11 @@ export interface Placement {
   parentRegionCode: string;
 }
 
+export enum ClusterModes {
+  CREATE = 'CREATE',
+  EDIT = 'EDIT'
+}
+
 export enum ClusterType {
   PRIMARY = 'PRIMARY',
   ASYNC = 'ASYNC'

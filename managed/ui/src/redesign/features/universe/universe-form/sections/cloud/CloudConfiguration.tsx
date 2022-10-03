@@ -24,8 +24,8 @@ import {
   ReplicationFactor,
   TotalNodesField
 } from '../../fields';
-import { UniverseFormContext } from '../../UniverseForm';
-import { clusterModes } from '../../utils/dto';
+import { UniverseFormContext } from '../../UniverseFormContainer';
+import { ClusterModes, ClusterType } from '../../utils/dto';
 
 interface CloudConfigProps {}
 

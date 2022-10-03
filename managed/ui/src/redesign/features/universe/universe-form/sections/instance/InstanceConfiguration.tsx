@@ -59,8 +59,8 @@ import {
   NODE_TO_NODE_ENCRYPT_FIELD,
   ACCESS_KEY_FIELD
 } from '../../utils/constants';
-import { AccessKey, CloudType, clusterModes } from '../../utils/dto';
-import { UniverseFormContext } from '../../UniverseForm';
+import { AccessKey, CloudType, ClusterModes, ClusterType } from '../../utils/dto';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 
 interface InstanceConfigProps {}
 

@@ -244,7 +244,6 @@ export default (store) => {
             component={ReplicationDetails}
           />
         </Route>
-
         {/* ------------------------ UNIVERSE UI REVAMP --------------------------*/}
         {/* <Route path="/universe/new" component={UniverseFormContainer} />
         <Route path="/universe/:uuid/:mode/:type" component={UniverseFormContainer} /> */}
@@ -256,9 +255,8 @@ export default (store) => {
         <Route path="/universe/:uuid/new/async" component={CreateUniverse}></Route>
         <Route path="/universe/:uuid" component={UniverseDetail} />
         <Route path="/universe/:uuid/edit/primary" component={EditUniverse} />
-        <Route path="/universe/:uuid/edit/async" component={EditUniverse} />
+        <Route path="/universe/:uuid/edit/async" component={EditUniverse} /> */}
         {/* ------------------------------------------------------------------------*/}
-
         <Route path="/tasks" component={Tasks}>
           <IndexRoute component={TasksList} />
           <Route path="/tasks/:taskUUID" component={TaskDetail} />

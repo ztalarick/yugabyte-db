@@ -26,8 +26,8 @@ import {
   YBCField
 } from '../../fields';
 import { PROVIDER_FIELD } from '../../utils/constants';
-import { CloudType, clusterModes } from '../../utils/dto';
-import { UniverseFormContext } from '../../UniverseForm';
+import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 
 interface AdvancedConfigProps {}
 
