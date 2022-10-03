@@ -3,7 +3,7 @@ import _ from 'lodash';
 import { useUpdateEffect } from 'react-use';
 import { useQuery } from 'react-query';
 import { useWatch, useFormContext } from 'react-hook-form';
-import { UniverseFormContext } from '../../UniverseForm';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 import { api, QUERY_KEY } from '../../utils/api';
 import {
   Placement,

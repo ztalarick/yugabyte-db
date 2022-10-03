@@ -10,8 +10,8 @@ import {
   ReplicationFactor,
   TotalNodesField
 } from '../../fields';
-import { UniverseFormContext } from '../../UniverseForm';
-import { clusterModes } from '../../utils/dto';
+import { UniverseFormContext } from '../../UniverseFormContainer';
+import { ClusterModes, ClusterType } from '../../utils/dto';
 
 interface CloudConfigProps {}
 
@@ -20,9 +20,10 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
   const { t } = useTranslation();
 
   //form context
-  const { isPrimary, mode } = useContext(UniverseFormContext)[0];
+  const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
 
-  const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
+  // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
+  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType == ClusterType.PRIMARY;
 
   return (
     <Box className={classes.sectionContainer}>

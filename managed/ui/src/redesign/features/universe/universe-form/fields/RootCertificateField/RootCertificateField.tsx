@@ -8,7 +8,7 @@ import { api, QUERY_KEY } from '../../utils/api';
 import { CloudType, UniverseFormData, clusterModes } from '../../utils/dto';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 import { PROVIDER_FIELD, ROOT_CERT_FIELD } from '../../utils/constants';
-import { UniverseFormContext } from '../../UniverseForm';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 import { useFormFieldStyles } from '../../universeMainStyle';
 
 const getOptionLabel = (option: Record<string, string>): string => option.label ?? '';
