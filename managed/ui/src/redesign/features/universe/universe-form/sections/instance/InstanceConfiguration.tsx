@@ -26,8 +26,8 @@ import {
   NODE_TO_NODE_ENCRYPT_FIELD,
   ACCESS_KEY_FIELD
 } from '../../utils/constants';
-import { AccessKey, CloudType, clusterModes } from '../../utils/dto';
-import { UniverseFormContext } from '../../UniverseForm';
+import { AccessKey, CloudType, ClusterModes, ClusterType } from '../../utils/dto';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 
 interface InstanceConfigProps {}
 
@@ -36,8 +36,9 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
   const { t } = useTranslation();
 
   //form context
-  const { isPrimary, mode } = useContext(UniverseFormContext)[0];
-  const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
+  const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
+  // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
+  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType == ClusterType.PRIMARY;
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });

@@ -124,6 +124,10 @@
         "title": "User Tags",
         "addRow": "Add Row"
       },
+      "actions": {
+        "backPrimary": "Back to Primary Cluster",
+        "configureRR": "Configure Read Replica"
+      },
       "validation": {
         "passwordStrength": "Password must be 8 characters minimum and must contain at least 1 digit, 1 uppercase, 1 lowercase and one of the !@#$%^&* (special) characters.",
         "confirmPassword": "Passwords should match",

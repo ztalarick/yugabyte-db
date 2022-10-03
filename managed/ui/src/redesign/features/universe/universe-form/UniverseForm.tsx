@@ -1,6 +1,5 @@
-import React, { createContext, FC } from 'react';
+import React, { useContext, FC } from 'react';
 import * as Yup from 'yup';
-import { useMethods } from 'react-use';
 import { useSelector } from 'react-redux';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useTranslation } from 'react-i18next';
@@ -14,26 +13,32 @@ import {
   InstanceConfiguration,
   UserTags
 } from './sections';
-import { UniverseFormData, clusterModes } from './utils/dto';
+import { UniverseFormData, ClusterType, ClusterModes } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
-import { createFormMethods, initialState } from './reducer';
-import { createUniverse } from './utils/helpers';
+// import { createUniverse } from './utils/helpers';
 import { api } from './utils/api';
+import { UniverseFormContext } from './UniverseFormContainer';
+import { common } from '@material-ui/core/colors';
 
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
-  mode: clusterModes;
   title: string;
+  onFormSubmit: (data: UniverseFormData) => void;
+  onCancel: () => void;
+  onClusterTypeChange?: (data: UniverseFormData, type: ClusterType) => void;
 }
 
-export const UniverseFormContext = createContext<any>(initialState);
-export type FormContextMethods = ReturnType<typeof createFormMethods>;
-
-export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, title }) => {
+export const UniverseForm: FC<UniverseFormProps> = ({
+  defaultFormData,
+  title,
+  onFormSubmit,
+  onCancel,
+  onClusterTypeChange
+}) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
-  const universeContextData = useMethods(createFormMethods, initialState);
   const featureFlags = useSelector((state: any) => state.featureFlags);
+  const [state] = useContext(UniverseFormContext);
 
   //Form Validation
   const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
@@ -122,44 +127,63 @@ export const UniverseForm: FC<UniverseFormProps> = ({ defaultFormData, mode, tit
     resolver: yupResolver(validationSchema)
   });
 
+  const { getValues } = formMethods;
+
   const onSubmit = (formData: UniverseFormData) => {
-    createUniverse({ mode, formData, universeContextData: universeContextData[0], featureFlags });
+    onFormSubmit(formData);
+    // createUniverse({ mode, formData, universeContextData: universeContextData[0], featureFlags });
   };
 
   return (
     <Box className={classes.mainConatiner}>
-      <UniverseFormContext.Provider value={universeContextData}>
-        <FormProvider {...formMethods}>
-          <form onSubmit={formMethods.handleSubmit(onSubmit)}>
-            <Box className={classes.formHeader}>
-              <Typography variant="h4">{title}</Typography>
-            </Box>
-            <Box className={classes.formContainer}>
-              <CloudConfiguration />
-              <InstanceConfiguration />
-              <AdvancedConfiguration />
-              <GFlags />
-              <UserTags />
-            </Box>
-            <Box className={classes.formFooter} mt={4}>
-              <Grid container justifyContent="space-between">
-                <Grid item lg={6}>
-                  <Box width="100%" display="flex" justifyContent="flex-start" alignItems="center">
-                    Placeholder to Paint Cost estimation
-                  </Box>
-                </Grid>
-                <Grid item lg={6}>
-                  <Box width="100%" display="flex" justifyContent="flex-end">
-                    <YBButton variant="primary" size="large" type="submit">
-                      {t('common.create')}
-                    </YBButton>
-                  </Box>
-                </Grid>
+      <FormProvider {...formMethods}>
+        <form onSubmit={formMethods.handleSubmit(onSubmit)}>
+          <Box className={classes.formHeader}>
+            <Typography variant="h4">{title}</Typography>
+          </Box>
+          <Box className={classes.formContainer}>
+            <CloudConfiguration />
+            <InstanceConfiguration />
+            <AdvancedConfiguration />
+            <GFlags />
+            <UserTags />
+          </Box>
+          <Box className={classes.formFooter} mt={4}>
+            <Grid container justifyContent="space-between">
+              <Grid item lg={6}>
+                <Box width="100%" display="flex" justifyContent="flex-start" alignItems="center">
+                  Placeholder to Paint Cost estimation
+                </Box>
               </Grid>
-            </Box>
-          </form>
-        </FormProvider>
-      </UniverseFormContext.Provider>
+              <Grid item lg={6}>
+                <Box width="100%" display="flex" justifyContent="flex-end">
+                  <YBButton variant="primary" size="large" onClick={() => onCancel()}>
+                    {t('common.cancel')}
+                  </YBButton>
+                  &nbsp;
+                  {state.mode === ClusterModes.CREATE && (
+                    <YBButton
+                      variant="primary"
+                      size="large"
+                      onClick={() =>
+                        onClusterTypeChange && onClusterTypeChange(getValues(), state.clusterType)
+                      }
+                    >
+                      {state.clusterType === ClusterType.PRIMARY
+                        ? t('universeForm.actions.configureRR')
+                        : t('universeForm.actions.backPrimary')}
+                    </YBButton>
+                  )}
+                  &nbsp;
+                  <YBButton variant="primary" size="large" type="submit">
+                    {t('common.create')}
+                  </YBButton>
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
+        </form>
+      </FormProvider>
     </Box>
   );
 };

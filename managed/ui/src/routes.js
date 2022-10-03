@@ -39,6 +39,7 @@ import { Administration } from './pages/Administration';
 import ToggleFeaturesInTest from './pages/ToggleFeaturesInTest';
 import { ReplicationDetails } from './components/xcluster';
 import { CreateUniverse, EditUniverse } from './redesign/pages';
+import { UniverseFormContainer } from './redesign/features/universe/universe-form/UniverseFormContainer';
 
 /**
  * Redirects to base url if no queryParmas is set else redirects to path set in queryParam
@@ -246,11 +247,12 @@ export default (store) => {
         </Route>
 
         {/* ------------------------ UNIVERSE UI REVAMP --------------------------*/}
-        <Route path="/universe/new" component={CreateUniverse} />
-        <Route path="/universe/:uuid/new/async" component={CreateUniverse}></Route>
+        <Route path="/universe/new" component={UniverseFormContainer} />
+        <Route path="/universe/:uuid/:mode/:clusterType" component={UniverseFormContainer} />
+        {/* <Route path="/universe/:uuid/new/async" component={CreateUniverse}></Route>
         <Route path="/universe/:uuid" component={UniverseDetail} />
         <Route path="/universe/:uuid/edit/primary" component={EditUniverse} />
-        <Route path="/universe/:uuid/edit/async" component={EditUniverse} />
+        <Route path="/universe/:uuid/edit/async" component={EditUniverse} /> */}
         {/* ------------------------------------------------------------------------*/}
 
         <Route path="/tasks" component={Tasks}>
