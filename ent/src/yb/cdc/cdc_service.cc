@@ -837,7 +837,7 @@ void CDCServiceImpl::CreateEntryInCdcStateTable(
                                         master::kCdcCheckpoint, op_id.ToString());
   auto column_id = cdc_state_table->ColumnId(master::kCdcData);
   auto map_value_pb =
-      yb::client::AddMapColumn(cdc_state_table_write_req, column_id, "active_time", "0");
+      yb::client::AddMapColumn(cdc_state_table_write_req, column_id, kCDCSDKActiveTime, "0");
   yb::client::AddMapEntryToColumn(map_value_pb, kCDCSDKSafeTime, "0");
   ops->push_back(std::move(cdc_state_table_op));
 
@@ -1840,25 +1840,24 @@ Result<TabletIdCDCCheckpointMap> CDCServiceImpl::PopulateTabletCheckPointInfo(
       last_replicated_time_str = timestamp_ql_value.timestamp_value().ToFormattedString();
     }
 
+    int64_t last_active_time_cdc_state_table = kint64min;
     HybridTime cdc_sdk_safe_time = HybridTime::kMax;
     if (!row.column(4).IsNull()) {
       for (int index = 0; index < row.column(4).map_value().keys_size(); ++index) {
-        if (row.column(4).map_value().keys(index).string_value() == kCDCSDKSafeTime)
+        if (row.column(4).map_value().keys(index).string_value() == kCDCSDKSafeTime) {
           auto st = cdc_sdk_safe_time.FromUint64(std::strtoull(
               row.column(4).map_value().values(index).string_value().c_str(), nullptr, 10));
+        } else if (row.column(4).map_value().keys(index).string_value() == kCDCSDKActiveTime) {
+          last_active_time_cdc_state_table = VERIFY_RESULT(
+              CheckedStoInt<int64_t>(row.column(4).map_value().values(index).string_value()));
+        }
       }
     }
 
-    int64_t last_active_time_cdc_state_table;
-    if (!row.column(4).IsNull()) {
-      last_active_time_cdc_state_table = VERIFY_RESULT(
-            CheckedStoInt<int64_t>(row.column(4).map_value().values(0).string_value()));
-    }
-
-    VLOG(1) << "stream_id: " << stream_id << ", tablet_id: " << tablet_id
-            << ", checkpoint: " << checkpoint
-            << ", last replicated time: " << last_replicated_time_str
-            << ", last active time: " << last_active_time_cdc_state_table;
+    LOG(INFO) << "stream_id: " << stream_id << ", tablet_id: " << tablet_id
+              << ", checkpoint: " << checkpoint
+              << ", last replicated time: " << last_replicated_time_str
+              << ", last active time: " << last_active_time_cdc_state_table;
 
     // Add the {tablet_id, stream_id} pair to the set if its checkpoint is OpId::Max().
     if (tablet_stream_to_be_deleted && checkpoint == OpId::Max().ToString()) {
@@ -2335,13 +2334,17 @@ void CDCServiceImpl::UpdateCdcReplicatedIndex(const UpdateCdcReplicatedIndexRequ
                                                  : req->cdc_sdk_ops_expiration_ms(i));
     HybridTime ht;
     RPC_STATUS_RETURN_ERROR(
-        ht.FromUint64(((req->cdc_sdk_safe_times(i)) > 0 ? req->cdc_sdk_safe_times(i) : kuint64max)),
+        ht.FromUint64(
+            (!req->cdc_sdk_safe_times().empty() && req->cdc_sdk_safe_times(i) > 0
+                 ? req->cdc_sdk_safe_times(i)
+                 : kuint64max)),
         resp->mutable_error(), CDCErrorPB::INVALID_REQUEST, context);
 
     rollback_tablet_id_vec.emplace_back(&req->tablet_ids(i));
     Status s = UpdateCdcReplicatedIndexEntry(
         req->tablet_ids(i), req->replicated_indices(i), cdc_sdk_op, cdc_sdk_op_id_expiration,
-        req->cdc_sdk_safe_times(i) > 0 ? ht : HybridTime::kMax);
+        !req->cdc_sdk_safe_times().empty() && req->cdc_sdk_safe_times(i) > 0 ? ht
+                                                                             : HybridTime::kMax);
     RPC_STATUS_RETURN_ERROR(s, resp->mutable_error(), CDCErrorPB::INVALID_REQUEST, context);
   }
 
@@ -3030,16 +3033,16 @@ Result<int64_t> CDCServiceImpl::GetLastActiveTime(
   }
   if (!row_block->row(0).column(0).IsNull()) {
     DCHECK_EQ(row_block->row(0).column(0).type(), InternalType::kMapValue);
-    if (row_block->row(0).column(0).map_value().values().size() == 1) {
-      auto last_active_time_string =
-          row_block->row(0).column(0).map_value().values().Get(0).string_value();
-      auto last_active_time = VERIFY_RESULT(CheckedStoInt<int64_t>(last_active_time_string));
-
-      VLOG(2) << "Found entry in cdc_state table with active time: " << last_active_time
-              << ", for tablet: " << producer_tablet.tablet_id
-              << ", and stream: " << producer_tablet.stream_id;
-
-      return last_active_time;
+    for (int index = 0; index < row_block->row(0).column(0).map_value().keys_size(); ++index) {
+      if (row_block->row(0).column(0).map_value().keys(index).string_value() == kCDCSDKActiveTime) {
+        auto last_active_time_string =
+            row_block->row(0).column(0).map_value().values().Get(index).string_value();
+        auto last_active_time = VERIFY_RESULT(CheckedStoInt<int64_t>(last_active_time_string));
+        VLOG(2) << "Found entry in cdc_state table with active time: " << last_active_time
+                << ", for tablet: " << producer_tablet.tablet_id
+                << ", and stream: " << producer_tablet.stream_id;
+        return last_active_time;
+      }
     }
   }
 
@@ -3163,7 +3166,7 @@ Status CDCServiceImpl::UpdateCheckpointAndActiveTime(
       auto last_active_time = GetCurrentTimeMicros();
       auto column_id = cdc_state->ColumnId(master::kCdcData);
       auto map_value_pb =
-          yb::client::AddMapColumn(req, column_id, "active_time", ToString(last_active_time));
+          yb::client::AddMapColumn(req, column_id, kCDCSDKActiveTime, ToString(last_active_time));
       yb::client::AddMapEntryToColumn(
           map_value_pb, kCDCSDKSafeTime, ToString(cdc_sdk_safe_time.ToUint64()));
 
