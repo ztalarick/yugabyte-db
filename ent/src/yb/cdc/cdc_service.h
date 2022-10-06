@@ -61,6 +61,7 @@ static const char* const kCheckpointType = "checkpoint_type";
 static const char* const kIdType = "id_type";
 static const char* const kNamespaceId = "NAMESPACEID";
 static const char* const kTableId = "TABLEID";
+static const char* const kCDCSDKSafeTime = "cdc_sdk_safe_time";
 
 struct TabletCheckpoint {
   OpId op_id;
@@ -81,7 +82,7 @@ struct TabletCDCCheckpointInfo {
   OpId cdc_sdk_op_id = OpId::Invalid();
   MonoDelta cdc_sdk_op_id_expiration = MonoDelta::kZero;
   int64_t cdc_sdk_latest_active_time = 0;
-  uint64_t safe_time = kuint64max;
+  HybridTime cdc_sdk_safe_time = HybridTime::kMax;
 };
 
 using TabletIdCDCCheckpointMap = std::unordered_map<TabletId, TabletCDCCheckpointInfo>;
@@ -135,7 +136,8 @@ class CDCServiceImpl : public CDCServiceIf {
 
   Status UpdateCdcReplicatedIndexEntry(
       const string& tablet_id, int64 replicated_index, const OpId& cdc_sdk_replicated_op,
-      const MonoDelta& cdc_sdk_op_id_expiration, const uint64_t cdc_safe_time = kuint64max);
+      const MonoDelta& cdc_sdk_op_id_expiration,
+      const HybridTime cdc_sdk_safe_time = HybridTime::kMax);
 
   void RollbackCdcReplicatedIndexEntry(const string& tablet_id);
 
@@ -216,7 +218,7 @@ class CDCServiceImpl : public CDCServiceIf {
       uint64_t last_record_hybrid_time,
       const CDCRequestSource& request_source = CDCRequestSource::CDCSDK,
       bool force_update = false,
-      const uint64_t& safe_time = kuint64max);
+      const HybridTime& cdc_sdk_safe_time = HybridTime::kMax);
 
   Result<google::protobuf::RepeatedPtrField<master::TabletLocationsPB>> GetTablets(
       const CDCStreamId& stream_id);
@@ -337,7 +339,8 @@ class CDCServiceImpl : public CDCServiceIf {
 
   Status SetInitialCheckPoint(
       const OpId& checkpoint, const string& tablet_id,
-      const std::shared_ptr<tablet::TabletPeer>& tablet_peer, uint64_t safe_time = kuint64max);
+      const std::shared_ptr<tablet::TabletPeer>& tablet_peer,
+      HybridTime cdc_sdk_safe_time = HybridTime::kMax);
 
   Status UpdateChildrenTabletsOnSplitOp(
       const ProducerTabletInfo& producer_tablet,

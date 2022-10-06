@@ -319,13 +319,13 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
 
   Status set_cdc_sdk_min_checkpoint_op_id(const OpId& cdc_min_checkpoint_op_id);
 
-  Status set_cdc_safe_time(const HybridTime);
+  Status set_cdc_sdk_safe_time(const HybridTime& cdc_sdk_safe_time);
 
   int64_t cdc_min_replicated_index() const;
 
   OpId cdc_sdk_min_checkpoint_op_id() const;
 
-  HybridTime cdc_safe_time() const;
+  HybridTime cdc_sdk_safe_time() const;
 
   Status SetIsUnderTwodcReplicationAndFlush(bool is_under_twodc_replication);
 
@@ -608,7 +608,7 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
   OpId cdc_sdk_min_checkpoint_op_id_ GUARDED_BY(data_mutex_);
 
   // The minimum hybrid time based on which data is retained for before image
-  HybridTime cdc_safe_time_ GUARDED_BY(data_mutex_);
+  HybridTime cdc_sdk_safe_time_ GUARDED_BY(data_mutex_);
 
   bool is_under_twodc_replication_ GUARDED_BY(data_mutex_) = false;
 

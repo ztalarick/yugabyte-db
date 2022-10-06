@@ -2520,8 +2520,8 @@ Status TSTabletManager::UpdateSnapshotsInfo(const master::TSSnapshotsInfoPB& inf
 HybridTime TSTabletManager::AllowedHistoryCutoff(tablet::RaftGroupMetadata* metadata) {
   auto schedules = metadata->SnapshotSchedules();
   if (schedules.empty()) {
-    if (metadata->cdc_safe_time().is_valid()) {
-      return metadata->cdc_safe_time();
+    if (metadata->cdc_sdk_safe_time().is_valid()) {
+      return metadata->cdc_sdk_safe_time();
     }
     return HybridTime::kMax;
   }
@@ -2564,7 +2564,7 @@ HybridTime TSTabletManager::AllowedHistoryCutoff(tablet::RaftGroupMetadata* meta
     }
     result = std::min(result, it->second);
   }
-  result = std::min(result, metadata->cdc_safe_time());
+  result = std::min(result, metadata->cdc_sdk_safe_time());
   return result;
 }
 

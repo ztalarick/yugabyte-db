@@ -471,7 +471,7 @@ message SetCDCCheckpointRequestPB {
   optional bytes tablet_id = 4;
   optional bool initial_checkpoint = 5 [default = false];
   optional bool bootstrap = 6 [default = false];
-  optional uint64 safe_time = 7 [default = 0];
+  optional uint64 cdc_sdk_safe_time = 7 [default = 0];
 }
 
 message SetCDCCheckpointResponsePB {

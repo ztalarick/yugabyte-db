@@ -391,7 +391,7 @@ void FilterEqualImpl<std::string>::operator()(
   table.SetBinaryCondition(condition, column_, QL_OP_EQUAL, t_);
 }
 
-QLMapValuePB* AddMapColumnValue(
+QLMapValuePB* AddMapColumn(
     QLWriteRequestPB* req, const int32_t& column_id, const string& entry_key,
     const string& entry_value) {
   auto column_value = req->add_column_values();
