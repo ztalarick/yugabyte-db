@@ -56,6 +56,13 @@ class TableRange;
 
 #define TABLE_HANDLE_TYPE_DECLARATIONS(i, data, entry) TABLE_HANDLE_TYPE_DECLARATIONS_IMPL entry
 
+QLMapValuePB* AddMapColumnValue(
+    QLWriteRequestPB* req, const int32_t& column_id, const string& entry_key,
+    const string& entry_value);
+
+void AddMapEntryToColumn(
+    QLMapValuePB* map_value_pb, const string& entry_key, const string& entry_value);
+
 // Utility class for manually filling QL operations.
 class TableHandle {
  public:
@@ -110,13 +117,6 @@ class TableHandle {
   // Add a simple comparison operation under a logical comparison condition.
   // E.g. Add <EXISTS> under "... AND <EXISTS>".
   void AddCondition(QLConditionPB *const condition, const QLOperator op) const;
-
-  QLMapValuePB* AddMapColumnValue(
-      QLWriteRequestPB* req, const int32_t& column_id, const string& entry_key,
-      const string& entry_value) const;
-
-  void AddMapEntryToColumn(
-      QLMapValuePB* map_value_pb, const string& entry_key, const string& entry_value) const;
 
   void AddColumns(const std::vector<std::string>& columns, QLReadRequestPB* req) const;
 

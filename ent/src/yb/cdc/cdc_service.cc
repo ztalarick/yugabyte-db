@@ -837,8 +837,8 @@ void CDCServiceImpl::CreateEntryInCdcStateTable(
                                         master::kCdcCheckpoint, op_id.ToString());
   auto column_id = cdc_state_table->ColumnId(master::kCdcData);
   auto map_value_pb =
-      cdc_state_table->AddMapColumnValue(cdc_state_table_write_req, column_id, "active_time", "0");
-  cdc_state_table->AddMapEntryToColumn(map_value_pb, "safe_time", "0");
+      yb::client::AddMapColumnValue(cdc_state_table_write_req, column_id, "active_time", "0");
+  yb::client::AddMapEntryToColumn(map_value_pb, "safe_time", "0");
   // cdc_state_table->AddMapColumnValue(cdc_state_table_write_req, column_id, "safe_time", "0");
   ops->push_back(std::move(cdc_state_table_op));
 
@@ -3145,9 +3145,9 @@ Status CDCServiceImpl::UpdateCheckpointAndActiveTime(
       auto last_active_time = GetCurrentTimeMicros();
       auto column_id = cdc_state->ColumnId(master::kCdcData);
       auto map_value_pb =
-          cdc_state->AddMapColumnValue(req, column_id, "active_time", ToString(last_active_time));
+          yb::client::AddMapColumnValue(req, column_id, "active_time", ToString(last_active_time));
       // cdc_state->AddMapColumnValue(req, column_id, "safe_time", ToString(safe_time));
-      cdc_state->AddMapEntryToColumn(map_value_pb, "safe_time", ToString(safe_time));
+      yb::client::AddMapEntryToColumn(map_value_pb, "safe_time", ToString(safe_time));
 
       VLOG(2) << "Updating cdc state table with: checkpoint: " << commit_op_id.ToString()
               << ", last active time: " << last_active_time
