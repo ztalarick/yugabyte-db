@@ -37,7 +37,6 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
-  const featureFlags = useSelector((state: any) => state.featureFlags);
   const [state] = useContext(UniverseFormContext);
 
   //context state

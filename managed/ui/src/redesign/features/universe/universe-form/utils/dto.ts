@@ -242,13 +242,13 @@ export interface Placement {
 }
 
 export enum ClusterModes {
-  CREATE = 'CREATE',
-  EDIT = 'EDIT'
+  CREATE = 'create',
+  EDIT = 'edit'
 }
 
 export enum ClusterType {
-  PRIMARY = 'PRIMARY',
-  ASYNC = 'ASYNC'
+  PRIMARY = 'primary',
+  ASYNC = 'async'
 }
 export interface PlacementCloud {
   uuid: string;
