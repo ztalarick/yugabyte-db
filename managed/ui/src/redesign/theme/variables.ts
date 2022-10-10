@@ -128,7 +128,7 @@ export const themeVariables = {
   sidebarWidthMax: 232,
   footerHeight: 40,
   toolbarHeight: 55,
-  inputHeight: 40,
+  inputHeight: 42,
   borderRadius: 8,
   shadowLight: '0 0 4px 0 rgba(0,0,0,0.1)',
   shadowThick: '0 0 8px 0 rgba(0,0,0,0.1)'

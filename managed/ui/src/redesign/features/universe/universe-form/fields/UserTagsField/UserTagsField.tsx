@@ -49,6 +49,7 @@ export const UserTagsField = (_: UserTagsFieldProps): ReactElement => {
       </Box>
       <Box mt={2}>
         <YBButton variant="primary" onClick={() => append({ name: '', value: '' })}>
+          <span className="fa fa-plus" />
           {t('universeForm.userTags.addRow')}
         </YBButton>
       </Box>

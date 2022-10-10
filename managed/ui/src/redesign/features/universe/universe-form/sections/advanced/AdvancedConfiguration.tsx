@@ -31,7 +31,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
   //form context
   const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
   // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType == ClusterType.PRIMARY;
+  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY;
   // const isDbVersionReadOnly = mode !== clusterModes.NEW_PRIMARY;
   const isDbVersionReadOnly = mode !== ClusterModes.CREATE && clusterType !== ClusterType.PRIMARY;
 
@@ -42,7 +42,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
 
   return (
     <Box className={classes.sectionContainer}>
-      <Typography variant="h5">{t('universeForm.advancedConfig.title')}</Typography>
+      <Typography variant="h4">{t('universeForm.advancedConfig.title')}</Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={2}>
           <Grid container spacing={3}>

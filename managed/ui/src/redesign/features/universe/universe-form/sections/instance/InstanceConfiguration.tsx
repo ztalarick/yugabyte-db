@@ -38,7 +38,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
   //form context
   const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
   // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType == ClusterType.PRIMARY;
+  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY;
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -56,7 +56,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
 
   return (
     <Box className={classes.sectionContainer}>
-      <Typography variant="h5">{t('universeForm.instanceConfig.title')}</Typography>
+      <Typography variant="h4">{t('universeForm.instanceConfig.title')}</Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={4}>
           <Grid container>
