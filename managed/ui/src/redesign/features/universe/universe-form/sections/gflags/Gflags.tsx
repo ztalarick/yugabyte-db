@@ -17,7 +17,7 @@ export const GFlags: FC<GflagsProps> = () => {
 
   return (
     <Box className={classes.sectionContainer}>
-      <Typography variant="h5">{t('universeForm.gFlags.title')}</Typography>
+      <Typography variant="h4">{t('universeForm.gFlags.title')}</Typography>
       <Box display="flex" width="100%" mt={2}>
         <GFlagsField
           dbVersion={dbVersion}

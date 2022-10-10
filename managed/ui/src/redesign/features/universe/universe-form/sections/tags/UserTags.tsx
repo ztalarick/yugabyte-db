@@ -27,7 +27,7 @@ export const UserTags = (_: UserTagsProps): ReactElement | null => {
     return (
       <Box>
         <Box className={classes.sectionContainer} borderBottom="0px">
-          <Typography variant="h5">{t('universeForm.userTags.title')}</Typography>
+          <Typography variant="h4">{t('universeForm.userTags.title')}</Typography>
         </Box>
         <Box mt={2}>
           <Grid container lg={6}>

@@ -223,16 +223,13 @@ export const mainTheme = createTheme({
       },
       // "ghost" variant
       text: {
-        color: colors.primary[600],
+        color: colors.orange[700],
         backgroundColor: 'transparent',
-        border: '1px solid transparent',
         '&:hover': {
-          backgroundColor: 'transparent',
-          border: `1px solid ${colors.primary[500]}`
+          backgroundColor: 'transparent'
         },
         '&:active': {
-          backgroundColor: 'transparent',
-          border: `1px solid ${colors.primary[700]}`
+          backgroundColor: 'transparent'
         },
         '&$disabled': {
           backgroundColor: 'transparent',
