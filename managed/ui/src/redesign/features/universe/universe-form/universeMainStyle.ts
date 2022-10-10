@@ -5,17 +5,22 @@ export const useFormMainStyles = makeStyles((theme) => ({
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
-    padding: theme.spacing(3, 0)
+    padding: theme.spacing(2, 1),
+    backgroundColor: '#fff'
   },
 
   formHeader: {
-    marginLeft: theme.spacing(3),
+    marginLeft: theme.spacing(1),
     position: 'fixed',
     top: 0,
     display: 'flex',
     alignItems: 'center',
     height: theme.spacing(7.5), // top navbar height
-    zIndex: 1030
+    zIndex: 1030,
+    '& span': {
+      color: '#9f9ea7',
+      marginLeft: theme.spacing(1)
+    }
   },
 
   formContainer: {

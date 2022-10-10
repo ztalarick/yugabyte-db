@@ -4,7 +4,6 @@ import { api } from './api';
 import {
   CloudType,
   ClusterType,
-  clusterModes,
   UniverseDetails,
   UniverseConfigure,
   UniverseFormData,
@@ -93,7 +92,6 @@ export const createUniverse = async ({
   universeContextData,
   featureFlags
 }: {
-  mode: clusterModes;
   formData: UniverseFormData;
   universeContextData: UniverseFormContextState;
   featureFlags: any;

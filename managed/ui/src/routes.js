@@ -38,7 +38,6 @@ import { isDefinedNotNull, isNullOrEmpty } from './utils/ObjectUtils';
 import { Administration } from './pages/Administration';
 import ToggleFeaturesInTest from './pages/ToggleFeaturesInTest';
 import { ReplicationDetails } from './components/xcluster';
-import { CreateUniverse, EditUniverse } from './redesign/pages';
 import { UniverseFormContainer } from './redesign/features/universe/universe-form/UniverseFormContainer';
 
 /**

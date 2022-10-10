@@ -23,14 +23,14 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
   const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
 
   // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType == ClusterType.PRIMARY;
+  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY;
 
   return (
     <Box className={classes.sectionContainer}>
       <Grid container spacing={3}>
         <Grid item lg={6}>
-          <Box mt={1} mb={4}>
-            <Typography variant="h5">{t('universeForm.cloudConfig.title')}</Typography>
+          <Box mb={4}>
+            <Typography variant="h4">{t('universeForm.cloudConfig.title')}</Typography>
           </Box>
           {isPrimary && (
             <Box mt={1}>

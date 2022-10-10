@@ -1,13 +1,13 @@
 import React, { createContext, FC } from 'react';
-import { clusterModes, UniverseConfigure, ClusterType, ClusterModes } from './utils/dto';
+import { UniverseConfigure, ClusterType, ClusterModes } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
-import { Typography, Grid, Box } from '@material-ui/core';
+import { Box } from '@material-ui/core';
 import { useMethods } from 'react-use';
-import { useTranslation } from 'react-i18next';
-// import { useParams, useLocation } from 'react-router-dom';
 import { RouteComponentProps } from 'react-router-dom';
 import { CreateUniverse } from './CreateUniverse';
 import { EditUniverse } from './EditUniverse';
+import { EditReadReplica } from './EditRR';
+import { CreateReadReplica } from './CreateRR';
 
 interface UniverseFormContextState {
   clusterType: ClusterType;
@@ -33,6 +33,10 @@ const createFormMethods = (state: UniverseFormContextState) => ({
   toggleClusterType: (type: ClusterType) => ({
     ...state,
     clusterType: type === ClusterType.PRIMARY ? ClusterType.ASYNC : ClusterType.PRIMARY
+  }),
+  updateFormState: (payload: Partial<UniverseFormContextState>) => ({
+    ...state,
+    ...payload
   })
 });
 
@@ -50,7 +54,7 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
   params
 }) => {
   const classes = useFormMainStyles();
-  const { t } = useTranslation();
+  const { clusterType, mode } = params;
 
   const universeContextData = useMethods(createFormMethods, initialState);
 
@@ -58,8 +62,12 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
     <Box className={classes.mainConatiner}>
       <UniverseFormContext.Provider value={universeContextData}>
         {location.pathname === '/universe/new' && <CreateUniverse />}
-        {params.mode === ClusterModes.EDIT && params.clusterType == ClusterType.PRIMARY && (
-          <EditUniverse />
+        {mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY && <EditUniverse />}
+        {mode === ClusterModes.CREATE && clusterType === ClusterType.ASYNC && (
+          <CreateReadReplica {...params} />
+        )}
+        {mode === ClusterModes.EDIT && clusterType === ClusterType.ASYNC && (
+          <EditReadReplica {...params} />
         )}
       </UniverseFormContext.Provider>
     </Box>

@@ -10,6 +10,7 @@
     "universeForm": {
       "configReadReplica": "Configure Read Replica",
       "createUniverse": "Create Universe",
+      "editReadReplica": "Edit Read Replica",
       "advancedConfig": {
         "title": "Advanced Configuration",
         "accessKey": "Access Key",

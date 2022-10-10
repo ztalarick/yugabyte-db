@@ -1,6 +1,5 @@
 import React, { useContext, FC } from 'react';
 import * as Yup from 'yup';
-import { useSelector } from 'react-redux';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
@@ -15,14 +14,12 @@ import {
 } from './sections';
 import { UniverseFormData, ClusterType, ClusterModes } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
-// import { createUniverse } from './utils/helpers';
 import { api } from './utils/api';
 import { UniverseFormContext } from './UniverseFormContainer';
-import { common } from '@material-ui/core/colors';
 
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
-  title: string;
+  title: React.ReactNode;
   onFormSubmit: (data: UniverseFormData) => void;
   onCancel: () => void;
   onClusterTypeChange?: (data: UniverseFormData, type: ClusterType) => void;
@@ -37,7 +34,6 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
-  const featureFlags = useSelector((state: any) => state.featureFlags);
   const [state] = useContext(UniverseFormContext);
 
   //Form Validation
@@ -131,7 +127,6 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 
   const onSubmit = (formData: UniverseFormData) => {
     onFormSubmit(formData);
-    // createUniverse({ mode, formData, universeContextData: universeContextData[0], featureFlags });
   };
 
   return (
@@ -139,7 +134,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
       <FormProvider {...formMethods}>
         <form onSubmit={formMethods.handleSubmit(onSubmit)}>
           <Box className={classes.formHeader}>
-            <Typography variant="h4">{title}</Typography>
+            <Typography variant="h3">{title}</Typography>
           </Box>
           <Box className={classes.formContainer}>
             <CloudConfiguration />
