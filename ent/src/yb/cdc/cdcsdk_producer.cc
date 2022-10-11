@@ -14,6 +14,8 @@
 
 #include "yb/cdc/cdc_common_util.h"
 
+#include "yb/client/client.h"
+#include "yb/client/yb_table_name.h"
 #include "yb/common/wire_protocol.h"
 #include "yb/common/ql_expr.h"
 
@@ -23,6 +25,7 @@
 #include "yb/docdb/doc_rowwise_iterator.h"
 #include "yb/server/hybrid_clock.h"
 
+#include "yb/master/master_client.pb.h"
 #include "yb/util/flag_tags.h"
 #include "yb/util/logging.h"
 
@@ -159,24 +162,31 @@ bool IsInsertOperation(const RowMessage& row_message) {
 
 bool IsInsertOrUpdate(const RowMessage& row_message) {
   return row_message.IsInitialized()  &&
-      (row_message.op() == RowMessage_Op_INSERT
-       || row_message.op() == RowMessage_Op_UPDATE);
+         (row_message.op() == RowMessage_Op_INSERT
+          || row_message.op() == RowMessage_Op_UPDATE);
 }
 
 void MakeNewProtoRecord(
     const docdb::IntentKeyValueForCDC& intent, const OpId& op_id, const RowMessage& row_message,
     const Schema& schema, size_t col_count, CDCSDKProtoRecordPB* proto_record,
     GetChangesResponsePB* resp, IntraTxnWriteId* write_id, std::string* reverse_index_key) {
-    CDCSDKOpIdPB* cdc_sdk_op_id_pb = proto_record->mutable_cdc_sdk_op_id();
-    SetCDCSDKOpId(
-        op_id.term, op_id.index, intent.write_id, intent.reverse_index_key, cdc_sdk_op_id_pb);
+  CDCSDKOpIdPB* cdc_sdk_op_id_pb = proto_record->mutable_cdc_sdk_op_id();
+  SetCDCSDKOpId(
+      op_id.term, op_id.index, intent.write_id, intent.reverse_index_key, cdc_sdk_op_id_pb);
 
-    CDCSDKProtoRecordPB* record_to_be_added = resp->add_cdc_sdk_proto_records();
-    record_to_be_added->CopyFrom(*proto_record);
-    record_to_be_added->mutable_row_message()->CopyFrom(row_message);
+  Slice doc_ht(intent.ht_buf);
 
-    *write_id = intent.write_id;
-    *reverse_index_key = intent.reverse_index_key;
+  CDCSDKProtoRecordPB* record_to_be_added = resp->add_cdc_sdk_proto_records();
+  record_to_be_added->CopyFrom(*proto_record);
+  record_to_be_added->mutable_row_message()->CopyFrom(row_message);
+  auto result = DocHybridTime::DecodeFromEnd(&doc_ht);
+  if (result.ok()) {
+    record_to_be_added->mutable_row_message()->set_commit_time((*result).hybrid_time().value());
+  } else {
+    LOG(WARNING) << "Failed to get commit hybrid time for intent key: " << intent.key_buf.c_str();
+  }
+  *write_id = intent.write_id;
+  *reverse_index_key = intent.reverse_index_key;
 }
 
 Status PopulateBeforeImage(
@@ -331,7 +341,7 @@ Status PopulateCDCSDKIntentRecord(
       new_cdc_record_needed =
           (prev_key != primary_key) || (col_count >= schema.num_columns()) ||
           (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) ||
-          prev_intent_phy_time != intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
+          prev_intent_phy_time != intent.intent_ht.hybrid_time().GetPhysicalValueMicros();
     } else {
       new_cdc_record_needed = (prev_key != primary_key) || (col_count >= schema.num_columns());
     }
@@ -380,6 +390,9 @@ Status PopulateCDCSDKIntentRecord(
       // Check whether operation is WRITE or DELETE.
       if (value_type == docdb::ValueEntryType::kTombstone && decoded_key.num_subkeys() == 0) {
         SetOperation(row_message, OpType::DELETE, schema);
+        if (!FLAGS_enable_single_record_update) {
+          col_count = schema.num_columns();
+        }
       } else if (value_type == docdb::ValueEntryType::kPackedRow) {
         SetOperation(row_message, OpType::INSERT, schema);
         col_count = schema.num_key_columns();
@@ -390,18 +403,21 @@ Status PopulateCDCSDKIntentRecord(
           col_count = schema.num_key_columns() - 1;
         } else {
           SetOperation(row_message, OpType::UPDATE, schema);
+          if (!FLAGS_enable_single_record_update) {
+            col_count = schema.num_columns();
+          }
           *write_id = intent.write_id;
         }
       }
 
       // Write pair contains record for different row. Create a new CDCRecord in this case.
       row_message->set_transaction_id(transaction_id.ToString());
-      row_message->set_commit_time(intent.doc_ht.hybrid_time().ToUint64());
+      row_message->set_commit_time(intent.intent_ht.hybrid_time().ToUint64());
 
       if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
           (row_message->op() == RowMessage_Op_DELETE)) {
-        /*MicrosTime micros = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
-        LogicalTimeComponent logical_value = intent.doc_ht.hybrid_time().GetLogicalValue();
+        /*MicrosTime micros = intent.intent_ht.hybrid_time().GetPhysicalValueMicros();
+        LogicalTimeComponent logical_value = intent.intent_ht.hybrid_time().GetLogicalValue();
         auto hybrid_time =
             server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(micros, logical_value)
                 .Decremented();*/
@@ -427,14 +443,20 @@ Status PopulateCDCSDKIntentRecord(
     }
 
     prev_key = primary_key;
-    prev_intent_phy_time = intent.doc_ht.hybrid_time().GetPhysicalValueMicros();
+    prev_intent_phy_time = intent.intent_ht.hybrid_time().GetPhysicalValueMicros();
     if (IsInsertOrUpdate(*row_message)) {
       if (value_type == docdb::ValueEntryType::kPackedRow) {
         col_count += VERIFY_RESULT(PopulatePackedRows(
             schema_packing_storage, schema, tablet_peer, enum_oid_label_map, &value_slice,
             row_message));
       } else {
-        ++col_count;
+        if (FLAGS_enable_single_record_update) {
+          ++col_count;
+        } else {
+          if (IsInsertOperation(*row_message)) {
+            ++col_count;
+          }
+        }
 
         docdb::Value decoded_value;
         RETURN_NOT_OK(decoded_value.Decode(intent.value_buf));
@@ -691,6 +713,7 @@ Status PopulateCDCSDKDDLRecord(
   row_message = proto_record->mutable_row_message();
   row_message->set_op(RowMessage_Op_DDL);
   row_message->set_table(table_name);
+  row_message->set_commit_time(msg->hybrid_time());
 
   CDCSDKOpIdPB* cdc_sdk_op_id_pb = proto_record->mutable_cdc_sdk_op_id();
   SetCDCSDKOpId(msg->id().term(), msg->id().index(), 0, "", cdc_sdk_op_id_pb);
@@ -896,6 +919,35 @@ void FillDDLInfo(
   }
 }
 
+bool VerifyTabletSplitOnParentTablet(
+    const TableId& table_id, const TabletId& tablet_id,
+    const std::shared_ptr<yb::consensus::ReplicateMsg>& msg, client::YBClient* client) {
+  if (!(msg->has_split_request() && msg->split_request().has_tablet_id() &&
+        msg->split_request().tablet_id() == tablet_id)) {
+    LOG(WARNING) << "The replicate message for split-op does not have the parent tablet_id set to: "
+                 << tablet_id << ". Could not verify tablet-split for tablet: " << tablet_id;
+    return false;
+  }
+
+  google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
+  client::YBTableName table_name;
+  table_name.set_table_id(table_id);
+  RETURN_NOT_OK_RET(
+      client->GetTablets(
+          table_name, 0, &tablets, /* partition_list_version =*/nullptr,
+          RequireTabletsRunning::kFalse, master::IncludeInactive::kTrue),
+      false);
+
+  uint children_tablet_count = 0;
+  for (const auto& tablet : tablets) {
+    if (tablet.has_split_parent_tablet_id() && tablet.split_parent_tablet_id() == tablet_id) {
+      children_tablet_count += 1;
+    }
+  }
+
+  return (children_tablet_count == 2);
+}
+
 // CDC get changes is different from 2DC as it doesn't need
 // to read intents from WAL.
 
@@ -907,6 +959,7 @@ Status GetChangesForCDCSDK(
     const std::shared_ptr<tablet::TabletPeer>& tablet_peer,
     const MemTrackerPtr& mem_tracker,
     const EnumOidLabelMap& enum_oid_label_map,
+    client::YBClient* client,
     consensus::ReplicateMsgsHolder* msgs_holder,
     GetChangesResponsePB* resp,
     std::string* commit_timestamp,
@@ -919,6 +972,8 @@ Status GetChangesForCDCSDK(
   ScopedTrackedConsumption consumption;
   CDCSDKCheckpointPB checkpoint;
   bool checkpoint_updated = false;
+  bool report_tablet_split = false;
+  OpId split_op_id = OpId::Invalid();
 
   auto leader_safe_time = tablet_peer->LeaderSafeTime();
   if (!leader_safe_time.ok()) {
@@ -1169,6 +1224,47 @@ Status GetChangesForCDCSDK(
           }
           break;
 
+          case yb::consensus::OperationType::SPLIT_OP: {
+            // It is possible that we found records corresponding to SPLIT_OP even when it failed.
+            // We first verify if a split has indeed occured succesfully on the tablet by checking:
+            // 1. There are two children tablets for the tablet
+            // 2. The split op is the last operation on the tablet
+            // If either of the conditions are false, we will know the splitOp is not succesfull.
+            const TableId& table_id = tablet_peer->tablet()->metadata()->table_id();
+
+            if (!(VerifyTabletSplitOnParentTablet(table_id, tablet_id, msg, client))) {
+              SetCheckpoint(
+                  msg->id().term(), msg->id().index(), 0, "", 0, &checkpoint, last_streamed_op_id);
+              checkpoint_updated = true;
+              LOG_WITH_FUNC(WARNING)
+                  << "Found SplitOp record with index: " << msg->id()
+                  << ", but did not find any children tablets for the parent tablet: " << tablet_id;
+            } else {
+              if (checkpoint_updated) {
+                // If we have records which are yet to be streamed which we discovered in the same
+                // 'GetChangesForCDCSDK' call, we will not update the checkpoint to the SplitOp
+                // record's OpId and return the records seen till now. Next time the client will
+                // call 'GetChangesForCDCSDK' with the OpId just before the SplitOp's record.
+                LOG(INFO) << "Found SPLIT_OP record with OpId: " << msg->id()
+                          << ", will stream all seen records until now.";
+              } else {
+                // If 'GetChangesForCDCSDK' was called with the OpId just before the SplitOp's
+                // record, and if there is no more data to stream and we can notify the client
+                // about the split and update the checkpoint. At this point, we will store the
+                // split_op_id.
+                LOG(INFO) << "Found SPLIT_OP record with OpId: " << msg->id()
+                          << ", and if we did not see any other records we will report the tablet "
+                             "split to the client";
+                SetCheckpoint(
+                    msg->id().term(), msg->id().index(), 0, "", 0, &checkpoint,
+                    last_streamed_op_id);
+                checkpoint_updated = true;
+                split_op_id = OpId::FromPB(msg->id());
+              }
+            }
+          }
+          break;
+
           default:
             // Nothing to do for other operation types.
             break;
@@ -1193,6 +1289,13 @@ Status GetChangesForCDCSDK(
              last_seen_op_id.index < *last_readable_opid_index);
   }
 
+  // If the split_op_id is equal to the checkpoint i.e the OpId of the last actionable message, we
+  // know that after the split there are no more actionable messages, and this confirms that the
+  // SPLIT OP was succesfull.
+  if (split_op_id.term == checkpoint.term() && split_op_id.index == checkpoint.index()) {
+    report_tablet_split = true;
+  }
+
   if (consumption) {
     consumption.Add(resp->SpaceUsedLong());
   }
@@ -1202,7 +1305,7 @@ Status GetChangesForCDCSDK(
   resp->set_safe_hybrid_time(safe_time.ToUint64());
 
   checkpoint_updated ? resp->mutable_cdc_sdk_checkpoint()->CopyFrom(checkpoint)
-                       : resp->mutable_cdc_sdk_checkpoint()->CopyFrom(from_op_id);
+                     : resp->mutable_cdc_sdk_checkpoint()->CopyFrom(from_op_id);
 
   if (last_streamed_op_id->index > 0) {
     last_streamed_op_id->ToPB(resp->mutable_checkpoint()->mutable_op_id());
@@ -1215,6 +1318,12 @@ Status GetChangesForCDCSDK(
             << resp->cdc_sdk_checkpoint().ShortDebugString();
     VLOG(1) << "The checkpoint is not updated " << resp->checkpoint().ShortDebugString();
   }
+
+  if (report_tablet_split) {
+    return STATUS_FORMAT(
+        TabletSplit, "Tablet Split on tablet: $0, no more records to stream", tablet_id);
+  }
+
   return Status::OK();
 }
 
