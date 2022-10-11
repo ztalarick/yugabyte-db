@@ -56,9 +56,7 @@ class TableRange;
 
 #define TABLE_HANDLE_TYPE_DECLARATIONS(i, data, entry) TABLE_HANDLE_TYPE_DECLARATIONS_IMPL entry
 
-QLMapValuePB* AddMapColumn(
-    QLWriteRequestPB* req, const int32_t& column_id, const string& entry_key,
-    const string& entry_value);
+QLMapValuePB* AddMapColumn(QLWriteRequestPB* req, const int32_t& column_id);
 
 void AddMapEntryToColumn(
     QLMapValuePB* map_value_pb, const string& entry_key, const string& entry_value);
