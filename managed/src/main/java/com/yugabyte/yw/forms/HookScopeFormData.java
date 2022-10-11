@@ -36,7 +36,8 @@ public class HookScopeFormData {
         BAD_REQUEST, "Cluster UUID can only be provided if universe UUID is provided");
     }
 
-    if (HookScope.getByTriggerScopeId(customerUUID, triggerType, universeUUID, providerUUID)
+    if (HookScope.getByTriggerScopeId(customerUUID, triggerType, universeUUID, providerUUID,
+      clusterUUID)
       != null) {
       throw new PlatformServiceException(
         BAD_REQUEST, "Hook scope with this scope ID and trigger already exists");
