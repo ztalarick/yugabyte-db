@@ -870,12 +870,8 @@ Result<ApplyTransactionState> GetIntentsBatch(
             intent_metadata.value = decoded_value.body;
             intent_metadata.reverse_index_key = key_slice.ToBuffer();
             intent_metadata.write_id = write_id;
-<<<<<<< HEAD
-            intent_metadata.doc_ht = doc_ht;
-=======
             intent_metadata.intent_ht = doc_ht;
             intent_metadata.ht = Slice(ht_parts, &intent_metadata.ht_buf);
->>>>>>> master
 
             (*key_value_intents).push_back(intent_metadata);
 
