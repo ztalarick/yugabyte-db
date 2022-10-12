@@ -4158,7 +4158,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestEnumWithMultipleTablets)) {
     stream_id[idx] = ASSERT_RESULT(CreateDBStream(IMPLICIT));
 
     for (uint32_t jdx = 0; jdx < num_tablets; jdx++) {
-      auto resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id[idx], tablets, OpId::Min(), true, jdx));
+      auto resp = ASSERT_RESULT(
+          SetCDCCheckpoint(stream_id[idx], tablets, OpId::Min(), kuint64max, true, jdx));
       ASSERT_FALSE(resp.has_error());
     }
 
