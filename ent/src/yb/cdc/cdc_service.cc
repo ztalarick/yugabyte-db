@@ -1149,8 +1149,9 @@ Result<SetCDCCheckpointResponsePB> CDCServiceImpl::SetCDCCheckpoint(
     auto result = tablet_peer->LeaderSafeTime();
     if (!result.ok()) {
       LOG(WARNING) << "Could not find the leader safe time successfully";
+    } else {
+      cdc_sdk_safe_time = *result;
     }
-    cdc_sdk_safe_time = *result;
   } else {
     checkpoint = OpId::FromPB(req.checkpoint().op_id());
     if (req.has_cdc_sdk_safe_time() && req.cdc_sdk_safe_time() > 0) {
