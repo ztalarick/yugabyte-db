@@ -72,7 +72,11 @@ public class HookScopeController extends AuthenticatedController {
     HookScope hookScope;
     if (form.getUniverseUUID() != null) { // Universe Scope
       Universe universe = Universe.getValidUniverseOrBadRequest(form.getUniverseUUID(), customer);
-      hookScope = HookScope.create(customerUUID, form.getTriggerType(), universe);
+
+      // We can create hook_scopes for clusters that do not exist yet.
+      // This is an explicit requirement for the CDC / AddOn cluster work where we want to have
+      // the hooks run as part of cluster creation.
+      hookScope = HookScope.create(customerUUID, form.getTriggerType(), universe, form.getClusterUUID());
     } else if (form.getProviderUUID() != null) { // Provider Scope
       Provider provider = Provider.getOrBadRequest(customerUUID, form.getProviderUUID());
       hookScope = HookScope.create(customerUUID, form.getTriggerType(), provider);

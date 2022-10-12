@@ -155,12 +155,13 @@ public class HookScope extends Model {
     return hookScope;
   }
 
-  public static HookScope create(UUID customerUUID, TriggerType triggerType, Universe universe) {
+  public static HookScope create(UUID customerUUID, TriggerType triggerType, Universe universe, UUID clusterUUID) {
     HookScope hookScope = new HookScope();
     hookScope.customerUUID = customerUUID;
     hookScope.triggerType = triggerType;
     hookScope.universeUUID = universe.universeUUID;
     hookScope.providerUUID = null;
+    hookScope.clusterUUID = clusterUUID;
     hookScope.save();
     return hookScope;
   }
