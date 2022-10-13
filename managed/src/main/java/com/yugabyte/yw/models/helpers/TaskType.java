@@ -136,6 +136,10 @@ public enum TaskType {
 
   UpdateDiskSize("UpdateDiskSize"),
 
+  UpdateKubernetesDiskSize("UpdateKubernetesDiskSize"),
+
+  KubernetesCheckStorageClass("subtasks.KubernetesCheckStorageClass"),
+
   StartMasterOnNode("StartMasterOnNode"),
 
   CreateXClusterConfig("CreateXClusterConfig"),
@@ -398,7 +402,9 @@ public enum TaskType {
 
   DisableYbc("DisableYbc"),
 
-  InstanceExistCheck("subtasks.InstanceExistCheck");
+  InstanceExistCheck("subtasks.InstanceExistCheck"),
+
+  AddGFlagMetadata("AddGFlagMetadata");
 
   private String relativeClassPath;
 
