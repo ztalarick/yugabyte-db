@@ -46,8 +46,8 @@ public class HookScopeController extends AuthenticatedController {
       response = HookScope.class,
       responseContainer = "List")
   public Result list(UUID customerUUID) {
-    verifyAuth();
     Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);    
     List<HookScope> hookScopes = HookScope.getAll(customerUUID);
     return PlatformResults.withData(hookScopes);
   }
@@ -64,8 +64,8 @@ public class HookScopeController extends AuthenticatedController {
           dataType = "com.yugabyte.yw.forms.HookScopeFormData",
           required = true))
   public Result create(UUID customerUUID) {
-    verifyAuth();
     Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);    
     Form<HookScopeFormData> formData = formFactory.getFormDataOrBadRequest(HookScopeFormData.class);
     HookScopeFormData form = formData.get();
     form.verify(customerUUID);
@@ -99,7 +99,8 @@ public class HookScopeController extends AuthenticatedController {
       nickname = "deleteHookScope",
       response = YBPSuccess.class)
   public Result delete(UUID customerUUID, UUID hookScopeUUID) {
-    verifyAuth();
+    Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);
     HookScope hookScope = HookScope.getOrBadRequest(customerUUID, hookScopeUUID);
     log.info("Deleting hook scope with UUID {}", hookScopeUUID);
     hookScope.delete();
@@ -117,8 +118,8 @@ public class HookScopeController extends AuthenticatedController {
       nickname = "addHook",
       response = HookScope.class)
   public Result addHook(UUID customerUUID, UUID hookScopeUUID, UUID hookUUID) {
-    verifyAuth();
     Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);    
     HookScope hookScope = HookScope.getOrBadRequest(customerUUID, hookScopeUUID);
     Hook hook = Hook.getOrBadRequest(customerUUID, hookUUID);
     hookScope.addHook(hook);
@@ -133,8 +134,8 @@ public class HookScopeController extends AuthenticatedController {
       nickname = "removeHook",
       response = HookScope.class)
   public Result removeHook(UUID customerUUID, UUID hookScopeUUID, UUID hookUUID) {
-    verifyAuth();
     Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);    
     HookScope hookScope = HookScope.getOrBadRequest(customerUUID, hookScopeUUID);
     Hook hook = Hook.getOrBadRequest(customerUUID, hookUUID);
     if (hook.hookScope == null || !hook.hookScope.uuid.equals(hookScopeUUID)) {
@@ -152,10 +153,18 @@ public class HookScopeController extends AuthenticatedController {
     return PlatformResults.withData(hookScope);
   }
 
-  public void verifyAuth() {
+  public void verifyAuth(Customer customer) {
     if (!rConfigFactory.staticApplicationConf().getBoolean(ENABLE_CUSTOM_HOOKS_PATH))
       throw new PlatformServiceException(
           UNAUTHORIZED, "Custom hooks is not enabled on this Anywhere instance");
-    tokenAuthenticator.superAdminOrThrow(ctx());
+
+    boolean cloudEnabled =
+      rConfigFactory.forCustomer(customer).getBoolean("yb.cloud.enabled");
+    if (cloudEnabled) {
+      log.warn("Not performing SuperAdmin authorization for this endpoint, customer={} as platform is in cloud mode", customer.uuid);
+      tokenAuthenticator.adminOrThrow(ctx());
+    } else {
+      tokenAuthenticator.superAdminOrThrow(ctx());
+    }
   }
 }

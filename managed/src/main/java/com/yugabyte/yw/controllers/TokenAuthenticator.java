@@ -14,6 +14,9 @@ import com.yugabyte.yw.models.Customer;
 import com.yugabyte.yw.models.Users;
 import com.yugabyte.yw.models.Users.Role;
 import com.yugabyte.yw.models.extended.UserWithFeatures;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -173,7 +176,7 @@ public class TokenAuthenticator extends Action.Simple {
     return delegate.call(ctx);
   }
 
-  public boolean superAdminAuthentication(Http.Context ctx) {
+  public boolean checkAuthentication(Http.Context ctx, HashSet<Role> roles) {
     String token = fetchToken(ctx, true);
     Users user;
     if (token != null) {
@@ -183,16 +186,35 @@ public class TokenAuthenticator extends Action.Simple {
       user = Users.authWithToken(token, getAuthTokenExpiry());
     }
     if (user != null) {
-      boolean isSuperAdmin = user.getRole() == Role.SuperAdmin;
-      if (isSuperAdmin) {
-        // So we can audit any super admin actions.
-        // If there is a use case also lookup customer and put it in context
-        UserWithFeatures superAdmin = new UserWithFeatures().setUser(user);
-        ctx.args.put("user", superAdmin);
+      boolean foundRole = false;
+      for (Role role : roles) {
+        if (user.getRole().equals(role)) {
+          // So we can audit any super admin actions.
+          // If there is a use case also lookup customer and put it in context
+          UserWithFeatures userWithFeatures = new UserWithFeatures().setUser(user);
+          ctx.args.put("user", userWithFeatures);
+          foundRole = true;
+          break;
+        }
       }
-      return isSuperAdmin;
+      return foundRole;
     }
     return false;
+  }
+
+  public boolean superAdminAuthentication(Http.Context ctx) {
+    return checkAuthentication(ctx, new HashSet<>(Collections.singletonList(Role.SuperAdmin)));
+  }
+
+  public boolean adminAuthentication(Http.Context ctx) {
+    return checkAuthentication(ctx, new HashSet<>(Arrays.asList(Role.Admin, Role.SuperAdmin)));
+  }
+
+  public void adminOrThrow(Http.Context ctx) {
+    if (!adminAuthentication(ctx)) {
+      throw new PlatformServiceException(
+          UNAUTHORIZED, "Only Admins can perform this operation.");
+    }
   }
 
   // TODO: Consider changing to a method annotation

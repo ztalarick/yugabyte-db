@@ -59,16 +59,16 @@ public class HookController extends AuthenticatedController {
       response = Hook.class,
       responseContainer = "List")
   public Result list(UUID customerUUID) {
-    verifyAuth();
     Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);    
     List<Hook> hooks = Hook.getAll(customerUUID);
     return PlatformResults.withData(hooks);
   }
 
   @ApiOperation(value = "Create a Hook", nickname = "createHook", response = Hook.class)
   public Result create(UUID customerUUID) {
-    verifyAuth();
     Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);    
     Form<HookRequestData> formData = formFactory.getFormDataOrBadRequest(HookRequestData.class);
     HookRequestData form = formData.get();
     boolean isSudoEnabled = rConfigFactory.staticApplicationConf().getBoolean(ENABLE_SUDO_PATH);
@@ -106,7 +106,8 @@ public class HookController extends AuthenticatedController {
 
   @ApiOperation(value = "Delete a hook", nickname = "deleteHook", response = YBPSuccess.class)
   public Result delete(UUID customerUUID, UUID hookUUID) {
-    verifyAuth();
+    Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);
     Hook hook = Hook.getOrBadRequest(customerUUID, hookUUID);
     log.info("Deleting hook {} with UUID {}", hook.name, hookUUID);
     hook.delete();
@@ -118,8 +119,8 @@ public class HookController extends AuthenticatedController {
 
   @ApiOperation(value = "Update a hook", nickname = "updateHook", response = Hook.class)
   public Result update(UUID customerUUID, UUID hookUUID) {
-    verifyAuth();
     Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);
     Form<HookRequestData> formData = formFactory.getFormDataOrBadRequest(HookRequestData.class);
     HookRequestData form = formData.get();
     boolean isSudoEnabled = rConfigFactory.staticApplicationConf().getBoolean(ENABLE_SUDO_PATH);
@@ -158,13 +159,13 @@ public class HookController extends AuthenticatedController {
 
   @ApiOperation(value = "Run API Triggered hooks", nickname = "runHooks", response = YBPTask.class)
   public Result run(UUID customerUUID, UUID universeUUID, Boolean isRolling) {
-    verifyAuth();
+    Customer customer = Customer.getOrBadRequest(customerUUID);
+    verifyAuth(customer);
     if (!rConfigFactory.staticApplicationConf().getBoolean(ENABLE_API_HOOK_RUN_PATH)) {
       throw new PlatformServiceException(
           UNAUTHORIZED,
           "The execution of API Triggered custom hooks is not enabled on this Anywhere instance");
     }
-    Customer customer = Customer.getOrBadRequest(customerUUID);
     Universe universe = Universe.getValidUniverseOrBadRequest(universeUUID, customer);
 
     RunApiTriggeredHooks.Params taskParams = new RunApiTriggeredHooks.Params();
@@ -207,10 +208,25 @@ public class HookController extends AuthenticatedController {
     }
   }
 
-  public void verifyAuth() {
+  // public void verifyAuth() {
+  //   if (!rConfigFactory.staticApplicationConf().getBoolean(ENABLE_CUSTOM_HOOKS_PATH))
+  //     throw new PlatformServiceException(
+  //         UNAUTHORIZED, "Custom hooks is not enabled on this Anywhere instance");
+  //   tokenAuthenticator.superAdminOrThrow(ctx());
+  // }
+
+  public void verifyAuth(Customer customer) {
     if (!rConfigFactory.staticApplicationConf().getBoolean(ENABLE_CUSTOM_HOOKS_PATH))
       throw new PlatformServiceException(
           UNAUTHORIZED, "Custom hooks is not enabled on this Anywhere instance");
-    tokenAuthenticator.superAdminOrThrow(ctx());
+
+    boolean cloudEnabled =
+      rConfigFactory.forCustomer(customer).getBoolean("yb.cloud.enabled");
+    if (cloudEnabled) {
+      log.warn("Not performing SuperAdmin authorization for this endpoint, customer={} as platform is in cloud mode", customer.uuid);
+      tokenAuthenticator.adminOrThrow(ctx());
+    } else {
+      tokenAuthenticator.superAdminOrThrow(ctx());
+    }
   }
 }
