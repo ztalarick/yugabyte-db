@@ -47,6 +47,9 @@
 #include "yb/yql/pgwrapper/libpq_test_base.h"
 #include "yb/yql/pgwrapper/libpq_utils.h"
 
+using std::string;
+using std::make_pair;
+
 using namespace std::literals;
 
 DECLARE_int64(external_mini_cluster_max_log_bytes);
@@ -396,7 +399,7 @@ TEST_F(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(ConcurrentInsertTruncateForeignKey))
   for (int i = 0; i != kTruncateThreads; ++i) {
     thread_holder.AddThreadFunctor([this, &stop = thread_holder.stop_flag()] {
       auto truncate_conn = ASSERT_RESULT(Connect());
-      int idx = 0;
+      int idx __attribute__((unused)) = 0;
       while (!stop.load(std::memory_order_acquire)) {
         auto status = truncate_conn.Execute("TRUNCATE TABLE t1, t2 CASCADE");
         ++idx;
@@ -1576,6 +1579,102 @@ TEST_F_EX(PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(ColocatedTablegroups),
         return rpc_calls == 0;
       },
       30s, "Drop database with tablegroup (wait for RPCs to finish)"));
+}
+
+TEST_F_EX(
+    PgLibPqTest, YB_DISABLE_TEST_IN_TSAN(ColocatedTablegroupsAccessMethods),
+    PgLibPqTablegroupTest) {
+  auto client = ASSERT_RESULT(cluster_->CreateClient());
+  const string kDatabaseName = "test_db";
+  const string kTablegroupName = "test_tgroup";
+  const string kQuery = "SELECT * FROM $0 ORDER BY value";
+  const string kQueryForIndexScan = "SELECT * FROM $0 ORDER BY a";
+  const string kQueryForIndexOnlyScan = "SELECT a FROM $0 ORDER BY a";
+  const std::vector<string> kTableNames = {"table_without_pk", "table_with_pk"};
+  const std::vector<string> kCreateTableQueries = {
+      Format("CREATE TABLE $0 (a INT, value TEXT) TABLEGROUP $1", kTableNames[0], kTablegroupName),
+      Format(
+          "CREATE TABLE $0 (a INT, value TEXT, PRIMARY KEY (a ASC)) TABLEGROUP $1", kTableNames[1],
+          kTablegroupName)};
+
+  auto conn = ASSERT_RESULT(Connect());
+  CreateDatabaseWithTablegroup(kDatabaseName, kTablegroupName, &conn);
+
+  for (size_t idx = 0; idx < kTableNames.size(); idx++) {
+    // Create a table within the tablegroup and insert some values.
+    ASSERT_OK(conn.Execute(kCreateTableQueries[idx]));
+    ASSERT_OK(
+        conn.ExecuteFormat("INSERT INTO $0 (a, value) VALUES (1, 'hello')", kTableNames[idx]));
+    ASSERT_OK(
+        conn.ExecuteFormat("INSERT INTO $0 (a, value) VALUES (2, 'hello2')", kTableNames[idx]));
+    ASSERT_OK(
+        conn.ExecuteFormat("INSERT INTO $0 (a, value) VALUES (3, 'hello3')", kTableNames[idx]));
+
+    // Sequential scan.
+    auto query = Format(kQuery, kTableNames[idx]);
+    ASSERT_TRUE(ASSERT_RESULT(conn.HasScanType(query, "Seq")));
+    auto res = ASSERT_RESULT(conn.Fetch(query));
+    ASSERT_EQ(PQntuples(res.get()), 3);
+    ASSERT_EQ(PQnfields(res.get()), 2);
+    {
+      std::vector<std::pair<int, std::string>> values = {
+          std::make_pair(
+              ASSERT_RESULT(GetInt32(res.get(), 0, 0)), ASSERT_RESULT(GetString(res.get(), 0, 1))),
+          std::make_pair(
+              ASSERT_RESULT(GetInt32(res.get(), 1, 0)), ASSERT_RESULT(GetString(res.get(), 1, 1))),
+          std::make_pair(
+              ASSERT_RESULT(GetInt32(res.get(), 2, 0)), ASSERT_RESULT(GetString(res.get(), 2, 1))),
+      };
+      ASSERT_EQ(values[0].first, 1);
+      ASSERT_EQ(values[0].second, "hello");
+      ASSERT_EQ(values[1].first, 2);
+      ASSERT_EQ(values[1].second, "hello2");
+      ASSERT_EQ(values[2].first, 3);
+      ASSERT_EQ(values[2].second, "hello3");
+    }
+
+    // Index scan.
+    ASSERT_OK(
+        conn.ExecuteFormat("CREATE UNIQUE INDEX foo_index_$0 ON $0 (a ASC)", kTableNames[idx]));
+    auto queryForIndexScan = Format(kQueryForIndexScan, kTableNames[idx]);
+    ASSERT_TRUE(ASSERT_RESULT(conn.HasScanType(queryForIndexScan, "Index")));
+    res = ASSERT_RESULT(conn.Fetch(queryForIndexScan));
+    ASSERT_EQ(PQntuples(res.get()), 3);
+    ASSERT_EQ(PQnfields(res.get()), 2);
+    {
+      std::vector<std::pair<int, std::string>> values = {
+          std::make_pair(
+              ASSERT_RESULT(GetInt32(res.get(), 0, 0)), ASSERT_RESULT(GetString(res.get(), 0, 1))),
+          std::make_pair(
+              ASSERT_RESULT(GetInt32(res.get(), 1, 0)), ASSERT_RESULT(GetString(res.get(), 1, 1))),
+          std::make_pair(
+              ASSERT_RESULT(GetInt32(res.get(), 2, 0)), ASSERT_RESULT(GetString(res.get(), 2, 1))),
+      };
+      ASSERT_EQ(values[0].first, 1);
+      ASSERT_EQ(values[0].second, "hello");
+      ASSERT_EQ(values[1].first, 2);
+      ASSERT_EQ(values[1].second, "hello2");
+      ASSERT_EQ(values[2].first, 3);
+      ASSERT_EQ(values[2].second, "hello3");
+    }
+
+    // Index only scan.
+    auto queryForIndexOnlyScan = Format(kQueryForIndexOnlyScan, kTableNames[idx]);
+    ASSERT_TRUE(ASSERT_RESULT(conn.HasScanType(queryForIndexOnlyScan, "Index Only")));
+    res = ASSERT_RESULT(conn.Fetch(queryForIndexOnlyScan));
+    ASSERT_EQ(PQntuples(res.get()), 3);
+    ASSERT_EQ(PQnfields(res.get()), 1);
+    {
+      std::vector<int> values = {
+          ASSERT_RESULT(GetInt32(res.get(), 0, 0)),
+          ASSERT_RESULT(GetInt32(res.get(), 1, 0)),
+          ASSERT_RESULT(GetInt32(res.get(), 2, 0)),
+      };
+      ASSERT_EQ(values[0], 1);
+      ASSERT_EQ(values[1], 2);
+      ASSERT_EQ(values[2], 3);
+    }
+  }
 }
 
 namespace {

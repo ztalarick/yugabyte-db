@@ -44,37 +44,39 @@ class TableIterator;
 class TableRange;
 
 #define TABLE_HANDLE_TYPE_DECLARATIONS_IMPL(name, lname, type) \
-    void PP_CAT3(Add, name, ColumnValue)( \
-        QLWriteRequestPB* req, const std::string &column_name, type value) const; \
-    \
-    void PP_CAT3(Set, name, Condition)( \
-        QLConditionPB *const condition, const std::string &column_name, const QLOperator op, \
-        type value) const; \
-    void PP_CAT3(Add, name, Condition)( \
-        QLConditionPB *const condition, const std::string &column_name, const QLOperator op, \
-        type value) const; \
+  void PP_CAT3(Add, name, ColumnValue)( \
+      QLWriteRequestPB * req, const std::string& column_name, type value) const; \
+\
+  void PP_CAT3(Set, name, Condition)( \
+      QLConditionPB* const condition, const std::string& column_name, const QLOperator op, \
+      type value) const; \
+  void PP_CAT3(Add, name, Condition)( \
+      QLConditionPB* const condition, const std::string& column_name, const QLOperator op, \
+      type value) const;
 
 #define TABLE_HANDLE_TYPE_DECLARATIONS(i, data, entry) TABLE_HANDLE_TYPE_DECLARATIONS_IMPL entry
 
 QLMapValuePB* AddMapColumn(QLWriteRequestPB* req, const int32_t& column_id);
 
 void AddMapEntryToColumn(
-    QLMapValuePB* map_value_pb, const string& entry_key, const string& entry_value);
+    QLMapValuePB* map_value_pb, const std::string& entry_key, const std::string& entry_value);
 
 // Utility class for manually filling QL operations.
 class TableHandle {
  public:
-  Status Create(const YBTableName& table_name,
-                        int num_tablets,
-                        YBClient* client,
-                        YBSchemaBuilder* builder,
-                        IndexInfoPB* index_info = nullptr);
+  Status Create(
+      const YBTableName& table_name,
+      int num_tablets,
+      YBClient* client,
+      YBSchemaBuilder* builder,
+      IndexInfoPB* index_info = nullptr);
 
-  Status Create(const YBTableName& table_name,
-                        int num_tablets,
-                        const YBSchema& schema,
-                        YBClient* client,
-                        IndexInfoPB* index_info = nullptr);
+  Status Create(
+      const YBTableName& table_name,
+      int num_tablets,
+      const YBSchema& schema,
+      YBClient* client,
+      IndexInfoPB* index_info = nullptr);
 
   Status Open(const YBTableName& table_name, YBClient* client);
 
@@ -96,12 +98,12 @@ class TableHandle {
 
   std::shared_ptr<YBqlReadOp> NewReadOp() const;
 
-  int32_t ColumnId(const std::string &column_name) const {
+  int32_t ColumnId(const std::string& column_name) const {
     auto it = column_ids_.find(column_name);
     return it != column_ids_.end() ? it->second : -1;
   }
 
-  const std::shared_ptr<QLType>& ColumnType(const std::string &column_name) const {
+  const std::shared_ptr<QLType>& ColumnType(const std::string& column_name) const {
     static std::shared_ptr<QLType> not_found;
     auto it = column_types_.find(yb::ColumnId(ColumnId(column_name)));
     return it != column_types_.end() ? it->second : not_found;
@@ -110,44 +112,36 @@ class TableHandle {
   BOOST_PP_SEQ_FOR_EACH(TABLE_HANDLE_TYPE_DECLARATIONS, ~, QL_PROTOCOL_TYPES);
 
   // Set a column id without value - for DELETE
-  void SetColumn(QLColumnValuePB *column_value, const std::string &column_name) const;
+  void SetColumn(QLColumnValuePB* column_value, const std::string& column_name) const;
 
   // Add a simple comparison operation under a logical comparison condition.
   // E.g. Add <EXISTS> under "... AND <EXISTS>".
-  void AddCondition(QLConditionPB *const condition, const QLOperator op) const;
+  void AddCondition(QLConditionPB* const condition, const QLOperator op) const;
 
   void AddColumns(const std::vector<std::string>& columns, QLReadRequestPB* req) const;
 
-  const YBTablePtr& table() const {
-    return table_;
-  }
+  const YBTablePtr& table() const { return table_; }
 
   const YBTableName& name() const;
 
   const YBSchema& schema() const;
 
-  YBTable* operator->() const {
-    return table_.get();
-  }
+  YBTable* operator->() const { return table_.get(); }
 
-  YBTable* get() const {
-    return table_.get();
-  }
+  YBTable* get() const { return table_.get(); }
 
-  YBClient* client() const {
-    return client_;
-  }
+  YBClient* client() const { return client_; }
 
   std::vector<std::string> AllColumnNames() const;
 
-  QLValuePB* PrepareColumn(QLWriteRequestPB* req, const string& column_name) const;
+  QLValuePB* PrepareColumn(QLWriteRequestPB* req, const std::string& column_name) const;
   QLValuePB* PrepareCondition(
-      QLConditionPB* const condition, const string& column_name, const QLOperator op) const;
+      QLConditionPB* const condition, const std::string& column_name, const QLOperator op) const;
 
  private:
   typedef std::unordered_map<std::string, yb::ColumnId> ColumnIdsMap;
-  using ColumnTypesMap = std::unordered_map<
-      yb::ColumnId, const std::shared_ptr<QLType>, boost::hash<yb::ColumnId>>;
+  using ColumnTypesMap =
+      std::unordered_map<yb::ColumnId, const std::shared_ptr<QLType>, boost::hash<yb::ColumnId>>;
 
   YBClient* client_;
   YBTablePtr table_;
@@ -169,7 +163,7 @@ struct TableIteratorOptions {
 };
 
 class TableIterator : public std::iterator<
-    std::forward_iterator_tag, QLRow, ptrdiff_t, const QLRow*, const QLRow&> {
+                          std::forward_iterator_tag, QLRow, ptrdiff_t, const QLRow*, const QLRow&> {
  public:
   TableIterator();
   explicit TableIterator(const TableHandle* table, const TableIteratorOptions& options);
@@ -186,9 +180,7 @@ class TableIterator : public std::iterator<
 
   const QLRow& operator*() const;
 
-  const QLRow* operator->() const {
-    return &**this;
-  }
+  const QLRow* operator->() const { return &**this; }
 
  private:
   bool ExecuteOps();
@@ -222,19 +214,15 @@ class TableRange {
   typedef TableIterator iterator;
 
   explicit TableRange(const TableHandle& table, TableIteratorOptions options = {})
-       : table_(&table), options_(std::move(options)) {
+      : table_(&table), options_(std::move(options)) {
     if (!options_.columns) {
       options_.columns = table.AllColumnNames();
     }
   }
 
-  const_iterator begin() const {
-    return TableIterator(table_, options_);
-  }
+  const_iterator begin() const { return TableIterator(table_, options_); }
 
-  const_iterator end() const {
-    return TableIterator();
-  }
+  const_iterator end() const { return TableIterator(); }
 
  private:
   const TableHandle* table_;
@@ -246,14 +234,17 @@ YB_STRONGLY_TYPED_BOOL(Inclusive);
 template <class T>
 class FilterBetweenImpl {
  public:
-  FilterBetweenImpl(const T& lower_bound, Inclusive lower_inclusive,
-                    const T& upper_bound, Inclusive upper_inclusive,
-                    std::string column = "key")
-      : lower_bound_(lower_bound), lower_inclusive_(lower_inclusive),
-        upper_bound_(upper_bound), upper_inclusive_(upper_inclusive),
+  FilterBetweenImpl(
+      const T& lower_bound, Inclusive lower_inclusive, const T& upper_bound,
+      Inclusive upper_inclusive, std::string column = "key")
+      : lower_bound_(lower_bound),
+        lower_inclusive_(lower_inclusive),
+        upper_bound_(upper_bound),
+        upper_inclusive_(upper_inclusive),
         column_(std::move(column)) {}
 
   void operator()(const TableHandle& table, QLConditionPB* condition) const;
+
  private:
   T lower_bound_;
   Inclusive lower_inclusive_;
@@ -263,9 +254,9 @@ class FilterBetweenImpl {
 };
 
 template <class T>
-FilterBetweenImpl<T> FilterBetween(const T& lower_bound, Inclusive lower_inclusive,
-                                   const T& upper_bound, Inclusive upper_inclusive,
-                                   std::string column = "key") {
+FilterBetweenImpl<T> FilterBetween(
+    const T& lower_bound, Inclusive lower_inclusive, const T& upper_bound,
+    Inclusive upper_inclusive, std::string column = "key") {
   return FilterBetweenImpl<T>(lower_bound, lower_inclusive, upper_bound, upper_inclusive, column);
 }
 
@@ -275,6 +266,7 @@ class FilterGreater {
       : bound_(bound), inclusive_(inclusive), column_(std::move(column)) {}
 
   void operator()(const TableHandle& table, QLConditionPB* condition) const;
+
  private:
   int32_t bound_;
   Inclusive inclusive_;
@@ -287,6 +279,7 @@ class FilterLess {
       : bound_(bound), inclusive_(inclusive), column_(std::move(column)) {}
 
   void operator()(const TableHandle& table, QLConditionPB* condition) const;
+
  private:
   int32_t bound_;
   Inclusive inclusive_;
@@ -296,10 +289,10 @@ class FilterLess {
 template <class T>
 class FilterEqualImpl {
  public:
-  FilterEqualImpl(const T& t, std::string column)
-      : t_(t), column_(std::move(column)) {}
+  FilterEqualImpl(const T& t, std::string column) : t_(t), column_(std::move(column)) {}
 
   void operator()(const TableHandle& table, QLConditionPB* condition) const;
+
  private:
   T t_;
   std::string column_;
@@ -310,7 +303,7 @@ FilterEqualImpl<T> FilterEqual(const T& t, std::string column = "key") {
   return FilterEqualImpl<T>(t, std::move(column));
 }
 
-} // namespace client
-} // namespace yb
+}  // namespace client
+}  // namespace yb
 
-#endif // YB_CLIENT_TABLE_HANDLE_H
+#endif  // YB_CLIENT_TABLE_HANDLE_H
