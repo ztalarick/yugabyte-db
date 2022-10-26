@@ -508,8 +508,12 @@ class CDCServiceImpl::Impl {
     if (it->mem_tracker) {
       return it->mem_tracker;
     }
-    auto cdc_mem_tracker =
-        MemTracker::FindOrCreateTracker("CDC", tablet_peer->tablet()->mem_tracker());
+    auto tablet_ptr = tablet_peer->shared_tablet();
+    if (!tablet_ptr) {
+      return nullptr;
+    }
+    auto cdc_mem_tracker = MemTracker::FindOrCreateTracker(
+        "CDC", tablet_ptr->mem_tracker());
     it->mem_tracker = MemTracker::FindOrCreateTracker(producer_info.stream_id, cdc_mem_tracker);
     return it->mem_tracker;
   }
@@ -1374,7 +1378,7 @@ void CDCServiceImpl::ListTablets(
 
 Result<google::protobuf::RepeatedPtrField<master::TabletLocationsPB>> CDCServiceImpl::GetTablets(
     const CDCStreamId& stream_id) {
-  auto stream_metadata = VERIFY_RESULT(GetStream(stream_id));
+  auto stream_metadata = VERIFY_RESULT(GetStream(stream_id, /*ignore_cache*/ true));
   client::YBTableName table_name;
   google::protobuf::RepeatedPtrField<master::TabletLocationsPB> all_tablets;
 
@@ -1548,7 +1552,13 @@ void CDCServiceImpl::GetChanges(
     std::string commit_timestamp;
     OpId last_streamed_op_id;
     auto cached_schema_info = impl_->GetOrAddSchema(producer_tablet, req->need_schema_info());
-    auto namespace_name = tablet_peer->tablet()->metadata()->namespace_name();
+
+    auto tablet_ptr_result = tablet_peer->shared_tablet_safe();
+    RPC_RESULT_RETURN_ERROR(
+        tablet_ptr_result, resp->mutable_error(), CDCErrorPB::INTERNAL_ERROR, context);
+    auto tablet_ptr = *tablet_ptr_result;
+
+    auto namespace_name = tablet_ptr->metadata()->namespace_name();
     auto& [cached_schema_version, cached_schema] = cached_schema_info;
     auto last_sent_checkpoint = impl_->GetLastStreamedOpId(producer_tablet);
     // If from_op_id is more than the last sent op_id, it may be the stale entry and tablet
@@ -3751,7 +3761,7 @@ std::shared_ptr<void> CDCServiceImpl::GetCDCTabletMetrics(
     MetricEntity::AttributeMap attrs;
     {
       SharedLock<rw_spinlock> l(mutex_);
-      auto raft_group_metadata = tablet_peer->tablet()->metadata();
+      auto raft_group_metadata = tablet->metadata();
       attrs["table_id"] = raft_group_metadata->table_id();
       attrs["namespace_name"] = raft_group_metadata->namespace_name();
       attrs["table_name"] = raft_group_metadata->table_name();
@@ -3789,10 +3799,13 @@ void CDCServiceImpl::RemoveCDCTabletMetrics(
   tablet->RemoveAdditionalMetadata(key);
 }
 
-Result<std::shared_ptr<StreamMetadata>> CDCServiceImpl::GetStream(const std::string& stream_id) {
-  auto stream = GetStreamMetadataFromCache(stream_id);
-  if (stream != nullptr) {
-    return stream;
+Result<std::shared_ptr<StreamMetadata>> CDCServiceImpl::GetStream(
+    const std::string& stream_id, bool ignore_cache) {
+  if (!ignore_cache) {
+    auto stream = GetStreamMetadataFromCache(stream_id);
+    if (stream != nullptr) {
+      return stream;
+    }
   }
 
   // Look up stream in sys catalog.
