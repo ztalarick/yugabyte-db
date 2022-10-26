@@ -2025,29 +2025,33 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSchemaChangeBeforeImage)) {
   auto conn = ASSERT_RESULT(test_cluster_.ConnectToDB(kNamespaceName));
 
   ASSERT_OK(conn.Execute("INSERT INTO test_table VALUES (1, 2)"));
-  ASSERT_OK(conn.Execute("UPDATE test_table SET value = 3 WHERE key = 1"));
-  ASSERT_OK(conn.Execute("ALTER TABLE test_table ADD COLUMN value2 INT"));
-  ASSERT_OK(conn.Execute("UPDATE test_table SET value = 4 WHERE key = 1"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value_1 = 3 WHERE key = 1"));
+  ASSERT_OK(conn.Execute("ALTER TABLE test_table ADD COLUMN value_2 INT"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value_1 = 4 WHERE key = 1"));
   ASSERT_OK(conn.Execute("INSERT INTO test_table VALUES (4, 5, 6)"));
-  ASSERT_OK(conn.Execute("UPDATE test_table SET value = 99 WHERE key = 1"));
-  ASSERT_OK(conn.Execute("UPDATE test_table SET value = 99 WHERE key = 4"));
-  ASSERT_OK(conn.Execute("UPDATE test_table SET value2 = 66 WHERE key = 1"));
-  ASSERT_OK(conn.Execute("UPDATE test_table SET value2 = 66 WHERE key = 4"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value_1 = 99 WHERE key = 1"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value_1 = 99 WHERE key = 4"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value_2 = 66 WHERE key = 1"));
+  ASSERT_OK(conn.Execute("UPDATE test_table SET value_2 = 66 WHERE key = 4"));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE in that order.
-  const uint32_t expected_count[] = {3, 2, 6, 0, 0, 0};
+  const uint32_t expected_count[] = {2, 2, 6, 0, 0, 0};
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
   ExpectedRecordWithThreeColumns expected_records[] = {
-      {0, 0, 0},        {0, 0, 0},        {1, 2, INT_MAX}, {1, 3, INT_MAX},
-      {0, 0, INT_MAX},  {1, 4, INT_MAX},  {4, 5, 6},       {1, 99, INT_MAX},
-      {4, 99, INT_MAX}, {1, INT_MAX, 66}, {4, INT_MAX, 66}};
-  ExpectedRecordWithThreeColumns expected_before_image_records[] = {{},        {},
-                                                                    {},        {1, 2, INT_MAX},
-                                                                    {},        {1, 3, INT_MAX},
-                                                                    {},        {1, 4, INT_MAX},
-                                                                    {4, 5, 6}, {1, 99, INT_MAX},
-                                                                    {4, 99, 6}};
+      {0, 0, 0}, {1, 2, INT_MAX},  {1, 3, INT_MAX},  {0, 0, INT_MAX},  {1, 4, INT_MAX},
+      {4, 5, 6}, {1, 99, INT_MAX}, {4, 99, INT_MAX}, {1, INT_MAX, 66}, {4, INT_MAX, 66}};
+  ExpectedRecordWithThreeColumns expected_before_image_records[] = {
+      {},
+      {},
+      {1, 2, INT_MAX},
+      {},
+      {1, 3, INT_MAX},
+      {},
+      {1, 4, INT_MAX},
+      {4, 5, 6},
+      {1, 99, INT_MAX},
+      {4, 99, 6}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
