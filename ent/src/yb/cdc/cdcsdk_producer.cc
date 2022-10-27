@@ -425,11 +425,6 @@ Status PopulateCDCSDKIntentRecord(
 
       if ((metadata.record_type == cdc::CDCRecordType::ALL) &&
           (row_message->op() == RowMessage_Op_DELETE)) {
-        /*MicrosTime micros = intent.intent_ht.hybrid_time().GetPhysicalValueMicros();
-        LogicalTimeComponent logical_value = intent.intent_ht.hybrid_time().GetLogicalValue();
-        auto hybrid_time =
-            server::HybridClock::HybridTimeFromMicrosecondsAndLogicalValue(micros, logical_value)
-                .Decremented();*/
         if (commit_time > 0) {
           auto hybrid_time = commit_time - 1;
           RETURN_NOT_OK(PopulateBeforeImage(
@@ -1146,10 +1141,12 @@ Status GetChangesForCDCSDK(
         last_seen_op_id, last_readable_opid_index, deadline, true));
 
     if (read_ops.messages.size() != 1) {
-      LOG(WARNING) << "Reading more than one raft log message while reading intents";
+      LOG(WARNING) << "Reading more or less than one raft log message while reading intents, read "
+                   << read_ops.messages.size() << " instead";
     }
 
-    if (read_ops.messages[0]->op_type() == consensus::OperationType::UPDATE_TRANSACTION_OP &&
+    if (read_ops.messages.size() > 0 &&
+        read_ops.messages[0]->op_type() == consensus::OperationType::UPDATE_TRANSACTION_OP &&
         read_ops.messages[0]->has_hybrid_time()) {
       commit_timestamp = read_ops.messages[0]->hybrid_time();
     }

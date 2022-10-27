@@ -380,7 +380,7 @@ Result<ReadOpsResult> LogCache::ReadOps(
                              : next_sequential_op_index_;
 
   if (fetch_single_entry) {
-    next_index = to_index = after_op_index;
+    next_index = to_index = to_op_index = after_op_index;
   }
 
   // Remove the deadline if the GetChanges deadline feature is disabled.
@@ -390,7 +390,8 @@ Result<ReadOpsResult> LogCache::ReadOps(
 
   // Return as many operations as we can, up to the limit.
   int64_t remaining_space = max_size_bytes;
-  while (remaining_space >= 0 && next_index < to_index) {
+  while (remaining_space >= 0 &&
+         (fetch_single_entry ? next_index == to_index : next_index < to_index)) {
     // Stop reading if a deadline was specified and the deadline has been exceeded.
     if (deadline != CoarseTimePoint::max() && CoarseMonoClock::Now() >= deadline) {
       break;
@@ -400,12 +401,16 @@ Result<ReadOpsResult> LogCache::ReadOps(
     MessageCache::const_iterator iter = cache_.lower_bound(next_index);
     if (iter == cache_.end() || iter->first != next_index) {
       int64_t up_to;
-      if (iter == cache_.end()) {
-        // Read all the way to the current op.
-        up_to = to_index - 1;
+      if (fetch_single_entry) {
+        up_to = to_index;
       } else {
-        // Read up to the next entry that's in the cache or to_index whichever is lesser.
-        up_to = std::min(iter->first - 1, to_index - 1);
+        if (iter == cache_.end()) {
+          // Read all the way to the current op.
+          up_to = to_index - 1;
+        } else {
+          // Read up to the next entry that's in the cache or to_index whichever is lesser.
+          up_to = std::min(iter->first - 1, to_index - 1);
+        }
       }
 
       l.unlock();

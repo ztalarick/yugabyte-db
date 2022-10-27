@@ -4695,8 +4695,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestEnumWithMultipleTablets)) {
     stream_id[idx] = ASSERT_RESULT(CreateDBStream(IMPLICIT));
 
     for (uint32_t jdx = 0; jdx < num_tablets; jdx++) {
-      auto resp =
-          ASSERT_RESULT(SetCDCCheckpoint(stream_id[idx], tablets[idx], OpId::Min(), true, jdx));
+      auto resp = ASSERT_RESULT(
+          SetCDCCheckpoint(stream_id[idx], tablets[idx], OpId::Min(), kuint64max, true, jdx));
     }
 
     ASSERT_OK(WriteEnumsRows(0, 100, &test_cluster_, tablePrefix[idx], kNamespaceName, kTableName));
@@ -7836,7 +7836,6 @@ TEST_F(
   const int num_tservers = 3;
   FLAGS_enable_load_balancing = false;
   FLAGS_cdc_max_stream_intent_records = 10;
-  FLAGS_consensus_max_batch_size_bytes = 1000;
   ASSERT_OK(SetUpWithParams(num_tservers, 1, false));
   const uint32_t num_tablets = 1;
   auto table = ASSERT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName, num_tablets));
