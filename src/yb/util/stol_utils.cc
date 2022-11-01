@@ -63,6 +63,10 @@ Result<int64_t> CheckedStoll(Slice slice) {
   return CheckedSton<int64_t>(slice, std::bind(&std::strtoll, _1, _2, 10));
 }
 
+Result<uint64_t> CheckedStoull(Slice slice) {
+  return CheckedSton<uint64_t>(slice, std::bind(&std::strtoull, _1, _2, 10));
+}
+
 Result<long double> CheckedStold(Slice slice) {
   return CheckedSton<long double>(slice, std::strtold);
 }

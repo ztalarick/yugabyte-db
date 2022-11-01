@@ -74,13 +74,13 @@ export function ReplicationDetails({
   const sourceUniverseQuery = useQuery(
     ['universe', xClusterConfigQuery.data?.sourceUniverseUUID],
     () => api.fetchUniverse(xClusterConfigQuery.data?.sourceUniverseUUID),
-    { enabled: !!xClusterConfigQuery.data }
+    { enabled: xClusterConfigQuery.data?.sourceUniverseUUID !== undefined }
   );
 
   const targetUniverseQuery = useQuery(
-    ['universe', xClusterConfigQuery.data?.sourceUniverseUUID],
+    ['universe', xClusterConfigQuery.data?.targetUniverseUUID],
     () => api.fetchUniverse(xClusterConfigQuery.data?.targetUniverseUUID),
-    { enabled: !!xClusterConfigQuery.data }
+    { enabled: xClusterConfigQuery.data?.targetUniverseUUID !== undefined }
   );
 
   const xClusterConfigTableUUIDs = xClusterConfigQuery.data?.tables ?? [];
@@ -389,7 +389,8 @@ export function ReplicationDetails({
           onHide={hideModal}
         />
         <DeleteConfigModal
-          currentUniverseUUID={currentUniverseUUID}
+          sourceUniverseUUID={xClusterConfig.sourceUniverseUUID}
+          targetUniverseUUID={xClusterConfig.targetUniverseUUID}
           xClusterConfig={xClusterConfig}
           onHide={hideModal}
           visible={showModal && visibleModal === XClusterModalName.DELETE_CONFIG}

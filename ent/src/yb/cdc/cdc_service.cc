@@ -1210,7 +1210,7 @@ Result<SetCDCCheckpointResponsePB> CDCServiceImpl::SetCDCCheckpoint(
   return SetCDCCheckpointResponsePB();
 }
 
-int64_t CDCServiceImpl::GetHybridTimeValueFromMap(QLMapValuePB map_value, std::string key) {
+int64_t CDCServiceImpl::GetEntryValueFromMap(QLMapValuePB map_value, std::string key) {
   int64_t value = kint64max;
   for (int index = 0; index < map_value.keys_size(); ++index) {
     if (map_value.keys(index).string_value() == key) {
@@ -2004,12 +2004,7 @@ void SetMinCDCSDKCheckpoint(const OpId& checkpoint, OpId* cdc_sdk_op_id) {
 }
 
 void SetMinCDCSDKSafeTime(const HybridTime& cdc_sdk_safe_time, HybridTime* cdc_sdk_min_safe_time) {
-  if (*cdc_sdk_min_safe_time != HybridTime::kInvalid) {
-    *cdc_sdk_min_safe_time =
-        (*cdc_sdk_min_safe_time < cdc_sdk_safe_time) ? *cdc_sdk_min_safe_time : cdc_sdk_safe_time;
-  } else {
-    *cdc_sdk_min_safe_time = cdc_sdk_safe_time;
-  }
+  (*cdc_sdk_min_safe_time).MakeAtMost(cdc_sdk_safe_time);
 }
 
 void PopulateTabletMinCheckpointAndLatestActiveTime(
@@ -2126,14 +2121,19 @@ Result<TabletIdCDCCheckpointMap> CDCServiceImpl::PopulateTabletCheckPointInfo(
     HybridTime cdc_sdk_safe_time = HybridTime::kInvalid;
     int64_t last_active_time_cdc_state_table = std::numeric_limits<int64_t>::min();
     if (!row.column(4).IsNull()) {
-      for (int index = 0; index < row.column(4).map_value().keys_size(); ++index) {
-        if (row.column(4).map_value().keys(index).string_value() == kCDCSDKSafeTime) {
-          cdc_sdk_safe_time = HybridTime::FromPB(std::strtoull(
-              row.column(4).map_value().values(index).string_value().c_str(), nullptr, 10));
+      auto map_value = row.column(4).map_value();
+      for (int index = 0; index < map_value.keys_size(); ++index) {
+        if (map_value.keys(index).string_value() == kCDCSDKSafeTime) {
+          Result res = yb::CheckedStoull(map_value.values(index).string_value().c_str());
+          if (!res.ok()) {
+            LOG(WARNING) << "Unable to fetch the map value corresponding to CDCSDK safe time";
+          } else {
+            cdc_sdk_safe_time = HybridTime::FromPB(*res);
+          }
         }
       }
       last_active_time_cdc_state_table =
-          GetHybridTimeValueFromMap(row.column(4).map_value(), kCDCSDKActiveTime);
+          GetEntryValueFromMap(row.column(4).map_value(), kCDCSDKActiveTime);
     }
 
     VLOG(1) << "stream_id: " << stream_id << ", tablet_id: " << tablet_id
@@ -3537,7 +3537,7 @@ Result<int64_t> CDCServiceImpl::GetLastActiveTime(
   if (!row_block->row(0).column(0).IsNull()) {
     DCHECK_EQ(row_block->row(0).column(0).type(), InternalType::kMapValue);
     auto last_active_time =
-        GetHybridTimeValueFromMap(row_block->row(0).column(0).map_value(), kCDCSDKActiveTime);
+        GetEntryValueFromMap(row_block->row(0).column(0).map_value(), kCDCSDKActiveTime);
     VLOG(2) << "Found entry in cdc_state table with active time: " << last_active_time
             << ", for tablet: " << producer_tablet.tablet_id
             << ", and stream: " << producer_tablet.stream_id;
@@ -4017,10 +4017,9 @@ Status CDCServiceImpl::UpdateChildrenTabletsOnSplitOpForCDCSDK(
 
 Status CDCServiceImpl::UpdateChildrenTabletsOnSplitOp(
     const ProducerTabletInfo& producer_tablet,
-    std::shared_ptr<yb::consensus::ReplicateMsg>
-        split_op_msg,
+    const consensus::ReplicateMsg& split_op_msg,
     const client::YBSessionPtr& session) {
-  const auto split_req = split_op_msg->split_request();
+  const auto& split_req = split_op_msg.split_request();
   const auto parent_tablet = split_req.tablet_id();
   const vector<string> children_tablets = {split_req.new_tablet1_id(), split_req.new_tablet2_id()};
 
@@ -4065,7 +4064,7 @@ Status CDCServiceImpl::UpdateChildrenTabletsOnSplitOp(
     QLAddStringRangeValue(req, producer_tablet.stream_id);
     // No need to update the timestamp here as we haven't started replicating the child yet.
     cdc_state_table->AddStringColumnValue(
-        req, master::kCdcCheckpoint, consensus::OpIdToString(split_op_msg->id()));
+        req, master::kCdcCheckpoint, consensus::OpIdToString(split_op_msg.id()));
     // Only perform updates from tservers for cdc_state, so check if row exists or not.
     auto* condition = req->mutable_if_expr()->mutable_condition();
     condition->set_op(QL_OP_EXISTS);

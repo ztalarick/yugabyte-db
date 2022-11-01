@@ -10,8 +10,7 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 
-#ifndef ENT_SRC_YB_CDC_CDC_SERVICE_H
-#define ENT_SRC_YB_CDC_CDC_SERVICE_H
+#pragma once
 
 #include <memory>
 
@@ -158,7 +157,7 @@ class CDCServiceImpl : public CDCServiceIf {
       GetTabletListToPollForCDCResponsePB* resp,
       rpc::RpcContext context) override;
 
-  int64_t GetHybridTimeValueFromMap(QLMapValuePB map_value, std::string key);
+  int64_t GetEntryValueFromMap(QLMapValuePB map_value, std::string key);
 
   void IsBootstrapRequired(
       const IsBootstrapRequiredRequestPB* req,
@@ -383,8 +382,7 @@ class CDCServiceImpl : public CDCServiceIf {
 
   Status UpdateChildrenTabletsOnSplitOp(
       const ProducerTabletInfo& producer_tablet,
-      std::shared_ptr<yb::consensus::ReplicateMsg>
-          split_op_msg,
+      const consensus::ReplicateMsg& split_op_msg,
       const client::YBSessionPtr& session);
 
   Status UpdateChildrenTabletsOnSplitOpForCDCSDK(
@@ -462,5 +460,3 @@ class CDCServiceImpl : public CDCServiceIf {
 
 }  // namespace cdc
 }  // namespace yb
-
-#endif  // ENT_SRC_YB_CDC_CDC_SERVICE_H

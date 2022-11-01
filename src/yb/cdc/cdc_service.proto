@@ -413,7 +413,7 @@ message UpdateCdcReplicatedIndexRequestPB {
   // Old API. Deprecated.
   optional bytes tablet_id = 1;
   optional int64 replicated_index = 2;
-  repeated fixed64 cdc_sdk_safe_times = 3;
+  optional int64 replicated_term = 3;
   // Batch API.
   // Tablets being updated.
   repeated bytes tablet_ids = 4;
@@ -424,8 +424,8 @@ message UpdateCdcReplicatedIndexRequestPB {
   repeated OpIdPB cdc_sdk_consumed_ops = 7;
   repeated uint64 cdc_sdk_ops_expiration_ms = 8;
   repeated bytes stream_ids = 9;
-  optional int64 replicated_term = 10;
-  optional fixed64 cdc_sdk_safe_time = 11;
+  optional fixed64 cdc_sdk_safe_time = 10;
+  repeated fixed64 cdc_sdk_safe_times = 11;
 }
 
 message UpdateCdcReplicatedIndexResponsePB {
