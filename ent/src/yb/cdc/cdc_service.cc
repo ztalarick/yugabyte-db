@@ -696,6 +696,22 @@ client::YBClient* CDCServiceImpl::client() { return impl_->async_client_init_->c
 
 namespace {
 
+int64_t GetEntryValueFromMap(const QLMapValuePB& map_value, const std::string& key) {
+  int64_t value = kint64max;
+  for (int index = 0; index < map_value.keys_size(); ++index) {
+    if (map_value.keys(index).string_value() == key) {
+      Result res = CheckedStoInt<int64_t>(map_value.values(index).string_value().c_str());
+      if (!res.ok()) {
+        LOG(WARNING) << "Unable to fetch the map value corresponding to " << key;
+      } else {
+        value = *res;
+      }
+      break;
+    }
+  }
+  return value;
+}
+
 bool YsqlTableHasPrimaryKey(const client::YBSchema& schema) {
   for (const auto& col : schema.columns()) {
     if (col.order() == static_cast<int32_t>(PgSystemAttrNum::kYBRowId)) {
@@ -1190,9 +1206,7 @@ Result<SetCDCCheckpointResponsePB> CDCServiceImpl::SetCDCCheckpoint(
     }
   } else {
     checkpoint = OpId::FromPB(req.checkpoint().op_id());
-    if (req.has_cdc_sdk_safe_time() && req.cdc_sdk_safe_time() > 0) {
-      cdc_sdk_safe_time = HybridTime::FromPB(req.cdc_sdk_safe_time());
-    }
+    cdc_sdk_safe_time = HybridTime::FromPB(req.cdc_sdk_safe_time());
   }
   auto session = client()->NewSession();
   session->SetDeadline(deadline);
@@ -1208,21 +1222,6 @@ Result<SetCDCCheckpointResponsePB> CDCServiceImpl::SetCDCCheckpoint(
     RETURN_NOT_OK_SET_CODE(result, CDCError(CDCErrorPB::INTERNAL_ERROR));
   }
   return SetCDCCheckpointResponsePB();
-}
-
-int64_t CDCServiceImpl::GetEntryValueFromMap(QLMapValuePB map_value, std::string key) {
-  int64_t value = kint64max;
-  for (int index = 0; index < map_value.keys_size(); ++index) {
-    if (map_value.keys(index).string_value() == key) {
-      Result res = CheckedStoInt<int64_t>(map_value.values(index).string_value().c_str());
-      if (!res.ok()) {
-        LOG(WARNING) << "Unable to fetch the map value corresponding to " << key;
-      } else {
-        value = *res;
-      }
-    }
-  }
-  return value;
 }
 
 void CDCServiceImpl::GetTabletListToPollForCDC(

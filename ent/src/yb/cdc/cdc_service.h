@@ -88,7 +88,6 @@ using TabletIdCDCCheckpointMap = std::unordered_map<TabletId, TabletCDCCheckpoin
 using TabletIdStreamIdSet = std::set<std::pair<TabletId, CDCStreamId>>;
 using RollBackTabletIdCheckpointMap =
     std::unordered_map<const std::string*, std::pair<int64_t, OpId>>;
-
 class CDCServiceImpl : public CDCServiceIf {
  public:
   CDCServiceImpl(
@@ -156,8 +155,6 @@ class CDCServiceImpl : public CDCServiceIf {
       const GetTabletListToPollForCDCRequestPB* req,
       GetTabletListToPollForCDCResponsePB* resp,
       rpc::RpcContext context) override;
-
-  int64_t GetEntryValueFromMap(QLMapValuePB map_value, std::string key);
 
   void IsBootstrapRequired(
       const IsBootstrapRequiredRequestPB* req,

@@ -475,6 +475,9 @@ Status PopulateCDCSDKIntentRecord(
           RETURN_NOT_OK(AddColumnToMap(
               tablet_peer, col, decoded_value.primitive_value(), enum_oid_label_map,
               composite_atts_map, row_message->add_new_tuple(), nullptr));
+          if (row_message->op() == RowMessage_Op_INSERT) {
+            row_message->add_old_tuple();
+          }
 
         } else if (column_id_opt && column_id_opt->type() != docdb::KeyEntryType::kSystemColumnId) {
           LOG(DFATAL) << "Unexpected value type in key: " << column_id_opt->type()
