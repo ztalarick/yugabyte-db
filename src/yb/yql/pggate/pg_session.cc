@@ -19,6 +19,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <optional>
 
 #include <boost/functional/hash.hpp>
 
@@ -36,7 +37,7 @@
 
 #include "yb/tserver/pg_client.messages.h"
 
-#include "yb/util/flag_tags.h"
+#include "yb/util/flags.h"
 #include "yb/util/format.h"
 #include "yb/util/logging.h"
 #include "yb/util/result.h"
@@ -344,8 +345,8 @@ Result<bool> PgSession::UpdateSequenceTuple(int64_t db_oid,
                                             uint64_t ysql_catalog_version,
                                             int64_t last_val,
                                             bool is_called,
-                                            boost::optional<int64_t> expected_last_val,
-                                            boost::optional<bool> expected_is_called) {
+                                            std::optional<int64_t> expected_last_val,
+                                            std::optional<bool> expected_is_called) {
   return pg_client_.UpdateSequenceTuple(
       db_oid, seq_oid, ysql_catalog_version, last_val, is_called, expected_last_val,
       expected_is_called);
