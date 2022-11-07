@@ -696,20 +696,15 @@ client::YBClient* CDCServiceImpl::client() { return impl_->async_client_init_->c
 
 namespace {
 
-int64_t GetEntryValueFromMap(const QLMapValuePB& map_value, const std::string& key) {
-  int64_t value = kint64max;
+std::string GetEntryValueFromMap(const QLMapValuePB& map_value, const std::string& key) {
   for (int index = 0; index < map_value.keys_size(); ++index) {
     if (map_value.keys(index).string_value() == key) {
-      Result res = CheckedStoInt<int64_t>(map_value.values(index).string_value().c_str());
-      if (!res.ok()) {
-        LOG(WARNING) << "Unable to fetch the map value corresponding to " << key;
-      } else {
-        value = *res;
-      }
+      return map_value.values(index).string_value().c_str();
       break;
     }
   }
-  return value;
+  LOG(WARNING) << "Unable to fetch the map value corresponding to " << key;
+  return std::string();
 }
 
 bool YsqlTableHasPrimaryKey(const client::YBSchema& schema) {
@@ -1666,10 +1661,7 @@ void CDCServiceImpl::GetChanges(
           UpdateCheckpointAndActiveTime(
               producer_tablet, OpId::FromPB(resp->checkpoint().op_id()), op_id, session,
               last_record_hybrid_time, record.source_type, false,
-              (resp->has_safe_hybrid_time() && (resp->safe_hybrid_time() > 0) &&
-               (resp->safe_hybrid_time() != kint64max))
-                  ? HybridTime::FromPB(resp->safe_hybrid_time())
-                  : HybridTime::kInvalid),
+              HybridTime::FromPB(resp->safe_hybrid_time())),
           resp->mutable_error(), CDCErrorPB::INTERNAL_ERROR, context);
     }
 
@@ -2120,19 +2112,28 @@ Result<TabletIdCDCCheckpointMap> CDCServiceImpl::PopulateTabletCheckPointInfo(
     HybridTime cdc_sdk_safe_time = HybridTime::kInvalid;
     int64_t last_active_time_cdc_state_table = std::numeric_limits<int64_t>::min();
     if (!row.column(4).IsNull()) {
-      auto map_value = row.column(4).map_value();
-      for (int index = 0; index < map_value.keys_size(); ++index) {
-        if (map_value.keys(index).string_value() == kCDCSDKSafeTime) {
-          Result res = yb::CheckedStoull(map_value.values(index).string_value().c_str());
-          if (!res.ok()) {
-            LOG(WARNING) << "Unable to fetch the map value corresponding to CDCSDK safe time";
-          } else {
-            cdc_sdk_safe_time = HybridTime::FromPB(*res);
-          }
+      auto& map_value = row.column(4).map_value();
+      std::string value = GetEntryValueFromMap(map_value, kCDCSDKSafeTime);
+      if (!value.empty()) {
+        Result res = yb::CheckedStoull(value);
+        if (!res.ok()) {
+          LOG(WARNING)
+              << "Unable to fetch CDCSDK safe time from string returned by GetEntryValueFromMap";
+        } else {
+          cdc_sdk_safe_time = HybridTime::FromPB(*res);
         }
       }
-      last_active_time_cdc_state_table =
-          GetEntryValueFromMap(row.column(4).map_value(), kCDCSDKActiveTime);
+      value.clear();
+      value = GetEntryValueFromMap(map_value, kCDCSDKActiveTime);
+      if (!value.empty()) {
+        Result res = CheckedStoInt<int64_t>(value);
+        if (!res.ok()) {
+          LOG(WARNING)
+              << "Unable to fetch active time from string returned by GetEntryValueFromMap";
+        } else {
+          last_active_time_cdc_state_table = *res;
+        }
+      }
     }
 
     VLOG(1) << "stream_id: " << stream_id << ", tablet_id: " << tablet_id
@@ -2789,14 +2790,9 @@ void CDCServiceImpl::UpdateCdcReplicatedIndex(
   // Backwards compatibility for deprecated fields.
   if (req->has_tablet_id() && req->has_replicated_index()) {
     Status s = UpdateCdcReplicatedIndexEntry(
-        req->tablet_id(),
-        req->replicated_index(),
-        OpId::Max(),
+        req->tablet_id(), req->replicated_index(), OpId::Max(),
         MonoDelta::FromMilliseconds(GetAtomicFlag(&FLAGS_cdc_intent_retention_ms)),
-        &rollback_tablet_id_map,
-        (req->has_cdc_sdk_safe_time() && (req->cdc_sdk_safe_time() > 0))
-            ? HybridTime::FromPB(req->cdc_sdk_safe_time())
-            : HybridTime::kInvalid);
+        &rollback_tablet_id_map, HybridTime::FromPB(req->cdc_sdk_safe_time()));
     RPC_STATUS_RETURN_ERROR(s, resp->mutable_error(), CDCErrorPB::INVALID_REQUEST, context);
     rollback_tablet_id_map.clear();
     context.RespondSuccess();
@@ -2830,10 +2826,8 @@ void CDCServiceImpl::UpdateCdcReplicatedIndex(
     Status s = UpdateCdcReplicatedIndexEntry(
         req->tablet_ids(i), req->replicated_indices(i), cdc_sdk_op, cdc_sdk_op_id_expiration,
         &rollback_tablet_id_map,
-        !req->cdc_sdk_safe_times().empty() && req->cdc_sdk_safe_times(i) > 0 &&
-                req->cdc_sdk_safe_times().size() > i
-            ? HybridTime::FromPB(req->cdc_sdk_safe_times(i))
-            : HybridTime::kInvalid);
+        req->cdc_sdk_safe_times().size() > i ? HybridTime::FromPB(req->cdc_sdk_safe_times(i))
+                                             : HybridTime::kInvalid);
     RPC_STATUS_RETURN_ERROR(s, resp->mutable_error(), CDCErrorPB::INVALID_REQUEST, context);
   }
 
@@ -3535,8 +3529,18 @@ Result<int64_t> CDCServiceImpl::GetLastActiveTime(
   }
   if (!row_block->row(0).column(0).IsNull()) {
     DCHECK_EQ(row_block->row(0).column(0).type(), InternalType::kMapValue);
-    auto last_active_time =
+    int64_t last_active_time = 0;
+    std::string value =
         GetEntryValueFromMap(row_block->row(0).column(0).map_value(), kCDCSDKActiveTime);
+    if (!value.empty()) {
+      Result res = CheckedStoInt<int64_t>(value);
+      if (!res.ok()) {
+        LOG(WARNING) << "Unable to fetch active time from string returned by GetEntryValueFromMap";
+      } else {
+        last_active_time = *res;
+      }
+    }
+
     VLOG(2) << "Found entry in cdc_state table with active time: " << last_active_time
             << ", for tablet: " << producer_tablet.tablet_id
             << ", and stream: " << producer_tablet.stream_id;
