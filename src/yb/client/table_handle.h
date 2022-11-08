@@ -63,19 +63,17 @@ void AddMapEntryToColumn(
 // Utility class for manually filling QL operations.
 class TableHandle {
  public:
-  Status Create(
-      const YBTableName& table_name,
-      int num_tablets,
-      YBClient* client,
-      YBSchemaBuilder* builder,
-      IndexInfoPB* index_info = nullptr);
+  Status Create(const YBTableName& table_name,
+                int num_tablets,
+                YBClient* client,
+                YBSchemaBuilder* builder,
+                IndexInfoPB* index_info = nullptr);
 
-  Status Create(
-      const YBTableName& table_name,
-      int num_tablets,
-      const YBSchema& schema,
-      YBClient* client,
-      IndexInfoPB* index_info = nullptr);
+  Status Create(const YBTableName& table_name,
+                int num_tablets,
+                const YBSchema& schema,
+                YBClient* client,
+                IndexInfoPB* index_info = nullptr);
 
   Status Open(const YBTableName& table_name, YBClient* client);
 
@@ -302,5 +300,5 @@ FilterEqualImpl<T> FilterEqual(const T& t, std::string column = "key") {
   return FilterEqualImpl<T>(t, std::move(column));
 }
 
-}  // namespace client
-}  // namespace yb
+} // namespace client
+} // namespace yb

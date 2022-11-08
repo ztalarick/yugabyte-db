@@ -277,9 +277,9 @@ class CDCServiceImpl : public CDCServiceIf {
   Result<OpId> TabletLeaderLatestEntryOpId(const TabletId& tablet_id);
 
   Result<client::internal::RemoteTabletPtr> GetRemoteTablet(const TabletId& tablet_id);
-  Result<client::internal::RemoteTabletServer*> GetLeaderTServer(const TabletId& tablet_id);
-  Status GetTServers(
-      const TabletId& tablet_id, std::vector<client::internal::RemoteTabletServer*>* servers);
+  Result<client::internal::RemoteTabletServer *> GetLeaderTServer(const TabletId& tablet_id);
+  Status GetTServers(const TabletId& tablet_id,
+                     std::vector<client::internal::RemoteTabletServer*>* servers);
 
   std::shared_ptr<CDCServiceProxy> GetCDCServiceProxy(client::internal::RemoteTabletServer* ts);
 
