@@ -1034,13 +1034,20 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
       const bool& validate_third_column = false, const int32_t& value2 = 0) {
     ASSERT_EQ(key, record.row_message().new_tuple(0).datum_int32());
     if (value != INT_MAX) {
-      ASSERT_EQ(value, record.row_message().new_tuple(1).datum_int32());
+      for (int index = 0; index < record.row_message().new_tuple_size(); ++index) {
+        if (record.row_message().new_tuple(index).column_name() == kValueColumnName) {
+          ASSERT_EQ(value, record.row_message().new_tuple(index).datum_int32());
+        }
+      }
     }
     if (validate_third_column && value2 != INT_MAX) {
-      if (value == INT_MAX) {
-        ASSERT_EQ(value2, record.row_message().new_tuple(1).datum_int32());
-      } else {
-        ASSERT_EQ(value2, record.row_message().new_tuple(2).datum_int32());
+      for (int index = 0; index < record.row_message().new_tuple_size(); ++index) {
+        if (record.row_message().new_tuple(index).column_name() == kValueColumnName) {
+          ASSERT_EQ(value, record.row_message().new_tuple(index).datum_int32());
+        }
+        if (record.row_message().new_tuple(index).column_name() == kValue2ColumnName) {
+          ASSERT_EQ(value2, record.row_message().new_tuple(index).datum_int32());
+        }
       }
     }
   }
@@ -2039,8 +2046,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSchemaChangeBeforeImage)) {
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
   ExpectedRecordWithThreeColumns expected_records[] = {
-      {0, 0, 0}, {1, 2, INT_MAX},  {1, 3, INT_MAX},  {0, 0, INT_MAX},  {1, 4, INT_MAX},
-      {4, 5, 6}, {1, 99, INT_MAX}, {4, 99, INT_MAX}, {1, INT_MAX, 66}, {4, INT_MAX, 66}};
+      {0, 0, 0}, {1, 2, INT_MAX},  {1, 3, INT_MAX}, {0, 0, INT_MAX}, {1, 4, INT_MAX},
+      {4, 5, 6}, {1, 99, INT_MAX}, {4, 99, 6},      {1, 99, 66},     {4, 99, 66}};
   ExpectedRecordWithThreeColumns expected_before_image_records[] = {
       {},
       {},
