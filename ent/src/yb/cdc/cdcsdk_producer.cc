@@ -221,11 +221,25 @@ Status PopulateBeforeImage(
 
   if (row.ColumnCount() == columns.size()) {
     for (size_t index = 0; index < row.ColumnCount(); ++index) {
+      bool column_updated = false;
       RETURN_NOT_OK(row.GetValue(schema.column_id(index), &ql_value));
       if (!ql_value.IsNull()) {
         RETURN_NOT_OK(AddColumnToMap(
             tablet_peer, columns[index], PrimitiveValue(), enum_oid_label_map, composite_atts_map,
             row_message->add_old_tuple(), &ql_value.value()));
+        if (row_message->op() == RowMessage_Op_UPDATE) {
+          for (int new_tuple_index = 0; new_tuple_index < row_message->new_tuple_size();
+               ++new_tuple_index) {
+            if (row_message->new_tuple((int)new_tuple_index).column_name() ==
+                columns[index].name()) {
+              column_updated = true;
+              break;
+            }
+          }
+          if (!column_updated) {
+            *(row_message->add_new_tuple()) = row_message->old_tuple((int)index);
+          }
+        }
       }
     }
   } else {
@@ -380,6 +394,7 @@ Status PopulateCDCSDKIntentRecord(
               row_message->add_old_tuple();
             }
           }
+
           MakeNewProtoRecord(
               prev_intent, op_id, *row_message, schema, col_count, &proto_record, resp, write_id,
               reverse_index_key);
