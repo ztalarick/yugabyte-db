@@ -697,7 +697,7 @@ client::YBClient* CDCServiceImpl::client() { return impl_->async_client_init_->c
 namespace {
 
 template <class T>
-void GetIntValueFromMap(const QLMapValuePB& map_value, const std::string& key, T& value) {
+void GetIntValueFromMap(const QLMapValuePB& map_value, const std::string& key, T* value) {
   std::string value_str;
   for (int index = 0; index < map_value.keys_size(); ++index) {
     if (map_value.keys(index).string_value() == key) {
@@ -711,14 +711,14 @@ void GetIntValueFromMap(const QLMapValuePB& map_value, const std::string& key, T
     if (!res.ok()) {
       LOG(WARNING) << "Unable to fetch " << key << " from map";
     } else {
-      value = *res;
+      *value = *res;
     }
   } else if (!value_str.empty() && key == kCDCSDKSafeTime) {
     auto res = CheckedStol<uint64_t>(value_str);
     if (!res.ok()) {
       LOG(WARNING) << "Unable to fetch " << key << " from map";
     } else {
-      value = *res;
+      *value = *res;
     }
   } else {
     LOG(WARNING) << "Couldn't find the key " << key << " in cdc state table map";
@@ -2132,9 +2132,9 @@ Result<TabletIdCDCCheckpointMap> CDCServiceImpl::PopulateTabletCheckPointInfo(
     int64_t last_active_time_cdc_state_table = std::numeric_limits<int64_t>::min();
     if (!row.column(4).IsNull()) {
       auto& map_value = row.column(4).map_value();
-      GetIntValueFromMap(map_value, kCDCSDKSafeTime, safe_time);
+      GetIntValueFromMap(map_value, kCDCSDKSafeTime, &safe_time);
       cdc_sdk_safe_time = HybridTime::FromPB(safe_time);
-      GetIntValueFromMap(map_value, kCDCSDKActiveTime, last_active_time_cdc_state_table);
+      GetIntValueFromMap(map_value, kCDCSDKActiveTime, &last_active_time_cdc_state_table);
     }
 
     VLOG(1) << "stream_id: " << stream_id << ", tablet_id: " << tablet_id
@@ -3532,7 +3532,7 @@ Result<int64_t> CDCServiceImpl::GetLastActiveTime(
     DCHECK_EQ(row_block->row(0).column(0).type(), InternalType::kMapValue);
     int64_t last_active_time = 0;
     GetIntValueFromMap(
-        row_block->row(0).column(0).map_value(), kCDCSDKActiveTime, last_active_time);
+        row_block->row(0).column(0).map_value(), kCDCSDKActiveTime, &last_active_time);
 
     VLOG(2) << "Found entry in cdc_state table with active time: " << last_active_time
             << ", for tablet: " << producer_tablet.tablet_id

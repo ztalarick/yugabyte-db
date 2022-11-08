@@ -230,14 +230,14 @@ Status PopulateBeforeImage(
         if (row_message->op() == RowMessage_Op_UPDATE) {
           for (int new_tuple_index = 0; new_tuple_index < row_message->new_tuple_size();
                ++new_tuple_index) {
-            if (row_message->new_tuple((int)new_tuple_index).column_name() ==
+            if (row_message->new_tuple(static_cast<int>(new_tuple_index)).column_name() ==
                 columns[index].name()) {
               column_updated = true;
               break;
             }
           }
           if (!column_updated) {
-            *(row_message->add_new_tuple()) = row_message->old_tuple((int)index);
+            *(row_message->add_new_tuple()) = row_message->old_tuple(static_cast<int>(index));
           }
         }
       }
