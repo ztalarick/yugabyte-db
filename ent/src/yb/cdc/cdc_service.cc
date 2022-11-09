@@ -1636,7 +1636,7 @@ void CDCServiceImpl::GetChanges(
     }
 
     impl_->UpdateCDCStateMetadata(
-        producer_tablet, commit_timestamp, cached_schema, OpId::FromPB(resp->checkpoint().op_id()),
+        producer_tablet, commit_timestamp, cached_schema, OpId::FromPB(resp->cdc_sdk_checkpoint()),
         cached_schema_version);
   }
 
