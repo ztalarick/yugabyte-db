@@ -28,7 +28,7 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
 
   useUpdateEffect(() => {
     const defaultVal = accessKeys[0]?.idKey.keyCode;
-    if (accessKeys.length && provider?.uuid && defaultVal !== fieldVal) {
+    if (accessKeys.length && provider?.uuid && !fieldVal) {
       setValue(ACCESS_KEY_FIELD, defaultVal, { shouldValidate: true });
     }
   }, [provider?.uuid, accessKeys]);
