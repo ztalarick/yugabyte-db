@@ -152,13 +152,13 @@ export const UniverseForm: FC<UniverseFormProps> = ({
               </Grid>
               <Grid item lg={6}>
                 <Box width="100%" display="flex" justifyContent="flex-end">
-                  <YBButton variant="primary" size="large" onClick={() => onCancel()}>
+                  <YBButton variant="secondary" size="large" onClick={() => onCancel()}>
                     {t('common.cancel')}
                   </YBButton>
                   &nbsp;
                   {state.mode === ClusterModes.CREATE && (
                     <YBButton
-                      variant="primary"
+                      variant="secondary"
                       size="large"
                       onClick={() =>
                         onClusterTypeChange && onClusterTypeChange(getValues(), state.clusterType)

@@ -9,14 +9,15 @@ export enum clusterModes {
 }
 
 export enum ClusterModes {
-  CREATE = 'create',
-  EDIT = 'edit'
+  CREATE = 'CREATE',
+  EDIT = 'EDIT'
 }
 
 export enum ClusterType {
-  PRIMARY = 'primary',
-  ASYNC = 'async'
+  PRIMARY = 'PRIMARY',
+  ASYNC = 'ASYNC'
 }
+
 export interface PlacementCloud {
   uuid: string;
   code: string;

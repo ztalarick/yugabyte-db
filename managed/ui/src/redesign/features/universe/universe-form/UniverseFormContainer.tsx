@@ -43,7 +43,7 @@ const createFormMethods = (state: UniverseFormContextState) => ({
 export const UniverseFormContext = createContext<any>(initialState);
 export type FormContextMethods = ReturnType<typeof createFormMethods>;
 interface UniverseFormContainerProps {
-  mode: ClusterModes;
+  mode: string;
   pathname: string;
   uuid: string;
   clusterType: string;
@@ -54,7 +54,14 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
   params
 }) => {
   const classes = useFormMainStyles();
-  const { clusterType, mode } = params;
+  const { clusterType: CLUSTER_TYPE, mode: MODE } = params;
+
+  //route has it in lower case & enum has it in upper case
+  const mode = MODE?.toUpperCase();
+  const clusterType = CLUSTER_TYPE?.toUpperCase();
+
+  //pass updated props to components
+  const props = { ...params, mode, clusterType };
 
   const universeContextData = useMethods(createFormMethods, initialState);
 
@@ -64,10 +71,10 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
         {location.pathname === '/universe/new' && <CreateUniverse />}
         {mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY && <EditUniverse />}
         {mode === ClusterModes.CREATE && clusterType === ClusterType.ASYNC && (
-          <CreateReadReplica {...params} />
+          <CreateReadReplica {...props} />
         )}
         {mode === ClusterModes.EDIT && clusterType === ClusterType.ASYNC && (
-          <EditReadReplica {...params} />
+          <EditReadReplica {...props} />
         )}
       </UniverseFormContext.Provider>
     </Box>
