@@ -29,8 +29,8 @@ export enum ExposingServiceTypes {
   UNEXPOSED = 'UNEXPOSED'
 }
 
-export type FlagsArray = { name: string; value: string | boolean | number | undefined }[];
-export type FlagsObject = Record<string, string>;
+export type FlagsObject = { name: string; value: string | boolean | number | undefined };
+export type FlagsArray = FlagsObject[];
 
 export interface UserIntent {
   universeName: string;
@@ -153,7 +153,7 @@ export interface CloudConfigFormValue {
   regionList: string[]; // array of region IDs
   numNodes: number;
   replicationFactor: number;
-  autoPlacement: boolean;
+  autoPlacement?: boolean;
   placements: Placement[];
 }
 
@@ -207,7 +207,6 @@ export interface Region {
 export interface InstanceConfigFormValue {
   instanceType: string | null;
   deviceInfo: DeviceInfo | null;
-  instanceTags: InstanceTags[];
   assignPublicIP: boolean;
   useTimeSync: boolean;
   enableClientToNodeEncrypt: boolean;
@@ -216,12 +215,12 @@ export interface InstanceConfigFormValue {
   enableEncryptionAtRest: boolean;
   enableYSQL: boolean;
   enableYSQLAuth: boolean;
-  ysqlPassword: string;
-  ysqlConfirmPassword: string;
+  ysqlPassword?: string;
+  ysqlConfirmPassword?: string;
   enableYCQL: boolean;
   enableYCQLAuth: boolean;
-  ycqlPassword: string;
-  ycqlConfirmPassword: string;
+  ycqlPassword?: string;
+  ycqlConfirmPassword?: string;
   enableYEDIS: boolean;
   awsArnString: string | null;
   kmsConfig: string | null;
@@ -347,7 +346,6 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
 export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   instanceType: null,
   deviceInfo: null,
-  instanceTags: [],
   assignPublicIP: true,
   useTimeSync: true,
   enableClientToNodeEncrypt: true,
@@ -418,7 +416,9 @@ export interface NodeDetails {
 }
 
 export interface EncryptionAtRestConfig {
-  configUUID?: string; // KMS config Id field for configure/create calls
+  encryptionAtRestEnabled?: boolean;
+  configUUID?: string;
+  kmsConfigUUID?: string; // KMS config Id field for configure/create calls
   key_op?: 'ENABLE' | 'DISABLE' | 'UNDEFINED'; // operation field for configure/create calls
   type?: 'DATA_KEY' | 'CMK';
 }
@@ -441,7 +441,7 @@ export interface UniverseDetails {
   nodeDetailsSet: NodeDetails[];
   nodePrefix: string;
   resetAZConfig: boolean;
-  rootCA: string | null;
+  rootCA: string;
   universeUUID: string;
   updateInProgress: boolean;
   updateSucceeded: boolean;
