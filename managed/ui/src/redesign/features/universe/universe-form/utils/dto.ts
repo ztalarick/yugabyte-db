@@ -262,8 +262,8 @@ export enum ExposingServiceTypes {
   UNEXPOSED = 'UNEXPOSED'
 }
 
-export type FlagsArray = { name: string; value: string | boolean | number | undefined }[];
-export type FlagsObject = Record<string, string>;
+export type FlagsObject = { name: string; value: string | boolean | number | undefined };
+export type FlagsArray = FlagsObject[];
 
 export interface UserIntent {
   universeName: string;

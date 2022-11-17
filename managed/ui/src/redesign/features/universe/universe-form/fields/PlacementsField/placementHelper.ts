@@ -24,7 +24,7 @@ import {
 } from '../../utils/constants';
 import { getUserIntent } from '../../utils/helpers';
 
-const getPlacementsFromCluster = (
+export const getPlacementsFromCluster = (
   cluster?: Cluster,
   providerId?: string // allocated for the future, currently there's single cloud per universe only
 ): any[] => {
@@ -133,7 +133,10 @@ export const useNodePlacements = () => {
   const [needPlacement, setNeedPlacement] = useState(false);
   const [regionsChanged, setRegionsChanged] = useState(false);
   const { setValue, getValues } = useFormContext<UniverseFormData>();
-  const [{ UniverseConfigureData }, { setUniverseConfigureData }] = useContext(UniverseFormContext);
+  const [{ UniverseConfigureData, clusterType }, { setUniverseConfigureData }] = useContext(
+    UniverseFormContext
+  );
+
   //watchers
   const regionList = useWatch({ name: REGIONS_FIELD });
   const totalNodes = useWatch({ name: TOTAL_NODES_FIELD });
@@ -148,8 +151,14 @@ export const useNodePlacements = () => {
 
   if (UniverseConfigureData && getValues(PLACEMENTS_FIELD)?.length) {
     payload = { ...UniverseConfigureData };
-    payload.clusters[0].placementInfo.cloudList[0].regionList = getPlacements(getValues());
-    payload.clusters[0].userIntent = userIntent;
+    //update the cluster intent based on cluster type
+    let clusterIndex = payload.clusters.findIndex(
+      (cluster: Cluster) => cluster.clusterType === clusterType
+    );
+    payload.clusters[clusterIndex].placementInfo.cloudList[0].regionList = getPlacements(
+      getValues()
+    );
+    payload.clusters[clusterIndex].userIntent = userIntent;
     payload['regionsChanged'] = regionsChanged;
     payload['userAZSelected'] = false;
     payload['resetAZConfig'] = false;

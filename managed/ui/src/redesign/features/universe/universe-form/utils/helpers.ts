@@ -223,6 +223,7 @@ const patchConfigResponse = (response: UniverseDetails, original: UniverseDetail
     userIntent.ysqlPassword = original.clusters[clusterIndex].userIntent.ysqlPassword;
 };
 
+//Form Submit helpers
 export const createUniverse = async ({
   configurePayload,
   universeContextData
