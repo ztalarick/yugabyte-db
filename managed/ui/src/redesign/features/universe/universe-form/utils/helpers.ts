@@ -4,15 +4,17 @@ import { api } from './api';
 import {
   CloudType,
   ClusterType,
+  Cluster,
   UniverseDetails,
   UniverseConfigure,
   UniverseFormData,
   UserIntent,
   Gflag,
-  FlagsArray
+  FlagsArray,
+  FlagsObject
 } from './dto';
 import { UniverseFormContextState } from '../reducer';
-import { getPlacements } from '../fields/PlacementsField/placementHelper';
+import { getPlacements, getPlacementsFromCluster } from '../fields/PlacementsField/placementHelper';
 
 const patchConfigResponse = (response: UniverseDetails, original: UniverseDetails) => {
   const clusterIndex = 0; // TODO: change to dynamic when support async clusters
@@ -31,6 +33,88 @@ const transitToUniverse = (universeUUID: string | undefined) => {
   if (universeUUID) browserHistory.push(`/universes/${universeUUID}/tasks`);
 };
 
+//get cluster data by cluster type
+export const getClusterByType = (
+  universeData: UniverseDetails,
+  clusterType: ClusterType
+): Cluster | undefined => {
+  return universeData?.clusters?.find((cluster: Cluster) => cluster.clusterType === clusterType);
+};
+
+const transformMasterTserverToFlags = (
+  masterGFlags: FlagsArray,
+  tserverGFlags: FlagsArray
+): Gflag[] => {
+  const flagsArray: Gflag[] = [
+    ...masterGFlags.map((flag: FlagsObject) => ({
+      Name: flag.name,
+      MASTER: flag.value
+    })),
+    ...tserverGFlags.map((flag: FlagsObject) => ({
+      Name: flag.name,
+      TSERVER: flag.value
+    }))
+  ];
+
+  return flagsArray;
+};
+
+//Transform universe data to form data
+export const getFormData = (universeData: UniverseDetails, clusterType: ClusterType) => {
+  const { communicationPorts, encryptionAtRestConfig, rootCA } = universeData;
+  const cluster = getClusterByType(universeData, clusterType);
+
+  if (!cluster) return {};
+
+  const { userIntent } = cluster;
+
+  let data: UniverseFormData = {
+    cloudConfig: {
+      universeName: userIntent.universeName,
+      provider: {
+        code: userIntent.providerType,
+        uuid: userIntent.provider
+      },
+      regionList: userIntent.regionList,
+      numNodes: userIntent.numNodes,
+      replicationFactor: userIntent.replicationFactor,
+      placements: getPlacementsFromCluster(cluster),
+      autoPlacement: true //** */
+    },
+    instanceConfig: {
+      instanceType: userIntent.instanceType,
+      deviceInfo: userIntent.deviceInfo,
+      assignPublicIP: userIntent.assignPublicIP,
+      useTimeSync: userIntent.useTimeSync,
+      enableClientToNodeEncrypt: userIntent.enableClientToNodeEncrypt,
+      enableNodeToNodeEncrypt: userIntent.enableNodeToNodeEncrypt,
+      enableYSQL: userIntent.enableYSQL,
+      enableYSQLAuth: userIntent.enableYSQLAuth,
+      enableYCQL: userIntent.enableYCQL,
+      enableYCQLAuth: userIntent.enableYCQLAuth,
+      enableYEDIS: userIntent.enableYEDIS,
+      awsArnString: userIntent.awsArnString,
+      enableEncryptionAtRest: !!encryptionAtRestConfig.encryptionAtRestEnabled,
+      kmsConfig: encryptionAtRestConfig?.kmsConfigUUID ?? null,
+      rootCA
+    },
+    advancedConfig: {
+      useSystemd: userIntent.useSystemd,
+      awsArnString: userIntent.awsArnString,
+      enableIPV6: userIntent.enableIPV6,
+      enableExposingService: userIntent.enableExposingService,
+      accessKeyCode: userIntent.accessKeyCode,
+      ybSoftwareVersion: userIntent.ybSoftwareVersion,
+      communicationPorts,
+      customizePort: false, //** */
+      ybcPackagePath: null //** */
+    },
+    instanceTags: userIntent.instanceTags,
+    gFlags: transformMasterTserverToFlags(userIntent.masterGFlags, userIntent.tserverGFlags)
+  };
+  return data;
+};
+
 const transformFlagsToMasterTserver = (
   flagsArray: Gflag[]
 ): { masterGFlags: FlagsArray; tserverGFlags: FlagsArray } => {
@@ -46,6 +130,7 @@ const transformFlagsToMasterTserver = (
   return { masterGFlags, tserverGFlags };
 };
 
+//Transform form data to intent
 export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
   const { masterGFlags, tserverGFlags } = transformFlagsToMasterTserver(formData.gFlags);
 
@@ -87,6 +172,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
   return intent;
 };
 
+//Form Submit helpers
 export const createUniverse = async ({
   formData,
   universeContextData,
