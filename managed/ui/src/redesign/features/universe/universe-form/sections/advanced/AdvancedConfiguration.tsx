@@ -29,11 +29,13 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
   const isYBCEnabled = featureFlags.test.enableYbc || featureFlags.released.enableYbc;
 
   //form context
-  const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
+  const { mode, clusterType } = useContext(UniverseFormContext)[0];
+  const isPrimary = clusterType === ClusterType.PRIMARY;
+  const isEditMode = mode === ClusterModes.EDIT;
   // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY;
+  const isFieldReadOnly = isEditMode && isPrimary;
   // const isDbVersionReadOnly = mode !== clusterModes.NEW_PRIMARY;
-  const isDbVersionReadOnly = mode !== ClusterModes.CREATE && clusterType !== ClusterType.PRIMARY;
+  const isDbVersionReadOnly = !isEditMode && !isPrimary;
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });

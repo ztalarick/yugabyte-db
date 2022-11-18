@@ -20,10 +20,11 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
   const { t } = useTranslation();
 
   //form context
-  const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
-
+  const { mode, clusterType } = useContext(UniverseFormContext)[0];
+  const isPrimary = clusterType === ClusterType.PRIMARY;
+  const isEditMode = mode === ClusterModes.EDIT;
   // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY;
+  const isFieldReadOnly = isEditMode && isPrimary;
 
   return (
     <Box className={classes.sectionContainer}>

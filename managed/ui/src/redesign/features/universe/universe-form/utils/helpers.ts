@@ -13,7 +13,7 @@ import {
   FlagsArray,
   FlagsObject
 } from './dto';
-import { UniverseFormContextState } from '../reducer';
+import { UniverseFormContextState } from '../UniverseFormContainer';
 import { getPlacements, getPlacementsFromCluster } from '../fields/PlacementsField/placementHelper';
 
 const patchConfigResponse = (response: UniverseDetails, original: UniverseDetails) => {
@@ -120,7 +120,7 @@ const transformFlagsToMasterTserver = (
 ): { masterGFlags: FlagsArray; tserverGFlags: FlagsArray } => {
   const masterGFlags: FlagsArray = [],
     tserverGFlags: FlagsArray = [];
-  flagsArray.forEach((flag: Gflag) => {
+  (flagsArray || []).forEach((flag: Gflag) => {
     if (flag?.hasOwnProperty('MASTER'))
       masterGFlags.push({ name: flag?.Name, value: flag['MASTER'] });
     if (flag?.hasOwnProperty('TSERVER'))
@@ -141,7 +141,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     regionList: formData.cloudConfig.regionList,
     numNodes: formData.cloudConfig.numNodes,
     replicationFactor: formData.cloudConfig.replicationFactor,
-    instanceType: formData.instanceConfig.instanceType as string,
+    instanceType: (formData?.instanceConfig?.instanceType || '') as string,
     deviceInfo: formData.instanceConfig.deviceInfo,
     instanceTags: formData.instanceTags.filter((tag) => tag.name && tag.value),
     assignPublicIP: formData.instanceConfig.assignPublicIP,

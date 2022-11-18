@@ -12,17 +12,18 @@ import {
   InstanceConfiguration,
   UserTags
 } from './sections';
-import { UniverseFormData, ClusterType, ClusterModes } from './utils/dto';
+import { UniverseFormData, ClusterType, ClusterModes, DEFAULT_FORM_DATA } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
 import { api } from './utils/api';
 import { UniverseFormContext } from './UniverseFormContainer';
+import { useUpdateEffect } from 'react-use';
 
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
   title: React.ReactNode;
   onFormSubmit: (data: UniverseFormData) => void;
   onCancel: () => void;
-  onClusterTypeChange?: (data: UniverseFormData, type: ClusterType) => void;
+  isPrimaryAndRR?: boolean;
 }
 
 export const UniverseForm: FC<UniverseFormProps> = ({
@@ -30,11 +31,12 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   title,
   onFormSubmit,
   onCancel,
-  onClusterTypeChange
+  isPrimaryAndRR = false
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
-  const [state] = useContext(UniverseFormContext);
+  const [state, contextMethods] = useContext(UniverseFormContext);
+  const { clusterType } = state;
 
   //Form Validation
   const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
@@ -122,8 +124,30 @@ export const UniverseForm: FC<UniverseFormProps> = ({
     defaultValues: defaultFormData,
     resolver: yupResolver(validationSchema)
   });
+  // const formMethods = form;
+  const { getValues, reset } = formMethods;
 
-  const { getValues } = formMethods;
+  const toggleClusterType = () => {
+    if (clusterType === ClusterType.PRIMARY) {
+      contextMethods.updateFormDataAndToggle({
+        PrimaryFormData: getValues(),
+        clusterType: ClusterType.ASYNC
+      });
+    } else {
+      contextMethods.updateFormDataAndToggle({
+        AsyncFormData: getValues(),
+        clusterType: ClusterType.PRIMARY
+      });
+    }
+  };
+
+  useUpdateEffect(() => {
+    if (isPrimaryAndRR) {
+      if (clusterType === ClusterType.PRIMARY) {
+        reset({ ...state.PrimaryFormData });
+      } else reset(state.AsyncFormData ?? DEFAULT_FORM_DATA);
+    }
+  }, [clusterType]);
 
   const onSubmit = (formData: UniverseFormData) => {
     onFormSubmit(formData);
@@ -132,7 +156,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   return (
     <Box className={classes.mainConatiner}>
       <FormProvider {...formMethods}>
-        <form onSubmit={formMethods.handleSubmit(onSubmit)}>
+        <form key={state.clusterType} onSubmit={formMethods.handleSubmit(onSubmit)}>
           <Box className={classes.formHeader}>
             <Typography variant="h3">{title}</Typography>
           </Box>
@@ -156,14 +180,8 @@ export const UniverseForm: FC<UniverseFormProps> = ({
                     {t('common.cancel')}
                   </YBButton>
                   &nbsp;
-                  {state.mode === ClusterModes.CREATE && (
-                    <YBButton
-                      variant="secondary"
-                      size="large"
-                      onClick={() =>
-                        onClusterTypeChange && onClusterTypeChange(getValues(), state.clusterType)
-                      }
-                    >
+                  {state.mode === ClusterModes.CREATE && isPrimaryAndRR && (
+                    <YBButton variant="secondary" size="large" onClick={() => toggleClusterType()}>
                       {state.clusterType === ClusterType.PRIMARY
                         ? t('universeForm.actions.configureRR')
                         : t('universeForm.actions.backPrimary')}

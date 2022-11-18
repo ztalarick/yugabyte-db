@@ -11,6 +11,7 @@
       "configReadReplica": "Configure Read Replica",
       "createUniverse": "Create Universe",
       "editReadReplica": "Edit Read Replica",
+      "editUniverse": "Edit Universe",
       "advancedConfig": {
         "title": "Advanced Configuration",
         "accessKey": "Access Key",
