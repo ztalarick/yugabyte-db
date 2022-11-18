@@ -36,9 +36,11 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
   const { t } = useTranslation();
 
   //form context
-  const { isPrimary, mode, clusterType } = useContext(UniverseFormContext)[0];
+  const { mode, clusterType } = useContext(UniverseFormContext)[0];
+  const isPrimary = clusterType === ClusterType.PRIMARY;
+  const isEditMode = mode === ClusterModes.EDIT;
   // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY;
+  const isFieldReadOnly = isEditMode && isPrimary;
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
