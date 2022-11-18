@@ -1,16 +1,16 @@
 import React, { FC, useContext } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
-import { UniverseForm } from './UniverseForm';
-import { ClusterType, DEFAULT_FORM_DATA, UniverseFormData, ClusterModes } from './utils/dto';
-import { UniverseFormContext } from './UniverseFormContainer';
-import { api, QUERY_KEY } from './utils/api';
+import { UniverseForm } from '../UniverseForm';
+import { ClusterType, DEFAULT_FORM_DATA, UniverseFormData, ClusterModes } from '../utils/dto';
+import { UniverseFormContext } from '../UniverseFormContainer';
+import { api, QUERY_KEY } from '../utils/api';
 
-interface EditReadReplicaProps {
+interface CreateReadReplicaProps {
   uuid: string;
 }
 
-export const EditReadReplica: FC<EditReadReplicaProps> = (props) => {
+export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
   const { t } = useTranslation();
   const [state, formMethods] = useContext(UniverseFormContext);
   const { uuid } = props;
@@ -19,22 +19,23 @@ export const EditReadReplica: FC<EditReadReplicaProps> = (props) => {
     [QUERY_KEY.fetchUniverse, uuid],
     () => api.fetchUniverse(uuid),
     {
-      onSuccess: () => {
-        formMethods.updateFormState({
+      onSuccess: (resp) => {
+        //Transform it to form schema
+        //initialize form
+        formMethods.initializeForm({
+          UniverseConfigureData: resp.universeDetails,
           clusterType: ClusterType.ASYNC,
-          mode: ClusterModes.EDIT,
-          isPrimary: false
+          mode: ClusterModes.CREATE
         });
       }
     }
   );
 
-  if (isLoading || !state) return <>Loading .... </>;
-
   const onSubmit = (formData: UniverseFormData) => {
     console.log(formData);
   };
 
+  if (isLoading || state.isLoading) return <>Loading .... </>;
   return (
     <UniverseForm
       defaultFormData={DEFAULT_FORM_DATA}

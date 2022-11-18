@@ -1,43 +1,57 @@
 import React, { createContext, FC } from 'react';
-import { UniverseConfigure, ClusterType, ClusterModes } from './utils/dto';
+import { UniverseConfigure, ClusterType, ClusterModes, UniverseFormData } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
 import { Box } from '@material-ui/core';
 import { useMethods } from 'react-use';
 import { RouteComponentProps } from 'react-router-dom';
-import { CreateUniverse } from './CreateUniverse';
-import { EditUniverse } from './EditUniverse';
-import { EditReadReplica } from './EditRR';
-import { CreateReadReplica } from './CreateRR';
+import {
+  CreateUniverse,
+  CreateReadReplica,
+  EditUniverse,
+  EditReadReplica
+} from './cluster-operations';
 
-interface UniverseFormContextState {
+export interface UniverseFormContextState {
   clusterType: ClusterType;
-  isPrimary?: boolean;
-  UniverseConfigureData?: UniverseConfigure | null;
-  FormData?: UniverseConfigure | null;
+  UniverseConfigureData: UniverseConfigure | null;
+  PrimaryFormData?: UniverseFormData | null;
+  AsyncFormData?: UniverseFormData | null;
   mode: ClusterModes;
+  isLoading: boolean; // To safeguard against bad defaults
 }
 
 const initialState: UniverseFormContextState = {
   clusterType: ClusterType.PRIMARY,
-  isPrimary: true,
   UniverseConfigureData: null,
-  FormData: null,
-  mode: ClusterModes.CREATE
+  PrimaryFormData: null,
+  AsyncFormData: null,
+  mode: ClusterModes.CREATE,
+  isLoading: true
 };
 
+//Avoiding using global state since we are using react-query
 const createFormMethods = (state: UniverseFormContextState) => ({
   setUniverseConfigureData: (data: UniverseConfigure): UniverseFormContextState => ({
     ...state,
-    UniverseConfigureData: data
+    UniverseConfigureData: data,
+    isLoading: false
   }),
-  toggleClusterType: (type: ClusterType) => ({
+  //This method will be used only in case of Create Primary Cluster + Read Replica flow
+  updateFormDataAndToggle: (data: Partial<UniverseFormContextState>): UniverseFormContextState => ({
     ...state,
-    clusterType: type === ClusterType.PRIMARY ? ClusterType.ASYNC : ClusterType.PRIMARY
+    ...data
+    // isLoading: false
   }),
-  updateFormState: (payload: Partial<UniverseFormContextState>) => ({
+  initializeForm: (data: Partial<UniverseFormContextState>): UniverseFormContextState => ({
     ...state,
-    ...payload
-  })
+    ...data,
+    isLoading: false
+  }),
+  setLoader: (val: boolean): UniverseFormContextState => ({
+    ...state,
+    isLoading: val
+  }),
+  reset: (): UniverseFormContextState => initialState
 });
 
 export const UniverseFormContext = createContext<any>(initialState);
@@ -54,28 +68,34 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
   params
 }) => {
   const classes = useFormMainStyles();
-  const { clusterType: CLUSTER_TYPE, mode: MODE } = params;
+  const { clusterType: CLUSTER_TYPE, mode: MODE, uuid } = params;
 
   //route has it in lower case & enum has it in upper case
   const mode = MODE?.toUpperCase();
   const clusterType = CLUSTER_TYPE?.toUpperCase();
 
-  //pass updated props to components
-  const props = { ...params, mode, clusterType };
-
   const universeContextData = useMethods(createFormMethods, initialState);
+
+  const switchInternalRoutes = () => {
+    //Create Primary + RR
+    if (location.pathname === '/universe/new') return <CreateUniverse />;
+    //NEW ASYNC
+    else if (mode === ClusterModes.CREATE && clusterType === ClusterType.ASYNC)
+      return <CreateReadReplica uuid={uuid} />;
+    //EDIT PRIMARY
+    else if (mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY)
+      return <EditUniverse uuid={uuid} />;
+    //EDIT ASYNC
+    else if (mode === ClusterModes.EDIT && clusterType === ClusterType.ASYNC)
+      return <EditReadReplica uuid={uuid} />;
+    //Page not found
+    else return <div>Page not found</div>;
+  };
 
   return (
     <Box className={classes.mainConatiner}>
       <UniverseFormContext.Provider value={universeContextData}>
-        {location.pathname === '/universe/new' && <CreateUniverse />}
-        {mode === ClusterModes.EDIT && clusterType === ClusterType.PRIMARY && <EditUniverse />}
-        {mode === ClusterModes.CREATE && clusterType === ClusterType.ASYNC && (
-          <CreateReadReplica {...props} />
-        )}
-        {mode === ClusterModes.EDIT && clusterType === ClusterType.ASYNC && (
-          <EditReadReplica {...props} />
-        )}
+        {switchInternalRoutes()}
       </UniverseFormContext.Provider>
     </Box>
   );
