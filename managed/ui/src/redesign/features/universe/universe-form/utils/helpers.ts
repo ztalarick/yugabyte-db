@@ -14,6 +14,7 @@ import {
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
 import { getPlacements, getPlacementsFromCluster } from '../fields/PlacementsField/placementHelper';
+import { ASYNC_FIELDS, PRIMARY_FIELDS } from './constants';
 
 const patchConfigResponse = (response: UniverseDetails, original: UniverseDetails) => {
   const clusterIndex = 0; // TODO: change to dynamic when support async clusters
@@ -56,6 +57,15 @@ const transformMasterTserverToFlags = (
   ];
 
   return flagsArray;
+};
+
+//Filter form data by cluster type
+export const filterFormDataByClusterType = (
+  formData: UniverseFormData,
+  clusterType: ClusterType
+) => {
+  const formFields = clusterType === ClusterType.PRIMARY ? PRIMARY_FIELDS : ASYNC_FIELDS;
+  return _.pick(formData, formFields);
 };
 
 //Transform universe data to form data
