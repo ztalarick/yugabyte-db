@@ -24,7 +24,7 @@ export const CreateUniverse: FC<CreateUniverseProps> = () => {
       clusterType: ClusterType.PRIMARY,
       mode: ClusterModes.CREATE
     });
-  }, []);
+  }, [formMethods]);
 
   useUpdateEffect(() => {
     formMethods.toggleClusterType(ClusterType.ASYNC);

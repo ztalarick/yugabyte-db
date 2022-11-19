@@ -7,7 +7,7 @@ import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 import { api, QUERY_KEY } from '../../utils/api';
 import { UniverseFormData, Provider, DEFAULT_CLOUD_CONFIG } from '../../utils/dto';
-import { PROVIDER_FIELD, ACCESS_KEY_FIELD } from '../../utils/constants';
+import { PROVIDER_FIELD, ACCESS_KEY_FIELD, INSTANCE_TYPE_FIELD } from '../../utils/constants';
 
 interface ProvidersFieldProps {
   disabled?: boolean;
@@ -32,6 +32,7 @@ export const ProvidersField = ({ disabled }: ProvidersFieldProps): ReactElement 
 
       //Reset fields on provider change
       setValue(ACCESS_KEY_FIELD, null, { shouldValidate: true });
+      setValue(INSTANCE_TYPE_FIELD, null);
     } else {
       setValue(PROVIDER_FIELD, DEFAULT_CLOUD_CONFIG.provider, { shouldValidate: true });
     }
