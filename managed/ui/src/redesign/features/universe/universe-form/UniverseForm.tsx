@@ -34,8 +34,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
-  const [state, contextMethods] = useContext(UniverseFormContext);
-  const { clusterType } = state;
+  const [state] = useContext(UniverseFormContext);
 
   //Form Validation
   const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
@@ -124,7 +123,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
     resolver: yupResolver(validationSchema)
   });
 
-  const { getValues, reset, unregister, register } = formMethods;
+  const { getValues } = formMethods;
 
   const onSubmit = (formData: UniverseFormData) => {
     onFormSubmit(formData);
