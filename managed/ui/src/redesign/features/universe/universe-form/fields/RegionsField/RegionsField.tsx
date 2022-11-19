@@ -21,7 +21,6 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
   const { t } = useTranslation();
   //Listen to provider value change
   const provider = useWatch({ name: 'cloudConfig.provider' });
-
   const { isFetching, data } = useQuery(
     [QUERY_KEY.getRegionsList, provider?.uuid],
     () => api.getRegionsList(provider?.uuid),

@@ -52,7 +52,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       <UniverseForm
         defaultFormData={{
           ...DEFAULT_FORM_DATA,
-          ...getFormData(universe.universeDetails, ClusterType.ASYNC)
+          ...getFormData(universe.universeDetails, ClusterType.PRIMARY)
         }}
         title={renderTitle}
         onFormSubmit={onSubmit}

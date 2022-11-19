@@ -37,10 +37,17 @@ const createFormMethods = (state: UniverseFormContextState) => ({
     isLoading: false
   }),
   //This method will be used only in case of Create Primary Cluster + Read Replica flow
-  updateFormDataAndToggle: (data: Partial<UniverseFormContextState>): UniverseFormContextState => ({
+  setPrimaryFormData: (data: UniverseFormData): UniverseFormContextState => ({
     ...state,
-    ...data
-    // isLoading: false
+    PrimaryFormData: data
+  }),
+  setAsyncFormData: (data: UniverseFormData): UniverseFormContextState => ({
+    ...state,
+    AsyncFormData: data
+  }),
+  toggleClusterType: (type: ClusterType): UniverseFormContextState => ({
+    ...state,
+    clusterType: type
   }),
   initializeForm: (data: Partial<UniverseFormContextState>): UniverseFormContextState => ({
     ...state,
