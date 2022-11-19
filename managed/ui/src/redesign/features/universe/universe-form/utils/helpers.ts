@@ -10,8 +10,7 @@ import {
   UniverseFormData,
   UserIntent,
   Gflag,
-  FlagsArray,
-  FlagsObject
+  FlagsArray
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
 import { getPlacements, getPlacementsFromCluster } from '../fields/PlacementsField/placementHelper';
@@ -46,13 +45,13 @@ const transformMasterTserverToFlags = (
   tserverGFlags: FlagsArray
 ): Gflag[] => {
   const flagsArray: Gflag[] = [
-    ...masterGFlags.map((flag: FlagsObject) => ({
-      Name: flag.name,
-      MASTER: flag.value
+    ...Object.keys(masterGFlags).map((key: string) => ({
+      Name: key,
+      MASTER: masterGFlags[key]
     })),
-    ...tserverGFlags.map((flag: FlagsObject) => ({
-      Name: flag.name,
-      TSERVER: flag.value
+    ...Object.keys(tserverGFlags).map((key: string) => ({
+      Name: key,
+      MASTER: masterGFlags[key]
     }))
   ];
 
@@ -109,7 +108,10 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
       customizePort: false, //** */
       ybcPackagePath: null //** */
     },
-    instanceTags: userIntent.instanceTags,
+    instanceTags: Object.keys(userIntent.instanceTags).map((key: string) => ({
+      name: key,
+      value: userIntent.instanceTags[key]
+    })),
     gFlags: transformMasterTserverToFlags(userIntent.masterGFlags, userIntent.tserverGFlags)
   };
   return data;

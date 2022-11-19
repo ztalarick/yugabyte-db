@@ -38,7 +38,7 @@ const renderOption = (option: Record<string, string>) => {
 };
 
 export const InstanceTypeField: FC = () => {
-  const { control, setValue } = useFormContext<UniverseFormData>();
+  const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -55,7 +55,7 @@ export const InstanceTypeField: FC = () => {
       enabled: !!provider?.uuid,
       onSuccess: (data) => {
         // set default/first item as instance type after provider changes
-        if (provider?.code && data.length) {
+        if (!getValues(INSTANCE_TYPE_FIELD) && provider?.code && data.length) {
           const defaultInstanceType =
             DEFAULT_INSTANCE_TYPES[provider.code] || data[0].instanceTypeCode;
           setValue(INSTANCE_TYPE_FIELD, defaultInstanceType, { shouldValidate: true });

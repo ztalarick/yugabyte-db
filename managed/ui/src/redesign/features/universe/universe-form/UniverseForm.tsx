@@ -12,18 +12,17 @@ import {
   InstanceConfiguration,
   UserTags
 } from './sections';
-import { UniverseFormData, ClusterType, ClusterModes, DEFAULT_FORM_DATA } from './utils/dto';
+import { UniverseFormData, ClusterType, ClusterModes } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
 import { api } from './utils/api';
 import { UniverseFormContext } from './UniverseFormContainer';
-import { useUpdateEffect } from 'react-use';
 
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
   title: React.ReactNode;
   onFormSubmit: (data: UniverseFormData) => void;
   onCancel: () => void;
-  isPrimaryAndRR?: boolean;
+  onClusterTypeChange?: (data: UniverseFormData) => void;
 }
 
 export const UniverseForm: FC<UniverseFormProps> = ({
@@ -31,7 +30,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   title,
   onFormSubmit,
   onCancel,
-  isPrimaryAndRR = false
+  onClusterTypeChange
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
@@ -124,30 +123,8 @@ export const UniverseForm: FC<UniverseFormProps> = ({
     defaultValues: defaultFormData,
     resolver: yupResolver(validationSchema)
   });
-  // const formMethods = form;
-  const { getValues, reset } = formMethods;
 
-  const toggleClusterType = () => {
-    if (clusterType === ClusterType.PRIMARY) {
-      contextMethods.updateFormDataAndToggle({
-        PrimaryFormData: getValues(),
-        clusterType: ClusterType.ASYNC
-      });
-    } else {
-      contextMethods.updateFormDataAndToggle({
-        AsyncFormData: getValues(),
-        clusterType: ClusterType.PRIMARY
-      });
-    }
-  };
-
-  useUpdateEffect(() => {
-    if (isPrimaryAndRR) {
-      if (clusterType === ClusterType.PRIMARY) {
-        reset({ ...state.PrimaryFormData });
-      } else reset(state.AsyncFormData ?? DEFAULT_FORM_DATA);
-    }
-  }, [clusterType]);
+  const { getValues, reset, unregister, register } = formMethods;
 
   const onSubmit = (formData: UniverseFormData) => {
     onFormSubmit(formData);
@@ -180,8 +157,12 @@ export const UniverseForm: FC<UniverseFormProps> = ({
                     {t('common.cancel')}
                   </YBButton>
                   &nbsp;
-                  {state.mode === ClusterModes.CREATE && isPrimaryAndRR && (
-                    <YBButton variant="secondary" size="large" onClick={() => toggleClusterType()}>
+                  {state.mode === ClusterModes.CREATE && onClusterTypeChange && (
+                    <YBButton
+                      variant="secondary"
+                      size="large"
+                      onClick={() => onClusterTypeChange(getValues())}
+                    >
                       {state.clusterType === ClusterType.PRIMARY
                         ? t('universeForm.actions.configureRR')
                         : t('universeForm.actions.backPrimary')}
