@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { UniverseForm } from '../UniverseForm';
 import { ClusterType, ClusterModes, DEFAULT_FORM_DATA, UniverseFormData } from '../utils/dto';
 import { UniverseFormContext } from '../UniverseFormContainer';
-import { createUniverse } from '../utils/helpers';
+import { createUniverse, filterFormDataByClusterType } from '../utils/helpers';
 import { useUpdateEffect } from 'react-use';
 
 interface CreateUniverseProps {}
@@ -57,7 +57,9 @@ export const CreateUniverse: FC<CreateUniverseProps> = () => {
   else
     return (
       <UniverseForm
-        defaultFormData={AsyncFormData ?? PrimaryFormData}
+        defaultFormData={
+          AsyncFormData ?? filterFormDataByClusterType(PrimaryFormData, ClusterType.ASYNC)
+        }
         title={t('universeForm.configReadReplica')}
         onFormSubmit={(data: UniverseFormData) => console.log(data)}
         onCancel={() => console.log('cancelled')}
