@@ -133,7 +133,7 @@ export const useNodePlacements = () => {
   const [needPlacement, setNeedPlacement] = useState(false);
   const [regionsChanged, setRegionsChanged] = useState(false);
   const { setValue, getValues } = useFormContext<UniverseFormData>();
-  const [{ UniverseConfigureData, clusterType }, { setUniverseConfigureData }] = useContext(
+  const [{ UniverseConfigureData, clusterType, mode }, { setUniverseConfigureData }] = useContext(
     UniverseFormContext
   );
 
@@ -149,23 +149,36 @@ export const useNodePlacements = () => {
     ...getUserIntent({ formData: getValues() })
   };
 
-  if (UniverseConfigureData && getValues(PLACEMENTS_FIELD)?.length) {
+  if (UniverseConfigureData) {
     payload = { ...UniverseConfigureData };
     //update the cluster intent based on cluster type
     let clusterIndex = payload.clusters.findIndex(
       (cluster: Cluster) => cluster.clusterType === clusterType
     );
-    payload.clusters[clusterIndex].placementInfo.cloudList[0].regionList = getPlacements(
-      getValues()
-    );
+
+    //During first Async Creation
+    if (clusterIndex === -1 && clusterType === ClusterType.ASYNC)
+      clusterIndex =
+        payload.clusters.push({
+          clusterType: ClusterType.ASYNC,
+          userIntent
+        }) - 1;
+
+    if (payload.clusters[clusterIndex]?.placementInfo && getValues(PLACEMENTS_FIELD)?.length)
+      payload.clusters[clusterIndex].placementInfo.cloudList[0].regionList = getPlacements(
+        getValues()
+      );
+
     payload.clusters[clusterIndex].userIntent = userIntent;
     payload['regionsChanged'] = regionsChanged;
     payload['userAZSelected'] = false;
     payload['resetAZConfig'] = false;
+    payload['clusterOperation'] = mode;
+    payload['currentClusterType'] = clusterType;
   } else {
     payload = {
       currentClusterType: ClusterType.PRIMARY,
-      clusterOperation: 'CREATE',
+      clusterOperation: mode,
       resetAZConfig: true,
       userAZSelected: false,
       clusters: [
@@ -187,7 +200,7 @@ export const useNodePlacements = () => {
         !_.isEmpty(regionList) &&
         !_.isEmpty(instanceType),
       onSuccess: (data) => {
-        const cluster = _.find(data.clusters, { clusterType: ClusterType.PRIMARY }); // TODO: revise logic for async cluster case
+        const cluster = _.find(data.clusters, { clusterType });
         const zones = getPlacementsFromCluster(cluster);
         setValue(PLACEMENTS_FIELD, _.compact(zones));
         setUniverseConfigureData(data);
