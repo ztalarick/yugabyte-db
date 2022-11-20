@@ -16,19 +16,6 @@ import { UniverseFormContextState } from '../UniverseFormContainer';
 import { getPlacements, getPlacementsFromCluster } from '../fields/PlacementsField/placementHelper';
 import { ASYNC_FIELDS, PRIMARY_FIELDS } from './constants';
 
-const patchConfigResponse = (response: UniverseDetails, original: UniverseDetails) => {
-  const clusterIndex = 0; // TODO: change to dynamic when support async clusters
-
-  response.clusterOperation = original.clusterOperation;
-  response.currentClusterType = original.currentClusterType;
-  response.encryptionAtRestConfig = original.encryptionAtRestConfig;
-
-  const userIntent = response.clusters[clusterIndex].userIntent;
-  userIntent.instanceTags = original.clusters[clusterIndex].userIntent.instanceTags;
-  userIntent.masterGFlags = original.clusters[clusterIndex].userIntent.masterGFlags;
-  userIntent.tserverGFlags = original.clusters[clusterIndex].userIntent.tserverGFlags;
-};
-
 const transitToUniverse = (universeUUID: string | undefined) => {
   if (universeUUID) browserHistory.push(`/universes/${universeUUID}/tasks`);
 };
@@ -155,7 +142,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     replicationFactor: formData.cloudConfig.replicationFactor,
     instanceType: (formData?.instanceConfig?.instanceType || '') as string,
     deviceInfo: formData.instanceConfig.deviceInfo,
-    instanceTags: formData.instanceTags.filter((tag) => tag.name && tag.value),
+    instanceTags: formData.instanceTags?.filter((tag) => tag.name && tag.value) ?? [],
     assignPublicIP: formData.instanceConfig.assignPublicIP,
     awsArnString: formData.instanceConfig.awsArnString,
     enableNodeToNodeEncrypt: formData.instanceConfig.enableNodeToNodeEncrypt,
@@ -185,6 +172,19 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
 };
 
 //Form Submit helpers
+const patchConfigResponse = (response: UniverseDetails, original: UniverseDetails) => {
+  const clusterIndex = 0; // TODO: change to dynamic when support async clusters
+
+  response.clusterOperation = original.clusterOperation;
+  response.currentClusterType = original.currentClusterType;
+  response.encryptionAtRestConfig = original.encryptionAtRestConfig;
+
+  const userIntent = response.clusters[clusterIndex].userIntent;
+  userIntent.instanceTags = original.clusters[clusterIndex].userIntent.instanceTags;
+  userIntent.masterGFlags = original.clusters[clusterIndex].userIntent.masterGFlags;
+  userIntent.tserverGFlags = original.clusters[clusterIndex].userIntent.tserverGFlags;
+};
+
 export const createUniverse = async ({
   formData,
   universeContextData,
