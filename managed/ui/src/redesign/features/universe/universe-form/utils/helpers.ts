@@ -250,7 +250,7 @@ export const createUniverse = async ({
 
     // in create mode no configure call is made with all form fields ( intent )
     const finalPayload = await api.universeConfigure(
-      _.merge(universeContextData.UniverseConfigureData, configurePayload)
+      _.merge(universeContextData.universeConfigureTemplate, configurePayload)
     );
 
     //some data format changes after configure call

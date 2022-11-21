@@ -11,19 +11,26 @@ import { PROVIDER_FIELD, ACCESS_KEY_FIELD, INSTANCE_TYPE_FIELD } from '../../uti
 
 interface ProvidersFieldProps {
   disabled?: boolean;
+  primaryProviderCode: string | null;
 }
 
 // simplified provider object with bare minimum fields needed in UI
 export type ProviderMin = Pick<Provider, 'uuid' | 'code'>;
 const getOptionLabel = (option: Record<string, string>): string => option.name;
 
-export const ProvidersField = ({ disabled }: ProvidersFieldProps): ReactElement => {
+export const ProvidersField = ({
+  disabled,
+  primaryProviderCode
+}: ProvidersFieldProps): ReactElement => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const { data, isLoading } = useQuery(QUERY_KEY.getProvidersList, api.getProvidersList);
 
   //sort by provider code and name
-  const providersList = _.sortBy(data || [], 'code', 'name');
+  let providersList = primaryProviderCode
+    ? (data || []).filter((p) => p.code === primaryProviderCode)
+    : data || [];
+  providersList = _.sortBy(providersList || [], 'code', 'name');
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
     if (option) {

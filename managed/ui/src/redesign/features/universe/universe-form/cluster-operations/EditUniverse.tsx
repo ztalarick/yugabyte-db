@@ -21,7 +21,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     {
       onSuccess: (resp) => {
         formMethods.initializeForm({
-          UniverseConfigureData: resp.universeDetails,
+          universeConfigureTemplate: resp.universeDetails,
           clusterType: ClusterType.PRIMARY,
           mode: ClusterModes.EDIT
         });
