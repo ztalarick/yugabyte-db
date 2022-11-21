@@ -1,4 +1,5 @@
 import React, { FC, useContext } from 'react';
+import _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Grid } from '@material-ui/core';
 import { useSectionStyles } from '../../universeMainStyle';
@@ -12,6 +13,7 @@ import {
 } from '../../fields';
 import { UniverseFormContext } from '../../UniverseFormContainer';
 import { ClusterModes, ClusterType } from '../../utils/dto';
+import { getPrimaryCluster } from '../../utils/helpers';
 
 interface CloudConfigProps {}
 
@@ -20,11 +22,14 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
   const { t } = useTranslation();
 
   //form context
-  const { mode, clusterType } = useContext(UniverseFormContext)[0];
+  const { mode, clusterType, universeConfigureTemplate } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
   const isEditMode = mode === ClusterModes.EDIT;
   // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
   const isFieldReadOnly = isEditMode && isPrimary;
+  const primaryProviderCode = !isPrimary
+    ? _.get(getPrimaryCluster(universeConfigureTemplate), 'userIntent.providerType', null)
+    : null;
 
   return (
     <Box className={classes.sectionContainer}>
@@ -39,7 +44,7 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
             </Box>
           )}
           <Box mt={1}>
-            <ProvidersField disabled={false} />
+            <ProvidersField disabled={false} primaryProviderCode={primaryProviderCode} />
           </Box>
           <Box mt={1}>
             <RegionsField disabled={false} />

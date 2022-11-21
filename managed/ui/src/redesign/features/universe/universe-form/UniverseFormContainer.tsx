@@ -13,37 +13,37 @@ import {
 
 export interface UniverseFormContextState {
   clusterType: ClusterType;
-  UniverseConfigureData: UniverseConfigure | null;
-  PrimaryFormData?: UniverseFormData | null;
-  AsyncFormData?: UniverseFormData | null;
+  universeConfigureTemplate: UniverseConfigure | null;
+  primaryFormData?: UniverseFormData | null;
+  asyncFormData?: UniverseFormData | null;
   mode: ClusterModes;
   isLoading: boolean; // To safeguard against bad defaults
 }
 
 const initialState: UniverseFormContextState = {
   clusterType: ClusterType.PRIMARY,
-  UniverseConfigureData: null,
-  PrimaryFormData: null,
-  AsyncFormData: null,
+  universeConfigureTemplate: null,
+  primaryFormData: null,
+  asyncFormData: null,
   mode: ClusterModes.CREATE,
   isLoading: true
 };
 
 //Avoiding using global state since we are using react-query
 const createFormMethods = (state: UniverseFormContextState) => ({
-  setUniverseConfigureData: (data: UniverseConfigure): UniverseFormContextState => ({
+  setUniverseConfigureTemplate: (data: UniverseConfigure): UniverseFormContextState => ({
     ...state,
-    UniverseConfigureData: data,
+    universeConfigureTemplate: data,
     isLoading: false
   }),
   //This method will be used only in case of Create Primary Cluster + Read Replica flow
   setPrimaryFormData: (data: UniverseFormData): UniverseFormContextState => ({
     ...state,
-    PrimaryFormData: data
+    primaryFormData: data
   }),
   setAsyncFormData: (data: UniverseFormData): UniverseFormContextState => ({
     ...state,
-    AsyncFormData: data
+    asyncFormData: data
   }),
   toggleClusterType: (type: ClusterType): UniverseFormContextState => ({
     ...state,

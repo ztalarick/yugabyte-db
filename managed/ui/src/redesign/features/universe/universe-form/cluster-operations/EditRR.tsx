@@ -21,7 +21,7 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
     {
       onSuccess: (resp) => {
         formMethods.initializeForm({
-          UniverseConfigureData: resp.universeDetails,
+          universeConfigureTemplate: resp.universeDetails,
           clusterType: ClusterType.ASYNC,
           mode: ClusterModes.EDIT
         });
