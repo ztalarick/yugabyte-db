@@ -54,7 +54,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
 
             {provider.code !== CloudType.kubernetes && (
               <Grid lg={6} item container>
-                <AccessKeysField disabled={isFieldReadOnly} />
+                <AccessKeysField disabled={isFieldReadOnly || !isPrimary} />
               </Grid>
             )}
           </Grid>
@@ -74,7 +74,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
           <Box mt={2}>
             <Grid container spacing={3}>
               <Grid lg={6} item container>
-                <ARNField disabled={isFieldReadOnly} />
+                <ARNField disabled={isFieldReadOnly || !isPrimary} />
               </Grid>
             </Grid>
           </Box>

@@ -1,6 +1,7 @@
 import React, { FC, useContext } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
+import { browserHistory } from 'react-router';
 import { UniverseForm } from '../UniverseForm';
 import {
   ClusterType,
@@ -84,6 +85,10 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
     createReadReplica(configurePayload);
   };
 
+  const onCancel = () => {
+    browserHistory.goBack();
+  };
+
   if (isLoading || contextState.isLoading) return <>Loading .... </>;
 
   if (!universe) return null;
@@ -105,7 +110,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
         </>
       }
       onFormSubmit={(data: UniverseFormData) => onSubmit(data)}
-      onCancel={() => console.log('cancelled')}
+      onCancel={onCancel}
     />
   );
 };

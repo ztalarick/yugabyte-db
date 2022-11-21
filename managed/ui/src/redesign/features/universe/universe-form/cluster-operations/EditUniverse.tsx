@@ -1,6 +1,7 @@
 import React, { FC, useContext } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
+import { browserHistory } from 'react-router';
 import { UniverseForm } from '../UniverseForm';
 import { ClusterType, DEFAULT_FORM_DATA, UniverseFormData, ClusterModes } from '../utils/dto';
 import { UniverseFormContext } from '../UniverseFormContainer';
@@ -36,6 +37,10 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     console.log(formData);
   };
 
+  const onCancel = () => {
+    browserHistory.goBack();
+  };
+
   if (isLoading || state.isLoading) return <>Loading .... </>;
 
   const renderTitle = (
@@ -56,7 +61,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
         }}
         title={renderTitle}
         onFormSubmit={onSubmit}
-        onCancel={() => console.log('cancelled')}
+        onCancel={onCancel}
       />
     );
   else return <></>;
