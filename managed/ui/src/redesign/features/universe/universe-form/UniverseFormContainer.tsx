@@ -1,15 +1,17 @@
 import React, { createContext, FC } from 'react';
+import { useQuery } from 'react-query';
+import { useMethods } from 'react-use';
+import { Box } from '@material-ui/core';
+import { RouteComponentProps } from 'react-router-dom';
 import { UniverseConfigure, ClusterType, ClusterModes, UniverseFormData } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
-import { Box } from '@material-ui/core';
-import { useMethods } from 'react-use';
-import { RouteComponentProps } from 'react-router-dom';
 import {
   CreateUniverse,
   CreateReadReplica,
   EditUniverse,
   EditReadReplica
 } from './cluster-operations';
+import { api, QUERY_KEY } from './utils/api';
 
 export interface UniverseFormContextState {
   clusterType: ClusterType;
@@ -83,6 +85,12 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
 
   const universeContextData = useMethods(createFormMethods, initialState);
 
+  //prefetch provider data for smooth painting
+  const { isLoading: isProviderLoading } = useQuery(
+    QUERY_KEY.getProvidersList,
+    api.getProvidersList
+  );
+
   const switchInternalRoutes = () => {
     //Create Primary + RR
     if (location.pathname === '/universe/new') return <CreateUniverse />;
@@ -99,11 +107,13 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
     else return <div>Page not found</div>;
   };
 
-  return (
-    <Box className={classes.mainConatiner}>
-      <UniverseFormContext.Provider value={universeContextData}>
-        {switchInternalRoutes()}
-      </UniverseFormContext.Provider>
-    </Box>
-  );
+  if (isProviderLoading) return <>Loading ...</>;
+  else
+    return (
+      <Box className={classes.mainConatiner}>
+        <UniverseFormContext.Provider value={universeContextData}>
+          {switchInternalRoutes()}
+        </UniverseFormContext.Provider>
+      </Box>
+    );
 };
