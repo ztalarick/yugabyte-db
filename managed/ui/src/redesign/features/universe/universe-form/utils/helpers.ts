@@ -10,7 +10,8 @@ import {
   UniverseFormData,
   UserIntent,
   Gflag,
-  FlagsArray
+  FlagsArray,
+  DEFAULT_FORM_DATA
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
 import { getPlacements, getPlacementsFromCluster } from '../fields/PlacementsField/placementHelper';
@@ -58,17 +59,20 @@ const transformMasterTserverToFlags = (
 export const filterFormDataByClusterType = (
   formData: UniverseFormData,
   clusterType: ClusterType
-) => {
+): UniverseFormData => {
   const formFields = clusterType === ClusterType.PRIMARY ? PRIMARY_FIELDS : ASYNC_FIELDS;
-  return _.pick(formData, formFields);
+  return (_.pick(formData, formFields) as unknown) as UniverseFormData;
 };
 
 //Transform universe data to form data
-export const getFormData = (universeData: UniverseDetails, clusterType: ClusterType) => {
+export const getFormData = (
+  universeData: UniverseDetails,
+  clusterType: ClusterType
+): UniverseFormData => {
   const { communicationPorts, encryptionAtRestConfig, rootCA } = universeData;
   const cluster = getClusterByType(universeData, clusterType);
 
-  if (!cluster) return {};
+  if (!cluster) return DEFAULT_FORM_DATA;
 
   const { userIntent } = cluster;
 
@@ -122,11 +126,11 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
   return data;
 };
 
-export const getPrimaryFormData = (universeData: UniverseDetails) => {
+export const getPrimaryFormData = (universeData: UniverseDetails): UniverseFormData => {
   return getFormData(universeData, ClusterType.PRIMARY);
 };
 
-export const getAsyncFormData = (universeData: UniverseDetails) => {
+export const getAsyncFormData = (universeData: UniverseDetails): UniverseFormData => {
   return getFormData(universeData, ClusterType.ASYNC);
 };
 
