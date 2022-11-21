@@ -1,38 +1,38 @@
-import React, { FC, useContext, useEffect } from 'react';
+import React, { FC, useContext } from 'react';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { UniverseForm } from '../UniverseForm';
 import { ClusterType, ClusterModes, DEFAULT_FORM_DATA, UniverseFormData } from '../utils/dto';
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { createUniverse, filterFormDataByClusterType } from '../utils/helpers';
-import { useUpdateEffect } from 'react-use';
+import { useUpdateEffect, useEffectOnce } from 'react-use';
 
 interface CreateUniverseProps {}
 
 export const CreateUniverse: FC<CreateUniverseProps> = () => {
   const { t } = useTranslation();
   const [state, formMethods] = useContext(UniverseFormContext);
-  const { isLoading, PrimaryFormData, AsyncFormData, clusterType } = state;
+  const { isLoading, primaryFormData, asyncFormData, clusterType } = state;
   const featureFlags = useSelector((state: any) => state.featureFlags);
 
   const onSubmit = (formData: UniverseFormData) => {
     createUniverse({ formData, universeContextData: state, featureFlags });
   };
 
-  useEffect(() => {
+  useEffectOnce(() => {
     formMethods.initializeForm({
       clusterType: ClusterType.PRIMARY,
       mode: ClusterModes.CREATE
     });
-  }, [formMethods]);
+  });
 
   useUpdateEffect(() => {
     formMethods.toggleClusterType(ClusterType.ASYNC);
-  }, [PrimaryFormData]);
+  }, [primaryFormData]);
 
   useUpdateEffect(() => {
     formMethods.toggleClusterType(ClusterType.PRIMARY);
-  }, [AsyncFormData]);
+  }, [asyncFormData]);
 
   useUpdateEffect(() => {
     formMethods.setLoader(false);
@@ -43,7 +43,7 @@ export const CreateUniverse: FC<CreateUniverseProps> = () => {
   if (state.clusterType === ClusterType.PRIMARY)
     return (
       <UniverseForm
-        defaultFormData={PrimaryFormData ?? DEFAULT_FORM_DATA}
+        defaultFormData={primaryFormData ?? DEFAULT_FORM_DATA}
         title={t('universeForm.createUniverse')}
         onFormSubmit={(data: UniverseFormData) => onSubmit(data)}
         onCancel={() => console.log('cancelled')}
@@ -58,7 +58,7 @@ export const CreateUniverse: FC<CreateUniverseProps> = () => {
     return (
       <UniverseForm
         defaultFormData={
-          AsyncFormData ?? filterFormDataByClusterType(PrimaryFormData, ClusterType.ASYNC)
+          asyncFormData ?? filterFormDataByClusterType(primaryFormData, ClusterType.ASYNC)
         }
         title={t('universeForm.configReadReplica')}
         onFormSubmit={(data: UniverseFormData) => console.log(data)}

@@ -23,7 +23,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
         //Transform it to form schema
         //initialize form
         formMethods.initializeForm({
-          UniverseConfigureData: resp.universeDetails,
+          universeConfigureTemplate: resp.universeDetails,
           clusterType: ClusterType.ASYNC,
           mode: ClusterModes.CREATE
         });
