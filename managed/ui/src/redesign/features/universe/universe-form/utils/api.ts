@@ -78,14 +78,19 @@ class ApiService {
     return axios.post<UniverseDetails>(requestUrl, data).then((resp) => resp.data);
   };
 
-  universeCreate = (data: UniverseConfigure): Promise<Universe> => {
+  createUniverse = (data: UniverseConfigure): Promise<Universe> => {
     const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universes`;
     return axios.post<Universe>(requestUrl, data).then((resp) => resp.data);
   };
 
-  universeEdit = (data: UniverseConfigure, universeId: string): Promise<Universe> => {
+  editUniverse = (data: UniverseConfigure, universeId: string): Promise<Universe> => {
     const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universes/${universeId}`;
     return axios.put<Universe>(requestUrl, data).then((resp) => resp.data);
+  };
+
+  createReadReplica = (data: UniverseConfigure, universeId: string): Promise<Universe> => {
+    const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universes/${universeId}/cluster`;
+    return axios.post<Universe>(requestUrl, data).then((resp) => resp.data);
   };
 
   getInstanceTypes = (providerId?: string): Promise<InstanceType[]> => {

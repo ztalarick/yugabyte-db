@@ -2,10 +2,22 @@ import React, { FC, useContext } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { UniverseForm } from '../UniverseForm';
-import { ClusterType, DEFAULT_FORM_DATA, UniverseFormData, ClusterModes } from '../utils/dto';
+import {
+  ClusterType,
+  UniverseFormData,
+  ClusterModes,
+  UniverseConfigure,
+  CloudType
+} from '../utils/dto';
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { api, QUERY_KEY } from '../utils/api';
-import { getFormData } from '../utils/helpers';
+import {
+  editReadReplica,
+  getAsyncCluster,
+  getAsyncFormData,
+  getUserIntent
+} from '../utils/helpers';
+import { getPlacements } from '../fields/PlacementsField/placementHelper';
 
 interface EditReadReplicaProps {
   uuid: string;
@@ -13,14 +25,14 @@ interface EditReadReplicaProps {
 
 export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
   const { t } = useTranslation();
-  const [state, formMethods] = useContext(UniverseFormContext);
+  const [contextState, contextMethods] = useContext(UniverseFormContext);
 
   const { isLoading, data: universe } = useQuery(
     [QUERY_KEY.fetchUniverse, uuid],
     () => api.fetchUniverse(uuid),
     {
       onSuccess: (resp) => {
-        formMethods.initializeForm({
+        contextMethods.initializeForm({
           universeConfigureTemplate: resp.universeDetails,
           clusterType: ClusterType.ASYNC,
           mode: ClusterModes.EDIT
@@ -33,18 +45,49 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
   );
 
   const onSubmit = (formData: UniverseFormData) => {
-    console.log(formData);
+    const configurePayload: UniverseConfigure = {
+      ...contextState.universeConfigureTemplate,
+      clusterOperation: ClusterModes.EDIT,
+      currentClusterType: ClusterType.ASYNC,
+      rootCA: universe?.universeDetails.rootCA,
+      allowGeoPartitioning: false,
+      userAZSelected: true,
+      resetAZConfig: false,
+      ybcSoftwareVersion: '',
+      expectedUniverseVersion: universe?.version,
+      clusters: [
+        {
+          ...getAsyncCluster(contextState.universeConfigureTemplate),
+          userIntent: {
+            ...getUserIntent({ formData })
+          },
+          placementInfo: {
+            cloudList: [
+              {
+                uuid: formData.cloudConfig.provider?.uuid as string,
+                code: formData.cloudConfig.provider?.code as CloudType,
+                regionList: getPlacements(formData)
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+    editReadReplica(configurePayload);
   };
 
-  if (isLoading || state.isLoading) return <>Loading .... </>;
+  if (isLoading || contextState.isLoading) return <>Loading .... </>;
+
+  if (!universe) return null;
+
+  //get async form data and intitalize the form
+  const initialFormData = getAsyncFormData(universe.universeDetails);
 
   if (universe?.universeDetails)
     return (
       <UniverseForm
-        defaultFormData={{
-          ...DEFAULT_FORM_DATA,
-          ...getFormData(universe.universeDetails, ClusterType.ASYNC)
-        }}
+        defaultFormData={initialFormData}
         title={
           <>
             {universe?.name}
