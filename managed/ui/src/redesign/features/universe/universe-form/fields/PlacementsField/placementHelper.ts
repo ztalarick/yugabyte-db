@@ -133,9 +133,10 @@ export const useNodePlacements = () => {
   const [needPlacement, setNeedPlacement] = useState(false);
   const [regionsChanged, setRegionsChanged] = useState(false);
   const { setValue, getValues } = useFormContext<UniverseFormData>();
-  const [{ UniverseConfigureData, clusterType, mode }, { setUniverseConfigureData }] = useContext(
-    UniverseFormContext
-  );
+  const [
+    { universeConfigureTemplate, clusterType, mode },
+    { setUniverseConfigureTemplate }
+  ] = useContext(UniverseFormContext);
 
   //watchers
   const regionList = useWatch({ name: REGIONS_FIELD });
@@ -149,8 +150,8 @@ export const useNodePlacements = () => {
     ...getUserIntent({ formData: getValues() })
   };
 
-  if (UniverseConfigureData) {
-    payload = { ...UniverseConfigureData };
+  if (universeConfigureTemplate) {
+    payload = { ...universeConfigureTemplate };
     //update the cluster intent based on cluster type
     let clusterIndex = payload.clusters.findIndex(
       (cluster: Cluster) => cluster.clusterType === clusterType
@@ -203,7 +204,7 @@ export const useNodePlacements = () => {
         const cluster = _.find(data.clusters, { clusterType });
         const zones = getPlacementsFromCluster(cluster);
         setValue(PLACEMENTS_FIELD, _.compact(zones));
-        setUniverseConfigureData(data);
+        setUniverseConfigureTemplate(data);
         setRegionsChanged(false);
         setNeedPlacement(false);
       }
