@@ -44,7 +44,7 @@ export const getUniverseName = (universeData: UniverseDetails) => {
 export const filterFormDataByClusterType = (
   formData: UniverseFormData,
   clusterType: ClusterType
-) => {
+): UniverseFormData => {
   const formFields = clusterType === ClusterType.PRIMARY ? PRIMARY_FIELDS : ASYNC_FIELDS;
   return (_.pick(formData, formFields) as unknown) as UniverseFormData;
 };
@@ -72,7 +72,10 @@ const transformInstanceTags = (instanceTags: Record<string, string> = {}) =>
   }));
 
 //Transform universe data to form data
-export const getFormData = (universeData: UniverseDetails, clusterType: ClusterType) => {
+export const getFormData = (
+  universeData: UniverseDetails,
+  clusterType: ClusterType
+): UniverseFormData => {
   const { communicationPorts, encryptionAtRestConfig, rootCA } = universeData;
   const cluster = getClusterByType(universeData, clusterType);
 
@@ -130,11 +133,11 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
   return data;
 };
 
-export const getPrimaryFormData = (universeData: UniverseDetails) => {
+export const getPrimaryFormData = (universeData: UniverseDetails): UniverseFormData => {
   return getFormData(universeData, ClusterType.PRIMARY);
 };
 
-export const getAsyncFormData = (universeData: UniverseDetails) => {
+export const getAsyncFormData = (universeData: UniverseDetails): UniverseFormData => {
   return getFormData(universeData, ClusterType.ASYNC);
 };
 
