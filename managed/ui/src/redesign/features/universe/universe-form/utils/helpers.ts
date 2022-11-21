@@ -48,7 +48,7 @@ const transformMasterTserverToFlags = (
     })),
     ...Object.keys(tserverGFlags).map((key: string) => ({
       Name: key,
-      MASTER: masterGFlags[key]
+      TSERVER: tserverGFlags[key]
     }))
   ];
 
@@ -261,7 +261,7 @@ export const createUniverse = async ({
     patchConfigResponse(finalPayload, configurePayload as UniverseDetails);
 
     // now everything is ready to create universe
-    response = await api.universeCreate(finalPayload);
+    response = await api.createUniverse(finalPayload);
   } catch (error) {
     console.error(error);
   } finally {
@@ -269,60 +269,30 @@ export const createUniverse = async ({
   }
 };
 
-// export const createReadReplica = async ({formData, universeContextData}: {mode:clusterModes, formData: UniverseFormData, universeContextData: UniverseFormContextState}) => {
+export const createReadReplica = async (configurePayload: UniverseConfigure) => {
+  let universeUUID = configurePayload.universeUUID;
+  if (!universeUUID) return false;
+  try {
+    // now everything is ready to create async cluster
+    return await api.createReadReplica(configurePayload, universeUUID);
+  } catch (error) {
+    console.error(error);
+    return error;
+  } finally {
+    transitToUniverse(universeUUID);
+  }
+};
 
-//   try {
-//     let configurePayload: UniverseConfigure = {
-//       ...universeContextData.UniverseConfigureData,
-//     }
-
-//         // convert form data into payload suitable for the configure api call
-//         configurePayload = {
-//           ...configurePayload,
-//           clusterOperation: 'CREATE',
-//           currentClusterType: ClusterType.ASYNC,
-//           rootCA: formData.instanceConfig.rootCA,
-//           userAZSelected: false,
-//           communicationPorts: formData.advancedConfig.communicationPorts,
-//           encryptionAtRestConfig: {
-//             key_op: formData.instanceConfig.enableEncryptionAtRest ? 'ENABLE' : 'UNDEFINED'
-//           },
-//           clusters: [
-//             {
-//               clusterType: ClusterType.PRIMARY,
-//               userIntent: getUserIntent({formData}),
-//               placementInfo: {
-//                 cloudList: [
-//                   {
-//                     uuid: formData.cloudConfig.provider?.uuid as string,
-//                     code: formData.cloudConfig.provider?.code as CloudType,
-//                     regionList: getPlacements(formData)
-//                   }
-//                 ]
-//               }
-//             },
-//             {
-//               clusterType: ClusterType.ASYNC,
-//               userIntent: getUserIntent({formData})
-//             }
-//           ]
-//         };
-
-//         if (
-//           formData?.instanceConfig?.enableEncryptionAtRest &&
-//           formData?.instanceConfig?.kmsConfig &&
-//           configurePayload.encryptionAtRestConfig
-//         ) {
-//           configurePayload.encryptionAtRestConfig.configUUID = formData.instanceConfig.kmsConfig;
-//         }
-
-//         // in create mode no configure call is made with all form fields ( intent )
-//         const finalPayload = await api.universeConfigure(configurePayload);
-
-//         // now everything is ready to create universe
-//         await api.universeCreate(finalPayload);
-
-//   } catch (error) {
-//     console.error(error);
-//   }
-// };
+export const editReadReplica = async (configurePayload: UniverseConfigure) => {
+  let universeUUID = configurePayload.universeUUID;
+  if (!universeUUID) return false;
+  try {
+    // now everything is ready to edit universe
+    return await api.editUniverse(configurePayload, universeUUID);
+  } catch (error) {
+    console.error(error);
+    return error;
+  } finally {
+    transitToUniverse(universeUUID);
+  }
+};

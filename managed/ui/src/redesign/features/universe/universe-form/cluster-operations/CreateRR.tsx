@@ -2,9 +2,25 @@ import React, { FC, useContext } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { UniverseForm } from '../UniverseForm';
-import { ClusterType, DEFAULT_FORM_DATA, UniverseFormData, ClusterModes } from '../utils/dto';
+import {
+  ClusterType,
+  UniverseFormData,
+  ClusterModes,
+  UniverseConfigure,
+  CloudType,
+  NodeDetails,
+  NodeState
+} from '../utils/dto';
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { api, QUERY_KEY } from '../utils/api';
+import {
+  createReadReplica,
+  filterFormDataByClusterType,
+  getAsyncCluster,
+  getPrimaryFormData,
+  getUserIntent
+} from '../utils/helpers';
+import { getPlacements } from '../fields/PlacementsField/placementHelper';
 
 interface CreateReadReplicaProps {
   uuid: string;
@@ -12,7 +28,7 @@ interface CreateReadReplicaProps {
 
 export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
   const { t } = useTranslation();
-  const [state, formMethods] = useContext(UniverseFormContext);
+  const [contextState, contextMethods] = useContext(UniverseFormContext);
   const { uuid } = props;
 
   const { isLoading, data: universe } = useQuery(
@@ -20,9 +36,8 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
     () => api.fetchUniverse(uuid),
     {
       onSuccess: (resp) => {
-        //Transform it to form schema
         //initialize form
-        formMethods.initializeForm({
+        contextMethods.initializeForm({
           universeConfigureTemplate: resp.universeDetails,
           clusterType: ClusterType.ASYNC,
           mode: ClusterModes.CREATE
@@ -32,13 +47,54 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
   );
 
   const onSubmit = (formData: UniverseFormData) => {
-    console.log(formData);
+    const configurePayload: UniverseConfigure = {
+      ...contextState.universeConfigureTemplate,
+      clusterOperation: ClusterModes.CREATE,
+      currentClusterType: ClusterType.ASYNC,
+      rootCA: universe?.universeDetails.rootCA,
+      allowGeoPartitioning: false,
+      userAZSelected: false,
+      resetAZConfig: false,
+      ybcSoftwareVersion: '',
+      expectedUniverseVersion: universe?.version,
+      nodeDetailsSet: contextState.universeConfigureTemplate.nodeDetailsSet.filter(
+        (node: NodeDetails) => node.state === NodeState.ToBeAdded
+      ),
+      clusters: [
+        {
+          ...getAsyncCluster(contextState.universeConfigureTemplate),
+          userIntent: {
+            ...getUserIntent({ formData }),
+            universeName: '',
+            dedicatedNodes: false
+          },
+          placementInfo: {
+            cloudList: [
+              {
+                uuid: formData.cloudConfig.provider?.uuid as string,
+                code: formData.cloudConfig.provider?.code as CloudType,
+                regionList: getPlacements(formData)
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+    createReadReplica(configurePayload);
   };
 
-  if (isLoading || state.isLoading) return <>Loading .... </>;
+  if (isLoading || contextState.isLoading) return <>Loading .... </>;
+
+  if (!universe) return null;
+
+  //get primary form data, filter only async form fields and intitalize the form
+  const primaryFormData = getPrimaryFormData(universe.universeDetails);
+  const initialFormData = filterFormDataByClusterType(primaryFormData, ClusterType.ASYNC);
+
   return (
     <UniverseForm
-      defaultFormData={DEFAULT_FORM_DATA}
+      defaultFormData={initialFormData}
       title={
         <>
           {universe?.name}
