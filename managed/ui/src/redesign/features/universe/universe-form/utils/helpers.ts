@@ -28,6 +28,14 @@ export const getClusterByType = (
   return universeData?.clusters?.find((cluster: Cluster) => cluster.clusterType === clusterType);
 };
 
+export const getPrimaryCluster = (universeData: UniverseDetails): Cluster | undefined => {
+  return getClusterByType(universeData, ClusterType.PRIMARY);
+};
+
+export const getAsyncCluster = (universeData: UniverseDetails): Cluster | undefined => {
+  return getClusterByType(universeData, ClusterType.ASYNC);
+};
+
 const transformMasterTserverToFlags = (
   masterGFlags: FlagsArray,
   tserverGFlags: FlagsArray
@@ -112,6 +120,14 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
     gFlags: transformMasterTserverToFlags(userIntent.masterGFlags, userIntent.tserverGFlags)
   };
   return data;
+};
+
+export const getPrimaryFormData = (universeData: UniverseDetails) => {
+  return getFormData(universeData, ClusterType.PRIMARY);
+};
+
+export const getAsyncFormData = (universeData: UniverseDetails) => {
+  return getFormData(universeData, ClusterType.ASYNC);
 };
 
 const transformFlagsToMasterTserver = (
