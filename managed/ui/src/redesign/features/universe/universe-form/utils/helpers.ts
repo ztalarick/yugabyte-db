@@ -11,11 +11,12 @@ import {
   UserIntent,
   Gflag,
   FlagsArray,
-  DEFAULT_FORM_DATA
+  DEFAULT_FORM_DATA,
+  ClusterModes
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
 import { getPlacements, getPlacementsFromCluster } from '../fields/PlacementsField/placementHelper';
-import { ASYNC_FIELDS, PRIMARY_FIELDS } from './constants';
+import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
 
 const transitToUniverse = (universeUUID: string | undefined) => {
   if (universeUUID) browserHistory.push(`/universes/${universeUUID}/tasks`);
@@ -63,6 +64,10 @@ export const filterFormDataByClusterType = (
   const formFields = clusterType === ClusterType.PRIMARY ? PRIMARY_FIELDS : ASYNC_FIELDS;
   return (_.pick(formData, formFields) as unknown) as UniverseFormData;
 };
+
+//returns fields needs to be copied from Primary to Async in Create+RR flow
+export const getAsyncCopyFields = (formData: UniverseFormData) =>
+  _.pick(formData, ASYNC_COPY_FIELDS);
 
 //Transform universe data to form data
 export const getFormData = (
@@ -206,50 +211,67 @@ const patchConfigResponse = (response: UniverseDetails, original: UniverseDetail
 };
 
 export const createUniverse = async ({
-  formData,
+  primaryData,
+  asyncData,
   universeContextData,
   featureFlags
 }: {
-  formData: UniverseFormData;
+  primaryData: UniverseFormData;
+  asyncData: UniverseFormData | null;
   universeContextData: UniverseFormContextState;
   featureFlags: any;
 }) => {
   let response;
   try {
     const configurePayload: UniverseConfigure = {
-      clusterOperation: 'CREATE',
-      currentClusterType: ClusterType.PRIMARY,
-      rootCA: formData.instanceConfig.rootCA,
+      clusterOperation: ClusterModes.CREATE,
+      currentClusterType: universeContextData.clusterType,
+      rootCA: primaryData.instanceConfig.rootCA,
       userAZSelected: false,
       resetAZConfig: false,
       enableYbc: featureFlags.released.enableYbc || featureFlags.test.enableYbc,
-      communicationPorts: formData.advancedConfig.communicationPorts,
+      communicationPorts: primaryData.advancedConfig.communicationPorts,
       encryptionAtRestConfig: {
-        key_op: formData.instanceConfig.enableEncryptionAtRest ? 'ENABLE' : 'UNDEFINED'
+        key_op: primaryData.instanceConfig.enableEncryptionAtRest ? 'ENABLE' : 'UNDEFINED'
       },
       clusters: [
         {
           clusterType: ClusterType.PRIMARY,
-          userIntent: getUserIntent({ formData }),
+          userIntent: getUserIntent({ formData: primaryData }),
           placementInfo: {
             cloudList: [
               {
-                uuid: formData.cloudConfig.provider?.uuid as string,
-                code: formData.cloudConfig.provider?.code as CloudType,
-                regionList: getPlacements(formData)
+                uuid: primaryData.cloudConfig.provider?.uuid as string,
+                code: primaryData.cloudConfig.provider?.code as CloudType,
+                regionList: getPlacements(primaryData)
               }
             ]
           }
         }
       ]
     };
+    if (asyncData) {
+      configurePayload.clusters?.push({
+        clusterType: ClusterType.ASYNC,
+        userIntent: getUserIntent({ formData: asyncData }),
+        placementInfo: {
+          cloudList: [
+            {
+              uuid: asyncData.cloudConfig.provider?.uuid as string,
+              code: asyncData.cloudConfig.provider?.code as CloudType,
+              regionList: getPlacements(asyncData)
+            }
+          ]
+        }
+      });
+    }
 
     if (
-      formData?.instanceConfig?.enableEncryptionAtRest &&
-      formData?.instanceConfig?.kmsConfig &&
+      primaryData?.instanceConfig?.enableEncryptionAtRest &&
+      primaryData?.instanceConfig?.kmsConfig &&
       configurePayload.encryptionAtRestConfig
     ) {
-      configurePayload.encryptionAtRestConfig.configUUID = formData.instanceConfig.kmsConfig;
+      configurePayload.encryptionAtRestConfig.configUUID = primaryData.instanceConfig.kmsConfig;
     }
 
     // in create mode no configure call is made with all form fields ( intent )
