@@ -3226,6 +3226,49 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardUpdateMultiColumn)) {
   CheckCount(expected_count, count);
 }
 
+// Insert 3 rows, update 2 of them.
+// Expected records: (DDL, 3 INSERT, 2 UPDATE).
+TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardUpdateMultiColumnBeforeImage)) {
+  uint32_t num_cols = 3;
+  map<std::string, uint32_t> col_val_map;
+
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_timestamp_history_retention_interval_sec) = 0;
+  auto tablets = ASSERT_RESULT(SetUpClusterMultiColumnUsecase(num_cols));
+  ASSERT_EQ(tablets.size(), 1);
+  CDCStreamId stream_id =
+      ASSERT_RESULT(CreateDBStream(CDCCheckpointType::IMPLICIT, CDCRecordType::ALL));
+  auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets));
+  ASSERT_FALSE(set_resp.has_error());
+
+  ASSERT_OK(WriteRows(1 /* start */, 4 /* end */, &test_cluster_, num_cols));
+
+  col_val_map.insert(pair<std::string, uint32_t>("col2", 9));
+  col_val_map.insert(pair<std::string, uint32_t>("col3", 10));
+  ASSERT_OK(UpdateRows(1 /* key */, col_val_map, &test_cluster_));
+  ASSERT_OK(UpdateRows(2 /* key */, col_val_map, &test_cluster_));
+
+  // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE in that order.
+  const uint32_t expected_count[] = {1, 3, 2, 0, 0, 0};
+  uint32_t count[] = {0, 0, 0, 0, 0, 0};
+
+  ExpectedRecordWithThreeColumns expected_records[] = {{0, 0, 0}, {1, 2, 3},  {2, 3, 4},
+                                                       {3, 4, 5}, {1, 9, 10}, {2, 9, 10}};
+
+  ExpectedRecordWithThreeColumns expected_before_image_records[] = {
+      {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {1, 2, 3}, {2, 3, 4}};
+
+  GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
+
+  uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
+  for (uint32_t i = 0; i < record_size; ++i) {
+    const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
+    CheckRecordWithThreeColumns(
+        record, expected_records[i], count, true, expected_before_image_records[i]);
+  }
+  LOG(INFO) << "Got " << count[1] << " insert record and " << count[2] << " update record";
+  CheckCount(expected_count, count);
+}
+
 // To test upadtes corresponding to a row packed into one CDC record. This verifies the generated
 // CDC record in case of subsequent updates Expected records: (DDL, 1 INSERT, 2 UPDATE).
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(MultiColumnUpdateFollowedByUpdate)) {
