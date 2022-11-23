@@ -24,9 +24,10 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
   //form context
   const { mode, clusterType, universeConfigureTemplate } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
-  const isEditMode = mode === ClusterModes.EDIT;
-  // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = isEditMode && isPrimary;
+  const isEditMode = mode === ClusterModes.EDIT; //Form is in edit mode
+  const isEditPrimary = isEditMode && isPrimary; //Editing Primary Cluster
+
+  //For async cluster creation show providers based on primary clusters provider type
   const primaryProviderCode = !isPrimary
     ? _.get(getPrimaryCluster(universeConfigureTemplate), 'userIntent.providerType', null)
     : null;
@@ -40,69 +41,24 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
           </Box>
           {isPrimary && (
             <Box mt={1}>
-              <UniverseNameField disabled={isFieldReadOnly} />
+              <UniverseNameField disabled={isEditPrimary} />
             </Box>
           )}
           <Box mt={1}>
-            <ProvidersField disabled={false} primaryProviderCode={primaryProviderCode} />
+            <ProvidersField disabled={isEditMode} filterByProvider={primaryProviderCode} />
           </Box>
           <Box mt={1}>
             <RegionsField disabled={false} />
           </Box>
           <Box mt={1} flexDirection={'row'} display="flex" alignItems="center">
             <TotalNodesField disabled={false} />
-            <ReplicationFactor disabled={isFieldReadOnly} />
+            <ReplicationFactor disabled={isEditMode} />
           </Box>
         </Grid>
         <Grid item lg={6}>
           <PlacementsField disabled={false} />
         </Grid>
       </Grid>
-      {/* <Typography variant="h5">{t('universeForm.cloudConfig.title')}</Typography>
-      <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
-        {isPrimary && (
-          <Box mt={2}>
-            <Grid container>
-              <Grid lg={6} item container>
-                <UniverseNameField disabled={isFieldReadOnly} />
-              </Grid>
-            </Grid>
-          </Box>
-        )}
-        <Box mt={2}>
-          <Grid container>
-            <Grid lg={6} item container>
-              <ProvidersField disabled={false} />
-            </Grid>
-          </Grid>
-        </Box>
-        <Box mt={2}>
-          <Grid container>
-            <Grid lg={6} item container>
-              <RegionsField disabled={false} />
-            </Grid>
-          </Grid>
-        </Box>
-        <Box mt={2}>
-          <Grid container item alignItems="center" lg={6}>
-            <Grid lg={7} item>
-              <ReplicationFactor disabled={isFieldReadOnly} />
-            </Grid>
-            <Grid lg={5} item>
-              <TotalNodesField disabled={false} />
-            </Grid>
-          </Grid>
-        </Box>
-        {provider?.uuid && regionList?.length > 0 && (
-          <Box mt={2} display="flex" flexDirection="column">
-            <Grid container>
-              <Grid lg={6} item>
-                <PlacementsField disabled={false} />
-              </Grid>
-            </Grid>
-          </Box>
-        )}
-      </Box> */}
     </Box>
   );
 };

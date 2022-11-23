@@ -20,6 +20,7 @@ export interface UniverseFormContextState {
   asyncFormData?: UniverseFormData | null;
   mode: ClusterModes;
   isLoading: boolean; // To safeguard against bad defaults
+  newUniverse: boolean; // Fresh Universe ( set to true only in Primary + RR flow )
 }
 
 const initialState: UniverseFormContextState = {
@@ -28,7 +29,8 @@ const initialState: UniverseFormContextState = {
   primaryFormData: null,
   asyncFormData: null,
   mode: ClusterModes.CREATE,
-  isLoading: true
+  isLoading: true,
+  newUniverse: false
 };
 
 //Avoiding using global state since we are using react-query

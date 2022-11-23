@@ -27,7 +27,8 @@ export const CreateUniverse: FC<CreateUniverseProps> = () => {
   useEffectOnce(() => {
     initializeForm({
       clusterType: ClusterType.PRIMARY,
-      mode: ClusterModes.CREATE
+      mode: ClusterModes.CREATE,
+      newUniverse: true
     });
   });
 

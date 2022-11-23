@@ -1,5 +1,4 @@
 import React, { FC, useContext } from 'react';
-import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
@@ -11,8 +10,7 @@ import {
   DeploymentPortsField,
   IPV6Field,
   NetworkAccessField,
-  SystemDField,
-  YBCField
+  SystemDField
 } from '../../fields';
 import { PROVIDER_FIELD } from '../../utils/constants';
 import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
@@ -24,18 +22,13 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
 
-  //feature flagging
-  const featureFlags = useSelector((state: any) => state.featureFlags);
-  const isYBCEnabled = featureFlags.test.enableYbc || featureFlags.released.enableYbc;
-
   //form context
-  const { mode, clusterType } = useContext(UniverseFormContext)[0];
+  const { mode, clusterType, newUniverse } = useContext(UniverseFormContext)[0];
+
   const isPrimary = clusterType === ClusterType.PRIMARY;
-  const isEditMode = mode === ClusterModes.EDIT;
-  // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = isEditMode && isPrimary;
-  // const isDbVersionReadOnly = mode !== clusterModes.NEW_PRIMARY;
-  const isDbVersionReadOnly = !isEditMode && !isPrimary;
+  const isCreateMode = mode === ClusterModes.CREATE; //Form is in edit mode
+  const isCreateRR = !newUniverse && isCreateMode && !isPrimary; //Adding Async Cluster to an existing Universe
+  const isCreatePrimary = isCreateMode && isPrimary; //Editing Primary Cluster
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -49,32 +42,22 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
         <Box mt={2}>
           <Grid container spacing={3}>
             <Grid lg={6} item container>
-              <DBVersionField disabled={isDbVersionReadOnly} />
+              <DBVersionField disabled={!isCreatePrimary} />
             </Grid>
 
             {provider.code !== CloudType.kubernetes && (
               <Grid lg={6} item container>
-                <AccessKeysField disabled={isFieldReadOnly || !isPrimary} />
+                <AccessKeysField disabled={!isCreatePrimary && !isCreateRR} />
               </Grid>
             )}
           </Grid>
         </Box>
 
-        {isYBCEnabled && (
-          <Box mt={2}>
-            <Grid container spacing={3}>
-              <Grid lg={6} item container>
-                <YBCField disabled={isFieldReadOnly} />
-              </Grid>
-            </Grid>
-          </Box>
-        )}
-
         {provider.code === CloudType.aws && (
           <Box mt={2}>
             <Grid container spacing={3}>
               <Grid lg={6} item container>
-                <ARNField disabled={isFieldReadOnly || !isPrimary} />
+                <ARNField disabled={!isCreatePrimary && !isCreateRR} />
               </Grid>
             </Grid>
           </Box>
@@ -85,7 +68,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
             <Box mt={2}>
               <Grid container>
                 <Grid lg={6} item container>
-                  <IPV6Field disabled={isFieldReadOnly || !isPrimary} />
+                  <IPV6Field disabled={!isCreatePrimary} />
                 </Grid>
               </Grid>
             </Box>
@@ -93,7 +76,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
             <Box mt={2}>
               <Grid container>
                 <Grid lg={6} item container>
-                  <NetworkAccessField disabled={isFieldReadOnly || !isPrimary} />
+                  <NetworkAccessField disabled={!isCreatePrimary} />
                 </Grid>
               </Grid>
             </Box>
@@ -103,7 +86,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
         <Box mt={2}>
           <Grid container>
             <Grid lg={6} item container>
-              <SystemDField disabled={isFieldReadOnly || !isPrimary} />
+              <SystemDField disabled={!isCreatePrimary} />
             </Grid>
           </Grid>
         </Box>
@@ -112,7 +95,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
           <Box mt={2}>
             <Grid container>
               <Grid lg={6} item container>
-                <DeploymentPortsField disabled={isFieldReadOnly || !isPrimary} />
+                <DeploymentPortsField disabled={!isCreatePrimary} />
               </Grid>
             </Grid>
           </Box>
