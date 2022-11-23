@@ -319,6 +319,9 @@ export const mainTheme = createTheme({
         minHeight: 32,
         lineHeight: 1.25,
         paddingLeft: '16px !important'
+      },
+      '&$disabled': {
+        cursor: 'not-allowed'
       }
     },
     MuiInput: {
@@ -353,7 +356,8 @@ export const mainTheme = createTheme({
         '&$disabled': {
           color: colors.grey[600],
           backgroundColor: colors.grey[200],
-          borderColor: colors.grey[300]
+          borderColor: colors.grey[300],
+          cursor: 'not-allowed'
         },
         '&$multiline': {
           height: 'auto',
@@ -372,6 +376,13 @@ export const mainTheme = createTheme({
       formControl: {
         'label + &': {
           marginTop: 0
+        }
+      }
+    },
+    MuiInputBase: {
+      input: {
+        '&$disabled': {
+          cursor: 'not-allowed'
         }
       }
     },
