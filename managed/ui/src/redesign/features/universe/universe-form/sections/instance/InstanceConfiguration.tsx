@@ -38,13 +38,12 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
   //form context
   const { mode, clusterType } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
-  const isEditMode = mode === ClusterModes.EDIT;
-  // const isFieldReadOnly = mode === clusterModes.EDIT_PRIMARY;
-  const isFieldReadOnly = isEditMode && isPrimary;
+  const isCreateMode = mode === ClusterModes.CREATE; //Form is in edit mode
+  const isCreatePrimary = isCreateMode && isPrimary; //Creating Primary Cluster
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
-  const earEnabled = useWatch({ name: EAR_FIELD });
+  const encryptionEnabled = useWatch({ name: EAR_FIELD });
   const clientNodeTLSEnabled = useWatch({ name: CLIENT_TO_NODE_ENCRYPT_FIELD });
   const nodeNodeTLSEnabled = useWatch({ name: NODE_TO_NODE_ENCRYPT_FIELD });
 
@@ -86,7 +85,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
             <Box mt={4}>
               <Grid container>
                 <Grid lg={6} item container>
-                  <AssignPublicIPField disabled={isFieldReadOnly || !isPrimary} />
+                  <AssignPublicIPField disabled={!isCreatePrimary} />
                 </Grid>
               </Grid>
             </Box>
@@ -95,7 +94,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
               <Box mt={2}>
                 <Grid container>
                   <Grid lg={6} item container>
-                    <TimeSyncField disabled={isFieldReadOnly} />
+                    <TimeSyncField disabled={!isCreateMode} />
                   </Grid>
                 </Grid>
               </Box>
@@ -114,33 +113,33 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
             <Box mt={6}>
               <Grid container>
                 <Grid lg={6} item container>
-                  <EncryptionAtRestField disabled={isFieldReadOnly || !isPrimary} />
+                  <EncryptionAtRestField disabled={!isCreatePrimary} />
                 </Grid>
               </Grid>
             </Box>
 
-            {earEnabled && (
+            {encryptionEnabled && isPrimary && (
               <Box mt={1}>
                 <Grid container spacing={3}>
                   <Grid lg={6} item container>
-                    <KMSConfigField disabled={isFieldReadOnly} />
+                    <KMSConfigField disabled={!isCreatePrimary} />
                   </Grid>
                 </Grid>
               </Box>
             )}
 
             <Box mt={6}>
-              <YSQLField disabled={isFieldReadOnly || !isPrimary} />
+              <YSQLField disabled={!isCreatePrimary} />
             </Box>
 
             <Box mt={6}>
-              <YCQLField disabled={isFieldReadOnly || !isPrimary} />
+              <YCQLField disabled={!isCreatePrimary} />
             </Box>
 
             <Box mt={6}>
               <Grid container>
                 <Grid lg={6} item container>
-                  <YEDISField disabled={isFieldReadOnly || !isPrimary} />
+                  <YEDISField disabled={!isCreatePrimary} />
                 </Grid>
               </Grid>
             </Box>
@@ -148,7 +147,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
             <Box mt={6}>
               <Grid container>
                 <Grid lg={6} item container>
-                  <NodeToNodeTLSField disabled={isFieldReadOnly || !isPrimary} />
+                  <NodeToNodeTLSField disabled={!isCreatePrimary} />
                 </Grid>
               </Grid>
             </Box>
@@ -156,7 +155,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
             <Box mt={2}>
               <Grid container>
                 <Grid lg={6} item container>
-                  <ClientToNodeTLSField disabled={isFieldReadOnly || !isPrimary} />
+                  <ClientToNodeTLSField disabled={!isCreatePrimary} />
                 </Grid>
               </Grid>
             </Box>
@@ -165,7 +164,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
               <Box mt={1} mb={4}>
                 <Grid container spacing={3}>
                   <Grid lg={6} item container>
-                    <RootCertificateField disabled={!isPrimary} />
+                    <RootCertificateField disabled={!isCreatePrimary} />
                   </Grid>
                 </Grid>
               </Box>

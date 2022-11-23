@@ -58,7 +58,7 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
             </Box>
           </Box>
 
-          {ycqlAuthEnabled && (
+          {ycqlAuthEnabled && !disabled && (
             <Box display="flex">
               <Grid container spacing={3}>
                 <Grid item sm={12} lg={6}>
