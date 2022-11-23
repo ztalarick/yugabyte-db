@@ -1159,6 +1159,8 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
       } break;
       case RowMessage::INSERT: {
         if (validate_third_column) {
+          ASSERT_EQ(record.row_message().new_tuple_size(), 3);
+          ASSERT_EQ(record.row_message().old_tuple_size(), 3);
           AssertKeyValue(
               record, expected_records.key, expected_records.value, true, expected_records.value2);
         } else {
@@ -1169,9 +1171,11 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
       } break;
       case RowMessage::UPDATE: {
         if (validate_third_column) {
+          ASSERT_EQ(record.row_message().new_tuple_size(), 3);
           AssertKeyValue(
               record, expected_records.key, expected_records.value, true, expected_records.value2);
           if (validate_old_tuple) {
+            ASSERT_EQ(record.row_message().old_tuple_size(), 3);
             AssertBeforeImageKeyValue(
                 record, expected_before_image_records.key, expected_before_image_records.value,
                 true, expected_before_image_records.value2);
@@ -1190,6 +1194,8 @@ class CDCSDKYsqlTest : public CDCSDKTestBase {
         ASSERT_EQ(record.row_message().old_tuple(0).datum_int32(), expected_records.key);
         if (validate_old_tuple) {
           if (validate_third_column) {
+            ASSERT_EQ(record.row_message().old_tuple_size(), 3);
+            ASSERT_EQ(record.row_message().new_tuple_size(), 3);
             AssertBeforeImageKeyValue(
                 record, expected_before_image_records.key, expected_before_image_records.value,
                 true, expected_before_image_records.value2);
@@ -2825,34 +2831,24 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSchemaChangeBeforeImage)) {
   ASSERT_OK(conn.Execute("INSERT INTO test_table VALUES (4, 5, 6)"));
   ASSERT_OK(conn.Execute("UPDATE test_table SET value_1 = 99 WHERE key = 1"));
   ASSERT_OK(conn.Execute("UPDATE test_table SET value_1 = 99 WHERE key = 4"));
-  ASSERT_OK(conn.Execute("UPDATE test_table SET value_2 = 66 WHERE key = 1"));
   ASSERT_OK(conn.Execute("UPDATE test_table SET value_2 = 66 WHERE key = 4"));
 
   // The count array stores counts of DDL, INSERT, UPDATE, DELETE, READ, TRUNCATE in that order.
-  const uint32_t expected_count[] = {2, 2, 6, 0, 0, 0};
+  const uint32_t expected_count[] = {2, 2, 5, 0, 0, 0};
   uint32_t count[] = {0, 0, 0, 0, 0, 0};
 
   ExpectedRecordWithThreeColumns expected_records[] = {
       {0, 0, 0}, {1, 2, INT_MAX},  {1, 3, INT_MAX}, {0, 0, INT_MAX}, {1, 4, INT_MAX},
-      {4, 5, 6}, {1, 99, INT_MAX}, {4, 99, 6},      {1, 99, 66},     {4, 99, 66}};
+      {4, 5, 6}, {1, 99, INT_MAX}, {4, 99, 6},      {4, 99, 66}};
   ExpectedRecordWithThreeColumns expected_before_image_records[] = {
-      {},
-      {},
-      {1, 2, INT_MAX},
-      {},
-      {1, 3, INT_MAX},
-      {},
-      {1, 4, INT_MAX},
-      {4, 5, 6},
-      {1, 99, INT_MAX},
-      {4, 99, 6}};
+      {}, {}, {1, 2, INT_MAX}, {}, {1, 3, INT_MAX}, {}, {1, 4, INT_MAX}, {4, 5, 6}, {4, 99, 6}};
 
   GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDC(stream_id, tablets));
 
   uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
   for (uint32_t i = 0; i < record_size; ++i) {
     const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
-    if (i < 5) {
+    if (i <= 6) {
       CheckRecordWithThreeColumns(
           record, expected_records[i], count, true, expected_before_image_records[i]);
     } else {
@@ -3261,9 +3257,12 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(SingleShardUpdateMultiColumnBefor
 
   uint32_t record_size = change_resp.cdc_sdk_proto_records_size();
   for (uint32_t i = 0; i < record_size; ++i) {
+    LOG(INFO) << change_resp.cdc_sdk_proto_records(i).DebugString();
+  }
+  for (uint32_t i = 0; i < record_size; ++i) {
     const CDCSDKProtoRecordPB record = change_resp.cdc_sdk_proto_records(i);
     CheckRecordWithThreeColumns(
-        record, expected_records[i], count, true, expected_before_image_records[i]);
+        record, expected_records[i], count, true, expected_before_image_records[i], true);
   }
   LOG(INFO) << "Got " << count[1] << " insert record and " << count[2] << " update record";
   CheckCount(expected_count, count);
