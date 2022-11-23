@@ -22,8 +22,7 @@ import {
   DeploymentPortsField,
   IPV6Field,
   NetworkAccessField,
-  SystemDField,
-  YBCField
+  SystemDField
 } from '../../fields';
 import { PROVIDER_FIELD } from '../../utils/constants';
 import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
