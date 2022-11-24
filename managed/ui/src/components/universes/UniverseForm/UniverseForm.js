@@ -841,8 +841,10 @@ class UniverseForm extends Component {
               : !node.nodeName.includes('readonly'))
         )
       : [];
-
-    const resizePossible = this.isResizePossible();
+    const resizePossible =
+      getPromiseState(universeConfigTemplate).isSuccess() &&
+      this.state.currentView === 'Primary' &&
+      universeConfigTemplate.data.nodesResizeAvailable;
 
     const existingNodeRemains =
       existingPrimaryNodes.length &&

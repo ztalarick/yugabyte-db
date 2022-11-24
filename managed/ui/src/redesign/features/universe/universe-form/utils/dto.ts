@@ -447,6 +447,7 @@ export interface UniverseDetails {
   updateSucceeded: boolean;
   userAZSelected: boolean;
   enableYbc: boolean;
+  updateOptions: string[];
 }
 
 export type UniverseConfigure = Partial<UniverseDetails>;
