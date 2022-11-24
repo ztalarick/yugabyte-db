@@ -20,7 +20,8 @@ import {
   PLACEMENTS_FIELD,
   TOTAL_NODES_FIELD,
   REPLICATION_FACTOR_FIELD,
-  INSTANCE_TYPE_FIELD
+  INSTANCE_TYPE_FIELD,
+  DEVICE_INFO_FIELD
 } from '../../utils/constants';
 import { getUserIntent } from '../../utils/helpers';
 
@@ -143,7 +144,14 @@ export const useNodePlacements = () => {
   const totalNodes = useWatch({ name: TOTAL_NODES_FIELD });
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
-  const prevPropsCombination = useRef({ instanceType, regionList, totalNodes, replicationFactor });
+  const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
+  const prevPropsCombination = useRef({
+    instanceType,
+    regionList,
+    totalNodes,
+    replicationFactor,
+    deviceInfo
+  });
 
   let payload: any = {};
   const userIntent = {
@@ -212,7 +220,13 @@ export const useNodePlacements = () => {
   );
 
   useUpdateEffect(() => {
-    const propsCombination = { instanceType, regionList, totalNodes, replicationFactor };
+    const propsCombination = {
+      instanceType,
+      regionList,
+      totalNodes,
+      replicationFactor,
+      deviceInfo
+    };
     if (_.isEmpty(regionList)) {
       setValue(PLACEMENTS_FIELD, [], { shouldValidate: true });
       setNeedPlacement(false);
@@ -227,7 +241,7 @@ export const useNodePlacements = () => {
     }
 
     prevPropsCombination.current = propsCombination;
-  }, [instanceType, regionList, totalNodes, replicationFactor]);
+  }, [instanceType, regionList, totalNodes, replicationFactor, deviceInfo]);
 
   return { isLoading: isFetching };
 };

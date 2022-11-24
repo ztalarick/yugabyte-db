@@ -143,7 +143,9 @@ class UniverseForm extends Component {
         const responseData = response?.payload?.data;
         if (responseData) {
           this.transitionToDefaultRoute(responseData.universeUUID);
-          toast.success(`Creating universe "${responseData.name}"`, { autoClose: TOAST_DISMISS_TIME_MS });
+          toast.success(`Creating universe "${responseData.name}"`, {
+            autoClose: TOAST_DISMISS_TIME_MS
+          });
         }
       });
     } else if (type === 'Async') {
@@ -248,11 +250,11 @@ class UniverseForm extends Component {
       });
     }
     universeTaskParams.clusterOperation = isEdit ? 'EDIT' : 'CREATE';
-    if(!isEdit){
+    if (!isEdit) {
       universeTaskParams.enableYbc =
-      this.props.featureFlags.test['enableYbc'] || this.props.featureFlags.released['enableYbc'];
+        this.props.featureFlags.test['enableYbc'] || this.props.featureFlags.released['enableYbc'];
     }
-    
+
     universeTaskParams.ybcSoftwareVersion = '';
   };
 
@@ -831,15 +833,17 @@ class UniverseForm extends Component {
     // check nodes if all live nodes is going to be removed (full move)
     const existingPrimaryNodes = getPromiseState(universeConfigTemplate).isSuccess()
       ? universeConfigTemplate.data.nodeDetailsSet.filter(
-        (node) =>
-          node.nodeName &&
+          (node) =>
+            node.nodeName &&
             (type === 'Async'
               ? node.nodeName.includes('readonly')
               : !node.nodeName.includes('readonly'))
-      )
+        )
       : [];
-
-    const resizePossible = this.isResizePossible();
+    const resizePossible =
+      getPromiseState(universeConfigTemplate).isSuccess() &&
+      this.state.currentView === 'Primary' &&
+      universeConfigTemplate.data.nodesResizeAvailable;
 
     const existingNodeRemains =
       existingPrimaryNodes.length &&
