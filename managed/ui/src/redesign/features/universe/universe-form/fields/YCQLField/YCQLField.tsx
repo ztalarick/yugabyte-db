@@ -12,9 +12,10 @@ import {
 } from '../../utils/constants';
 interface YCQLFieldProps {
   disabled: boolean;
+  isAuthEnforced?: boolean;
 }
 
-export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
+export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactElement => {
   const {
     control,
     formState: { errors }
@@ -43,20 +44,22 @@ export const YCQLField = ({ disabled }: YCQLFieldProps): ReactElement => {
 
       {ycqlEnabled && (
         <Box mt={1}>
-          <Box display="flex">
-            <YBLabel>{t('universeForm.instanceConfig.enableYCQLAuth')}</YBLabel>
-            <Box flex={1}>
-              <YBToggleField
-                name={YCQL_AUTH_FIELD}
-                inputProps={{
-                  'data-testid': 'YCQLAuth'
-                }}
-                control={control}
-                disabled={disabled}
-              />
-              <YBHelper>{t('universeForm.instanceConfig.enableYCQLAuthHelper')}</YBHelper>
+          {!isAuthEnforced && (
+            <Box display="flex">
+              <YBLabel>{t('universeForm.instanceConfig.enableYCQLAuth')}</YBLabel>
+              <Box flex={1}>
+                <YBToggleField
+                  name={YCQL_AUTH_FIELD}
+                  inputProps={{
+                    'data-testid': 'YCQLAuth'
+                  }}
+                  control={control}
+                  disabled={disabled}
+                />
+                <YBHelper>{t('universeForm.instanceConfig.enableYCQLAuthHelper')}</YBHelper>
+              </Box>
             </Box>
-          </Box>
+          )}
 
           {ycqlAuthEnabled && !disabled && (
             <Box display="flex">

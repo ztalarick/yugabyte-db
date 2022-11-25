@@ -7,7 +7,7 @@ import { useUpdateEffect } from 'react-use';
 import { CloudType, StorageType, UniverseFormData } from '../../utils/dto';
 import { api, QUERY_KEY } from '../../utils/api';
 import { YBInput, YBLabel, YBSelect } from '../../../../../components';
-import { getStorageTypeOptions, getDeviceInfoFromInstance } from './VolumeFieldHelper';
+import { getStorageTypeOptions, getDeviceInfoFromInstance } from './VolumeInfoFieldHelper';
 import { PROVIDER_FIELD, DEVICE_INFO_FIELD } from '../../utils/constants';
 
 const DEFAULT_IOPS_IO1 = 1000;

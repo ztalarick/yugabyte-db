@@ -93,6 +93,11 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
     api.getProvidersList
   );
 
+  //prefetch runtime configs
+  const { isLoading: isRuntimeConfigsLoading } = useQuery(QUERY_KEY.fetchRunTimeConfigs, () =>
+    api.fetchRunTimeConfigs(true)
+  );
+
   const switchInternalRoutes = () => {
     //Create Primary + RR
     if (location.pathname === '/universe/new') return <CreateUniverse />;
@@ -109,7 +114,7 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
     else return <div>Page not found</div>;
   };
 
-  if (isProviderLoading) return <>Loading ...</>;
+  if (isProviderLoading || isRuntimeConfigsLoading) return <>Loading ...</>;
   else
     return (
       <Box className={classes.mainConatiner}>

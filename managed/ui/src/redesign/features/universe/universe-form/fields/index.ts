@@ -4,6 +4,8 @@ export * from './AssignPublicIPField/AssignPublicIPField';
 export * from './AutoPlacementField/AutoPlacementField';
 export * from './ClientToNodeTLSField/ClientToNodeTLSField';
 export * from './DBVersionField/DBVersionField';
+export * from './DedicatedNodesField/DedicatedNodesField';
+export * from './DefaultRegionField/DefaultRegionField';
 export * from './DeploymentPortsField/DeploymentPortsField';
 export * from './EncryptionAtRestField/EncryptionAtRestField';
 export * from './GflagsField/GflagsField';

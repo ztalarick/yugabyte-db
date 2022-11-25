@@ -4,7 +4,7 @@ import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { Box, Typography, MenuItem } from '@material-ui/core';
 import { YBButton, YBSelect, YBInput, YBLabel, YBCheckbox } from '../../../../../components';
 import { PlacementStatus } from './PlacementStatus';
-import { useGetAllZones, useGetUnusedZones, useNodePlacements } from './placementHelper';
+import { useGetAllZones, useGetUnusedZones, useNodePlacements } from './PlacementsFieldHelper';
 import { Placement, UniverseFormData, CloudType } from '../../utils/dto';
 import {
   TOTAL_NODES_FIELD,
