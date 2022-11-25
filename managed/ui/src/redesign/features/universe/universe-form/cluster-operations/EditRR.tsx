@@ -1,4 +1,5 @@
 import React, { FC, useContext } from 'react';
+import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { browserHistory } from 'react-router';
@@ -18,7 +19,7 @@ import {
   getAsyncFormData,
   getUserIntent
 } from '../utils/helpers';
-import { getPlacements } from '../fields/PlacementsField/placementHelper';
+import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 
 interface EditReadReplicaProps {
   uuid: string;
@@ -34,7 +35,7 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
     {
       onSuccess: (resp) => {
         contextMethods.initializeForm({
-          universeConfigureTemplate: resp.universeDetails,
+          universeConfigureTemplate: _.cloneDeep(resp.universeDetails),
           clusterType: ClusterType.ASYNC,
           mode: ClusterModes.EDIT
         });
@@ -50,18 +51,11 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
       ...contextState.universeConfigureTemplate,
       clusterOperation: ClusterModes.EDIT,
       currentClusterType: ClusterType.ASYNC,
-      rootCA: universe?.universeDetails.rootCA,
-      allowGeoPartitioning: false,
-      userAZSelected: true,
-      resetAZConfig: false,
-      ybcSoftwareVersion: '',
       expectedUniverseVersion: universe?.version,
       clusters: [
         {
           ...getAsyncCluster(contextState.universeConfigureTemplate),
-          userIntent: {
-            ...getUserIntent({ formData })
-          },
+          userIntent: getUserIntent({ formData }),
           placementInfo: {
             cloudList: [
               {

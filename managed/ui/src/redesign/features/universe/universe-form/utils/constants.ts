@@ -8,6 +8,8 @@ export const REPLICATION_FACTOR_FIELD = 'cloudConfig.replicationFactor';
 export const AUTO_PLACEMENT_FIELD = 'cloudConfig.autoPlacement';
 export const TOTAL_NODES_FIELD = 'cloudConfig.numNodes';
 export const PLACEMENTS_FIELD = 'cloudConfig.placements';
+export const DEFAULT_REGION_FIELD = 'cloudConfig.defaultRegion';
+export const MASTERS_IN_DEFAULT_REGION_FIELD = 'cloudConfig.mastersInDefaultRegion';
 
 //Instance config
 export const INSTANCE_TYPE_FIELD = 'instanceConfig.instanceType';
@@ -28,6 +30,7 @@ export const ROOT_CERT_FIELD = 'instanceConfig.rootCA';
 export const NODE_TO_NODE_ENCRYPT_FIELD = 'instanceConfig.enableNodeToNodeEncrypt';
 export const EAR_FIELD = 'instanceConfig.enableEncryptionAtRest';
 export const KMS_CONFIG_FIELD = 'instanceConfig.kmsConfig';
+export const DEDICATED_NODES_FIELD = 'instanceConfig.dedicatedNodes';
 
 //Advanced config
 export const SYSTEMD_FIELD = 'advancedConfig.useSystemd';
@@ -59,6 +62,8 @@ export const PRIMARY_FIELDS = [
   AUTO_PLACEMENT_FIELD,
   TOTAL_NODES_FIELD,
   PLACEMENTS_FIELD,
+  DEFAULT_REGION_FIELD,
+  MASTERS_IN_DEFAULT_REGION_FIELD,
   INSTANCE_TYPE_FIELD,
   GFLAGS_FIELD,
   USER_TAGS_FIELD,
@@ -86,7 +91,8 @@ export const PRIMARY_FIELDS = [
   AWS_ARN_STRING_FIELD,
   COMMUNICATION_PORTS_FIELD,
   ACCESS_KEY_FIELD,
-  CUSTOMIZE_PORT_FIELD
+  CUSTOMIZE_PORT_FIELD,
+  DEDICATED_NODES_FIELD
 ];
 
 export const ASYNC_FIELDS = [

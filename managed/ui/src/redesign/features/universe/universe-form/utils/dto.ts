@@ -22,6 +22,7 @@ export interface PlacementCloud {
   uuid: string;
   code: string;
   regionList: PlacementRegion[];
+  defaultRegion?: string | null;
 }
 
 export enum ExposingServiceTypes {
@@ -43,6 +44,7 @@ export interface UserIntent {
   ybSoftwareVersion: string | null;
   accessKeyCode: string | null;
   deviceInfo: DeviceInfo | null;
+  dedicatedNodes?: boolean;
   assignPublicIP: boolean;
   useTimeSync: boolean;
   enableYSQL: boolean;
@@ -110,6 +112,7 @@ export interface CommunicationPorts {
   yqlServerRpcPort: number;
   ysqlServerHttpPort: number;
   ysqlServerRpcPort: number;
+  nodeExporterPort: number;
 }
 
 export interface PlacementAZ {
@@ -155,6 +158,8 @@ export interface CloudConfigFormValue {
   replicationFactor: number;
   autoPlacement?: boolean;
   placements: Placement[];
+  defaultRegion?: string | null;
+  mastersInDefaultRegion?: boolean;
 }
 
 export interface AccessKey {
@@ -224,6 +229,7 @@ export interface InstanceConfigFormValue {
   enableYEDIS: boolean;
   awsArnString: string | null;
   kmsConfig: string | null;
+  dedicatedNodes?: boolean;
 }
 
 export interface AdvancedConfigFormValue {
@@ -297,7 +303,8 @@ export const DEFAULT_COMMUNICATION_PORTS: CommunicationPorts = {
   yqlServerHttpPort: 12000,
   yqlServerRpcPort: 9042,
   ysqlServerHttpPort: 13000,
-  ysqlServerRpcPort: 5433
+  ysqlServerRpcPort: 5433,
+  nodeExporterPort: 9300
 };
 
 export interface DeviceInfo {
@@ -340,7 +347,9 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   numNodes: 3,
   replicationFactor: 3,
   autoPlacement: true, // "AUTO" is the default value when creating new universe
-  placements: []
+  placements: [],
+  defaultRegion: null,
+  mastersInDefaultRegion: false
 };
 
 export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
@@ -362,11 +371,12 @@ export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   ycqlConfirmPassword: '',
   enableYEDIS: false,
   awsArnString: '',
-  kmsConfig: null
+  kmsConfig: null,
+  dedicatedNodes: false
 };
 
 export const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
-  useSystemd: false,
+  useSystemd: true,
   ybcPackagePath: null,
   awsArnString: null,
   enableIPV6: false,
@@ -427,6 +437,7 @@ export interface UniverseDetails {
   clusterOperation?: 'CREATE' | 'EDIT' | 'DELETE';
   allowInsecure: boolean;
   backupInProgress: boolean;
+  mastersInDefaultRegion?: boolean;
   capability: 'READ_ONLY' | 'EDITS_ALLOWED';
   clusters: Cluster[];
   communicationPorts: CommunicationPorts;
@@ -475,4 +486,16 @@ export interface Universe {
   universeDetails: UniverseDetails;
   universeUUID: string;
   version: number;
+}
+
+export interface RunTimeConfigEntry {
+  inherited: boolean;
+  key: string;
+  value: string;
+}
+export interface RunTimeConfig {
+  configEntries: RunTimeConfigEntry[];
+  mutableScope: boolean;
+  uuid: string;
+  type: 'GLOBAL';
 }

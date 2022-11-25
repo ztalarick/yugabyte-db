@@ -1,7 +1,7 @@
 import React, { FC } from 'react';
 import { Box, Grid } from '@material-ui/core';
 import { Controller, useWatch, useFormContext } from 'react-hook-form';
-import { DEFAULT_COMMUNICATION_PORTS, UniverseFormData } from '../../utils/dto';
+import { CloudType, DEFAULT_COMMUNICATION_PORTS, UniverseFormData } from '../../utils/dto';
 import { YBInput, YBToggleField, YBLabel } from '../../../../../components';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,7 +9,8 @@ import {
   YCQL_FIELD,
   YSQL_FIELD,
   YEDIS_FIELD,
-  CUSTOMIZE_PORT_FIELD
+  CUSTOMIZE_PORT_FIELD,
+  PROVIDER_FIELD
 } from '../../utils/constants';
 
 interface DeploymentPortsFieldids {
@@ -25,6 +26,7 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
   const ysqlEnabled = useWatch({ name: YSQL_FIELD });
   const ycqlEnabled = useWatch({ name: YCQL_FIELD });
   const yedisEnabled = useWatch({ name: YEDIS_FIELD });
+  const provider = useWatch({ name: PROVIDER_FIELD });
 
   const customizePort = useWatch({ name: CUSTOMIZE_PORT_FIELD });
 
@@ -38,7 +40,8 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
     { id: 'yqlServerHttpPort', visible: ycqlEnabled },
     { id: 'yqlServerRpcPort', visible: ycqlEnabled },
     { id: 'ysqlServerHttpPort', visible: ysqlEnabled },
-    { id: 'ysqlServerRpcPort', visible: ysqlEnabled }
+    { id: 'ysqlServerRpcPort', visible: ysqlEnabled },
+    { id: 'nodeExporterPort', visible: provider?.code !== CloudType.onprem }
   ].filter((ports) => ports.visible);
 
   return (

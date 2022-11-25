@@ -10,7 +10,8 @@ import {
   AccessKey,
   Certificate,
   KmsConfig,
-  UniverseConfigure
+  UniverseConfigure,
+  RunTimeConfig
 } from './dto';
 
 // define unique names to use them as query keys
@@ -24,8 +25,11 @@ export enum QUERY_KEY {
   getDBVersionsByProvider = 'getDBVersionsByProvider',
   getAccessKeys = 'getAccessKeys',
   getCertificates = 'getCertificates',
-  getKMSConfigs = 'getKMSConfigs'
+  getKMSConfigs = 'getKMSConfigs',
+  fetchRunTimeConfigs = 'fetchRunTimeConfigs'
 }
+
+const DEFAULT_RUNTIME_GLOBAL_SCOPE = '00000000-0000-0000-0000-000000000000';
 
 class ApiService {
   private cancellers: Record<string, Canceler> = {};
@@ -47,6 +51,14 @@ class ApiService {
     return axios
       .get<string[]>(requestUrl, { cancelToken: source.token })
       .then((resp) => resp.data);
+  };
+
+  fetchRunTimeConfigs = (
+    includeInherited: boolean = false,
+    scope: string = DEFAULT_RUNTIME_GLOBAL_SCOPE
+  ): Promise<RunTimeConfig> => {
+    const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/runtime_config/${scope}?includeInherited=${includeInherited}`;
+    return axios.get<RunTimeConfig>(requestUrl).then((resp) => resp.data);
   };
 
   fetchUniverse = (universeId: string): Promise<Universe> => {

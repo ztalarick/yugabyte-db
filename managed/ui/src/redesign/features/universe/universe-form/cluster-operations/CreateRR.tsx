@@ -1,4 +1,5 @@
 import React, { FC, useContext } from 'react';
+import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { browserHistory } from 'react-router';
@@ -21,7 +22,7 @@ import {
   getPrimaryFormData,
   getUserIntent
 } from '../utils/helpers';
-import { getPlacements } from '../fields/PlacementsField/placementHelper';
+import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 
 interface CreateReadReplicaProps {
   uuid: string;
@@ -39,7 +40,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
       onSuccess: (resp) => {
         //initialize form
         contextMethods.initializeForm({
-          universeConfigureTemplate: resp.universeDetails,
+          universeConfigureTemplate: _.cloneDeep(resp.universeDetails),
           clusterType: ClusterType.ASYNC,
           mode: ClusterModes.CREATE
         });
@@ -52,11 +53,6 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
       ...contextState.universeConfigureTemplate,
       clusterOperation: ClusterModes.CREATE,
       currentClusterType: ClusterType.ASYNC,
-      rootCA: universe?.universeDetails.rootCA,
-      allowGeoPartitioning: false,
-      userAZSelected: false,
-      resetAZConfig: false,
-      ybcSoftwareVersion: '',
       expectedUniverseVersion: universe?.version,
       nodeDetailsSet: contextState.universeConfigureTemplate.nodeDetailsSet.filter(
         (node: NodeDetails) => node.state === NodeState.ToBeAdded
@@ -64,11 +60,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
       clusters: [
         {
           ...getAsyncCluster(contextState.universeConfigureTemplate),
-          userIntent: {
-            ...getUserIntent({ formData }),
-            universeName: '',
-            dedicatedNodes: false
-          },
+          userIntent: getUserIntent({ formData }),
           placementInfo: {
             cloudList: [
               {

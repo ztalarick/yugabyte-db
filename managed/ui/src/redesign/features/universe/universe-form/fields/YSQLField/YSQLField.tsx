@@ -12,9 +12,10 @@ import {
 } from '../../utils/constants';
 interface YSQLFieldProps {
   disabled: boolean;
+  isAuthEnforced?: boolean;
 }
 
-export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
+export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactElement => {
   const {
     control,
     formState: { errors }
@@ -43,20 +44,22 @@ export const YSQLField = ({ disabled }: YSQLFieldProps): ReactElement => {
 
       {ysqlEnabled && (
         <Box mt={1}>
-          <Box display="flex">
-            <YBLabel>{t('universeForm.instanceConfig.enableYSQLAuth')}</YBLabel>
-            <Box flex={1}>
-              <YBToggleField
-                name={YSQL_AUTH_FIELD}
-                inputProps={{
-                  'data-testid': 'YSQLAuth'
-                }}
-                control={control}
-                disabled={disabled}
-              />
-              <YBHelper>{t('universeForm.instanceConfig.enableYSQLAuthHelper')}</YBHelper>
+          {!isAuthEnforced && (
+            <Box display="flex">
+              <YBLabel>{t('universeForm.instanceConfig.enableYSQLAuth')}</YBLabel>
+              <Box flex={1}>
+                <YBToggleField
+                  name={YSQL_AUTH_FIELD}
+                  inputProps={{
+                    'data-testid': 'YSQLAuth'
+                  }}
+                  control={control}
+                  disabled={disabled}
+                />
+                <YBHelper>{t('universeForm.instanceConfig.enableYSQLAuthHelper')}</YBHelper>
+              </Box>
             </Box>
-          </Box>
+          )}
 
           {ysqlAuthEnabled && !disabled && (
             <Box display="flex">

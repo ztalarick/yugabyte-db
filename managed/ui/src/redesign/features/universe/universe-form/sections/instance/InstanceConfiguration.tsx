@@ -1,5 +1,6 @@
 import React, { FC, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from 'react-query';
 import { useSelector } from 'react-redux';
 import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
@@ -16,7 +17,8 @@ import {
   VolumeInfoField,
   YEDISField,
   YCQLField,
-  YSQLField
+  YSQLField,
+  DedicatedNodesField
 } from '../../fields';
 import { YBLabel } from '../../../../../components';
 import {
@@ -26,14 +28,35 @@ import {
   NODE_TO_NODE_ENCRYPT_FIELD,
   ACCESS_KEY_FIELD
 } from '../../utils/constants';
-import { AccessKey, CloudType, ClusterModes, ClusterType } from '../../utils/dto';
+import {
+  AccessKey,
+  CloudType,
+  ClusterModes,
+  ClusterType,
+  RunTimeConfigEntry
+} from '../../utils/dto';
 import { UniverseFormContext } from '../../UniverseFormContainer';
+import { api, QUERY_KEY } from '../../utils/api';
 
 interface InstanceConfigProps {}
 
 export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
+
+  //fetch run time configs
+  const { data: runtimeConfigs } = useQuery(QUERY_KEY.fetchRunTimeConfigs, () =>
+    api.fetchRunTimeConfigs(true)
+  );
+  const authEnforcedObject = runtimeConfigs?.configEntries?.find(
+    (c: RunTimeConfigEntry) => c.key === 'yb.universe.auth.is_enforced'
+  );
+  const isAuthEnforced = !!(authEnforcedObject?.value === 'true');
+
+  //Feature flags
+  const featureFlags = useSelector((state: any) => state.featureFlags);
+  const isDedicatedNodesEnabled =
+    featureFlags.test.enableDedicatedNodes || featureFlags.released.enableDedicatedNodes;
 
   //form context
   const { mode, clusterType } = useContext(UniverseFormContext)[0];
@@ -79,6 +102,16 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
             </Grid>
           </Grid>
         </Box>
+
+        {isCreatePrimary && isDedicatedNodesEnabled && (
+          <Box mt={4}>
+            <Grid container>
+              <Grid lg={6} item container>
+                <DedicatedNodesField disabled={false} />
+              </Grid>
+            </Grid>
+          </Box>
+        )}
 
         {[CloudType.aws, CloudType.gcp, CloudType.azu].includes(provider?.code) && (
           <>
@@ -129,11 +162,11 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
             )}
 
             <Box mt={6}>
-              <YSQLField disabled={!isCreatePrimary} />
+              <YSQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
             </Box>
 
             <Box mt={6}>
-              <YCQLField disabled={!isCreatePrimary} />
+              <YCQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
             </Box>
 
             <Box mt={6}>

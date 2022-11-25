@@ -33,7 +33,8 @@
         "yqlServerHttpPort": "YCQL HTTP Port",
         "yqlServerRpcPort": "YCQL RPC Port",
         "ysqlServerHttpPort": "YSQL HTTP Port",
-        "ysqlServerRpcPort": "YSQL RPC Port"
+        "ysqlServerRpcPort": "YSQL RPC Port",
+        "nodeExporterPort": "Node Exporter Port"
       },
       "cloudConfig": {
         "title": "Cloud Configuration",
@@ -60,7 +61,10 @@
           "notEnoughNodesConfigured": "Not Enough Nodes Configured",
           "notEnoughNodes": "Not Enough Nodes",
           "noFieldsChanged": "At Least One Field Must Be Modified"
-        }
+        },
+        "defaultRegion": "Default Region",
+        "mastersInDefaultRegion": "Masters in Default Region Only",
+        "mastersInDefaultRegionHelper": "Forces placement of all masters in Default Region."
       },
       "gFlags": {
         "title": "G-Flags",
@@ -120,7 +124,9 @@
         "provisionedIops": "Provisioned IOPS",
         "YSQLAuthPassword": "YSQL Auth Password",
         "YCQLAuthPassword": "YCQL Auth Password",
-        "ephemeralStorage": "! Selected instance type is with ephemeral storage, If you will pause this universe your data will get lost."
+        "ephemeralStorage": "! Selected instance type is with ephemeral storage, If you will pause this universe your data will get lost.",
+        "dedicatedNodes": "Use dedicated nodes for processes",
+        "dedicatedNodesHelper": "Place tserver and master processes on separate nodes."
       },
       "userTags": {
         "title": "User Tags",
