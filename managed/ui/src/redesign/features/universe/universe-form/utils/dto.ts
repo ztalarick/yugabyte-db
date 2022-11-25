@@ -255,6 +255,7 @@ export interface PlacementCloud {
   uuid: string;
   code: string;
   regionList: PlacementRegion[];
+  defaultRegion?: string | null;
 }
 
 export enum ExposingServiceTypes {
@@ -276,6 +277,7 @@ export interface UserIntent {
   ybSoftwareVersion: string | null;
   accessKeyCode: string | null;
   deviceInfo: DeviceInfo | null;
+  dedicatedNodes?: boolean;
   assignPublicIP: boolean;
   useTimeSync: boolean;
   enableYSQL: boolean;
@@ -343,6 +345,7 @@ export interface CommunicationPorts {
   yqlServerRpcPort: number;
   ysqlServerHttpPort: number;
   ysqlServerRpcPort: number;
+  nodeExporterPort: number;
 }
 
 export interface PlacementAZ {

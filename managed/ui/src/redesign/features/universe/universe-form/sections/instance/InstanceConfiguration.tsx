@@ -49,7 +49,8 @@ import {
   VolumeInfoField,
   YEDISField,
   YCQLField,
-  YSQLField
+  YSQLField,
+  DedicatedNodesField
 } from '../../fields';
 import { YBLabel } from '../../../../../components';
 import {
@@ -59,8 +60,15 @@ import {
   NODE_TO_NODE_ENCRYPT_FIELD,
   ACCESS_KEY_FIELD
 } from '../../utils/constants';
-import { AccessKey, CloudType, ClusterModes, ClusterType } from '../../utils/dto';
+import {
+  AccessKey,
+  CloudType,
+  ClusterModes,
+  ClusterType,
+  RunTimeConfigEntry
+} from '../../utils/dto';
 import { UniverseFormContext } from '../../UniverseFormContainer';
+import { api, QUERY_KEY } from '../../utils/api';
 
 interface InstanceConfigProps {}
 

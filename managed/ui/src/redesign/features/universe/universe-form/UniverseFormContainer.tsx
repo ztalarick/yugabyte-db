@@ -105,6 +105,11 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
     api.getProvidersList
   );
 
+  //prefetch runtime configs
+  const { isLoading: isRuntimeConfigsLoading } = useQuery(QUERY_KEY.fetchRunTimeConfigs, () =>
+    api.fetchRunTimeConfigs(true)
+  );
+
   const switchInternalRoutes = () => {
     //Create Primary + RR
     if (location.pathname === '/universes/create') return <CreateUniverse />;

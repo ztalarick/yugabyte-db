@@ -22,7 +22,8 @@ import {
   ProvidersField,
   RegionsField,
   ReplicationFactor,
-  TotalNodesField
+  TotalNodesField,
+  DefaultRegionField
 } from '../../fields';
 import { UniverseFormContext } from '../../UniverseFormContainer';
 import { ClusterModes, ClusterType } from '../../utils/dto';
