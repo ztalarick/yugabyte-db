@@ -15,7 +15,10 @@ import {
   ClusterModes
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
-import { getPlacements, getPlacementsFromCluster } from '../fields/PlacementsField/placementHelper';
+import {
+  getPlacements,
+  getPlacementsFromCluster
+} from '../fields/PlacementsField/PlacementsFieldHelper';
 import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
 
 const transitToUniverse = (universeUUID: string | undefined) => {
@@ -165,6 +168,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     regionList: formData.cloudConfig.regionList,
     numNodes: formData.cloudConfig.numNodes,
     replicationFactor: formData.cloudConfig.replicationFactor,
+    dedicatedNodes: !!formData?.instanceConfig?.dedicatedNodes,
     instanceType: (formData?.instanceConfig?.instanceType || '') as string,
     deviceInfo: formData.instanceConfig.deviceInfo,
     instanceTags: formData.instanceTags?.filter((tag) => tag.name && tag.value) ?? [],
@@ -231,6 +235,7 @@ export const createUniverse = async ({
       resetAZConfig: false,
       enableYbc: featureFlags.released.enableYbc || featureFlags.test.enableYbc,
       communicationPorts: primaryData.advancedConfig.communicationPorts,
+      mastersInDefaultRegion: !!primaryData?.cloudConfig?.mastersInDefaultRegion,
       encryptionAtRestConfig: {
         key_op: primaryData.instanceConfig.enableEncryptionAtRest ? 'ENABLE' : 'UNDEFINED'
       },
@@ -243,7 +248,8 @@ export const createUniverse = async ({
               {
                 uuid: primaryData.cloudConfig.provider?.uuid as string,
                 code: primaryData.cloudConfig.provider?.code as CloudType,
-                regionList: getPlacements(primaryData)
+                regionList: getPlacements(primaryData),
+                defaultRegion: primaryData.cloudConfig.defaultRegion
               }
             ]
           }

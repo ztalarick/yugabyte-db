@@ -21,7 +21,10 @@ import {
   TOTAL_NODES_FIELD,
   REPLICATION_FACTOR_FIELD,
   INSTANCE_TYPE_FIELD,
-  DEVICE_INFO_FIELD
+  DEVICE_INFO_FIELD,
+  DEDICATED_NODES_FIELD,
+  MASTERS_IN_DEFAULT_REGION_FIELD,
+  DEFAULT_REGION_FIELD
 } from '../../utils/constants';
 import { getUserIntent } from '../../utils/helpers';
 
@@ -145,12 +148,19 @@ export const useNodePlacements = () => {
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
   const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
+  const dedicatedNodes = useWatch({ name: DEDICATED_NODES_FIELD });
+  const defaultRegion = useWatch({ name: DEFAULT_REGION_FIELD });
+  const defaultMasterRegion = useWatch({ name: MASTERS_IN_DEFAULT_REGION_FIELD });
+
   const prevPropsCombination = useRef({
     instanceType,
     regionList,
     totalNodes,
     replicationFactor,
-    deviceInfo
+    deviceInfo,
+    dedicatedNodes,
+    defaultRegion,
+    defaultMasterRegion
   });
 
   let payload: any = {};
@@ -225,7 +235,10 @@ export const useNodePlacements = () => {
       regionList,
       totalNodes,
       replicationFactor,
-      deviceInfo
+      deviceInfo,
+      dedicatedNodes,
+      defaultRegion,
+      defaultMasterRegion
     };
     if (_.isEmpty(regionList)) {
       setValue(PLACEMENTS_FIELD, [], { shouldValidate: true });

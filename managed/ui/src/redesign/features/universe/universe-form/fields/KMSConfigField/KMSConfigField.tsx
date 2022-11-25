@@ -2,7 +2,6 @@ import React, { FC, ChangeEvent } from 'react';
 import { Box } from '@material-ui/core';
 import { Controller, useFormContext } from 'react-hook-form';
 import { useQuery } from 'react-query';
-import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { api, QUERY_KEY } from '../../utils/api';
 import { DEFAULT_INSTANCE_CONFIG, UniverseFormData } from '../../utils/dto';
@@ -28,15 +27,9 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
   const { setValue, control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  //feature flagging
-  const featureFlags = useSelector((state: any) => state.featureFlags);
-  const isHCVaultEnabled = featureFlags.test.enableHCVault || featureFlags.released.enableHCVault;
-
   //fetch data
   const { data, isLoading } = useQuery(QUERY_KEY.getKMSConfigs, api.getKMSConfigs);
   let kmsConfigs: KmsConfig[] = data || [];
-  if (!isHCVaultEnabled)
-    kmsConfigs = kmsConfigs.filter((config: KmsConfig) => config.metadata.provider !== 'HASHICORP');
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
     setValue(KMS_CONFIG_FIELD, option?.metadata?.configUUID ?? DEFAULT_INSTANCE_CONFIG.kmsConfig, {

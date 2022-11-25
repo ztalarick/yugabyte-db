@@ -8,7 +8,7 @@ import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
 import { api, QUERY_KEY } from '../../utils/api';
 import { UniverseFormData } from '../../utils/dto';
-import { REGIONS_FIELD } from '../../utils/constants';
+import { PROVIDER_FIELD, REGIONS_FIELD } from '../../utils/constants';
 
 interface RegionsFieldProps {
   disabled?: boolean;
@@ -19,8 +19,9 @@ const getOptionLabel = (option: Record<string, string>): string => option?.name;
 export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+
   //Listen to provider value change
-  const provider = useWatch({ name: 'cloudConfig.provider' });
+  const provider = useWatch({ name: PROVIDER_FIELD });
   const { isFetching, data } = useQuery(
     [QUERY_KEY.getRegionsList, provider?.uuid],
     () => api.getRegionsList(provider?.uuid),

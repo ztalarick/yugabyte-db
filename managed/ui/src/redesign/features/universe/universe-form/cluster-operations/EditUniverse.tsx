@@ -8,7 +8,7 @@ import { ClusterType, UniverseFormData, ClusterModes, Cluster } from '../utils/d
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { api, QUERY_KEY } from '../utils/api';
 import { getPrimaryFormData } from '../utils/helpers';
-import { getPlacements } from '../fields/PlacementsField/placementHelper';
+import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 import {
   REGIONS_FIELD,
   TOTAL_NODES_FIELD,
