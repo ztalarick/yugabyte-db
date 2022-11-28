@@ -68,6 +68,10 @@ DEFINE_bool(ysql_disable_server_file_access, false,
             "If true, disables read, write, and execute of local server files. "
             "File access can be re-enabled if set to false.");
 
+DEFINE_bool(ysql_catalog_prefetch_additional_tables, true,
+            "If true, YB catalog prefetches additional tables upon "
+            "connection creation and cache refresh.");
+
 namespace yb {
 namespace pggate {
 
@@ -1129,15 +1133,16 @@ YBCStatus YBCGetSharedAuthKey(uint64_t* auth_key) {
 
 const YBCPgGFlagsAccessor* YBCGetGFlags() {
   static YBCPgGFlagsAccessor accessor = {
-      .log_ysql_catalog_versions               = &FLAGS_log_ysql_catalog_versions,
-      .ysql_disable_index_backfill             = &FLAGS_ysql_disable_index_backfill,
-      .ysql_disable_server_file_access         = &FLAGS_ysql_disable_server_file_access,
-      .ysql_max_read_restart_attempts          = &FLAGS_ysql_max_read_restart_attempts,
-      .ysql_max_write_restart_attempts         = &FLAGS_ysql_max_write_restart_attempts,
-      .ysql_output_buffer_size                 = &FLAGS_ysql_output_buffer_size,
-      .ysql_sequence_cache_minval              = &FLAGS_ysql_sequence_cache_minval,
-      .ysql_session_max_batch_size             = &FLAGS_ysql_session_max_batch_size,
-      .ysql_sleep_before_retry_on_txn_conflict = &FLAGS_ysql_sleep_before_retry_on_txn_conflict
+      .log_ysql_catalog_versions                = &FLAGS_log_ysql_catalog_versions,
+      .ysql_catalog_prefetch_additional_tables  = &FLAGS_ysql_catalog_prefetch_additional_tables,
+      .ysql_disable_index_backfill              = &FLAGS_ysql_disable_index_backfill,
+      .ysql_disable_server_file_access          = &FLAGS_ysql_disable_server_file_access,
+      .ysql_max_read_restart_attempts           = &FLAGS_ysql_max_read_restart_attempts,
+      .ysql_max_write_restart_attempts          = &FLAGS_ysql_max_write_restart_attempts,
+      .ysql_output_buffer_size                  = &FLAGS_ysql_output_buffer_size,
+      .ysql_sequence_cache_minval               = &FLAGS_ysql_sequence_cache_minval,
+      .ysql_session_max_batch_size              = &FLAGS_ysql_session_max_batch_size,
+      .ysql_sleep_before_retry_on_txn_conflict  = &FLAGS_ysql_sleep_before_retry_on_txn_conflict
   };
   return &accessor;
 }
