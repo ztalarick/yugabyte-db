@@ -9,6 +9,7 @@ export * from './DefaultRegionField/DefaultRegionField';
 export * from './DeploymentPortsField/DeploymentPortsField';
 export * from './EncryptionAtRestField/EncryptionAtRestField';
 export * from './GflagsField/GflagsField';
+export * from './HelmOverridesField/HelmOverridesField';
 export * from './InstanceTypeField/InstanceTypeField';
 export * from './IPV6Field/IPV6Field';
 export * from './KMSConfigField/KMSConfigField';
