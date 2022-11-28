@@ -64,6 +64,10 @@ DECLARE_int32(delay_alter_sequence_sec);
 
 DECLARE_int32(client_read_write_timeout_ms);
 
+DEFINE_bool(ysql_catalog_prefetch_additional_tables, true,
+            "If true, YB catalog prefetches additional tables upon "
+            "connection creation and cache refresh.");
+
 namespace yb {
 namespace pggate {
 
@@ -1126,6 +1130,7 @@ YBCStatus YBCGetSharedAuthKey(uint64_t* auth_key) {
 const YBCPgGFlagsAccessor* YBCGetGFlags() {
   static YBCPgGFlagsAccessor accessor = {
       .log_ysql_catalog_versions               = &FLAGS_log_ysql_catalog_versions,
+      .ysql_catalog_prefetch_additional_tables  = &FLAGS_ysql_catalog_prefetch_additional_tables,
       .ysql_disable_index_backfill             = &FLAGS_ysql_disable_index_backfill,
       .ysql_max_read_restart_attempts          = &FLAGS_ysql_max_read_restart_attempts,
       .ysql_max_write_restart_attempts         = &FLAGS_ysql_max_write_restart_attempts,

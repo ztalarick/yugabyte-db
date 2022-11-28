@@ -1267,6 +1267,32 @@ YBPreloadCatalogCache(int cache_id, int idx_cache_id)
 				}
 			}
 		}
+
+		/*   Also add a cache list for AMOPOPID for lookup by operator only. */
+		if (cache_id  == AMOPOPID)
+		{
+			if (!current_list)
+			{
+				current_list = list_make1(ntp);
+			}
+			else
+			{
+				HeapTuple       ltp     = (HeapTuple) llast(current_list);
+				Form_pg_amop ltp_struct = (Form_pg_amop) GETSTRUCT(ltp);
+				Form_pg_amop ntp_struct = (Form_pg_amop) GETSTRUCT(ntp);
+				if (ntp_struct->amopopr == ltp_struct->amopopr)
+				{
+					// This rule is for the same table as the last one, continuing the list
+					current_list  = lappend(current_list, ntp);
+				}
+				else
+				{
+					// This rule is for another table, changing current list
+					list_of_lists = lappend(list_of_lists, current_list);
+					current_list  = list_make1(ntp);
+				}
+			}
+		}
 	}
 
 	if (current_list)
@@ -1291,8 +1317,20 @@ YBPreloadCatalogCache(int cache_id, int idx_cache_id)
 		{
 			SetCatCacheList(cache, 1, current_list);
 		}
+		if (cache_id == AMOPOPID)
+		{
+		SetCatCacheList(cache, 1, current_list);
+		}
 	}
 	list_free_deep(list_of_lists);
+
+	/* Done: mark cache(s) as prefetched. */
+	if (!YBCIsInitDbModeEnvVarSet())
+	{
+		cache->yb_cc_is_prefetched = true;
+		if (idx_cache)
+		idx_cache->yb_cc_is_prefetched = true;
+	}
 }
 
 /*

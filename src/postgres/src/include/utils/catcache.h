@@ -61,6 +61,7 @@ typedef struct catcache
 	slist_node	cc_next;		/* list link */
 	ScanKeyData cc_skey[CATCACHE_MAXKEYS];	/* precomputed key info for heap
 											 * scans */
+	bool		yb_cc_is_prefetched;  /* is relation fully prefetched on start/refresh */
 
 	/*
 	 * Keep these at the end, so that compiling catcache.c with CATCACHE_STATS

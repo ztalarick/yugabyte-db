@@ -42,6 +42,7 @@
 #include "executor/ybcExpr.h"
 #include "catalog/indexing.h"
 #include "catalog/pg_am.h"
+#include "catalog/pg_amop.h"
 #include "catalog/pg_amproc.h"
 #include "catalog/pg_attrdef.h"
 #include "catalog/pg_auth_members.h"
@@ -52,6 +53,7 @@
 #include "catalog/pg_database.h"
 #include "catalog/pg_db_role_setting.h"
 #include "catalog/pg_inherits.h"
+#include "catalog/pg_namespace.h"
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_partitioned_table.h"
@@ -1155,8 +1157,6 @@ bool IsTransactionalDdlStatement(PlannedStmt *pstmt,
 		//   sed 's/,//g' | while read s; do echo -e "\t\tcase $s:"; done
 		// All T_Create... tags from nodes.h:
 
-		case T_CreateDomainStmt:
-		case T_CreateEnumStmt:
 		case T_CreateTableGroupStmt:
 		case T_CreateTableSpaceStmt:
 		case T_CreatedbStmt:
@@ -1194,10 +1194,12 @@ bool IsTransactionalDdlStatement(PlannedStmt *pstmt,
 			break;
 		}
 
-		case T_CompositeTypeStmt: // CREATE TYPE
+		case T_CompositeTypeStmt: //  Create (composite) type
 		case T_CreateAmStmt:
 		case T_CreateCastStmt:
 		case T_CreateConversionStmt:
+		case T_CreateDomainStmt: // Create (domain) type
+		case T_CreateEnumStmt: // Create (enum) type
 		case T_CreateEventTrigStmt:
 		case T_CreateExtensionStmt:
 		case T_CreateFdwStmt:
@@ -1209,7 +1211,7 @@ bool IsTransactionalDdlStatement(PlannedStmt *pstmt,
 		case T_CreatePLangStmt:
 		case T_CreatePolicyStmt:
 		case T_CreatePublicationStmt:
-		case T_CreateRangeStmt:
+		case T_CreateRangeStmt: // Create (range) type
 		case T_CreateReplicationSlotCmd:
 		case T_CreateRoleStmt:
 		case T_CreateSchemaStmt:
@@ -2297,8 +2299,14 @@ void YbRegisterSysTableForPrefetching(int sys_table_id) {
 		case ConstraintRelationId:                        // pg_constraint
 			sys_table_index_id = ConstraintRelidTypidNameIndexId;
 			break;
+		case IndexRelationId:                             // pg_index
+			sys_table_index_id = IndexIndrelidIndexId;
+			break;
 		case InheritsRelationId:                          // pg_inherits
 			sys_table_index_id = InheritsParentIndexId;
+			break;
+		case NamespaceRelationId:                         // pg_namespace
+			sys_table_index_id = NamespaceNameIndexId;
 			break;
 		case OperatorClassRelationId:                     // pg_opclass
 			sys_table_index_id = OpclassAmNameNspIndexId;
@@ -2321,17 +2329,19 @@ void YbRegisterSysTableForPrefetching(int sys_table_id) {
 		case TypeRelationId:                              // pg_type
 			sys_table_index_id = TypeNameNspIndexId;
 			break;
+		case AccessMethodOperatorRelationId:              // pg_amop
+			sys_table_index_id = AccessMethodOperatorIndexId;
+			break;
 
 		case CastRelationId:        switch_fallthrough(); // pg_cast
-		case IndexRelationId:       switch_fallthrough(); // pg_index
 		case PartitionedRelationId: switch_fallthrough(); // pg_partitioned_table
 		case ProcedureRelationId:   break;                // pg_proc
 
 		default:
 		{
 			ereport(FATAL,
-                    (errcode(ERRCODE_INTERNAL_ERROR),
-                    errmsg("Sys table '%d' are not yet inteded for preloading", sys_table_id)));
+			        (errcode(ERRCODE_INTERNAL_ERROR),
+			         errmsg("Sys table '%d' is not yet inteded for preloading", sys_table_id)));
 
 		}
 	}
