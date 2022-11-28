@@ -36,6 +36,11 @@ export const useFormMainStyles = makeStyles((theme) => ({
     width: '100%',
     padding: theme.spacing(0, 3),
     background: '#f6f6f5'
+  },
+
+  formButtons: {
+    height: theme.spacing(3.75),
+    borderRadius: theme.spacing(0.5)
   }
 }));
 

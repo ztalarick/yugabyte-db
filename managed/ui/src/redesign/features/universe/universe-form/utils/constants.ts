@@ -49,6 +49,10 @@ export const GFLAGS_FIELD = 'gFlags';
 //Tags
 export const USER_TAGS_FIELD = 'instanceTags';
 
+//K8s overrides
+export const UNIVERSE_OVERRIDES_FIELD = 'universeOverrides';
+export const AZ_OVERRIDES_FIELD = 'azOverrides';
+
 // ------------Universe Form Fields Path End------------
 
 //Other form related constants
@@ -92,7 +96,9 @@ export const PRIMARY_FIELDS = [
   COMMUNICATION_PORTS_FIELD,
   ACCESS_KEY_FIELD,
   CUSTOMIZE_PORT_FIELD,
-  DEDICATED_NODES_FIELD
+  DEDICATED_NODES_FIELD,
+  UNIVERSE_OVERRIDES_FIELD,
+  AZ_OVERRIDES_FIELD
 ];
 
 export const ASYNC_FIELDS = [

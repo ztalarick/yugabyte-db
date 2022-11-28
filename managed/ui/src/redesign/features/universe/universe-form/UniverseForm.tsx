@@ -9,6 +9,7 @@ import {
   AdvancedConfiguration,
   CloudConfiguration,
   GFlags,
+  HelmOverrides,
   InstanceConfiguration,
   UserTags
 } from './sections';
@@ -34,7 +35,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
-  const [state] = useContext(UniverseFormContext);
+  const { clusterType, mode } = useContext(UniverseFormContext)[0];
 
   //Form Validation
   const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
@@ -132,7 +133,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   return (
     <Box className={classes.mainConatiner}>
       <FormProvider {...formMethods}>
-        <form key={state.clusterType} onSubmit={formMethods.handleSubmit(onSubmit)}>
+        <form key={clusterType} onSubmit={formMethods.handleSubmit(onSubmit)}>
           <Box className={classes.formHeader}>
             <Typography variant="h3">{title}</Typography>
           </Box>
@@ -142,6 +143,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
             <AdvancedConfiguration />
             <GFlags />
             <UserTags />
+            <HelmOverrides />
           </Box>
           <Box className={classes.formFooter} mt={4}>
             <Grid container justifyContent="space-between">
@@ -156,13 +158,13 @@ export const UniverseForm: FC<UniverseFormProps> = ({
                     {t('common.cancel')}
                   </YBButton>
                   &nbsp;
-                  {state.mode === ClusterModes.CREATE && onClusterTypeChange && (
+                  {mode === ClusterModes.CREATE && onClusterTypeChange && (
                     <YBButton
                       variant="secondary"
                       size="large"
                       onClick={() => onClusterTypeChange(getValues())}
                     >
-                      {state.clusterType === ClusterType.PRIMARY
+                      {clusterType === ClusterType.PRIMARY
                         ? t('universeForm.actions.configureRR')
                         : t('universeForm.actions.backPrimary')}
                     </YBButton>

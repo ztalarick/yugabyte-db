@@ -61,9 +61,11 @@ export interface UserIntent {
   enableExposingService: ExposingServiceTypes | null;
   ybcPackagePath?: string | null;
   useSystemd: boolean;
-  instanceTags: InstanceTags[];
-  masterGFlags: FlagsArray;
-  tserverGFlags: FlagsArray;
+  instanceTags?: InstanceTags[];
+  masterGFlags?: FlagsArray;
+  tserverGFlags?: FlagsArray;
+  universeOverrides?: string;
+  azOverrides?: Record<string, string>;
 }
 
 export interface Certificate {
@@ -247,6 +249,12 @@ export interface AdvancedConfigFormValue {
 export interface InstanceTags {
   name: string;
   value: string;
+  id?: string;
+}
+
+export interface AZOverrides {
+  value: string;
+  id?: string;
 }
 
 export interface Gflag {
@@ -261,6 +269,8 @@ export interface UniverseFormData {
   advancedConfig: AdvancedConfigFormValue;
   instanceTags: InstanceTags[];
   gFlags: Gflag[];
+  universeOverrides?: string;
+  azOverrides?: Record<string, string>;
 }
 
 //Instance Config
@@ -389,13 +399,17 @@ export const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
 
 export const DEFAULT_USER_TAGS = [{ name: '', value: '' }];
 export const DEFAULT_GFLAGS = [];
+export const DEFAULT_UNIVERSE_OVERRIDES = '';
+export const DEFAULT_AZ_OVERRIDES = {};
 
 export const DEFAULT_FORM_DATA: UniverseFormData = {
   cloudConfig: DEFAULT_CLOUD_CONFIG,
   instanceConfig: DEFAULT_INSTANCE_CONFIG,
   advancedConfig: DEFAULT_ADVANCED_CONFIG,
   instanceTags: DEFAULT_USER_TAGS,
-  gFlags: DEFAULT_GFLAGS
+  gFlags: DEFAULT_GFLAGS,
+  universeOverrides: DEFAULT_UNIVERSE_OVERRIDES,
+  azOverrides: DEFAULT_AZ_OVERRIDES
 };
 
 export enum NodeState {
@@ -498,4 +512,11 @@ export interface RunTimeConfig {
   mutableScope: boolean;
   uuid: string;
   type: 'GLOBAL';
+}
+
+export interface OverridesError {
+  errorString: string;
+}
+export interface HelmOverridesError {
+  overridesErrors: OverridesError[];
 }

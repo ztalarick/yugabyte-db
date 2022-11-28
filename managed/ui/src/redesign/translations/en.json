@@ -5,7 +5,9 @@
       "genericFailure": "Something went wrong. Please try again.",
       "requiredField": "Required field",
       "confirm": "Confirm",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "save": "Save",
+      "validateAndSave": "Validate and Save"
     },
     "universeForm": {
       "configReadReplica": "Configure Read Replica",
@@ -131,6 +133,17 @@
       "userTags": {
         "title": "User Tags",
         "addRow": "Add Row"
+      },
+      "helmOverrides": {
+        "title": "Helm Overrides",
+        "k8sOverrides": "Kubernetes Overrides",
+        "addK8sOverrides": "Add Kubernetes Overrides",
+        "universeOverrides": "Universe Overrides",
+        "azOverrides": "AZ Overrides",
+        "availabilityZone": "Availability Zone",
+        "addAvailabilityZone": "Add Availability Zone",
+        "forceApply": "Force Apply",
+        "yamlErrorsTitle": "Errors in helm YAML"
       },
       "actions": {
         "backPrimary": "Back to Primary Cluster",
