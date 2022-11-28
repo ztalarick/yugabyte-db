@@ -294,9 +294,11 @@ export interface UserIntent {
   enableExposingService: ExposingServiceTypes | null;
   ybcPackagePath?: string | null;
   useSystemd: boolean;
-  instanceTags: InstanceTags[];
-  masterGFlags: FlagsArray;
-  tserverGFlags: FlagsArray;
+  instanceTags?: InstanceTags[];
+  masterGFlags?: FlagsArray;
+  tserverGFlags?: FlagsArray;
+  universeOverrides?: string;
+  azOverrides?: Record<string, string>;
 }
 
 export interface Certificate {

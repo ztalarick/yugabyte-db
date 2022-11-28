@@ -37,7 +37,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
-  const [state] = useContext(UniverseFormContext);
+  const { clusterType, mode } = useContext(UniverseFormContext)[0];
 
   //context state
   const { clusterType } = useContext(UniverseFormContext)[0];
