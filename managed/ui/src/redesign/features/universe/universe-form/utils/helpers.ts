@@ -42,18 +42,22 @@ export const getAsyncCluster = (universeData: UniverseDetails): Cluster | undefi
 };
 
 const transformMasterTserverToFlags = (
-  masterGFlags: FlagsArray,
-  tserverGFlags: FlagsArray
+  masterGFlags: FlagsArray | undefined,
+  tserverGFlags: FlagsArray | undefined
 ): Gflag[] => {
   const flagsArray: Gflag[] = [
-    ...Object.keys(masterGFlags).map((key: string) => ({
-      Name: key,
-      MASTER: masterGFlags[key]
-    })),
-    ...Object.keys(tserverGFlags).map((key: string) => ({
-      Name: key,
-      TSERVER: tserverGFlags[key]
-    }))
+    ...(masterGFlags
+      ? Object.keys(masterGFlags).map((key: string) => ({
+          Name: key,
+          MASTER: masterGFlags[key]
+        }))
+      : []),
+    ...(tserverGFlags
+      ? Object.keys(tserverGFlags).map((key: string) => ({
+          Name: key,
+          TSERVER: tserverGFlags[key]
+        }))
+      : [])
   ];
 
   return flagsArray;
@@ -125,12 +129,16 @@ export const getFormData = (
       customizePort: false, //** */
       ybcPackagePath: null //** */
     },
-    instanceTags: Object.keys(userIntent.instanceTags).map((key: string) => ({
-      name: key,
-      value: userIntent.instanceTags[key]
-    })),
-    gFlags: transformMasterTserverToFlags(userIntent.masterGFlags, userIntent.tserverGFlags)
+    instanceTags: userIntent?.instanceTags ?? [],
+    // instanceTags: userIntent?.instanceTags ? Object.keys(userIntent.instanceTags).map((key: string) => {
+    //   return ({
+    //     name: key,
+    //     value: userIntent?.instanceTags?[key] ?? ''
+    //   })
+    // }) : [],
+    gFlags: transformMasterTserverToFlags(userIntent?.masterGFlags, userIntent?.tserverGFlags)
   };
+
   return data;
 };
 
@@ -171,7 +179,6 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     dedicatedNodes: !!formData?.instanceConfig?.dedicatedNodes,
     instanceType: (formData?.instanceConfig?.instanceType || '') as string,
     deviceInfo: formData.instanceConfig.deviceInfo,
-    instanceTags: formData.instanceTags?.filter((tag) => tag.name && tag.value) ?? [],
     assignPublicIP: formData.instanceConfig.assignPublicIP,
     awsArnString: formData.instanceConfig.awsArnString,
     enableNodeToNodeEncrypt: formData.instanceConfig.enableNodeToNodeEncrypt,
@@ -186,10 +193,15 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     ybSoftwareVersion: formData.advancedConfig.ybSoftwareVersion,
     enableIPV6: formData.advancedConfig.enableIPV6,
     enableExposingService: formData.advancedConfig.enableExposingService,
-    useSystemd: formData.advancedConfig.useSystemd,
-    masterGFlags,
-    tserverGFlags
+    useSystemd: formData.advancedConfig.useSystemd
   };
+
+  if (masterGFlags.length) intent.masterGFlags = masterGFlags;
+
+  if (tserverGFlags.length) intent.tserverGFlags = tserverGFlags;
+
+  if (formData?.instanceTags?.filter((tag) => tag.name && tag.value)?.length)
+    intent.instanceTags = formData.instanceTags?.filter((tag) => tag.name && tag.value) ?? [];
 
   if (formData.instanceConfig.enableYSQLAuth && formData.instanceConfig.ysqlPassword)
     intent.ysqlPassword = formData.instanceConfig.ysqlPassword;

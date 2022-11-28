@@ -11,7 +11,8 @@ import {
   Certificate,
   KmsConfig,
   UniverseConfigure,
-  RunTimeConfig
+  RunTimeConfig,
+  HelmOverridesError
 } from './dto';
 
 // define unique names to use them as query keys
@@ -26,7 +27,8 @@ export enum QUERY_KEY {
   getAccessKeys = 'getAccessKeys',
   getCertificates = 'getCertificates',
   getKMSConfigs = 'getKMSConfigs',
-  fetchRunTimeConfigs = 'fetchRunTimeConfigs'
+  fetchRunTimeConfigs = 'fetchRunTimeConfigs',
+  validateHelmYAML = 'validateHelmYAML'
 }
 
 const DEFAULT_RUNTIME_GLOBAL_SCOPE = '00000000-0000-0000-0000-000000000000';
@@ -145,6 +147,11 @@ class ApiService {
   getKMSConfigs = (): Promise<KmsConfig[]> => {
     const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/kms_configs`;
     return axios.get<KmsConfig[]>(requestUrl).then((resp) => resp.data);
+  };
+
+  validateHelmYAML = (data: UniverseConfigure): Promise<HelmOverridesError> => {
+    const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/validate_kubernetes_overrides`;
+    return axios.post<HelmOverridesError>(requestUrl, data).then((resp) => resp.data);
   };
 
   // check if exception was caused by canceling previous request

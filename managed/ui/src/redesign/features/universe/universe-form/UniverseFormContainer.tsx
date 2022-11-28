@@ -34,32 +34,32 @@ const initialState: UniverseFormContextState = {
 };
 
 //Avoiding using global state since we are using react-query
-const createFormMethods = (state: UniverseFormContextState) => ({
+const createFormMethods = (contextState: UniverseFormContextState) => ({
   setUniverseConfigureTemplate: (data: UniverseConfigure): UniverseFormContextState => ({
-    ...state,
+    ...contextState,
     universeConfigureTemplate: data,
     isLoading: false
   }),
   //This method will be used only in case of Create Primary Cluster + Read Replica flow
   setPrimaryFormData: (data: UniverseFormData): UniverseFormContextState => ({
-    ...state,
+    ...contextState,
     primaryFormData: data
   }),
   setAsyncFormData: (data: UniverseFormData): UniverseFormContextState => ({
-    ...state,
+    ...contextState,
     asyncFormData: data
   }),
   toggleClusterType: (type: ClusterType): UniverseFormContextState => ({
-    ...state,
+    ...contextState,
     clusterType: type
   }),
   initializeForm: (data: Partial<UniverseFormContextState>): UniverseFormContextState => ({
-    ...state,
+    ...contextState,
     ...data,
     isLoading: false
   }),
   setLoader: (val: boolean): UniverseFormContextState => ({
-    ...state,
+    ...contextState,
     isLoading: val
   }),
   reset: (): UniverseFormContextState => initialState
