@@ -10,7 +10,6 @@ import {
   UniverseFormData,
   UserIntent,
   Gflag,
-  FlagsArray,
   DEFAULT_FORM_DATA,
   ClusterModes
 } from './dto';
@@ -21,7 +20,7 @@ import {
 } from '../fields/PlacementsField/PlacementsFieldHelper';
 import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
 
-const transitToUniverse = (universeUUID: string | undefined) => {
+export const transitToUniverse = (universeUUID: string | undefined) => {
   if (universeUUID) browserHistory.push(`/universes/${universeUUID}/tasks`);
 };
 
@@ -42,8 +41,8 @@ export const getAsyncCluster = (universeData: UniverseDetails): Cluster | undefi
 };
 
 const transformMasterTserverToFlags = (
-  masterGFlags: FlagsArray | undefined,
-  tserverGFlags: FlagsArray | undefined
+  masterGFlags: Record<string, any> | undefined,
+  tserverGFlags: Record<string, any> | undefined
 ): Gflag[] => {
   const flagsArray: Gflag[] = [
     ...(masterGFlags
@@ -129,13 +128,12 @@ export const getFormData = (
       customizePort: false, //** */
       ybcPackagePath: null //** */
     },
-    instanceTags: userIntent?.instanceTags ?? [],
-    // instanceTags: userIntent?.instanceTags ? Object.keys(userIntent.instanceTags).map((key: string) => {
-    //   return ({
-    //     name: key,
-    //     value: userIntent?.instanceTags?[key] ?? ''
-    //   })
-    // }) : [],
+    instanceTags: userIntent?.instanceTags
+      ? Object.entries(userIntent?.instanceTags).map(([key, val]) => ({
+          name: key,
+          value: val ?? ''
+        }))
+      : [],
     gFlags: transformMasterTserverToFlags(userIntent?.masterGFlags, userIntent?.tserverGFlags)
   };
 
@@ -150,24 +148,36 @@ export const getAsyncFormData = (universeData: UniverseDetails): UniverseFormDat
   return getFormData(universeData, ClusterType.ASYNC);
 };
 
-const transformFlagsToMasterTserver = (
-  flagsArray: Gflag[]
-): { masterGFlags: FlagsArray; tserverGFlags: FlagsArray } => {
-  const masterGFlags: FlagsArray = [],
-    tserverGFlags: FlagsArray = [];
-  (flagsArray || []).forEach((flag: Gflag) => {
-    if (flag?.hasOwnProperty('MASTER'))
-      masterGFlags.push({ name: flag?.Name, value: flag['MASTER'] });
-    if (flag?.hasOwnProperty('TSERVER'))
-      tserverGFlags.push({ name: flag?.Name, value: flag['TSERVER'] });
-  });
+// const transformFlagsToMasterTserver = (
+//   flagsArray: Gflag[]
+// ): { masterGFlags: FlagsArray; tserverGFlags: FlagsArray } => {
+//   const masterGFlags: FlagsArray = [],
+//     tserverGFlags: FlagsArray = [];
+//   (flagsArray || []).forEach((flag: Gflag) => {
+//     if (flag?.hasOwnProperty('MASTER'))
+//       masterGFlags.push({ name: flag?.Name, value: flag['MASTER'] });
+//     if (flag?.hasOwnProperty('TSERVER'))
+//       tserverGFlags.push({ name: flag?.Name, value: flag['TSERVER'] });
+//   });
 
+//   return { masterGFlags, tserverGFlags };
+// };
+
+const transformFlagArrayToObject = (
+  flagsArray: Gflag[]
+): { masterGFlags: Record<string, any>; tserverGFlags: Record<string, any> } => {
+  let masterGFlags = {},
+    tserverGFlags = {};
+  (flagsArray || []).forEach((flag: Gflag) => {
+    if (flag?.hasOwnProperty('MASTER')) masterGFlags[flag.Name] = flag['MASTER'];
+    if (flag?.hasOwnProperty('TSERVER')) tserverGFlags[flag.Name] = flag['TSERVER'];
+  });
   return { masterGFlags, tserverGFlags };
 };
 
 //Transform form data to intent
 export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
-  const { masterGFlags, tserverGFlags } = transformFlagsToMasterTserver(formData.gFlags);
+  const { masterGFlags, tserverGFlags } = transformFlagArrayToObject(formData.gFlags);
 
   let intent: UserIntent = {
     universeName: formData.cloudConfig.universeName,
@@ -196,12 +206,17 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     useSystemd: formData.advancedConfig.useSystemd
   };
 
-  if (masterGFlags.length) intent.masterGFlags = masterGFlags;
+  if (!_.isEmpty(masterGFlags)) intent.masterGFlags = masterGFlags;
+  if (!_.isEmpty(tserverGFlags)) intent.tserverGFlags = tserverGFlags;
 
-  if (tserverGFlags.length) intent.tserverGFlags = tserverGFlags;
-
-  if (formData?.instanceTags?.filter((tag) => tag.name && tag.value)?.length)
-    intent.instanceTags = formData.instanceTags?.filter((tag) => tag.name && tag.value) ?? [];
+  if (formData?.instanceTags?.length) {
+    formData?.instanceTags.forEach((tag) => {
+      if (tag?.name && tag?.value) {
+        if (!intent.instanceTags) intent.instanceTags = {};
+        intent.instanceTags[tag.name] = tag.value;
+      }
+    });
+  }
 
   if (formData.instanceConfig.enableYSQLAuth && formData.instanceConfig.ysqlPassword)
     intent.ysqlPassword = formData.instanceConfig.ysqlPassword;

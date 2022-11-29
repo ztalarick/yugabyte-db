@@ -107,6 +107,12 @@ class ApiService {
     return axios.post<Universe>(requestUrl, data).then((resp) => resp.data);
   };
 
+  //handle type
+  resizeNodes = (data: any, universeId: string): Promise<Universe> => {
+    const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universes/${universeId}/upgrade/resize_node`;
+    return axios.post<Universe>(requestUrl, data).then((resp) => resp.data);
+  };
+
   getInstanceTypes = (providerId?: string): Promise<InstanceType[]> => {
     if (providerId) {
       const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/providers/${providerId}/instance_types`;

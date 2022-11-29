@@ -57,7 +57,7 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
           disabled={!autoPlacement ? true : disabled}
           inputProps={{
             'data-testid': 'InputTotalNodes',
-            min: replicationFactor > 3 ? replicationFactor : 3
+            min: replicationFactor
           }}
         />
       </Box>

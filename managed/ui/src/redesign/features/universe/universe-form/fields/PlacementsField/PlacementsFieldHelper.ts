@@ -3,8 +3,9 @@ import _ from 'lodash';
 import { useUpdateEffect } from 'react-use';
 import { useQuery } from 'react-query';
 import { useWatch, useFormContext } from 'react-hook-form';
-import { UniverseFormContext } from '../../UniverseFormContainer';
 import { api, QUERY_KEY } from '../../utils/api';
+import { UniverseFormContext } from '../../UniverseFormContainer';
+import { getUserIntent } from '../../utils/helpers';
 import {
   Placement,
   Cluster,
@@ -26,7 +27,6 @@ import {
   MASTERS_IN_DEFAULT_REGION_FIELD,
   DEFAULT_REGION_FIELD
 } from '../../utils/constants';
-import { getUserIntent } from '../../utils/helpers';
 
 export const getPlacementsFromCluster = (
   cluster?: Cluster,

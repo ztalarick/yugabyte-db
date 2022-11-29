@@ -7,13 +7,18 @@
       "confirm": "Confirm",
       "cancel": "Cancel",
       "save": "Save",
-      "validateAndSave": "Validate and Save"
+      "validateAndSave": "Validate and Save",
+      "proceed": "Proceed"
     },
     "universeForm": {
       "configReadReplica": "Configure Read Replica",
       "createUniverse": "Create Universe",
       "editReadReplica": "Edit Read Replica",
       "editUniverse": "Edit Universe",
+      "perInstance": "per instance",
+      "perInstanceType": "type",
+      "current": "Current :",
+      "new": "New :",
       "advancedConfig": {
         "title": "Advanced Configuration",
         "accessKey": "Access Key",
@@ -148,6 +153,24 @@
       "actions": {
         "backPrimary": "Back to Primary Cluster",
         "configureRR": "Configure Read Replica"
+      },
+      "resizeNodeModal": {
+        "confirmResizeCheckbox": "Confirm Resize Nodes",
+        "modalTitle": "Resize Nodes",
+        "cancelLabel": "Cancel",
+        "confirmLabel": "Confirm",
+        "modalDescription": "This operation will be performed without restart",
+        "timeDelayLabel": "Rolling Upgrade Delay Between Servers (secs)"
+      },
+      "smartResizeModal": {
+        "modalDescription": "This operation will migrate this universe and all its data to a completely new set of nodes Or alternatively you could try smart resize (This will change VM image {{value}} for existing nodes)",
+        "buttonLabel": "Do Smart Resize"
+      },
+      "fullMoveModal": {
+        "modalTitle": "Confirm Full Move Update",
+        "submitLabel": "Do full move",
+        "modalDescription": "This operation will migrate this universe and all its data to a completely new set of nodes.",
+        "likeToProceed": "Would you like to proceed?"
       },
       "validation": {
         "passwordStrength": "Password must be 8 characters minimum and must contain at least 1 digit, 1 uppercase, 1 lowercase and one of the !@#$%^&* (special) characters.",

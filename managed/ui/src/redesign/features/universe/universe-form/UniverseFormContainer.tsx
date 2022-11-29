@@ -1,17 +1,17 @@
 import React, { createContext, FC } from 'react';
 import { useQuery } from 'react-query';
 import { useMethods } from 'react-use';
-import { Box } from '@material-ui/core';
 import { RouteComponentProps } from 'react-router-dom';
-import { UniverseConfigure, ClusterType, ClusterModes, UniverseFormData } from './utils/dto';
-import { useFormMainStyles } from './universeMainStyle';
+import { api, QUERY_KEY } from './utils/api';
+import { Box } from '@material-ui/core';
 import {
   CreateUniverse,
   CreateReadReplica,
   EditUniverse,
   EditReadReplica
 } from './cluster-operations';
-import { api, QUERY_KEY } from './utils/api';
+import { UniverseConfigure, ClusterType, ClusterModes, UniverseFormData } from './utils/dto';
+import { useFormMainStyles } from './universeMainStyle';
 
 export interface UniverseFormContextState {
   clusterType: ClusterType;
@@ -71,7 +71,7 @@ interface UniverseFormContainerProps {
   mode: string;
   pathname: string;
   uuid: string;
-  clusterType: string;
+  type: string;
 }
 
 export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormContainerProps>> = ({
@@ -79,8 +79,7 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
   params
 }) => {
   const classes = useFormMainStyles();
-  const { clusterType: CLUSTER_TYPE, mode: MODE, uuid } = params;
-
+  const { type: CLUSTER_TYPE, mode: MODE, uuid } = params;
   //route has it in lower case & enum has it in upper case
   const mode = MODE?.toUpperCase();
   const clusterType = CLUSTER_TYPE?.toUpperCase();
@@ -100,7 +99,7 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
 
   const switchInternalRoutes = () => {
     //Create Primary + RR
-    if (location.pathname === '/universe/new') return <CreateUniverse />;
+    if (location.pathname === '/universes/create') return <CreateUniverse />;
     //NEW ASYNC
     else if (mode === ClusterModes.CREATE && clusterType === ClusterType.ASYNC)
       return <CreateReadReplica uuid={uuid} />;
