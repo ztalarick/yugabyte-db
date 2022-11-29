@@ -251,11 +251,50 @@ export enum ClusterType {
   ASYNC = 'ASYNC'
 }
 
-export interface PlacementCloud {
-  uuid: string;
-  code: string;
-  regionList: PlacementRegion[];
-  defaultRegion?: string | null;
+export enum CloudType {
+  unknown = 'unknown',
+  aws = 'aws',
+  gcp = 'gcp',
+  azu = 'azu',
+  docker = 'docker',
+  onprem = 'onprem',
+  kubernetes = 'kubernetes',
+  cloud = 'cloud-1',
+  other = 'other'
+}
+
+export interface CommunicationPorts {
+  masterHttpPort: number;
+  masterRpcPort: number;
+  tserverHttpPort: number;
+  tserverRpcPort: number;
+  redisServerHttpPort: number;
+  redisServerRpcPort: number;
+  yqlServerHttpPort: number;
+  yqlServerRpcPort: number;
+  ysqlServerHttpPort: number;
+  ysqlServerRpcPort: number;
+  nodeExporterPort: number;
+}
+
+export enum StorageType {
+  IO1 = 'IO1',
+  GP2 = 'GP2',
+  GP3 = 'GP3',
+  Scratch = 'Scratch',
+  Persistent = 'Persistent',
+  StandardSSD_LRS = 'StandardSSD_LRS',
+  Premium_LRS = 'Premium_LRS',
+  UltraSSD_LRS = 'UltraSSD_LRS'
+}
+export interface DeviceInfo {
+  volumeSize: number;
+  numVolumes: number;
+  diskIops: number | null;
+  throughput: number | null;
+  storageClass: 'standard'; // hardcoded in DeviceInfo.java
+  mountPoints: string | null;
+  storageType: StorageType | null;
 }
 
 export enum ExposingServiceTypes {
@@ -263,8 +302,30 @@ export enum ExposingServiceTypes {
   UNEXPOSED = 'UNEXPOSED'
 }
 
-export type FlagsObject = { name: string; value: string | boolean | number | undefined };
-export type FlagsArray = FlagsObject[];
+//-------------------------------------------------------- Most Used OR Common Types - Ends --------------------------------------------------------
+
+//-------------------------------------------------------- Payload related Types - Starts ----------------------------------------------------------
+
+export interface PlacementAZ {
+  uuid: string;
+  name: string;
+  replicationFactor: number;
+  subnet: string;
+  numNodesInAZ: number;
+  isAffinitized: boolean;
+}
+export interface PlacementRegion {
+  uuid: string;
+  code: string;
+  name: string;
+  azList: PlacementAZ[];
+}
+export interface PlacementCloud {
+  uuid: string;
+  code: string;
+  regionList: PlacementRegion[];
+  defaultRegion?: string | null;
+}
 
 export interface UserIntent {
   universeName: string;
@@ -301,32 +362,6 @@ export interface UserIntent {
   azOverrides?: Record<string, string>;
 }
 
-export interface Certificate {
-  uuid: string;
-  customerUUID: string;
-  label: string;
-  startDate: string;
-  expiryDate: string;
-  privateKey: string;
-  certificate: string;
-  certType: 'SelfSigned' | 'CustomCertHostPath';
-}
-
-export interface KmsConfig {
-  credentials: {
-    AWS_ACCESS_KEY_ID: string;
-    AWS_REGION: string;
-    AWS_SECRET_ACCESS_KEY: string;
-    cmk_id: string;
-  };
-  metadata: {
-    configUUID: string;
-    in_use: boolean;
-    name: string;
-    provider: string;
-  };
-}
-
 export interface Cluster {
   placementInfo?: {
     cloudList: PlacementCloud[];
@@ -336,42 +371,100 @@ export interface Cluster {
   regions?: any;
 }
 
-export interface CommunicationPorts {
-  masterHttpPort: number;
-  masterRpcPort: number;
-  tserverHttpPort: number;
-  tserverRpcPort: number;
-  redisServerHttpPort: number;
-  redisServerRpcPort: number;
-  yqlServerHttpPort: number;
-  yqlServerRpcPort: number;
-  ysqlServerHttpPort: number;
-  ysqlServerRpcPort: number;
-  nodeExporterPort: number;
+export enum NodeState {
+  ToBeAdded = 'ToBeAdded',
+  Provisioned = 'Provisioned',
+  SoftwareInstalled = 'SoftwareInstalled',
+  UpgradeSoftware = 'UpgradeSoftware',
+  UpdateGFlags = 'UpdateGFlags',
+  Live = 'Live',
+  Stopping = 'Stopping',
+  Starting = 'Starting',
+  Stopped = 'Stopped',
+  Unreachable = 'Unreachable',
+  ToBeRemoved = 'ToBeRemoved',
+  Removing = 'Removing',
+  Removed = 'Removed',
+  Adding = 'Adding',
+  BeingDecommissioned = 'BeingDecommissioned',
+  Decommissioned = 'Decommissioned'
 }
 
-export interface PlacementAZ {
-  uuid: string;
+export interface NodeDetails {
+  nodeIdx: number;
+  nodeName: string | null;
+  nodeUuid: string | null;
+  placementUuid: string;
+  state: NodeState;
+}
+
+export interface EncryptionAtRestConfig {
+  encryptionAtRestEnabled?: boolean;
+  configUUID?: string;
+  kmsConfigUUID?: string; // KMS config Id field for configure/create calls
+  key_op?: 'ENABLE' | 'DISABLE' | 'UNDEFINED'; // operation field for configure/create calls
+  type?: 'DATA_KEY' | 'CMK';
+}
+
+export interface UniverseDetails {
+  currentClusterType?: ClusterType; // used in universe configure calls
+  clusterOperation?: 'CREATE' | 'EDIT' | 'DELETE';
+  allowInsecure: boolean;
+  backupInProgress: boolean;
+  mastersInDefaultRegion?: boolean;
+  capability: 'READ_ONLY' | 'EDITS_ALLOWED';
+  clusters: Cluster[];
+  communicationPorts: CommunicationPorts;
+  cmkArn: string;
+  deviceInfo: DeviceInfo | null;
+  encryptionAtRestConfig: EncryptionAtRestConfig;
+  errorString: string | null;
+  expectedUniverseVersion: number;
+  importedState: 'NONE' | 'STARTED' | 'MASTERS_ADDED' | 'TSERVERS_ADDED' | 'IMPORTED';
+  itestS3PackagePath: string;
+  nextClusterIndex: number;
+  nodeDetailsSet: NodeDetails[];
+  nodePrefix: string;
+  resetAZConfig: boolean;
+  rootCA: string;
+  universeUUID: string;
+  updateInProgress: boolean;
+  updateSucceeded: boolean;
+  userAZSelected: boolean;
+  enableYbc: boolean;
+  updateOptions: string[];
+}
+
+export type UniverseConfigure = Partial<UniverseDetails>;
+
+export interface Resources {
+  azList: string[];
+  ebsPricePerHour: number;
+  memSizeGB: number;
+  numCores: number;
+  numNodes: number;
+  pricePerHour: number;
+  volumeCount: number;
+  volumeSizeGB: number;
+}
+
+export interface UniverseConfig {
+  disableAlertsUntilSecs: string;
+  takeBackups: string;
+}
+export interface Universe {
+  creationDate: string;
   name: string;
-  replicationFactor: number;
-  subnet: string;
-  numNodesInAZ: number;
-  isAffinitized: boolean;
+  resources: Resources;
+  universeConfig: UniverseConfig;
+  universeDetails: UniverseDetails;
+  universeUUID: string;
+  version: number;
 }
 
-export interface PlacementRegion {
-  uuid: string;
-  code: string;
-  name: string;
-  azList: PlacementAZ[];
-}
-export interface RegionInfo {
-  parentRegionId: string;
-  parentRegionName: string;
-  parentRegionCode: string;
-}
+//-------------------------------------------------------- Payload related Types - Ends -------------------------------------------------------------------
 
-// export type Placement = (PlacementAZ & RegionInfo) | null;
+//-------------------------------------------------------- Form Data related Types - Starts ---------------------------------------------------------------
 
 export interface Placement {
   uuid: string;
