@@ -79,6 +79,11 @@ class UniverseDetail extends Component {
     this.props.resetTablesList();
   }
 
+  isNewUIEnabled = () => {
+    const { featureFlags } = this.props;
+    return featureFlags.test.enableNewUI && featureFlags.released.enableNewUI;
+  };
+
   componentDidMount() {
     const {
       customer: { currentCustomer }
@@ -458,11 +463,7 @@ class UniverseDetail extends Component {
             isNotHidden(currentCustomer.data.features, 'universes.details.backups') && (
               <Tab.Pane
                 eventKey={'backups'}
-                tabtitle={
-                  <>
-                    Backups
-                  </>
-                }
+                tabtitle={<>Backups</>}
                 key="backups-tab"
                 mountOnEnter={true}
                 unmountOnExit={true}
@@ -695,7 +696,13 @@ class UniverseDetail extends Component {
                       {!isReadOnlyUniverse && !universePaused && !isProviderK8S && (
                         <YBMenuItem
                           disabled={updateInProgress}
-                          to={`/universes/${uuid}/edit/async`}
+                          to={
+                            this.isNewUIEnabled()
+                              ? `/universes/${uuid}/${
+                                  this.hasReadReplica(universeInfo) ? 'edit' : 'create'
+                                }/async`
+                              : `/universes/${uuid}/edit/async`
+                          }
                           availability={getFeatureState(
                             currentCustomer.data.features,
                             'universes.details.overview.readReplica'

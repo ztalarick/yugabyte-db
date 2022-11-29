@@ -13,7 +13,6 @@ import {
   DialogContentProps
 } from '@material-ui/core';
 import type { TransitionProps } from '@material-ui/core/transitions';
-import { ReactComponent as TimesIcon } from '../../assets/times.svg';
 import { YBTooltip, YBButton, YBButtonProps } from '../../components/';
 
 export interface OverrideButtonProps {
@@ -93,13 +92,16 @@ const useStyles = makeStyles<Theme, Partial<YBModalProps>>((theme) => ({
     padding: theme.spacing(1.5, 1.5, 1.5, 2)
   },
   closeBtn: {
-    background: theme.palette.grey[100],
     padding: theme.spacing(0.5),
     height: theme.spacing(4),
-    borderRadius: '50%',
     float: 'right',
     margin: 'auto 0 auto auto',
     cursor: 'pointer'
+  },
+  closeBtnText: {
+    color: theme.palette.orange[500],
+    fontSize: theme.spacing(4),
+    lineHeight: '26px'
   },
   actionsInfo: {
     marginRight: 'auto'
@@ -267,9 +269,9 @@ export const YBModal: FC<YBModalProps> = (props: YBModalProps) => {
                   <div className={classes.modalTitle}>{title}</div>
                 )}
                 {!hideCloseBtn && (
-                  <span className={classes.closeBtn}>
-                    <TimesIcon onClick={handleClose} />
-                  </span>
+                  <YBButton className={classes.closeBtn} onClick={handleClose}>
+                    <span className={classes.closeBtnText}>x</span>
+                  </YBButton>
                 )}
               </Typography>
             </DialogTitle>

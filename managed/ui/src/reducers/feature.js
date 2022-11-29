@@ -17,7 +17,8 @@ const initialStateFeatureInTest = {
   supportBundle: false,
   enableThirdpartyUpgrade: false,
   topNodeMetrics: false,
-  enableYbc: false
+  enableYbc: false,
+  enableNewUI: true
 };
 
 const initialStateFeatureReleased = {
@@ -37,7 +38,8 @@ const initialStateFeatureReleased = {
   supportBundle: true,
   enableThirdpartyUpgrade: false,
   topNodeMetrics: false,
-  enableYbc: false
+  enableYbc: false,
+  enableNewUI: true
 };
 
 export const FeatureFlag = (
