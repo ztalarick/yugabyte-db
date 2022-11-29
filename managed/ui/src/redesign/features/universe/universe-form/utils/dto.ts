@@ -61,9 +61,9 @@ export interface UserIntent {
   enableExposingService: ExposingServiceTypes | null;
   ybcPackagePath?: string | null;
   useSystemd: boolean;
-  instanceTags?: InstanceTags[];
-  masterGFlags?: FlagsArray;
-  tserverGFlags?: FlagsArray;
+  instanceTags?: Record<string, string>;
+  masterGFlags?: Record<string, any>;
+  tserverGFlags?: Record<string, any>;
   universeOverrides?: string;
   azOverrides?: Record<string, string>;
 }

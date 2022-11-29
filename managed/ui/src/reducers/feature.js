@@ -16,15 +16,9 @@ const initialStateFeatureInTest = {
   enableOIDC: true,
   supportBundle: false,
   enableThirdpartyUpgrade: false,
-  enableYbc: true,
-  enableMultiRegionConfig: false,
-  enableGcpKMS: true,
-  enableAzuKMS: true,
-  enableTopKMetrics: false,
-  enableRunTimeConfig: false,
-  enablePITR: false,
-  enableDedicatedNodes: false,
-  enableNotificationTemplates: false
+  topNodeMetrics: false,
+  enableYbc: false,
+  enableNewUI: true
 };
 
 const initialStateFeatureReleased = {
@@ -43,15 +37,9 @@ const initialStateFeatureReleased = {
   enableOIDC: true,
   supportBundle: true,
   enableThirdpartyUpgrade: false,
-  enableYbc: true,
-  enableMultiRegionConfig: false,
-  enableGcpKMS: true,
-  enableAzuKMS: true,
-  enableTopKMetrics: false,
-  enableRunTimeConfig: false,
-  enablePITR: false,
-  enableDedicatedNodes: false,
-  enableNotificationTemplates: false
+  topNodeMetrics: false,
+  enableYbc: false,
+  enableNewUI: true
 };
 
 export const FeatureFlag = (

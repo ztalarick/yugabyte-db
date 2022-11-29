@@ -5,7 +5,6 @@ import React from 'react';
 import { Route, IndexRoute, browserHistory } from 'react-router';
 import _ from 'lodash';
 import axios from 'axios';
-
 import {
   validateToken,
   validateFromTokenResponse,
@@ -38,8 +37,7 @@ import { isDefinedNotNull, isNullOrEmpty } from './utils/ObjectUtils';
 import { Administration } from './pages/Administration';
 import ToggleFeaturesInTest from './pages/ToggleFeaturesInTest';
 import { ReplicationDetails } from './components/xcluster';
-import { UniverseFormContainer } from './redesign/features/universe/universe-form/UniverseFormContainer';
-
+import UniverseNewView from './pages/UniverseNewView';
 /**
  * Redirects to base url if no queryParmas is set else redirects to path set in queryParam
  */
@@ -232,11 +230,11 @@ export default (store) => {
         <Route path="/universes" component={Universes}>
           <IndexRoute component={UniverseConsole} />
           <Route path="/universes/import" component={Importer} />
-          <Route path="/universes/create" component={UniverseDetail} />
+          <Route path="/universes/create" component={UniverseNewView} />
           <Route path="/universes/:uuid" component={UniverseDetail} />
-          <Route path="/universes/:uuid/edit" component={UniverseDetail}>
-            <Route path="/universes/:uuid/edit/:type" component={UniverseDetail} />
-          </Route>
+          {/* <Route path="/universes/:uuid/edit" component={UniverseDetail}> */}
+          <Route path="/universes/:uuid/:mode/:type" component={UniverseNewView} />
+          {/* </Route> */}
           <Route path="/universes/:uuid/:tab" component={UniverseDetail} />
           <Route path="/universes/:uuid/tables/:tableUUID" component={TableDetail} />
           <Route
@@ -246,8 +244,8 @@ export default (store) => {
         </Route>
 
         {/* ------------------------ UNIVERSE UI REVAMP --------------------------*/}
-        <Route path="/universe/new" component={UniverseFormContainer} />
-        <Route path="/universe/:uuid/:mode/:clusterType" component={UniverseFormContainer} />
+        {/* <Route path="/universe/new" component={UniverseFormContainer} />
+        <Route path="/universe/:uuid/:mode/:type" component={UniverseFormContainer} /> */}
         {/* <Route path="/universe/:uuid/new/async" component={CreateUniverse}></Route>
         <Route path="/universe/:uuid" component={UniverseDetail} />
         <Route path="/universe/:uuid/edit/primary" component={EditUniverse} />

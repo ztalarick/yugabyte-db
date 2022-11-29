@@ -3,12 +3,20 @@ import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { browserHistory } from 'react-router';
-import { UniverseForm } from '../UniverseForm';
-import { ClusterType, UniverseFormData, ClusterModes, Cluster } from '../utils/dto';
-import { UniverseFormContext } from '../UniverseFormContainer';
 import { api, QUERY_KEY } from '../utils/api';
-import { getPrimaryFormData } from '../utils/helpers';
+import { UniverseForm } from '../UniverseForm';
+import { UniverseFormContext } from '../UniverseFormContainer';
+import { ResizeNodeModal, SmartResizeModal, FullMoveModal } from './update-modals';
 import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
+import { getPrimaryFormData, transitToUniverse } from '../utils/helpers';
+import {
+  ClusterType,
+  UniverseFormData,
+  ClusterModes,
+  Cluster,
+  UniverseConfigure,
+  UniverseDetails
+} from '../utils/dto';
 import {
   REGIONS_FIELD,
   TOTAL_NODES_FIELD,
@@ -36,7 +44,8 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
   const { initializeForm } = contextMethods;
   const [showRNModal, setRNModal] = useState(false); //RN -> Resize Nodes
   const [showSRModal, setSRModal] = useState(false); //SR -> Smart Resize
-  const [showFMModal, setFMModal] = useState(false); //FM -> FM Modal
+  const [showFMModal, setFMModal] = useState(false); //FM -> Full Move
+  const [universePayload, setUniversePayload] = useState<UniverseDetails | null>(null);
 
   const { isLoading: isUniverseLoading, data: originalData } = useQuery(
     [QUERY_KEY.fetchUniverse, uuid],
@@ -54,6 +63,16 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       }
     }
   );
+
+  const submitEditUniverse = async (finalPayload: UniverseConfigure) => {
+    try {
+      await api.editUniverse(finalPayload, uuid);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      transitToUniverse(uuid);
+    }
+  };
 
   const onCancel = () => {
     browserHistory.goBack();
@@ -90,6 +109,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       );
       const finalPayload = await api.universeConfigure(payload);
       const { updateOptions } = finalPayload;
+      setUniversePayload(finalPayload);
       if (
         _.intersection(updateOptions, [UPDATE_ACTIONS.SMART_RESIZE, UPDATE_ACTIONS.FULL_MOVE])
           .length > 1
@@ -97,7 +117,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
         setSRModal(true);
       else if (updateOptions.includes(UPDATE_ACTIONS.SMART_RESIZE_NON_RESTART)) setRNModal(true);
       else if (updateOptions.includes(UPDATE_ACTIONS.FULL_MOVE)) setFMModal(true);
-      else await api.editUniverse(finalPayload, uuid);
+      else submitEditUniverse(finalPayload);
     } else console.log("'Nothing to update - no fields changed'");
   };
 
@@ -119,9 +139,39 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
         onFormSubmit={onSubmit}
         onCancel={onCancel}
       />
-      {showRNModal && <div>RN Modal</div>}
-      {showSRModal && <div>SR Modal</div>}
-      {showFMModal && <div>FM Modal</div>}
+      {universePayload && (
+        <>
+          {showRNModal && (
+            <ResizeNodeModal
+              open={showRNModal}
+              universeData={universePayload}
+              onClose={() => setRNModal(false)}
+            />
+          )}
+          {showSRModal && (
+            <SmartResizeModal
+              open={showSRModal}
+              oldConfigData={originalData.universeDetails}
+              newConfigData={universePayload}
+              onClose={() => setSRModal(false)}
+              handleSmartResize={() => {
+                setSRModal(false);
+                setRNModal(true);
+              }}
+              handleFullMove={() => submitEditUniverse(universePayload)}
+            />
+          )}
+          {showFMModal && (
+            <FullMoveModal
+              open={showFMModal}
+              oldConfigData={originalData.universeDetails}
+              newConfigData={universePayload}
+              onClose={() => setFMModal(false)}
+              onSubmit={() => submitEditUniverse(universePayload)}
+            />
+          )}
+        </>
+      )}
     </>
   );
 };
