@@ -32,45 +32,45 @@ const useStyles = makeStyles((theme: Theme) => ({
   }
 }));
 
-export const YBAutoComplete: FC<YBAutoCompleteProps> = ({
-  ybInputProps,
-  options,
-  getOptionLabel,
-  autoCompleteDropdownID,
-  ...rest
-}: YBAutoCompleteProps) => {
-  const classes = useStyles();
+export const YBAutoComplete: FC<YBAutoCompleteProps> = React.forwardRef(
+  (
+    { ybInputProps, options, getOptionLabel, autoCompleteDropdownID, ...rest }: YBAutoCompleteProps,
+    ref
+  ) => {
+    const classes = useStyles();
 
-  const memoPaperComp = useCallback(
-    ({ children }) => {
-      return <Paper data-testid={autoCompleteDropdownID}>{children}</Paper>;
-    },
-    [autoCompleteDropdownID]
-  );
+    const memoPaperComp = useCallback(
+      ({ children }) => {
+        return <Paper data-testid={autoCompleteDropdownID}>{children}</Paper>;
+      },
+      [autoCompleteDropdownID]
+    );
 
-  return (
-    <Autocomplete
-      // style change is needed only for single select mode
-      className={clsx(!rest.multiple && classes.root)}
-      options={options}
-      getOptionLabel={getOptionLabel}
-      popupIcon={<CaretDownIcon />}
-      closeIcon={<CloseIcon />}
-      ChipProps={{
-        deleteIcon: <CloseIcon />
-      }}
-      PaperComponent={memoPaperComp}
-      renderInput={(params) => (
-        <YBInput
-          {...params}
-          {...ybInputProps}
-          InputProps={{
-            ...params.InputProps,
-            ...ybInputProps?.InputProps
-          }}
-        />
-      )}
-      {...rest}
-    />
-  );
-};
+    return (
+      <Autocomplete
+        // style change is needed only for single select mode
+        className={clsx(!rest.multiple && classes.root)}
+        options={options}
+        getOptionLabel={getOptionLabel}
+        popupIcon={<CaretDownIcon />}
+        closeIcon={<CloseIcon />}
+        ChipProps={{
+          deleteIcon: <CloseIcon />
+        }}
+        PaperComponent={memoPaperComp}
+        renderInput={(params) => (
+          <YBInput
+            {...params}
+            {...ybInputProps}
+            InputProps={{
+              ...params.InputProps,
+              ...ybInputProps?.InputProps,
+              inputRef: ref
+            }}
+          />
+        )}
+        {...rest}
+      />
+    );
+  }
+);
