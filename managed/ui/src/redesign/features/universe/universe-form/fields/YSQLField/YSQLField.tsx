@@ -3,12 +3,20 @@ import { Box, Grid } from '@material-ui/core';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
-import { YBLabel, YBHelper, YBPasswordField, YBToggleField } from '../../../../../components';
+import {
+  YBLabel,
+  YBHelper,
+  YBPasswordField,
+  YBToggleField,
+  YBHelperVariants
+} from '../../../../../components';
 import {
   YSQL_FIELD,
   YSQL_AUTH_FIELD,
   YSQL_PASSWORD_FIELD,
-  YSQL_CONFIRM_PASSWORD_FIELD
+  YSQL_CONFIRM_PASSWORD_FIELD,
+  PASSWORD_REGEX,
+  YCQL_FIELD
 } from '../../utils/constants';
 interface YSQLFieldProps {
   disabled: boolean;
@@ -23,10 +31,19 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
   const { t } = useTranslation();
 
   const ysqlEnabled = useWatch({ name: YSQL_FIELD });
+  const ycqlEnabled = useWatch({ name: YCQL_FIELD });
   const ysqlAuthEnabled = useWatch({ name: YSQL_AUTH_FIELD });
+  const ysqlPassword = useWatch({ name: YSQL_PASSWORD_FIELD });
 
   return (
     <Box display="flex" width="100%" flexDirection="column">
+      {errors?.instanceConfig?.enableYSQL && (
+        <Box mb={0.5}>
+          <YBHelper variant={YBHelperVariants.error}>
+            {errors.instanceConfig.enableYSQL.message}
+          </YBHelper>
+        </Box>
+      )}
       <Box display="flex">
         <YBLabel>{t('universeForm.instanceConfig.enableYSQL')}</YBLabel>
         <Box flex={1}>
@@ -36,6 +53,15 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
               'data-testid': 'YSQL'
             }}
             control={control}
+            rules={{
+              validate: {
+                yscqlEnabled: (value) =>
+                  disabled ||
+                  value ||
+                  ycqlEnabled ||
+                  t('universeForm.instanceConfig.enableYsqlOrYcql')
+              }
+            }}
             disabled={disabled}
           />
           <YBHelper>{t('universeForm.instanceConfig.enableYSQLHelper')}</YBHelper>
@@ -69,6 +95,18 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
                     <YBLabel>{t('universeForm.instanceConfig.YSQLAuthPassword')}</YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
+                        rules={{
+                          required:
+                            !disabled && ysqlAuthEnabled
+                              ? (t('universeForm.validation.required', {
+                                  field: t('universeForm.instanceConfig.YSQLAuthPassword')
+                                }) as string)
+                              : '',
+                          pattern: {
+                            value: PASSWORD_REGEX,
+                            message: t('universeForm.validation.passwordStrength')
+                          }
+                        }}
                         name={YSQL_PASSWORD_FIELD}
                         control={control}
                         fullWidth
@@ -89,6 +127,14 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
                       <YBPasswordField
                         name={YSQL_CONFIRM_PASSWORD_FIELD}
                         control={control}
+                        rules={{
+                          validate: {
+                            passwordMatch: (value) =>
+                              (ysqlAuthEnabled && value === ysqlPassword) ||
+                              (t('universeForm.validation.confirmPassword') as string)
+                          },
+                          deps: [YSQL_PASSWORD_FIELD, YSQL_AUTH_FIELD]
+                        }}
                         fullWidth
                         inputProps={{
                           autoComplete: 'new-password',

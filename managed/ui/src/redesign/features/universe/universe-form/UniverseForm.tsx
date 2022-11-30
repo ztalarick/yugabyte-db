@@ -1,6 +1,4 @@
 import React, { useContext, FC } from 'react';
-import * as Yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
 import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
 import { Typography, Grid, Box } from '@material-ui/core';
@@ -15,7 +13,6 @@ import {
 } from './sections';
 import { UniverseFormData, ClusterType, ClusterModes } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
-import { api } from './utils/api';
 import { UniverseFormContext } from './UniverseFormContainer';
 
 interface UniverseFormProps {
@@ -40,95 +37,12 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   const { clusterType, mode } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
 
-  //Form Validation
-  const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
-  const validateUniverseName = async (value_: unknown, a: any) => {
-    const value = value_ as string;
-    if (value_) {
-      try {
-        const universeList = await api.findUniverseByName(value);
-        return universeList?.length ? false : true;
-      } catch (error) {
-        // skip exceptions happened due to canceling previous request
-        return !api.isRequestCancelError(error) ? true : false;
-      }
-    }
-    return true;
-  };
-
-  const validationSchema = Yup.object({
-    advancedConfig: Yup.object({
-      accessKeyCode: Yup.mixed().required(
-        t('universeForm.validation.required', { field: t('universeForm.advancedConfig.accessKey') })
-      ),
-      ybSoftwareVersion: Yup.mixed().required(
-        t('universeForm.validation.required', { field: t('universeForm.advancedConfig.dbVersion') })
-      )
-    }),
-    cloudConfig: Yup.object({
-      universeName: Yup.string()
-        .required(
-          t('universeForm.validation.required', {
-            field: t('universeForm.cloudConfig.universeName')
-          })
-        )
-        .test(
-          'unique-name-check',
-          t('universeForm.cloudConfig.universeNameInUse'),
-          validateUniverseName
-        ),
-      provider: Yup.mixed().required(
-        t('universeForm.validation.required', {
-          field: t('universeForm.cloudConfig.providerField')
-        })
-      ),
-      regionList: Yup.array().required(
-        t('universeForm.validation.required', { field: t('universeForm.cloudConfig.regionsField') })
-      )
-    }),
-    instanceConfig: Yup.object({
-      instanceType: Yup.mixed().required(
-        t('universeForm.validation.required', {
-          field: t('universeForm.instanceConfig.instanceType')
-        })
-      ),
-      kmsConfig: Yup.mixed().when('enableEncryptionAtRest', {
-        is: (kmsConfig) => kmsConfig === true,
-        then: Yup.mixed().required(
-          t('universeForm.validation.required', {
-            field: t('universeForm.instanceConfig.kmsConfig')
-          })
-        )
-      }),
-      ycqlPassword: Yup.string().when('enableYCQLAuth', {
-        is: (enableYCQLAuth) => enableYCQLAuth === true,
-        then: Yup.string().matches(PASSWORD_REGEX, {
-          message: t('universeForm.validation.passwordStrength')
-        })
-      }),
-      ycqlConfirmPassword: Yup.string().oneOf(
-        [Yup.ref('ycqlPassword')],
-        t('universeForm.validation.confirmPassword')
-      ),
-      ysqlPassword: Yup.string().when('enableYSQLAuth', {
-        is: (enableYSQLAuth) => enableYSQLAuth === true,
-        then: Yup.string().matches(PASSWORD_REGEX, {
-          message: t('universeForm.validation.passwordStrength')
-        })
-      }),
-      ysqlConfirmPassword: Yup.string().oneOf(
-        [Yup.ref('ysqlPassword')],
-        t('universeForm.validation.confirmPassword')
-      )
-    })
-  });
-
   //init form
   const formMethods = useForm<UniverseFormData>({
     mode: 'onChange',
     reValidateMode: 'onChange',
     defaultValues: defaultFormData,
-    resolver: yupResolver(validationSchema)
+    shouldFocusError: true
   });
   const {
     getValues,

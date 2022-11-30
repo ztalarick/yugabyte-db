@@ -69,6 +69,11 @@ export const InstanceTypeField: FC = () => {
     <Controller
       name={INSTANCE_TYPE_FIELD}
       control={control}
+      rules={{
+        required: t('universeForm.validation.required', {
+          field: t('universeForm.instanceConfig.instanceType')
+        }) as string
+      }}
       render={({ field, fieldState }) => {
         const value =
           instanceTypes.find((i: InstanceTypeWithGroup) => i.instanceTypeCode === field.value) ??
