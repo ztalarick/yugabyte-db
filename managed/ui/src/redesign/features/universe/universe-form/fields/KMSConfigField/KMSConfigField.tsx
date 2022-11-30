@@ -65,8 +65,10 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
                 ybInputProps={{
                   placeholder: t('universeForm.instanceConfig.kmsConfigPlaceHolder'),
                   error: !!fieldState.error,
-                  helperText: fieldState.error?.message
+                  helperText: fieldState.error?.message,
+                  InputProps: { autoFocus: true }
                 }}
+                ref={field.ref}
                 getOptionLabel={getOptionLabel}
                 renderOption={renderOption}
                 onChange={handleChange}

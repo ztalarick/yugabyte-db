@@ -44,17 +44,26 @@ export const UniverseForm: FC<UniverseFormProps> = ({
     defaultValues: defaultFormData,
     shouldFocusError: true
   });
-  const {
-    getValues,
-    formState: { isValid },
-    trigger
-  } = formMethods;
+  const { getValues, trigger } = formMethods;
 
   //methods
   const triggerValidation = () => trigger(undefined, { shouldFocus: true }); //Trigger validation and focus on fields with errors , undefined = validate all fields
 
-  const onSubmit = (formData: UniverseFormData) =>
-    isValid ? onFormSubmit(formData) : triggerValidation(); //submit only if the form is valid or else validate
+  const onSubmit = (formData: UniverseFormData) => onFormSubmit(formData);
+
+  const switchClusterType = () => onClusterTypeChange && onClusterTypeChange(getValues());
+
+  //switching from primary to RR and vice versa  (Create Primary + RR flow)
+  const handleClusterChange = async () => {
+    if (isPrimary) {
+      // Validate primary form before switching to async
+      let isValid = await triggerValidation();
+      isValid && switchClusterType();
+    } else {
+      //switching from async to primary
+      switchClusterType();
+    }
+  };
 
   return (
     <Box className={classes.mainConatiner}>
@@ -85,16 +94,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
                   </YBButton>
                   &nbsp;
                   {mode === ClusterModes.CREATE && onClusterTypeChange && (
-                    <YBButton
-                      variant="secondary"
-                      size="large"
-                      onClick={() => {
-                        // Validate form before switching from primary to async
-                        isPrimary && !isValid
-                          ? triggerValidation()
-                          : onClusterTypeChange(getValues());
-                      }}
-                    >
+                    <YBButton variant="secondary" size="large" onClick={handleClusterChange}>
                       {isPrimary
                         ? t('universeForm.actions.configureRR')
                         : t('universeForm.actions.backPrimary')}

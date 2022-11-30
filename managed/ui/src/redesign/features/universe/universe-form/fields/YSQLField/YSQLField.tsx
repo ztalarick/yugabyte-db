@@ -8,7 +8,7 @@ import {
   YBHelper,
   YBPasswordField,
   YBToggleField,
-  YBHelperVariants
+  YBTooltip
 } from '../../../../../components';
 import {
   YSQL_FIELD,
@@ -18,6 +18,7 @@ import {
   PASSWORD_REGEX,
   YCQL_FIELD
 } from '../../utils/constants';
+
 interface YSQLFieldProps {
   disabled: boolean;
   isAuthEnforced?: boolean;
@@ -37,34 +38,27 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
 
   return (
     <Box display="flex" width="100%" flexDirection="column">
-      {errors?.instanceConfig?.enableYSQL && (
-        <Box mb={0.5}>
-          <YBHelper variant={YBHelperVariants.error}>
-            {errors.instanceConfig.enableYSQL.message}
-          </YBHelper>
-        </Box>
-      )}
       <Box display="flex">
         <YBLabel>{t('universeForm.instanceConfig.enableYSQL')}</YBLabel>
         <Box flex={1}>
-          <YBToggleField
-            name={YSQL_FIELD}
-            inputProps={{
-              'data-testid': 'YSQL'
-            }}
-            control={control}
-            rules={{
-              validate: {
-                yscqlEnabled: (value) =>
-                  disabled ||
-                  value ||
-                  ycqlEnabled ||
-                  t('universeForm.instanceConfig.enableYsqlOrYcql')
-              }
-            }}
-            disabled={disabled}
-          />
-          <YBHelper>{t('universeForm.instanceConfig.enableYSQLHelper')}</YBHelper>
+          <YBTooltip
+            title={
+              !ycqlEnabled ? (t('universeForm.instanceConfig.enableYsqlOrYcql') as string) : ''
+            }
+            placement="top-start"
+          >
+            <div>
+              <YBToggleField
+                name={YSQL_FIELD}
+                inputProps={{
+                  'data-testid': 'YSQL'
+                }}
+                control={control}
+                disabled={disabled || !ycqlEnabled}
+              />
+              <YBHelper>{t('universeForm.instanceConfig.enableYSQLHelper')}</YBHelper>
+            </div>
+          </YBTooltip>
         </Box>
       </Box>
 

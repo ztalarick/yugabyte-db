@@ -3,13 +3,20 @@ import { Box, Grid } from '@material-ui/core';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UniverseFormData } from '../../utils/dto';
-import { YBLabel, YBHelper, YBPasswordField, YBToggleField } from '../../../../../components';
+import {
+  YBLabel,
+  YBHelper,
+  YBPasswordField,
+  YBToggleField,
+  YBTooltip
+} from '../../../../../components';
 import {
   YCQL_AUTH_FIELD,
   YCQL_FIELD,
   YCQL_PASSWORD_FIELD,
   YCQL_CONFIRM_PASSWORD_FIELD,
-  PASSWORD_REGEX
+  PASSWORD_REGEX,
+  YSQL_FIELD
 } from '../../utils/constants';
 interface YCQLFieldProps {
   disabled: boolean;
@@ -24,6 +31,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
   const { t } = useTranslation();
 
   const ycqlEnabled = useWatch({ name: YCQL_FIELD });
+  const ysqlEnabled = useWatch({ name: YSQL_FIELD });
   const ycqlAuthEnabled = useWatch({ name: YCQL_AUTH_FIELD });
   const ycqlPassword = useWatch({ name: YCQL_PASSWORD_FIELD });
 
@@ -32,15 +40,24 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
       <Box display="flex">
         <YBLabel>{t('universeForm.instanceConfig.enableYCQL')}</YBLabel>
         <Box flex={1}>
-          <YBToggleField
-            name={YCQL_FIELD}
-            inputProps={{
-              'data-testid': 'YCQL'
-            }}
-            control={control}
-            disabled={disabled}
-          />
-          <YBHelper>{t('universeForm.instanceConfig.enableYCQLHelper')}</YBHelper>
+          <YBTooltip
+            title={
+              !ysqlEnabled ? (t('universeForm.instanceConfig.enableYsqlOrYcql') as string) : ''
+            }
+            placement="top-start"
+          >
+            <div>
+              <YBToggleField
+                name={YCQL_FIELD}
+                inputProps={{
+                  'data-testid': 'YCQL'
+                }}
+                control={control}
+                disabled={disabled || !ysqlEnabled}
+              />
+              <YBHelper>{t('universeForm.instanceConfig.enableYCQLHelper')}</YBHelper>
+            </div>
+          </YBTooltip>
         </Box>
       </Box>
 
