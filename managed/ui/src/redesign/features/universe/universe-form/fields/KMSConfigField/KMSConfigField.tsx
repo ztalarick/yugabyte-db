@@ -1,13 +1,13 @@
 import React, { FC, ChangeEvent } from 'react';
 import { Box } from '@material-ui/core';
-import { Controller, useFormContext } from 'react-hook-form';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { api, QUERY_KEY } from '../../utils/api';
 import { DEFAULT_INSTANCE_CONFIG, UniverseFormData } from '../../utils/dto';
 import { KmsConfig } from '../../../../../helpers/dtos';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
-import { KMS_CONFIG_FIELD } from '../../utils/constants';
+import { KMS_CONFIG_FIELD, EAR_FIELD } from '../../utils/constants';
 
 const renderOption = (op: Record<string, string>): string => {
   const option = (op as unknown) as KmsConfig;
@@ -27,6 +27,9 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
   const { setValue, control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
+  //field data
+  const encryptionEnabled = useWatch({ name: EAR_FIELD });
+
   //fetch data
   const { data, isLoading } = useQuery(QUERY_KEY.getKMSConfigs, api.getKMSConfigs);
   let kmsConfigs: KmsConfig[] = data || [];
@@ -41,6 +44,14 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
     <Controller
       name={KMS_CONFIG_FIELD}
       control={control}
+      rules={{
+        required:
+          !disabled && encryptionEnabled
+            ? (t('universeForm.validation.required', {
+                field: t('universeForm.instanceConfig.kmsConfig')
+              }) as string)
+            : ''
+      }}
       render={({ field, fieldState }) => {
         const value = kmsConfigs.find((i) => i.metadata.configUUID === field.value) ?? '';
         return (

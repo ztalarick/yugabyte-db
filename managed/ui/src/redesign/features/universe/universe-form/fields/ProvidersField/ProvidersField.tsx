@@ -50,6 +50,11 @@ export const ProvidersField = ({
       <Controller
         name={PROVIDER_FIELD}
         control={control}
+        rules={{
+          required: t('universeForm.validation.required', {
+            field: t('universeForm.cloudConfig.providerField')
+          }) as string
+        }}
         render={({ field, fieldState }) => {
           const value =
             providersList.find((provider) => provider.uuid === field.value?.uuid) || null;

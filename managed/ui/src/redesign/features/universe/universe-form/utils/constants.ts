@@ -148,3 +148,5 @@ export const ASYNC_COPY_FIELDS = [
   ROOT_CERT_FIELD,
   EAR_FIELD
 ];
+
+export const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;

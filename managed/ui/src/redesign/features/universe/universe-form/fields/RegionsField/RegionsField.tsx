@@ -56,6 +56,11 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
       <Controller
         name={REGIONS_FIELD}
         control={control}
+        rules={{
+          required: t('universeForm.validation.required', {
+            field: t('universeForm.cloudConfig.regionsField')
+          }) as string
+        }}
         render={({ field, fieldState }) => {
           const value = field.value.map((region) => regionsListMap[region]);
           return (
