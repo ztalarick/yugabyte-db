@@ -4,7 +4,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { Typography, Grid, Box } from '@material-ui/core';
 import { YBButton } from '../../../components';
 import {
-  AdvancedConfiguration,x
+  AdvancedConfiguration,
   CloudConfiguration,
   GFlags,
   HelmOverrides,
