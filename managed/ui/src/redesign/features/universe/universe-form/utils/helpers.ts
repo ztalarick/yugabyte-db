@@ -229,7 +229,9 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
 
 //Form Submit helpers
 const patchConfigResponse = (response: UniverseDetails, original: UniverseDetails) => {
-  const clusterIndex = 0; // TODO: change to dynamic when support async clusters
+  const clusterIndex = response.clusters.findIndex(
+    (cluster: Cluster) => cluster.clusterType === response.currentClusterType
+  );
 
   response.clusterOperation = original.clusterOperation;
   response.currentClusterType = original.currentClusterType;
@@ -239,6 +241,12 @@ const patchConfigResponse = (response: UniverseDetails, original: UniverseDetail
   userIntent.instanceTags = original.clusters[clusterIndex].userIntent.instanceTags;
   userIntent.masterGFlags = original.clusters[clusterIndex].userIntent.masterGFlags;
   userIntent.tserverGFlags = original.clusters[clusterIndex].userIntent.tserverGFlags;
+
+  if (userIntent.enableYCQLAuth)
+    userIntent.ycqlPassword = original.clusters[clusterIndex].userIntent.ycqlPassword;
+
+  if (userIntent.enableYSQLAuth)
+    userIntent.ysqlPassword = original.clusters[clusterIndex].userIntent.ysqlPassword;
 };
 
 export const createUniverse = async ({

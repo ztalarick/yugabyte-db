@@ -35,20 +35,27 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
+
+  //context state
   const { clusterType, mode } = useContext(UniverseFormContext)[0];
+  const isPrimary = clusterType === ClusterType.PRIMARY;
 
   //Form Validation
   const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
-  const validateUniverseName = async (value_: unknown) => {
+  const validateUniverseName = async (value_: unknown, a: any) => {
     const value = value_ as string;
-    try {
-      const universeList = await api.findUniverseByName(value);
-      return universeList?.length ? false : true;
-    } catch (error) {
-      // skip exceptions happened due to canceling previous request
-      return !api.isRequestCancelError(error) ? true : false;
+    if (value_) {
+      try {
+        const universeList = await api.findUniverseByName(value);
+        return universeList?.length ? false : true;
+      } catch (error) {
+        // skip exceptions happened due to canceling previous request
+        return !api.isRequestCancelError(error) ? true : false;
+      }
     }
+    return true;
   };
+
   const validationSchema = Yup.object({
     advancedConfig: Yup.object({
       accessKeyCode: Yup.mixed().required(
@@ -115,20 +122,25 @@ export const UniverseForm: FC<UniverseFormProps> = ({
       )
     })
   });
-  //Form Validation
 
+  //init form
   const formMethods = useForm<UniverseFormData>({
     mode: 'onChange',
     reValidateMode: 'onChange',
     defaultValues: defaultFormData,
     resolver: yupResolver(validationSchema)
   });
+  const {
+    getValues,
+    formState: { isValid },
+    trigger
+  } = formMethods;
 
-  const { getValues } = formMethods;
+  //methods
+  const triggerValidation = () => trigger(undefined, { shouldFocus: true }); //Trigger validation and focus on fields with errors , undefined = validate all fields
 
-  const onSubmit = (formData: UniverseFormData) => {
-    onFormSubmit(formData);
-  };
+  const onSubmit = (formData: UniverseFormData) =>
+    isValid ? onFormSubmit(formData) : triggerValidation(); //submit only if the form is valid or else validate
 
   return (
     <Box className={classes.mainConatiner}>
@@ -162,9 +174,14 @@ export const UniverseForm: FC<UniverseFormProps> = ({
                     <YBButton
                       variant="secondary"
                       size="large"
-                      onClick={() => onClusterTypeChange(getValues())}
+                      onClick={() => {
+                        // Validate form before switching from primary to async
+                        isPrimary && !isValid
+                          ? triggerValidation()
+                          : onClusterTypeChange(getValues());
+                      }}
                     >
-                      {clusterType === ClusterType.PRIMARY
+                      {isPrimary
                         ? t('universeForm.actions.configureRR')
                         : t('universeForm.actions.backPrimary')}
                     </YBButton>
