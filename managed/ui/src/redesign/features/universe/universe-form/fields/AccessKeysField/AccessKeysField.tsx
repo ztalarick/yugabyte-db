@@ -37,7 +37,19 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
     <Box display="flex" width="100%">
       <YBLabel>{t('universeForm.advancedConfig.accessKey')}</YBLabel>
       <Box flex={1}>
-        <YBSelectField name={ACCESS_KEY_FIELD} control={control} fullWidth disabled={disabled}>
+        <YBSelectField
+          rules={{
+            required: !disabled
+              ? (t('universeForm.validation.required', {
+                  field: t('universeForm.advancedConfig.accessKey')
+                }) as string)
+              : ''
+          }}
+          name={ACCESS_KEY_FIELD}
+          control={control}
+          fullWidth
+          disabled={disabled}
+        >
           {accessKeys.map((item: AccessKey) => (
             <MenuItem key={item.idKey.keyCode} value={item.idKey.keyCode}>
               {item.idKey.keyCode}

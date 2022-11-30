@@ -8,7 +8,8 @@ import {
   YCQL_AUTH_FIELD,
   YCQL_FIELD,
   YCQL_PASSWORD_FIELD,
-  YCQL_CONFIRM_PASSWORD_FIELD
+  YCQL_CONFIRM_PASSWORD_FIELD,
+  PASSWORD_REGEX
 } from '../../utils/constants';
 interface YCQLFieldProps {
   disabled: boolean;
@@ -24,6 +25,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
 
   const ycqlEnabled = useWatch({ name: YCQL_FIELD });
   const ycqlAuthEnabled = useWatch({ name: YCQL_AUTH_FIELD });
+  const ycqlPassword = useWatch({ name: YCQL_PASSWORD_FIELD });
 
   return (
     <Box display="flex" width="100%" flexDirection="column">
@@ -71,6 +73,18 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                       <YBPasswordField
                         name={YCQL_PASSWORD_FIELD}
                         control={control}
+                        rules={{
+                          required:
+                            !disabled && ycqlAuthEnabled
+                              ? (t('universeForm.validation.required', {
+                                  field: t('universeForm.instanceConfig.YCQLAuthPassword')
+                                }) as string)
+                              : '',
+                          pattern: {
+                            value: PASSWORD_REGEX,
+                            message: t('universeForm.validation.passwordStrength')
+                          }
+                        }}
                         fullWidth
                         inputProps={{
                           autoComplete: 'new-password',
@@ -89,6 +103,14 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                       <YBPasswordField
                         name={YCQL_CONFIRM_PASSWORD_FIELD}
                         control={control}
+                        rules={{
+                          validate: {
+                            passwordMatch: (value) =>
+                              (ycqlAuthEnabled && value === ycqlPassword) ||
+                              (t('universeForm.validation.confirmPassword') as string)
+                          },
+                          deps: [YCQL_PASSWORD_FIELD, YCQL_AUTH_FIELD]
+                        }}
                         fullWidth
                         inputProps={{
                           autoComplete: 'new-password',

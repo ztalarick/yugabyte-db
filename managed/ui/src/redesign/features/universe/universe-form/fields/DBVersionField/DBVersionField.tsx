@@ -56,6 +56,13 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
     <Controller
       name={SOFTWARE_VERSION_FIELD}
       control={control}
+      rules={{
+        required: !disabled
+          ? (t('universeForm.validation.required', {
+              field: t('universeForm.advancedConfig.dbVersion')
+            }) as string)
+          : ''
+      }}
       render={({ field, fieldState }) => {
         const value = dbVersions.find((item) => item.value === field.value) ?? '';
         return (
