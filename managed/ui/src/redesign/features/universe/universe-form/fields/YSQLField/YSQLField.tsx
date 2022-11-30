@@ -45,6 +45,13 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
 
   return (
     <Box display="flex" width="100%" flexDirection="column">
+      {errors?.instanceConfig?.enableYSQL && (
+        <Box mb={0.5}>
+          <YBHelper variant={YBHelperVariants.error}>
+            {errors.instanceConfig.enableYSQL.message}
+          </YBHelper>
+        </Box>
+      )}
       <Box display="flex">
         <YBLabel>{t('universeForm.instanceConfig.enableYSQL')}</YBLabel>
         <Box flex={1}>

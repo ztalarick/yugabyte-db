@@ -1,6 +1,6 @@
 import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, ValidateResult } from 'react-hook-form';
 import { Box } from '@material-ui/core';
 import { YBInputField, YBLabel } from '../../../../../components';
 import { UniverseFormData } from '../../utils/dto';
