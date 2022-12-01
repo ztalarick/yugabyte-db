@@ -6,12 +6,7 @@ import { YBButton, YBSelect, YBInput, YBLabel, YBCheckbox } from '../../../../..
 import { PlacementStatus } from './PlacementStatus';
 import { useGetAllZones, useGetUnusedZones, useNodePlacements } from './PlacementsFieldHelper';
 import { Placement, UniverseFormData, CloudType } from '../../utils/dto';
-import {
-  TOTAL_NODES_FIELD,
-  REPLICATION_FACTOR_FIELD,
-  PLACEMENTS_FIELD,
-  PROVIDER_FIELD
-} from '../../utils/constants';
+import { REPLICATION_FACTOR_FIELD, PLACEMENTS_FIELD, PROVIDER_FIELD } from '../../utils/constants';
 
 interface PlacementsFieldProps {
   disabled: boolean;
