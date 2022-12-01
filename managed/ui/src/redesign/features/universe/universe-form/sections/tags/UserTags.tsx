@@ -9,8 +9,10 @@ import { PROVIDER_FIELD } from '../../utils/constants';
 import { useSectionStyles } from '../../universeMainStyle';
 import { CloudType, ClusterType } from '../../utils/dto';
 import { UniverseFormContext } from '../../UniverseFormContainer';
-import { PROVIDER_FIELD } from '../../utils/constants';
 import { UserTagsField } from '../../fields';
+import { CloudType, ClusterType } from '../../utils/dto';
+import { PROVIDER_FIELD } from '../../utils/constants';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface UserTagsProps {}
 

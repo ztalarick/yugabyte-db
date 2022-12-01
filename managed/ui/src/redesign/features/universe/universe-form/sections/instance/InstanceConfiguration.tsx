@@ -53,13 +53,7 @@ import {
   DedicatedNodesField
 } from '../../fields';
 import { YBLabel } from '../../../../../components';
-import {
-  PROVIDER_FIELD,
-  EAR_FIELD,
-  CLIENT_TO_NODE_ENCRYPT_FIELD,
-  NODE_TO_NODE_ENCRYPT_FIELD,
-  ACCESS_KEY_FIELD
-} from '../../utils/constants';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 import {
   AccessKey,
   CloudType,
@@ -67,8 +61,14 @@ import {
   ClusterType,
   RunTimeConfigEntry
 } from '../../utils/dto';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import { api, QUERY_KEY } from '../../utils/api';
+import {
+  PROVIDER_FIELD,
+  EAR_FIELD,
+  CLIENT_TO_NODE_ENCRYPT_FIELD,
+  NODE_TO_NODE_ENCRYPT_FIELD,
+  ACCESS_KEY_FIELD
+} from '../../utils/constants';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface InstanceConfigProps {}
 
@@ -117,7 +117,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
       </Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={4}>
-          <Grid container>
+          <Grid container spacing={3}>
             <Grid lg={6} item container>
               <InstanceTypeField />
             </Grid>

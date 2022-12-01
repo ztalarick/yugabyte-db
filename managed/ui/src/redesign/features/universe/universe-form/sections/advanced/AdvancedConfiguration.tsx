@@ -24,9 +24,10 @@ import {
   NetworkAccessField,
   SystemDField
 } from '../../fields';
-import { PROVIDER_FIELD } from '../../utils/constants';
-import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
 import { UniverseFormContext } from '../../UniverseFormContainer';
+import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
+import { PROVIDER_FIELD } from '../../utils/constants';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface AdvancedConfigProps {}
 

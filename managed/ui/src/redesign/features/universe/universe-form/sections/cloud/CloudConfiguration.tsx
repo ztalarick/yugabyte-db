@@ -26,8 +26,9 @@ import {
   DefaultRegionField
 } from '../../fields';
 import { UniverseFormContext } from '../../UniverseFormContainer';
-import { ClusterModes, ClusterType } from '../../utils/dto';
 import { getPrimaryCluster } from '../../utils/helpers';
+import { ClusterModes, ClusterType } from '../../utils/dto';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface CloudConfigProps {}
 
