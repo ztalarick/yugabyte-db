@@ -1,9 +1,18 @@
 import React, { FC, useContext } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
-import { useTranslation } from 'react-i18next';
 import { browserHistory } from 'react-router';
+import { api, QUERY_KEY } from '../utils/api';
 import { UniverseForm } from '../UniverseForm';
+import { UniverseFormContext } from '../UniverseFormContainer';
+import { YBLoading } from '../../../../../components/common/indicators';
+import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
+import {
+  editReadReplica,
+  getAsyncCluster,
+  getAsyncFormData,
+  getUserIntent
+} from '../utils/helpers';
 import {
   ClusterType,
   UniverseFormData,
@@ -11,22 +20,12 @@ import {
   UniverseConfigure,
   CloudType
 } from '../utils/dto';
-import { UniverseFormContext } from '../UniverseFormContainer';
-import { api, QUERY_KEY } from '../utils/api';
-import {
-  editReadReplica,
-  getAsyncCluster,
-  getAsyncFormData,
-  getUserIntent
-} from '../utils/helpers';
-import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 
 interface EditReadReplicaProps {
   uuid: string;
 }
 
 export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
-  const { t } = useTranslation();
   const [contextState, contextMethods] = useContext(UniverseFormContext);
 
   const { isLoading, data: universe } = useQuery(
@@ -76,7 +75,7 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
     browserHistory.goBack();
   };
 
-  if (isLoading || contextState.isLoading) return <>Loading .... </>;
+  if (isLoading || contextState.isLoading) return <YBLoading />;
 
   if (!universe) return null;
 
@@ -87,15 +86,6 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
     return (
       <UniverseForm
         defaultFormData={initialFormData}
-        title={
-          <>
-            {universe?.name}
-            <span>
-              {' '}
-              <i className="fa fa-chevron-right"></i> {t('universeForm.configReadReplica')}{' '}
-            </span>
-          </>
-        }
         onFormSubmit={(data: UniverseFormData) => onSubmit(data)}
         onCancel={onCancel}
       />

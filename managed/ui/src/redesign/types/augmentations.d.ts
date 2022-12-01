@@ -80,15 +80,19 @@ declare module '@material-ui/core/styles/createPalette' {
     };
   }
 
+  export type YBAColors = Record<string, string>;
+
   // extend standard palette with chart colors
   interface Palette {
     chart: ChartColors;
     orange: PaletteColor;
+    ybacolors: YBAColors;
   }
 
   interface PaletteOptions {
     chart?: ChartColors;
     orange: PaletteColor;
+    ybacolors: YBAColors;
   }
 
   // extend standard palette with color tones

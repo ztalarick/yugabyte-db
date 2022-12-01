@@ -11,14 +11,16 @@
       "proceed": "Proceed"
     },
     "universeForm": {
-      "configReadReplica": "Configure Read Replica",
-      "createUniverse": "Create Universe",
-      "editReadReplica": "Edit Read Replica",
-      "editUniverse": "Edit Universe",
+      "configReadReplica": "Configure read replica",
+      "createUniverse": "Create universe",
+      "editReadReplica": "Edit read replica",
+      "editUniverse": "Edit universe",
       "perInstance": "per instance",
       "perInstanceType": "type",
       "current": "Current :",
       "new": "New :",
+      "primaryTab": "1. Primary Cluster",
+      "rrTab": "2. Read Replica",
       "advancedConfig": {
         "title": "Advanced Configuration",
         "accessKey": "Access Key",
@@ -153,7 +155,8 @@
       },
       "actions": {
         "backPrimary": "Back to Primary Cluster",
-        "configureRR": "Configure Read Replica"
+        "configureRR": "Configure Read Replica",
+        "addRR": "Add Read Replica"
       },
       "resizeNodeModal": {
         "confirmResizeCheckbox": "Confirm Resize Nodes",
