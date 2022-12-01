@@ -230,7 +230,6 @@ export const createUniverse = async ({
 }: {
   configurePayload: UniverseConfigure;
   universeContextData: UniverseFormContextState;
-  featureFlags: any;
 }) => {
   let response;
   try {
