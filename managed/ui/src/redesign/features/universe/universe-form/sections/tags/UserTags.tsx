@@ -2,11 +2,11 @@ import React, { ReactElement, useContext } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Box, Grid, Typography } from '@material-ui/core';
-import { useSectionStyles } from '../../universeMainStyle';
-import { CloudType, ClusterType } from '../../utils/dto';
 import { UniverseFormContext } from '../../UniverseFormContainer';
-import { PROVIDER_FIELD } from '../../utils/constants';
 import { UserTagsField } from '../../fields';
+import { CloudType, ClusterType } from '../../utils/dto';
+import { PROVIDER_FIELD } from '../../utils/constants';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface UserTagsProps {}
 
@@ -27,7 +27,9 @@ export const UserTags = (_: UserTagsProps): ReactElement | null => {
     return (
       <Box>
         <Box className={classes.sectionContainer} borderBottom="0px">
-          <Typography variant="h4">{t('universeForm.userTags.title')}</Typography>
+          <Typography className={classes.sectionHeaderFont}>
+            {t('universeForm.userTags.title')}
+          </Typography>
         </Box>
         <Box mt={2}>
           <Grid container lg={6}>

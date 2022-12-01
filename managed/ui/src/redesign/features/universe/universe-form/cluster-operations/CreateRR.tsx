@@ -3,7 +3,18 @@ import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { browserHistory } from 'react-router';
+import { api, QUERY_KEY } from '../utils/api';
 import { UniverseForm } from '../UniverseForm';
+import { UniverseFormContext } from '../UniverseFormContainer';
+import { YBLoading } from '../../../../../components/common/indicators';
+import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
+import {
+  createReadReplica,
+  filterFormDataByClusterType,
+  getAsyncCluster,
+  getPrimaryFormData,
+  getUserIntent
+} from '../utils/helpers';
 import {
   ClusterType,
   UniverseFormData,
@@ -13,16 +24,6 @@ import {
   NodeDetails,
   NodeState
 } from '../utils/dto';
-import { UniverseFormContext } from '../UniverseFormContainer';
-import { api, QUERY_KEY } from '../utils/api';
-import {
-  createReadReplica,
-  filterFormDataByClusterType,
-  getAsyncCluster,
-  getPrimaryFormData,
-  getUserIntent
-} from '../utils/helpers';
-import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 
 interface CreateReadReplicaProps {
   uuid: string;
@@ -81,7 +82,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
     browserHistory.goBack();
   };
 
-  if (isLoading || contextState.isLoading) return <>Loading .... </>;
+  if (isLoading || contextState.isLoading) return <YBLoading />;
 
   if (!universe) return null;
 
@@ -92,15 +93,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
   return (
     <UniverseForm
       defaultFormData={initialFormData}
-      title={
-        <>
-          {universe?.name}
-          <span>
-            {' '}
-            <i className="fa fa-chevron-right"></i> {t('universeForm.configReadReplica')}{' '}
-          </span>
-        </>
-      }
+      submitLabel={t('universeForm.actions.addRR')}
       onFormSubmit={(data: UniverseFormData) => onSubmit(data)}
       onCancel={onCancel}
     />

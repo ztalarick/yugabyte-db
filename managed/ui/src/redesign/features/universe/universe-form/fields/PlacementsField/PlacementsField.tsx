@@ -12,6 +12,7 @@ import {
   PLACEMENTS_FIELD,
   PROVIDER_FIELD
 } from '../../utils/constants';
+
 interface PlacementsFieldProps {
   disabled: boolean;
 }
@@ -73,7 +74,7 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
       const prefferedAZLabel = `${PLACEMENTS_FIELD}.${index}.isAffinitized` as any;
 
       return (
-        <Box flex={1} display="flex" mt={1} flexDirection="row" key={field.id}>
+        <Box flex={1} display="flex" mb={1} flexDirection="row" key={field.id}>
           <Box flex={2} mr={0.5}>
             <YBSelect
               fullWidth

@@ -2,14 +2,17 @@ import React, { ReactElement, useContext } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Box, Grid, Typography } from '@material-ui/core';
-import { CloudType, ClusterType, ClusterModes } from '../../utils/dto';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import { PROVIDER_FIELD } from '../../utils/constants';
 import { HelmOverridesField } from '../../fields';
+import { UniverseFormContext } from '../../UniverseFormContainer';
+
+import { CloudType, ClusterType, ClusterModes } from '../../utils/dto';
+import { PROVIDER_FIELD } from '../../utils/constants';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface HelmOverridesProps {}
 
 export const HelmOverrides = (_: HelmOverridesProps): ReactElement | null => {
+  const classes = useSectionStyles();
   const { t } = useTranslation();
 
   //form context
@@ -25,7 +28,9 @@ export const HelmOverrides = (_: HelmOverridesProps): ReactElement | null => {
     return (
       <Box>
         <Box mt={2}>
-          <Typography variant="h4">{t('universeForm.helmOverrides.title')}</Typography>
+          <Typography className={classes.sectionHeaderFont}>
+            {t('universeForm.helmOverrides.title')}
+          </Typography>
         </Box>
         <Box>
           <Grid container lg={6}>

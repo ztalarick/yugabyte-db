@@ -14,21 +14,24 @@ import {
 import { UniverseFormData, ClusterType, ClusterModes } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
 import { UniverseFormContext } from './UniverseFormContainer';
+import { UNIVERSE_NAME_FIELD } from './utils/constants';
 
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
-  title: React.ReactNode;
   onFormSubmit: (data: UniverseFormData) => void;
   onCancel: () => void;
   onClusterTypeChange?: (data: UniverseFormData) => void;
+  submitLabel?: string;
+  isNewUniverse?: boolean; // This flag is used only in new cluster creation flow
 }
 
 export const UniverseForm: FC<UniverseFormProps> = ({
   defaultFormData,
-  title,
   onFormSubmit,
   onCancel,
-  onClusterTypeChange
+  onClusterTypeChange,
+  submitLabel,
+  isNewUniverse = false
 }) => {
   const classes = useFormMainStyles();
   const { t } = useTranslation();
@@ -65,13 +68,49 @@ export const UniverseForm: FC<UniverseFormProps> = ({
     }
   };
 
+  const renderHeader = () => {
+    return (
+      <Box className={classes.formHeader}>
+        <Typography className={classes.headerFont}>
+          {isNewUniverse ? t('universeForm.createUniverse') : getValues(UNIVERSE_NAME_FIELD)}
+        </Typography>
+        {!isNewUniverse && (
+          <Typography className={classes.subHeaderFont}>
+            <i className="fa fa-chevron-right"></i> &nbsp;
+            {isPrimary ? t('universeForm.editUniverse') : t('universeForm.configReadReplica')}
+          </Typography>
+        )}
+        {onClusterTypeChange && (
+          <>
+            <Box
+              flexShrink={1}
+              display={'flex'}
+              ml={2}
+              alignItems="center"
+              className={isPrimary ? classes.selectedTab : classes.disabledTab}
+            >
+              {t('universeForm.primaryTab')}
+            </Box>
+            <Box
+              flexShrink={1}
+              display={'flex'}
+              ml={2}
+              alignItems="center"
+              className={!isPrimary ? classes.selectedTab : classes.disabledTab}
+            >
+              {t('universeForm.rrTab')}
+            </Box>
+          </>
+        )}
+      </Box>
+    );
+  };
+
   return (
     <Box className={classes.mainConatiner}>
       <FormProvider {...formMethods}>
         <form key={clusterType} onSubmit={formMethods.handleSubmit(onSubmit)}>
-          <Box className={classes.formHeader}>
-            <Typography variant="h3">{title}</Typography>
-          </Box>
+          {renderHeader()}
           <Box className={classes.formContainer}>
             <CloudConfiguration />
             <InstanceConfiguration />
@@ -102,7 +141,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
                   )}
                   &nbsp;
                   <YBButton variant="primary" size="large" type="submit">
-                    {t('common.create')}
+                    {submitLabel ? submitLabel : t('common.save')}
                   </YBButton>
                 </Box>
               </Grid>

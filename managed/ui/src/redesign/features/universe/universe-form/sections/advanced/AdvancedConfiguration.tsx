@@ -2,7 +2,6 @@ import React, { FC, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
-import { useSectionStyles } from '../../universeMainStyle';
 import {
   AccessKeysField,
   ARNField,
@@ -12,9 +11,10 @@ import {
   NetworkAccessField,
   SystemDField
 } from '../../fields';
-import { PROVIDER_FIELD } from '../../utils/constants';
-import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
 import { UniverseFormContext } from '../../UniverseFormContainer';
+import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
+import { PROVIDER_FIELD } from '../../utils/constants';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface AdvancedConfigProps {}
 
@@ -37,7 +37,9 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
 
   return (
     <Box className={classes.sectionContainer}>
-      <Typography variant="h4">{t('universeForm.advancedConfig.title')}</Typography>
+      <Typography className={classes.sectionHeaderFont}>
+        {t('universeForm.advancedConfig.title')}
+      </Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={2}>
           <Grid container spacing={3}>

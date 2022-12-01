@@ -54,6 +54,9 @@ export const mainTheme = createTheme({
       stroke: colors.chartStroke,
       fill: colors.chartFill
     },
+    ybacolors: {
+      ...colors.ybacolors
+    },
     divider: colors.grey[200]
   },
   shape: {
@@ -173,7 +176,7 @@ export const mainTheme = createTheme({
       },
       label: {
         fontSize: 14,
-        fontWeight: 500,
+        fontWeight: 300,
         textTransform: 'none'
       },
       startIcon: {
@@ -200,25 +203,27 @@ export const mainTheme = createTheme({
         },
         '&$disabled': {
           backgroundColor: colors.grey[300],
-          color: colors.grey[600]
+          color: colors.grey[600],
+          cursor: 'not-allowed'
         }
       },
       // "secondary" variant
       outlined: {
-        color: colors.primary[600],
-        backgroundColor: colors.background.paper,
-        border: `1px solid ${colors.primary[600]}`,
+        color: colors.ybacolors.ybDarkGray,
+        backgroundColor: colors.common.white,
+        border: `1px solid ${colors.ybacolors.ybGray}`,
         '&:hover': {
-          backgroundColor: colors.background.paper,
-          borderColor: colors.primary[500]
+          backgroundColor: colors.ybacolors.ybGrayHover,
+          borderColor: colors.ybacolors.ybGrayHover
         },
         '&:active': {
-          backgroundColor: colors.background.paper,
-          borderColor: colors.primary[700]
+          backgroundColor: colors.ybacolors.ybDarkGray2,
+          borderColor: colors.ybacolors.ybDarkGray2
         },
         '&$disabled': {
-          backgroundColor: colors.grey[300],
-          color: colors.grey[600]
+          backgroundColor: colors.ybacolors.backgroundDisabled,
+          color: colors.ybacolors.colorDisabled,
+          cursor: 'not-allowed'
         }
       },
       // "ghost" variant
@@ -232,8 +237,9 @@ export const mainTheme = createTheme({
           backgroundColor: 'transparent'
         },
         '&$disabled': {
-          backgroundColor: 'transparent',
-          color: colors.grey[600]
+          backgroundColor: colors.grey[300],
+          color: colors.grey[600],
+          cursor: 'not-allowed'
         }
       }
     },
@@ -249,16 +255,16 @@ export const mainTheme = createTheme({
     },
     MuiCheckbox: {
       root: {
-        color: colors.orange[500],
+        // color: colors.primary[600],
         '& .MuiSvgIcon-root': {
           width: 20,
           height: 20
         }
       },
       colorPrimary: {
-        color: colors.orange[500],
+        // color: colors.primary[600],
         '&&.Mui-checked': {
-          color: colors.orange[500]
+          color: colors.primary[600]
         }
       }
     },
@@ -281,10 +287,11 @@ export const mainTheme = createTheme({
         padding: 4
       },
       tag: {
-        backgroundColor: colors.primary[200],
+        backgroundColor: colors.ybacolors.inputBackground,
         borderRadius: 6,
         '&:hover': {
-          backgroundColor: colors.primary[100]
+          backgroundColor: colors.ybacolors.inputBackground,
+          opacity: 0.8
         },
         '& .MuiChip-deleteIcon': {
           width: 16,
@@ -331,13 +338,14 @@ export const mainTheme = createTheme({
         color: colors.grey[900],
         backgroundColor: colors.background.paper,
         borderRadius: variables.borderRadius,
-        border: `1px solid ${colors.grey[300]}`,
+        border: `1px solid ${colors.ybacolors.ybGray}`,
         '&:hover': {
-          borderColor: colors.primary[300]
+          borderColor: colors.ybacolors.inputBackground
+          // borderColor: colors.primary[300]
         },
         '&$focused': {
-          borderColor: colors.primary[300],
-          boxShadow: `0 0 0 2px ${colors.primary[200]}`
+          borderColor: colors.ybacolors.ybOrangeFocus,
+          boxShadow: colors.ybacolors.inputBoxShadow
         },
         '&$error': {
           color: colors.error[500],
@@ -350,13 +358,13 @@ export const mainTheme = createTheme({
             boxShadow: `0 0 0 2px ${colors.error[100]}`
           },
           '&$disabled': {
-            borderColor: colors.grey[300]
+            borderColor: colors.ybacolors.ybGray
           }
         },
         '&$disabled': {
-          color: colors.grey[600],
-          backgroundColor: colors.grey[200],
-          borderColor: colors.grey[300],
+          color: colors.ybacolors.colorDisabled,
+          backgroundColor: colors.ybacolors.backgroundDisabled,
+          borderColor: colors.ybacolors.ybGray,
           cursor: 'not-allowed'
         },
         '&$multiline': {
@@ -531,7 +539,8 @@ export const mainTheme = createTheme({
         marginLeft: 0,
 
         '&$disabled': {
-          cursor: 'not-allowed'
+          cursor: 'not-allowed',
+          opacity: 0.6
         }
       }
     },

@@ -3,7 +3,6 @@ import _ from 'lodash';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Grid } from '@material-ui/core';
-import { useSectionStyles } from '../../universeMainStyle';
 import {
   UniverseNameField,
   PlacementsField,
@@ -14,8 +13,9 @@ import {
   DefaultRegionField
 } from '../../fields';
 import { UniverseFormContext } from '../../UniverseFormContainer';
-import { ClusterModes, ClusterType } from '../../utils/dto';
 import { getPrimaryCluster } from '../../utils/helpers';
+import { ClusterModes, ClusterType } from '../../utils/dto';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface CloudConfigProps {}
 
@@ -45,7 +45,9 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
       <Grid container spacing={3}>
         <Grid item lg={6}>
           <Box mb={4}>
-            <Typography variant="h4">{t('universeForm.cloudConfig.title')}</Typography>
+            <Typography className={classes.sectionHeaderFont}>
+              {t('universeForm.cloudConfig.title')}
+            </Typography>
           </Box>
           {isPrimary && (
             <Box mt={1}>

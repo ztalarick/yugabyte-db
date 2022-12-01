@@ -1,7 +1,8 @@
 import type {
   CommonColors,
   PaletteColor,
-  TypeBackground
+  TypeBackground,
+  YBAColors
 } from '@material-ui/core/styles/createPalette';
 
 export const colors = {
@@ -118,7 +119,19 @@ export const colors = {
     // Bar chart properties
     bar1: '#0098F0',
     bar2: '#262666'
-  }
+  },
+  ybacolors: {
+    ybOrangeFocus: '#EF582480',
+    ybGray: '#DEDEE0',
+    ybGrayHover: '#E5E5E9',
+    ybDarkGray: '#232329',
+    ybDarkGray1: '#9F9EA7',
+    ybDarkGray2: '#D9D9DB',
+    inputBackground: '#E6E6E6',
+    backgroundDisabled: '#EEE',
+    colorDisabled: '#555',
+    inputBoxShadow: 'inset 0 1px 1px rgb(0 0 0 / 8%), 0 0 8px rgb(239 88 36 / 20%)'
+  } as YBAColors
 };
 
 export const themeVariables = {
