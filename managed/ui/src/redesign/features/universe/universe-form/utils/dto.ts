@@ -94,28 +94,29 @@ export interface UserIntent {
   providerType: CloudType;
   replicationFactor: number;
   regionList: string[];
-  instanceType: string;
+  instanceType: string | null;
   numNodes: number;
   ybSoftwareVersion: string | null;
-  accessKeyCode: string | null;
   deviceInfo: DeviceInfo | null;
-  dedicatedNodes?: boolean;
-  assignPublicIP: boolean;
-  useTimeSync: boolean;
   enableYSQL: boolean;
   enableYSQLAuth: boolean;
-  ysqlPassword?: string | null;
   enableYCQL: boolean;
   enableYCQLAuth: boolean;
-  ycqlPassword?: string | null;
-  enableNodeToNodeEncrypt: boolean;
-  enableClientToNodeEncrypt: boolean;
-  awsArnString: string | null;
-  enableYEDIS: boolean;
-  enableIPV6: boolean;
   enableExposingService: ExposingServiceTypes | null;
-  ybcPackagePath?: string | null;
   useSystemd: boolean;
+  //optional fields
+  accessKeyCode?: string | null;
+  dedicatedNodes?: boolean;
+  assignPublicIP?: boolean;
+  useTimeSync?: boolean;
+  ysqlPassword?: string | null;
+  ycqlPassword?: string | null;
+  enableNodeToNodeEncrypt?: boolean;
+  enableClientToNodeEncrypt?: boolean;
+  awsArnString?: string | null;
+  enableYEDIS?: boolean;
+  enableIPV6?: boolean;
+  ybcPackagePath?: string | null;
   instanceTags?: Record<string, string>;
   masterGFlags?: Record<string, any>;
   tserverGFlags?: Record<string, any>;
@@ -269,7 +270,6 @@ export interface InstanceConfigFormValue {
   ycqlPassword?: string;
   ycqlConfirmPassword?: string;
   enableYEDIS: boolean;
-  awsArnString: string | null;
   kmsConfig: string | null;
   dedicatedNodes?: boolean;
 }
@@ -286,11 +286,12 @@ export interface AdvancedConfigFormValue {
   communicationPorts: CommunicationPorts;
 }
 
-export interface InstanceTags {
+export interface InstanceTag {
   name: string;
   value: string;
   id?: string;
 }
+export type InstanceTags = InstanceTag[];
 
 export interface Gflag {
   Name: string;
@@ -302,7 +303,7 @@ export interface UniverseFormData {
   cloudConfig: CloudConfigFormValue;
   instanceConfig: InstanceConfigFormValue;
   advancedConfig: AdvancedConfigFormValue;
-  instanceTags: InstanceTags[];
+  instanceTags: InstanceTags;
   gFlags: Gflag[];
   universeOverrides?: string;
   azOverrides?: Record<string, string>;
@@ -353,7 +354,6 @@ export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   ycqlPassword: '',
   ycqlConfirmPassword: '',
   enableYEDIS: false,
-  awsArnString: '',
   kmsConfig: null,
   dedicatedNodes: false
 };

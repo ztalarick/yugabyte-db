@@ -6,8 +6,21 @@ import { useUpdateEffect, useEffectOnce } from 'react-use';
 import { UniverseForm } from '../UniverseForm';
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { YBLoading } from '../../../../../components/common/indicators';
-import { createUniverse, filterFormDataByClusterType, getAsyncCopyFields } from '../utils/helpers';
-import { ClusterType, ClusterModes, DEFAULT_FORM_DATA, UniverseFormData } from '../utils/dto';
+import {
+  createUniverse,
+  filterFormDataByClusterType,
+  getAsyncCopyFields,
+  getUserIntent
+} from '../utils/helpers';
+import {
+  ClusterType,
+  ClusterModes,
+  DEFAULT_FORM_DATA,
+  UniverseFormData,
+  CloudType,
+  UniverseConfigure
+} from '../utils/dto';
+import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 
 interface CreateUniverseProps {}
 
@@ -46,7 +59,59 @@ export const CreateUniverse: FC<CreateUniverseProps> = () => {
   }, [clusterType]);
 
   const onSubmit = (primaryData: UniverseFormData, asyncData: UniverseFormData) => {
-    createUniverse({ primaryData, asyncData, universeContextData: contextState, featureFlags });
+    const configurePayload: UniverseConfigure = {
+      clusterOperation: ClusterModes.CREATE,
+      currentClusterType: contextState.clusterType,
+      rootCA: primaryData.instanceConfig.rootCA,
+      userAZSelected: false,
+      resetAZConfig: false,
+      enableYbc: featureFlags.released.enableYbc || featureFlags.test.enableYbc,
+      communicationPorts: primaryData.advancedConfig.communicationPorts,
+      mastersInDefaultRegion: !!primaryData?.cloudConfig?.mastersInDefaultRegion,
+      encryptionAtRestConfig: {
+        key_op: primaryData.instanceConfig.enableEncryptionAtRest ? 'ENABLE' : 'UNDEFINED'
+      },
+      clusters: [
+        {
+          clusterType: ClusterType.PRIMARY,
+          userIntent: getUserIntent({ formData: primaryData }),
+          placementInfo: {
+            cloudList: [
+              {
+                uuid: primaryData.cloudConfig.provider?.uuid as string,
+                code: primaryData.cloudConfig.provider?.code as CloudType,
+                regionList: getPlacements(primaryData),
+                defaultRegion: primaryData.cloudConfig.defaultRegion
+              }
+            ]
+          }
+        }
+      ]
+    };
+    if (asyncData) {
+      configurePayload.clusters?.push({
+        clusterType: ClusterType.ASYNC,
+        userIntent: getUserIntent({ formData: asyncData }),
+        placementInfo: {
+          cloudList: [
+            {
+              uuid: asyncData.cloudConfig.provider?.uuid as string,
+              code: asyncData.cloudConfig.provider?.code as CloudType,
+              regionList: getPlacements(asyncData)
+            }
+          ]
+        }
+      });
+    }
+
+    if (
+      primaryData?.instanceConfig?.enableEncryptionAtRest &&
+      primaryData?.instanceConfig?.kmsConfig &&
+      configurePayload.encryptionAtRestConfig
+    ) {
+      configurePayload.encryptionAtRestConfig.configUUID = primaryData.instanceConfig.kmsConfig;
+    }
+    createUniverse({ configurePayload, universeContextData: contextState });
   };
 
   const onCancel = () => {

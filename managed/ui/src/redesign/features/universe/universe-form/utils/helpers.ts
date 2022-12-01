@@ -11,13 +11,11 @@ import {
   UserIntent,
   Gflag,
   DEFAULT_FORM_DATA,
-  ClusterModes
+  InstanceTag,
+  InstanceTags
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
-import {
-  getPlacements,
-  getPlacementsFromCluster
-} from '../fields/PlacementsField/PlacementsFieldHelper';
+import { getPlacementsFromCluster } from '../fields/PlacementsField/PlacementsFieldHelper';
 import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
 
 export const transitToUniverse = (universeUUID: string | undefined) => {
@@ -37,20 +35,6 @@ export const getAsyncCluster = (universeData: UniverseDetails) => {
   return getClusterByType(universeData, ClusterType.ASYNC);
 };
 
-//transform gflags
-export const transformGFlagToFlagsArray = (
-  gFlags: Record<string, any> = {},
-  flagType: string
-): Gflag[] => {
-  const flagsArray: Gflag[] = [
-    ...Object.keys(gFlags).map((key: string) => ({
-      Name: key,
-      [flagType]: gFlags[key]
-    }))
-  ];
-  return flagsArray;
-};
-
 //Filter form data by cluster type
 export const filterFormDataByClusterType = (
   formData: UniverseFormData,
@@ -63,6 +47,24 @@ export const filterFormDataByClusterType = (
 //returns fields needs to be copied from Primary to Async in Create+RR flow
 export const getAsyncCopyFields = (formData: UniverseFormData) =>
   _.pick(formData, ASYNC_COPY_FIELDS);
+
+//transform gflags
+export const transformGFlagToFlagsArray = (gFlags: Record<string, any> = {}, flagType: string) => {
+  const flagsArray = [
+    ...Object.keys(gFlags).map((key: string) => ({
+      Name: key,
+      [flagType]: gFlags[key]
+    }))
+  ];
+  return flagsArray;
+};
+
+//transform instance tags
+const transformInstanceTags = (instanceTags: Record<string, string> = {}) =>
+  Object.entries(instanceTags).map(([key, val]) => ({
+    name: key,
+    value: val
+  }));
 
 //Transform universe data to form data
 export const getFormData = (universeData: UniverseDetails, clusterType: ClusterType) => {
@@ -89,37 +91,31 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
     instanceConfig: {
       instanceType: userIntent.instanceType,
       deviceInfo: userIntent.deviceInfo,
-      assignPublicIP: userIntent.assignPublicIP,
-      useTimeSync: userIntent.useTimeSync,
-      enableClientToNodeEncrypt: userIntent.enableClientToNodeEncrypt,
-      enableNodeToNodeEncrypt: userIntent.enableNodeToNodeEncrypt,
+      assignPublicIP: !!userIntent.assignPublicIP,
+      useTimeSync: !!userIntent.useTimeSync,
+      enableClientToNodeEncrypt: !!userIntent.enableClientToNodeEncrypt,
+      enableNodeToNodeEncrypt: !!userIntent.enableNodeToNodeEncrypt,
       enableYSQL: userIntent.enableYSQL,
       enableYSQLAuth: userIntent.enableYSQLAuth,
       enableYCQL: userIntent.enableYCQL,
       enableYCQLAuth: userIntent.enableYCQLAuth,
-      enableYEDIS: userIntent.enableYEDIS,
-      awsArnString: userIntent.awsArnString,
+      enableYEDIS: !!userIntent.enableYEDIS,
       enableEncryptionAtRest: !!encryptionAtRestConfig.encryptionAtRestEnabled,
       kmsConfig: encryptionAtRestConfig?.kmsConfigUUID ?? null,
       rootCA
     },
     advancedConfig: {
       useSystemd: userIntent.useSystemd,
-      awsArnString: userIntent.awsArnString,
-      enableIPV6: userIntent.enableIPV6,
+      awsArnString: userIntent.awsArnString ?? null,
+      enableIPV6: !!userIntent.enableIPV6,
       enableExposingService: userIntent.enableExposingService,
-      accessKeyCode: userIntent.accessKeyCode,
+      accessKeyCode: userIntent.accessKeyCode ?? null,
       ybSoftwareVersion: userIntent.ybSoftwareVersion,
       communicationPorts,
       customizePort: false, //** */
       ybcPackagePath: null //** */
     },
-    instanceTags: userIntent?.instanceTags
-      ? Object.entries(userIntent?.instanceTags).map(([key, val]) => ({
-          name: key,
-          value: val ?? ''
-        }))
-      : [],
+    instanceTags: transformInstanceTags(userIntent.instanceTags),
     gFlags: [
       ...transformGFlagToFlagsArray(userIntent.masterGFlags, 'MASTER'),
       ...transformGFlagToFlagsArray(userIntent.tserverGFlags, 'TSERVER')
@@ -138,65 +134,64 @@ export const getAsyncFormData = (universeData: UniverseDetails) => {
 };
 
 const transformFlagArrayToObject = (
-  flagsArray: Gflag[]
+  flagsArray: Gflag[] = []
 ): { masterGFlags: Record<string, any>; tserverGFlags: Record<string, any> } => {
   let masterGFlags = {},
     tserverGFlags = {};
-  (flagsArray || []).forEach((flag: Gflag) => {
+  flagsArray.forEach((flag: Gflag) => {
     if (flag?.hasOwnProperty('MASTER')) masterGFlags[flag.Name] = flag['MASTER'];
     if (flag?.hasOwnProperty('TSERVER')) tserverGFlags[flag.Name] = flag['TSERVER'];
   });
   return { masterGFlags, tserverGFlags };
 };
 
+const transformTagsArrayToObject = (instanceTags: InstanceTags) => {
+  return instanceTags.reduce((tagsObj: Record<string, string>, tag: InstanceTag) => {
+    tagsObj[tag.name] = tag.value;
+    return tagsObj;
+  }, {});
+};
+
 //Transform form data to intent
 export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
-  const { masterGFlags, tserverGFlags } = transformFlagArrayToObject(formData.gFlags);
-
+  const { cloudConfig, instanceConfig, advancedConfig, instanceTags, gFlags } = formData;
+  const { masterGFlags, tserverGFlags } = transformFlagArrayToObject(gFlags);
   let intent: UserIntent = {
-    universeName: formData.cloudConfig.universeName,
-    provider: formData.cloudConfig.provider?.uuid as string,
-    providerType: formData.cloudConfig.provider?.code as CloudType,
-    regionList: formData.cloudConfig.regionList,
-    numNodes: Number(formData.cloudConfig.numNodes),
-    replicationFactor: formData.cloudConfig.replicationFactor,
-    dedicatedNodes: !!formData?.instanceConfig?.dedicatedNodes,
-    instanceType: (formData?.instanceConfig?.instanceType || '') as string,
-    deviceInfo: formData.instanceConfig.deviceInfo,
-    assignPublicIP: formData.instanceConfig.assignPublicIP,
-    awsArnString: formData.instanceConfig.awsArnString,
-    enableNodeToNodeEncrypt: formData.instanceConfig.enableNodeToNodeEncrypt,
-    enableClientToNodeEncrypt: formData.instanceConfig.enableClientToNodeEncrypt,
-    enableYSQL: formData.instanceConfig.enableYSQL,
-    enableYSQLAuth: formData.instanceConfig.enableYSQLAuth,
-    enableYCQL: formData.instanceConfig.enableYCQL,
-    enableYCQLAuth: formData.instanceConfig.enableYCQLAuth,
-    useTimeSync: formData.instanceConfig.useTimeSync,
-    enableYEDIS: formData.instanceConfig.enableYEDIS,
-    accessKeyCode: formData.advancedConfig.accessKeyCode,
-    ybSoftwareVersion: formData.advancedConfig.ybSoftwareVersion,
-    enableIPV6: formData.advancedConfig.enableIPV6,
-    enableExposingService: formData.advancedConfig.enableExposingService,
-    useSystemd: formData.advancedConfig.useSystemd
+    universeName: cloudConfig.universeName,
+    provider: cloudConfig.provider?.uuid as string,
+    providerType: cloudConfig.provider?.code as CloudType,
+    regionList: cloudConfig.regionList,
+    numNodes: Number(cloudConfig.numNodes),
+    replicationFactor: cloudConfig.replicationFactor,
+    dedicatedNodes: !!instanceConfig?.dedicatedNodes,
+    instanceType: instanceConfig.instanceType,
+    deviceInfo: instanceConfig.deviceInfo,
+    assignPublicIP: instanceConfig.assignPublicIP,
+    enableNodeToNodeEncrypt: instanceConfig.enableNodeToNodeEncrypt,
+    enableClientToNodeEncrypt: instanceConfig.enableClientToNodeEncrypt,
+    enableYSQL: instanceConfig.enableYSQL,
+    enableYSQLAuth: instanceConfig.enableYSQLAuth,
+    enableYCQL: instanceConfig.enableYCQL,
+    enableYCQLAuth: instanceConfig.enableYCQLAuth,
+    useTimeSync: instanceConfig.useTimeSync,
+    enableYEDIS: instanceConfig.enableYEDIS,
+    accessKeyCode: advancedConfig.accessKeyCode,
+    ybSoftwareVersion: advancedConfig.ybSoftwareVersion,
+    enableIPV6: advancedConfig.enableIPV6,
+    enableExposingService: advancedConfig.enableExposingService,
+    useSystemd: advancedConfig.useSystemd
   };
 
   if (!_.isEmpty(masterGFlags)) intent.masterGFlags = masterGFlags;
   if (!_.isEmpty(tserverGFlags)) intent.tserverGFlags = tserverGFlags;
+  if (!_.isEmpty(advancedConfig.awsArnString)) intent.awsArnString = advancedConfig.awsArnString;
+  if (!_.isEmpty(instanceTags)) intent.instanceTags = transformTagsArrayToObject(instanceTags);
 
-  if (formData?.instanceTags?.length) {
-    formData?.instanceTags.forEach((tag) => {
-      if (tag?.name && tag?.value) {
-        if (!intent.instanceTags) intent.instanceTags = {};
-        intent.instanceTags[tag.name] = tag.value;
-      }
-    });
-  }
+  if (instanceConfig.enableYSQLAuth && instanceConfig.ysqlPassword)
+    intent.ysqlPassword = instanceConfig.ysqlPassword;
 
-  if (formData.instanceConfig.enableYSQLAuth && formData.instanceConfig.ysqlPassword)
-    intent.ysqlPassword = formData.instanceConfig.ysqlPassword;
-
-  if (formData.instanceConfig.enableYCQLAuth && formData.instanceConfig.ycqlPassword)
-    intent.ycqlPassword = formData.instanceConfig.ycqlPassword;
+  if (instanceConfig.enableYCQLAuth && instanceConfig.ycqlPassword)
+    intent.ycqlPassword = instanceConfig.ycqlPassword;
 
   return intent;
 };
@@ -224,71 +219,14 @@ const patchConfigResponse = (response: UniverseDetails, original: UniverseDetail
 };
 
 export const createUniverse = async ({
-  primaryData,
-  asyncData,
-  universeContextData,
-  featureFlags
+  configurePayload,
+  universeContextData
 }: {
-  primaryData: UniverseFormData;
-  asyncData: UniverseFormData | null;
+  configurePayload: UniverseConfigure;
   universeContextData: UniverseFormContextState;
-  featureFlags: any;
 }) => {
   let response;
   try {
-    const configurePayload: UniverseConfigure = {
-      clusterOperation: ClusterModes.CREATE,
-      currentClusterType: universeContextData.clusterType,
-      rootCA: primaryData.instanceConfig.rootCA,
-      userAZSelected: false,
-      resetAZConfig: false,
-      enableYbc: featureFlags.released.enableYbc || featureFlags.test.enableYbc,
-      communicationPorts: primaryData.advancedConfig.communicationPorts,
-      mastersInDefaultRegion: !!primaryData?.cloudConfig?.mastersInDefaultRegion,
-      encryptionAtRestConfig: {
-        key_op: primaryData.instanceConfig.enableEncryptionAtRest ? 'ENABLE' : 'UNDEFINED'
-      },
-      clusters: [
-        {
-          clusterType: ClusterType.PRIMARY,
-          userIntent: getUserIntent({ formData: primaryData }),
-          placementInfo: {
-            cloudList: [
-              {
-                uuid: primaryData.cloudConfig.provider?.uuid as string,
-                code: primaryData.cloudConfig.provider?.code as CloudType,
-                regionList: getPlacements(primaryData),
-                defaultRegion: primaryData.cloudConfig.defaultRegion
-              }
-            ]
-          }
-        }
-      ]
-    };
-    if (asyncData) {
-      configurePayload.clusters?.push({
-        clusterType: ClusterType.ASYNC,
-        userIntent: getUserIntent({ formData: asyncData }),
-        placementInfo: {
-          cloudList: [
-            {
-              uuid: asyncData.cloudConfig.provider?.uuid as string,
-              code: asyncData.cloudConfig.provider?.code as CloudType,
-              regionList: getPlacements(asyncData)
-            }
-          ]
-        }
-      });
-    }
-
-    if (
-      primaryData?.instanceConfig?.enableEncryptionAtRest &&
-      primaryData?.instanceConfig?.kmsConfig &&
-      configurePayload.encryptionAtRestConfig
-    ) {
-      configurePayload.encryptionAtRestConfig.configUUID = primaryData.instanceConfig.kmsConfig;
-    }
-
     // in create mode no configure call is made with all form fields ( intent )
     const finalPayload = await api.universeConfigure(
       _.merge(universeContextData.universeConfigureTemplate, configurePayload)
