@@ -37,7 +37,7 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
       const totalNodesinAz = placements
         .map((e: any) => e.numNodesInAZ)
         .reduce((prev: any, curr: any) => Number(prev) + Number(curr), initalCount);
-      if (totalNodesinAz > currentTotalNodes) setValue(TOTAL_NODES_FIELD, totalNodesinAz);
+      if (totalNodesinAz >= replicationFactor) setValue(TOTAL_NODES_FIELD, totalNodesinAz);
     }
   }, [placements]);
 

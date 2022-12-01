@@ -59,13 +59,15 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
     update(index, updateAz);
   };
 
-  //validates numNodesINAZ >= TotalNodes
+  //validates numNodesINAZ >= RF
   const validateNodeCount = (index: number, newValue: number) => {
     const initialCount = 0;
     const totalNodesinAz = fields
       .map((e) => e.numNodesInAZ)
       .reduce((prev, cur) => prev + cur, initialCount);
-    return totalNodesinAz - fields[index].numNodesInAZ + newValue >= getValues(TOTAL_NODES_FIELD);
+    return (
+      totalNodesinAz - fields[index].numNodesInAZ + newValue >= getValues(REPLICATION_FACTOR_FIELD)
+    );
   };
 
   const renderPlacements = () => {
