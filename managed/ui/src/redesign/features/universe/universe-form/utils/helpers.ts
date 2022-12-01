@@ -25,40 +25,29 @@ export const transitToUniverse = (universeUUID: string | undefined) => {
 };
 
 //get cluster data by cluster type
-export const getClusterByType = (
-  universeData: UniverseDetails,
-  clusterType: ClusterType
-): Cluster | undefined => {
-  return universeData?.clusters?.find((cluster: Cluster) => cluster.clusterType === clusterType);
+export const getClusterByType = (universeData: UniverseDetails, clusterType: ClusterType) => {
+  return universeData.clusters.find((cluster) => cluster.clusterType === clusterType);
 };
 
-export const getPrimaryCluster = (universeData: UniverseDetails): Cluster | undefined => {
+export const getPrimaryCluster = (universeData: UniverseDetails) => {
   return getClusterByType(universeData, ClusterType.PRIMARY);
 };
 
-export const getAsyncCluster = (universeData: UniverseDetails): Cluster | undefined => {
+export const getAsyncCluster = (universeData: UniverseDetails) => {
   return getClusterByType(universeData, ClusterType.ASYNC);
 };
 
-const transformMasterTserverToFlags = (
-  masterGFlags: Record<string, any> | undefined,
-  tserverGFlags: Record<string, any> | undefined
+//transform gflags
+export const transformGFlagToFlagsArray = (
+  gFlags: Record<string, any> = {},
+  flagType: string
 ): Gflag[] => {
   const flagsArray: Gflag[] = [
-    ...(masterGFlags
-      ? Object.keys(masterGFlags).map((key: string) => ({
-          Name: key,
-          MASTER: masterGFlags[key]
-        }))
-      : []),
-    ...(tserverGFlags
-      ? Object.keys(tserverGFlags).map((key: string) => ({
-          Name: key,
-          TSERVER: tserverGFlags[key]
-        }))
-      : [])
+    ...Object.keys(gFlags).map((key: string) => ({
+      Name: key,
+      [flagType]: gFlags[key]
+    }))
   ];
-
   return flagsArray;
 };
 
@@ -66,7 +55,7 @@ const transformMasterTserverToFlags = (
 export const filterFormDataByClusterType = (
   formData: UniverseFormData,
   clusterType: ClusterType
-): UniverseFormData => {
+) => {
   const formFields = clusterType === ClusterType.PRIMARY ? PRIMARY_FIELDS : ASYNC_FIELDS;
   return (_.pick(formData, formFields) as unknown) as UniverseFormData;
 };
@@ -76,10 +65,7 @@ export const getAsyncCopyFields = (formData: UniverseFormData) =>
   _.pick(formData, ASYNC_COPY_FIELDS);
 
 //Transform universe data to form data
-export const getFormData = (
-  universeData: UniverseDetails,
-  clusterType: ClusterType
-): UniverseFormData => {
+export const getFormData = (universeData: UniverseDetails, clusterType: ClusterType) => {
   const { communicationPorts, encryptionAtRestConfig, rootCA } = universeData;
   const cluster = getClusterByType(universeData, clusterType);
 
@@ -134,34 +120,22 @@ export const getFormData = (
           value: val ?? ''
         }))
       : [],
-    gFlags: transformMasterTserverToFlags(userIntent?.masterGFlags, userIntent?.tserverGFlags)
+    gFlags: [
+      ...transformGFlagToFlagsArray(userIntent.masterGFlags, 'MASTER'),
+      ...transformGFlagToFlagsArray(userIntent.tserverGFlags, 'TSERVER')
+    ]
   };
 
   return data;
 };
 
-export const getPrimaryFormData = (universeData: UniverseDetails): UniverseFormData => {
+export const getPrimaryFormData = (universeData: UniverseDetails) => {
   return getFormData(universeData, ClusterType.PRIMARY);
 };
 
-export const getAsyncFormData = (universeData: UniverseDetails): UniverseFormData => {
+export const getAsyncFormData = (universeData: UniverseDetails) => {
   return getFormData(universeData, ClusterType.ASYNC);
 };
-
-// const transformFlagsToMasterTserver = (
-//   flagsArray: Gflag[]
-// ): { masterGFlags: FlagsArray; tserverGFlags: FlagsArray } => {
-//   const masterGFlags: FlagsArray = [],
-//     tserverGFlags: FlagsArray = [];
-//   (flagsArray || []).forEach((flag: Gflag) => {
-//     if (flag?.hasOwnProperty('MASTER'))
-//       masterGFlags.push({ name: flag?.Name, value: flag['MASTER'] });
-//     if (flag?.hasOwnProperty('TSERVER'))
-//       tserverGFlags.push({ name: flag?.Name, value: flag['TSERVER'] });
-//   });
-
-//   return { masterGFlags, tserverGFlags };
-// };
 
 const transformFlagArrayToObject = (
   flagsArray: Gflag[]
@@ -184,7 +158,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     provider: formData.cloudConfig.provider?.uuid as string,
     providerType: formData.cloudConfig.provider?.code as CloudType,
     regionList: formData.cloudConfig.regionList,
-    numNodes: formData.cloudConfig.numNodes,
+    numNodes: Number(formData.cloudConfig.numNodes),
     replicationFactor: formData.cloudConfig.replicationFactor,
     dedicatedNodes: !!formData?.instanceConfig?.dedicatedNodes,
     instanceType: (formData?.instanceConfig?.instanceType || '') as string,
