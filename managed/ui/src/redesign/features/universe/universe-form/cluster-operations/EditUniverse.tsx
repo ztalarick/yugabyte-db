@@ -1,12 +1,12 @@
 import React, { FC, useContext, useState } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
-import { useTranslation } from 'react-i18next';
 import { browserHistory } from 'react-router';
 import { api, QUERY_KEY } from '../utils/api';
 import { UniverseForm } from '../UniverseForm';
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { ResizeNodeModal, SmartResizeModal, FullMoveModal } from './update-modals';
+import { YBLoading } from '../../../../../components/common/indicators';
 import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 import { getPrimaryFormData, transitToUniverse } from '../utils/helpers';
 import {
@@ -38,7 +38,6 @@ interface EditUniverseProps {
 }
 
 export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
-  const { t } = useTranslation();
   const [contextState, contextMethods] = useContext(UniverseFormContext);
   const { isLoading, universeConfigureTemplate } = contextState;
   const { initializeForm } = contextMethods;
@@ -78,7 +77,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     browserHistory.goBack();
   };
 
-  if (isUniverseLoading || isLoading || !originalData?.universeDetails) return <>Loading .... </>;
+  if (isUniverseLoading || isLoading || !originalData?.universeDetails) return <YBLoading />;
 
   const initialFormData = getPrimaryFormData(originalData.universeDetails);
 
@@ -121,24 +120,9 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     } else console.log("'Nothing to update - no fields changed'");
   };
 
-  const renderTitle = (
-    <>
-      {originalData?.name}
-      <span>
-        {' '}
-        <i className="fa fa-chevron-right"></i> {t('universeForm.editUniverse')}{' '}
-      </span>
-    </>
-  );
-
   return (
     <>
-      <UniverseForm
-        defaultFormData={initialFormData}
-        title={renderTitle}
-        onFormSubmit={onSubmit}
-        onCancel={onCancel}
-      />
+      <UniverseForm defaultFormData={initialFormData} onFormSubmit={onSubmit} onCancel={onCancel} />
       {universePayload && (
         <>
           {showRNModal && (

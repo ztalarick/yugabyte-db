@@ -4,6 +4,7 @@ import { useMethods } from 'react-use';
 import { RouteComponentProps } from 'react-router-dom';
 import { api, QUERY_KEY } from './utils/api';
 import { Box } from '@material-ui/core';
+import { YBLoading } from '../../../../components/common/indicators';
 import {
   CreateUniverse,
   CreateReadReplica,
@@ -45,6 +46,7 @@ const createFormMethods = (contextState: UniverseFormContextState) => ({
     ...contextState,
     primaryFormData: data
   }),
+  //This method will be used only in case of Create Primary Cluster + Read Replica flow
   setAsyncFormData: (data: UniverseFormData): UniverseFormContextState => ({
     ...contextState,
     asyncFormData: data
@@ -79,12 +81,12 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
   params
 }) => {
   const classes = useFormMainStyles();
+  const universeContextData = useMethods(createFormMethods, initialState);
   const { type: CLUSTER_TYPE, mode: MODE, uuid } = params;
+
   //route has it in lower case & enum has it in upper case
   const mode = MODE?.toUpperCase();
   const clusterType = CLUSTER_TYPE?.toUpperCase();
-
-  const universeContextData = useMethods(createFormMethods, initialState);
 
   //prefetch provider data for smooth painting
   const { isLoading: isProviderLoading } = useQuery(
@@ -113,13 +115,11 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
     else return <div>Page not found</div>;
   };
 
-  if (isProviderLoading || isRuntimeConfigsLoading) return <>Loading ...</>;
+  if (isProviderLoading || isRuntimeConfigsLoading) return <YBLoading />;
   else
     return (
-      <Box className={classes.mainConatiner}>
-        <UniverseFormContext.Provider value={universeContextData}>
-          {switchInternalRoutes()}
-        </UniverseFormContext.Provider>
-      </Box>
+      <UniverseFormContext.Provider value={universeContextData}>
+        <Box className={classes.mainConatiner}>{switchInternalRoutes()}</Box>
+      </UniverseFormContext.Provider>
     );
 };

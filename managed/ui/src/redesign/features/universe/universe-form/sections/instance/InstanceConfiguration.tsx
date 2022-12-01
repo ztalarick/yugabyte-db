@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from 'react-query';
 import { useSelector } from 'react-redux';
 import { useWatch } from 'react-hook-form';
+import { api, QUERY_KEY } from '../../utils/api';
 import { Box, Grid, Typography } from '@material-ui/core';
-import { useSectionStyles } from '../../universeMainStyle';
 import {
   AssignPublicIPField,
   ClientToNodeTLSField,
@@ -21,13 +21,7 @@ import {
   DedicatedNodesField
 } from '../../fields';
 import { YBLabel } from '../../../../../components';
-import {
-  PROVIDER_FIELD,
-  EAR_FIELD,
-  CLIENT_TO_NODE_ENCRYPT_FIELD,
-  NODE_TO_NODE_ENCRYPT_FIELD,
-  ACCESS_KEY_FIELD
-} from '../../utils/constants';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 import {
   AccessKey,
   CloudType,
@@ -35,8 +29,14 @@ import {
   ClusterType,
   RunTimeConfigEntry
 } from '../../utils/dto';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import { api, QUERY_KEY } from '../../utils/api';
+import {
+  PROVIDER_FIELD,
+  EAR_FIELD,
+  CLIENT_TO_NODE_ENCRYPT_FIELD,
+  NODE_TO_NODE_ENCRYPT_FIELD,
+  ACCESS_KEY_FIELD
+} from '../../utils/constants';
+import { useSectionStyles } from '../../universeMainStyle';
 
 interface InstanceConfigProps {}
 
@@ -80,10 +80,12 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
 
   return (
     <Box className={classes.sectionContainer}>
-      <Typography variant="h4">{t('universeForm.instanceConfig.title')}</Typography>
+      <Typography className={classes.sectionHeaderFont}>
+        {t('universeForm.instanceConfig.title')}
+      </Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={4}>
-          <Grid container>
+          <Grid container spacing={3}>
             <Grid lg={6} item container>
               <InstanceTypeField />
             </Grid>
@@ -91,7 +93,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
         </Box>
 
         <Box mt={1}>
-          <Grid container>
+          <Grid container spacing={3}>
             <Grid lg={6} item container>
               <Box display="flex">
                 <YBLabel></YBLabel>
@@ -104,7 +106,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
         </Box>
 
         {isCreatePrimary && isDedicatedNodesEnabled && (
-          <Box mt={4}>
+          <Box mt={2}>
             <Grid container>
               <Grid lg={6} item container>
                 <DedicatedNodesField disabled={false} />
@@ -115,7 +117,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
 
         {[CloudType.aws, CloudType.gcp, CloudType.azu].includes(provider?.code) && (
           <>
-            <Box mt={4}>
+            <Box mt={2}>
               <Grid container>
                 <Grid lg={6} item container>
                   <AssignPublicIPField disabled={!isCreatePrimary} />
@@ -143,33 +145,25 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
           CloudType.kubernetes
         ].includes(provider?.code) && (
           <>
-            <Box mt={6}>
-              <Grid container>
-                <Grid lg={6} item container>
-                  <EncryptionAtRestField disabled={!isCreatePrimary} />
-                </Grid>
-              </Grid>
-            </Box>
-
-            {encryptionEnabled && isPrimary && (
+            {(clientNodeTLSEnabled || nodeNodeTLSEnabled) && (
               <Box mt={1}>
                 <Grid container spacing={3}>
                   <Grid lg={6} item container>
-                    <KMSConfigField disabled={!isCreatePrimary} />
+                    <RootCertificateField disabled={!isCreatePrimary} />
                   </Grid>
                 </Grid>
               </Box>
             )}
 
-            <Box mt={6}>
+            <Box mt={2}>
               <YSQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
             </Box>
 
-            <Box mt={6}>
+            <Box mt={2}>
               <YCQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
             </Box>
 
-            <Box mt={6}>
+            <Box mt={2}>
               <Grid container>
                 <Grid lg={6} item container>
                   <YEDISField disabled={!isCreatePrimary} />
@@ -177,7 +171,7 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
               </Grid>
             </Box>
 
-            <Box mt={6}>
+            <Box mt={2}>
               <Grid container>
                 <Grid lg={6} item container>
                   <NodeToNodeTLSField disabled={!isCreatePrimary} />
@@ -192,12 +186,19 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
                 </Grid>
               </Grid>
             </Box>
+            <Box mt={2}>
+              <Grid container>
+                <Grid lg={6} item container>
+                  <EncryptionAtRestField disabled={!isCreatePrimary} />
+                </Grid>
+              </Grid>
+            </Box>
 
-            {(clientNodeTLSEnabled || nodeNodeTLSEnabled) && (
-              <Box mt={1} mb={4}>
+            {encryptionEnabled && isPrimary && (
+              <Box mt={1}>
                 <Grid container spacing={3}>
                   <Grid lg={6} item container>
-                    <RootCertificateField disabled={!isCreatePrimary} />
+                    <KMSConfigField disabled={!isCreatePrimary} />
                   </Grid>
                 </Grid>
               </Box>

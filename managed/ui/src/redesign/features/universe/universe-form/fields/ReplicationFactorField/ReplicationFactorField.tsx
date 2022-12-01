@@ -30,14 +30,18 @@ export const ReplicationFactor = ({ disabled }: ReplicationFactorProps): ReactEl
       <YBLabel>{t('universeForm.cloudConfig.replicationField')}</YBLabel>
       <Box flex={1}>
         <ButtonGroup variant="contained" color="default">
-          {REPLICATION_FACTORS.map((fact) => {
+          {REPLICATION_FACTORS.map((factor) => {
             return (
               <YBButton
-                key={fact}
-                variant={fact === value ? 'primary' : undefined}
-                onClick={() => handleSelect(fact)}
+                key={factor}
+                disabled={factor !== value && disabled}
+                variant={factor === value ? 'primary' : 'secondary'}
+                onClick={(e: any) => {
+                  if (disabled) e.preventDefault();
+                  else handleSelect(factor);
+                }}
               >
-                {fact}
+                {factor}
               </YBButton>
             );
           })}
