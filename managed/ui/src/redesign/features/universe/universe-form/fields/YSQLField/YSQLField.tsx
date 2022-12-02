@@ -1,8 +1,8 @@
 import React, { ReactElement } from 'react';
-import { Box, Grid } from '@material-ui/core';
-import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { UniverseFormData } from '../../utils/dto';
+import { useUpdateEffect } from 'react-use';
+import { useFormContext, useWatch } from 'react-hook-form';
+import { Box, Grid } from '@material-ui/core';
 import {
   YBLabel,
   YBHelper,
@@ -10,6 +10,7 @@ import {
   YBToggleField,
   YBTooltip
 } from '../../../../../components';
+import { UniverseFormData } from '../../utils/dto';
 import {
   YSQL_FIELD,
   YSQL_AUTH_FIELD,
@@ -27,6 +28,7 @@ interface YSQLFieldProps {
 export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactElement => {
   const {
     control,
+    setValue,
     formState: { errors }
   } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -35,6 +37,11 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
   const ycqlEnabled = useWatch({ name: YCQL_FIELD });
   const ysqlAuthEnabled = useWatch({ name: YSQL_AUTH_FIELD });
   const ysqlPassword = useWatch({ name: YSQL_PASSWORD_FIELD });
+
+  //ysqlAuthEnabled cannot be true if ysqlEnabled is false
+  useUpdateEffect(() => {
+    if (['false', false].includes(ysqlEnabled)) setValue(YSQL_AUTH_FIELD, false);
+  }, [ysqlEnabled]);
 
   return (
     <Box display="flex" width="100%" flexDirection="column">

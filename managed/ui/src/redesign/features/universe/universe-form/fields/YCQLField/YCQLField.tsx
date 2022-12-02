@@ -1,8 +1,8 @@
 import React, { ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useUpdateEffect } from 'react-use';
 import { Box, Grid } from '@material-ui/core';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
-import { UniverseFormData } from '../../utils/dto';
 import {
   YBLabel,
   YBHelper,
@@ -10,6 +10,7 @@ import {
   YBToggleField,
   YBTooltip
 } from '../../../../../components';
+import { UniverseFormData } from '../../utils/dto';
 import {
   YCQL_AUTH_FIELD,
   YCQL_FIELD,
@@ -26,6 +27,7 @@ interface YCQLFieldProps {
 export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactElement => {
   const {
     control,
+    setValue,
     formState: { errors }
   } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -34,6 +36,11 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
   const ysqlEnabled = useWatch({ name: YSQL_FIELD });
   const ycqlAuthEnabled = useWatch({ name: YCQL_AUTH_FIELD });
   const ycqlPassword = useWatch({ name: YCQL_PASSWORD_FIELD });
+
+  //ycqlAuthEnabled cannot be true if ycqlEnabled is false
+  useUpdateEffect(() => {
+    if (['false', false].includes(ycqlEnabled)) setValue(YCQL_AUTH_FIELD, false);
+  }, [ycqlEnabled]);
 
   return (
     <Box display="flex" width="100%" flexDirection="column">
