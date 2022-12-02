@@ -39,7 +39,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   const { t } = useTranslation();
 
   //context state
-  const { clusterType, mode } = useContext(UniverseFormContext)[0];
+  const { clusterType } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
 
   //context state
