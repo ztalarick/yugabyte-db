@@ -102,9 +102,20 @@ class ApiService {
     return axios.put<Universe>(requestUrl, data).then((resp) => resp.data);
   };
 
-  createReadReplica = (data: UniverseConfigure, universeId: string): Promise<Universe> => {
+  createCluster = (data: UniverseConfigure, universeId: string): Promise<Universe> => {
     const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universes/${universeId}/cluster`;
     return axios.post<Universe>(requestUrl, data).then((resp) => resp.data);
+  };
+
+  deleteCluster = (clusterUUID: string, universeUUID: string, isForceDelete: boolean) => {
+    return axios.delete(
+      `${ROOT_URL}/customers/${this.getCustomerId()}/universes/${universeUUID}/cluster/${clusterUUID}`,
+      {
+        params: {
+          isForceDelete
+        }
+      }
+    );
   };
 
   //handle type

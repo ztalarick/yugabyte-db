@@ -131,6 +131,7 @@ export interface Cluster {
   clusterType: ClusterType;
   userIntent: UserIntent;
   regions?: any;
+  uuid?: string;
 }
 
 export enum NodeState {

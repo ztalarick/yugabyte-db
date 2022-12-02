@@ -11,7 +11,7 @@ import {
   InstanceConfiguration,
   UserTags
 } from './sections';
-import { UniverseFormData, ClusterType, ClusterModes } from './utils/dto';
+import { UniverseFormData, ClusterType } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
 import { UniverseFormContext } from './UniverseFormContainer';
 import { UNIVERSE_NAME_FIELD } from './utils/constants';
@@ -21,6 +21,7 @@ interface UniverseFormProps {
   onFormSubmit: (data: UniverseFormData) => void;
   onCancel: () => void;
   onClusterTypeChange?: (data: UniverseFormData) => void;
+  onDeleteRR?: () => void;
   submitLabel?: string;
   isNewUniverse?: boolean; // This flag is used only in new cluster creation flow
 }
@@ -30,6 +31,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   onFormSubmit,
   onCancel,
   onClusterTypeChange,
+  onDeleteRR,
   submitLabel,
   isNewUniverse = false
 }) => {
@@ -37,7 +39,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   const { t } = useTranslation();
 
   //context state
-  const { clusterType, mode } = useContext(UniverseFormContext)[0];
+  const { clusterType } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
 
   //init form
@@ -70,7 +72,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 
   const renderHeader = () => {
     return (
-      <Box className={classes.formHeader}>
+      <>
         <Typography className={classes.headerFont}>
           {isNewUniverse ? t('universeForm.createUniverse') : getValues(UNIVERSE_NAME_FIELD)}
         </Typography>
@@ -102,7 +104,60 @@ export const UniverseForm: FC<UniverseFormProps> = ({
             </Box>
           </>
         )}
-      </Box>
+      </>
+    );
+  };
+
+  const renderFooter = () => {
+    return (
+      <>
+        <Grid container justifyContent="space-between">
+          <Grid item lg={6}>
+            <Box width="100%" display="flex" justifyContent="flex-start" alignItems="center">
+              Placeholder to Paint Cost estimation
+            </Box>
+          </Grid>
+          <Grid item lg={6}>
+            <Box width="100%" display="flex" justifyContent="flex-end">
+              <YBButton variant="secondary" size="large" onClick={() => onCancel()}>
+                {t('common.cancel')}
+              </YBButton>
+              &nbsp;
+              {/* shown only during create primary + RR flow ( fresh universe ) */}
+              {onClusterTypeChange && (
+                <YBButton variant="secondary" size="large" onClick={handleClusterChange}>
+                  {isPrimary
+                    ? t('universeForm.actions.configureRR')
+                    : t('universeForm.actions.backPrimary')}
+                </YBButton>
+              )}
+              {/* shown only during edit RR flow */}
+              {onDeleteRR && (
+                <YBButton variant="secondary" size="large" onClick={onDeleteRR}>
+                  {t('universeForm.actions.deleteRR')}
+                </YBButton>
+              )}
+              &nbsp;
+              <YBButton variant="primary" size="large" type="submit">
+                {submitLabel ? submitLabel : t('common.save')}
+              </YBButton>
+            </Box>
+          </Grid>
+        </Grid>
+      </>
+    );
+  };
+
+  const renderSections = () => {
+    return (
+      <>
+        <CloudConfiguration />
+        <InstanceConfiguration />
+        <AdvancedConfiguration />
+        <GFlags />
+        <UserTags />
+        <HelmOverrides />
+      </>
     );
   };
 
@@ -110,42 +165,10 @@ export const UniverseForm: FC<UniverseFormProps> = ({
     <Box className={classes.mainConatiner}>
       <FormProvider {...formMethods}>
         <form key={clusterType} onSubmit={formMethods.handleSubmit(onSubmit)}>
-          {renderHeader()}
-          <Box className={classes.formContainer}>
-            <CloudConfiguration />
-            <InstanceConfiguration />
-            <AdvancedConfiguration />
-            <GFlags />
-            <UserTags />
-            <HelmOverrides />
-          </Box>
+          <Box className={classes.formHeader}>{renderHeader()}</Box>
+          <Box className={classes.formContainer}>{renderSections()}</Box>
           <Box className={classes.formFooter} mt={4}>
-            <Grid container justifyContent="space-between">
-              <Grid item lg={6}>
-                <Box width="100%" display="flex" justifyContent="flex-start" alignItems="center">
-                  Placeholder to Paint Cost estimation
-                </Box>
-              </Grid>
-              <Grid item lg={6}>
-                <Box width="100%" display="flex" justifyContent="flex-end">
-                  <YBButton variant="secondary" size="large" onClick={() => onCancel()}>
-                    {t('common.cancel')}
-                  </YBButton>
-                  &nbsp;
-                  {mode === ClusterModes.CREATE && onClusterTypeChange && (
-                    <YBButton variant="secondary" size="large" onClick={handleClusterChange}>
-                      {isPrimary
-                        ? t('universeForm.actions.configureRR')
-                        : t('universeForm.actions.backPrimary')}
-                    </YBButton>
-                  )}
-                  &nbsp;
-                  <YBButton variant="primary" size="large" type="submit">
-                    {submitLabel ? submitLabel : t('common.save')}
-                  </YBButton>
-                </Box>
-              </Grid>
-            </Grid>
+            {renderFooter()}
           </Box>
         </form>
       </FormProvider>
