@@ -139,15 +139,15 @@ const transformFlagArrayToObject = (
   let masterGFlags = {},
     tserverGFlags = {};
   flagsArray.forEach((flag: Gflag) => {
-    if (flag?.hasOwnProperty('MASTER')) masterGFlags[flag.Name] = flag['MASTER'];
-    if (flag?.hasOwnProperty('TSERVER')) tserverGFlags[flag.Name] = flag['TSERVER'];
+    if (flag?.hasOwnProperty('MASTER')) masterGFlags[flag.Name] = `${flag['MASTER']}`;
+    if (flag?.hasOwnProperty('TSERVER')) tserverGFlags[flag.Name] = `${flag['TSERVER']}`;
   });
   return { masterGFlags, tserverGFlags };
 };
 
 const transformTagsArrayToObject = (instanceTags: InstanceTags) => {
   return instanceTags.reduce((tagsObj: Record<string, string>, tag: InstanceTag) => {
-    tagsObj[tag.name] = tag.value;
+    if (tag?.name && tag?.value) tagsObj[tag.name] = `${tag.value}`;
     return tagsObj;
   }, {});
 };
