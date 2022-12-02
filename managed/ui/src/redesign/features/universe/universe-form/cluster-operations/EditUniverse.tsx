@@ -5,7 +5,7 @@ import { browserHistory } from 'react-router';
 import { api, QUERY_KEY } from '../utils/api';
 import { UniverseForm } from '../UniverseForm';
 import { UniverseFormContext } from '../UniverseFormContainer';
-import { ResizeNodeModal, SmartResizeModal, FullMoveModal } from './update-modals';
+import { ResizeNodeModal, SmartResizeModal, FullMoveModal } from './action-modals';
 import { YBLoading } from '../../../../../components/common/indicators';
 import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 import { getPrimaryFormData, transitToUniverse } from '../utils/helpers';

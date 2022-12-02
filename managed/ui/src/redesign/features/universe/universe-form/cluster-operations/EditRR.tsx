@@ -1,4 +1,4 @@
-import React, { FC, useContext } from 'react';
+import React, { FC, useContext, useState } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { browserHistory } from 'react-router';
@@ -20,6 +20,7 @@ import {
   UniverseConfigure,
   CloudType
 } from '../utils/dto';
+import { DeleteClusterModal } from './action-modals/DeleteClusterModal';
 
 interface EditReadReplicaProps {
   uuid: string;
@@ -27,6 +28,8 @@ interface EditReadReplicaProps {
 
 export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
   const [contextState, contextMethods] = useContext(UniverseFormContext);
+
+  const [showDeleteRRModal, setShowDeleteRRModal] = useState(false);
 
   const { isLoading, data: universe } = useQuery(
     [QUERY_KEY.fetchUniverse, uuid],
@@ -84,11 +87,21 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
 
   if (universe?.universeDetails)
     return (
-      <UniverseForm
-        defaultFormData={initialFormData}
-        onFormSubmit={(data: UniverseFormData) => onSubmit(data)}
-        onCancel={onCancel}
-      />
+      <>
+        {showDeleteRRModal && (
+          <DeleteClusterModal
+            open={showDeleteRRModal}
+            onClose={() => setShowDeleteRRModal(false)}
+            universeData={universe.universeDetails}
+          />
+        )}
+        <UniverseForm
+          defaultFormData={initialFormData}
+          onFormSubmit={(data: UniverseFormData) => onSubmit(data)}
+          onCancel={onCancel}
+          onDeleteRR={() => setShowDeleteRRModal(true)}
+        />
+      </>
     );
   else return <></>;
 };
