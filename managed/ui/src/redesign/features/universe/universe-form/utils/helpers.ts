@@ -35,6 +35,11 @@ export const getAsyncCluster = (universeData: UniverseDetails) => {
   return getClusterByType(universeData, ClusterType.ASYNC);
 };
 
+export const getUniverseName = (universeData: UniverseDetails) => {
+  const primaryCluster = getClusterByType(universeData, ClusterType.PRIMARY);
+  return primaryCluster?.userIntent.universeName;
+};
+
 //Filter form data by cluster type
 export const filterFormDataByClusterType = (
   formData: UniverseFormData,
@@ -249,7 +254,7 @@ export const createReadReplica = async (configurePayload: UniverseConfigure) => 
   if (!universeUUID) return false;
   try {
     // now everything is ready to create async cluster
-    return await api.createReadReplica(configurePayload, universeUUID);
+    return await api.createCluster(configurePayload, universeUUID);
   } catch (error) {
     console.error(error);
     return error;
