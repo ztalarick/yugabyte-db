@@ -56,8 +56,7 @@ const initialStateFeatureReleased = {
   enableNotificationTemplates: false,
   enablePrefillKubeConfig: false,
   topNodeMetrics: false,
-  enableYbc: false,
-  enableNewUI: true
+  enableYbc: false
 };
 
 export const FeatureFlag = (

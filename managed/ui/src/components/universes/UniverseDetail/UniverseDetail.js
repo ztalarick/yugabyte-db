@@ -78,7 +78,7 @@ class UniverseDetail extends Component {
 
   isNewUIEnabled = () => {
     const { featureFlags } = this.props;
-    return featureFlags.test.enableNewUI && featureFlags.released.enableNewUI;
+    return featureFlags.test.enableNewUI || featureFlags.released.enableNewUI;
   };
 
   componentDidMount() {
