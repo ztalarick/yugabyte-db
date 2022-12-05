@@ -38,8 +38,7 @@ const initialStateFeatureReleased = {
   supportBundle: true,
   enableThirdpartyUpgrade: false,
   topNodeMetrics: false,
-  enableYbc: false,
-  enableNewUI: true
+  enableYbc: false
 };
 
 export const FeatureFlag = (

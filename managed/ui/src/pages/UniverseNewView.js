@@ -5,7 +5,7 @@ import { UniverseFormContainer } from '../redesign/features/universe/universe-fo
 
 const UniverseNewView = (props) => {
   const featureFlags = useSelector((state) => state.featureFlags);
-  const enableNewUI = featureFlags.test.enableNewUI && featureFlags.released.enableNewUI;
+  const enableNewUI = featureFlags.test.enableNewUI || featureFlags.released.enableNewUI;
 
   if (enableNewUI) return <UniverseFormContainer {...props} />;
   else return <UniverseDetail {...props} />;
