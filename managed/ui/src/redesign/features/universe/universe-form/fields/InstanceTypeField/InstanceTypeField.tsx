@@ -21,16 +21,15 @@ import {
 import { INSTANCE_TYPE_FIELD, PROVIDER_FIELD, DEVICE_INFO_FIELD } from '../../utils/constants';
 
 const getOptionLabel = (op: Record<string, string>): string => {
-  if (op) {
-    const option = (op as unknown) as InstanceType;
-    let result = option.instanceTypeCode;
-    if (option.numCores && option.memSizeGB) {
-      const cores = pluralize('core', option.numCores, true);
-      result = `${option.instanceTypeCode} (${cores}, ${option.memSizeGB}GB RAM)`;
-    }
-    return result;
+  if (!op) return '';
+
+  const option = (op as unknown) as InstanceType;
+  let result = option.instanceTypeCode;
+  if (option.numCores && option.memSizeGB) {
+    const cores = pluralize('core', option.numCores, true);
+    result = `${option.instanceTypeCode} (${cores}, ${option.memSizeGB}GB RAM)`;
   }
-  return '';
+  return result;
 };
 
 const renderOption = (option: Record<string, string>) => {
@@ -79,7 +78,7 @@ export const InstanceTypeField: FC = () => {
           instanceTypes.find((i: InstanceTypeWithGroup) => i.instanceTypeCode === field.value) ??
           '';
 
-        //empheral storage
+        //is ephemeral storage
         const isAWSEphemeralStorage =
           value && provider.code === CloudType.aws && isEphemeralAwsStorageInstance(value);
         const isGCPEphemeralStorage =
@@ -95,7 +94,6 @@ export const InstanceTypeField: FC = () => {
                 loading={isLoading}
                 value={(value as unknown) as Record<string, string>}
                 options={(instanceTypes as unknown) as Record<string, string>[]}
-                groupBy={(option: Record<string, string>) => option.groupName}
                 getOptionLabel={getOptionLabel}
                 renderOption={renderOption}
                 onChange={handleChange}
@@ -103,6 +101,11 @@ export const InstanceTypeField: FC = () => {
                   error: !!fieldState.error,
                   helperText: fieldState.error?.message
                 }}
+                groupBy={
+                  [CloudType.aws, CloudType.gcp, CloudType.azu].includes(provider?.code)
+                    ? (option: Record<string, string>) => option.groupName
+                    : undefined
+                }
               />
 
               {(isAWSEphemeralStorage || isGCPEphemeralStorage) && (
