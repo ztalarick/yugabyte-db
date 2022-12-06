@@ -59,10 +59,11 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
     featureFlags.test.enableDedicatedNodes || featureFlags.released.enableDedicatedNodes;
 
   //form context
-  const { mode, clusterType } = useContext(UniverseFormContext)[0];
+  const { mode, clusterType, newUniverse } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
   const isCreateMode = mode === ClusterModes.CREATE; //Form is in edit mode
   const isCreatePrimary = isCreateMode && isPrimary; //Creating Primary Cluster
+  const isCreateRR = !newUniverse && isCreateMode && !isPrimary; //Adding Async Cluster to an existing Universe
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -95,10 +96,18 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
         <Box mt={1}>
           <Grid container spacing={3}>
             <Grid lg={6} item container>
-              <Box display="flex">
+              <Box display="flex" width="100%">
                 <YBLabel></YBLabel>
                 <Box flex={1}>
-                  <VolumeInfoField />
+                  <VolumeInfoField
+                    isEditMode={!isCreateMode}
+                    isPrimary={isPrimary}
+                    disableIops={!isCreatePrimary && !isCreateRR}
+                    disableThroughput={!isCreatePrimary && !isCreateRR}
+                    disableStorageType={!isCreatePrimary && !isCreateRR}
+                    disableVolumeSize={false}
+                    disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
+                  />
                 </Box>
               </Box>
             </Grid>

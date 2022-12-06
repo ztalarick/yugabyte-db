@@ -470,9 +470,15 @@ export interface Region {
   zones: AvailabilityZone[];
 }
 
+export enum VolumeType {
+  EBS = 'EBS',
+  SSD = 'SSD',
+  HDD = 'HDD',
+  NVME = 'NVME'
+}
 interface VolumeDetails {
   volumeSizeGB: number;
-  volumeType: 'EBS' | 'SSD' | 'HDD' | 'NVME';
+  volumeType: VolumeType;
   mountPath: string;
 }
 

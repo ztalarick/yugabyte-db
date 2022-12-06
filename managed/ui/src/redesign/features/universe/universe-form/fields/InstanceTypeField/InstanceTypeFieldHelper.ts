@@ -22,8 +22,11 @@ export const DEFAULT_INSTANCE_TYPES = {
   [CloudType.kubernetes]: 'small'
 };
 
-export const isEphemeralAwsStorageInstance = (instance: InstanceTypeWithGroup) => {
-  return INSTANCE_WITH_EPHEMERAL_STORAGE_ONLY.includes(instance.groupName);
+export const isEphemeralAwsStorageInstance = (instance: InstanceType) => {
+  return (
+    instance.providerCode === CloudType.aws &&
+    INSTANCE_WITH_EPHEMERAL_STORAGE_ONLY.includes(instance.instanceTypeCode?.split?.('.')[0])
+  );
 };
 
 export const sortAndGroup = (data?: InstanceType[], cloud?: CloudType): InstanceTypeWithGroup[] => {
@@ -50,7 +53,7 @@ export const sortAndGroup = (data?: InstanceType[], cloud?: CloudType): Instance
     const groupName = getGroupName(item.instanceTypeCode);
     return {
       ...item,
-      groupName
+      groupName: [groupName, 'type instances'].join(' ')
     };
   });
 

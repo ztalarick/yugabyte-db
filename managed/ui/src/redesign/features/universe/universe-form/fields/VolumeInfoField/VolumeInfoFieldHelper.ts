@@ -1,4 +1,21 @@
 import { CloudType, DeviceInfo, InstanceType, StorageType } from '../../utils/dto';
+import { isEphemeralAwsStorageInstance } from '../InstanceTypeField/InstanceTypeFieldHelper';
+
+export const IO1_DEFAULT_DISK_IOPS = 1000;
+export const IO1_MAX_DISK_IOPS = 64000;
+
+export const GP3_DEFAULT_DISK_IOPS = 3000;
+export const GP3_MAX_IOPS = 16000;
+export const GP3_DEFAULT_DISK_THROUGHPUT = 125;
+export const GP3_MAX_THROUGHPUT = 1000;
+export const GP3_IOPS_TO_MAX_DISK_THROUGHPUT = 4;
+
+export const UltraSSD_DEFAULT_DISK_IOPS = 3000;
+export const UltraSSD_DEFAULT_DISK_THROUGHPUT = 125;
+export const UltraSSD_MIN_DISK_IOPS = 100;
+export const UltraSSD_DISK_IOPS_MAX_PER_GB = 300;
+export const UltraSSD_IOPS_TO_MAX_DISK_THROUGHPUT = 4;
+export const UltraSSD_DISK_THROUGHPUT_CAP = 2500;
 
 export interface StorageTypeOption {
   value: StorageType;
@@ -6,7 +23,7 @@ export interface StorageTypeOption {
 }
 
 export const DEFAULT_STORAGE_TYPES = {
-  [CloudType.aws]: StorageType.GP2,
+  [CloudType.aws]: StorageType.GP3,
   [CloudType.gcp]: StorageType.Persistent,
   [CloudType.azu]: StorageType.Premium_LRS
 };
@@ -28,6 +45,23 @@ export const AZURE_STORAGE_TYPE_OPTIONS: StorageTypeOption[] = [
   { value: StorageType.UltraSSD_LRS, label: 'Ultra' }
 ];
 
+export const getMinDiskIops = (storageType: StorageType, volumeSize: number) => {
+  return storageType === StorageType.UltraSSD_LRS
+    ? Math.max(UltraSSD_MIN_DISK_IOPS, volumeSize)
+    : 0;
+};
+
+export const getMaxDiskIops = (storageType: StorageType, volumeSize: number) => {
+  switch (storageType) {
+    case StorageType.IO1:
+      return IO1_MAX_DISK_IOPS;
+    case StorageType.UltraSSD_LRS:
+      return volumeSize * UltraSSD_DISK_IOPS_MAX_PER_GB;
+    default:
+      return GP3_MAX_IOPS;
+  }
+};
+
 export const getStorageTypeOptions = (providerCode?: CloudType): StorageTypeOption[] => {
   switch (providerCode) {
     case CloudType.aws:
@@ -41,23 +75,49 @@ export const getStorageTypeOptions = (providerCode?: CloudType): StorageTypeOpti
   }
 };
 
-export const getDeviceInfoFromInstance = (instance: InstanceType): DeviceInfo | null => {
-  if (instance.instanceTypeDetails.volumeDetailsList.length) {
-    const { volumeDetailsList } = instance.instanceTypeDetails;
-
-    return {
-      numVolumes: volumeDetailsList.length,
-      volumeSize: volumeDetailsList[0].volumeSizeGB,
-      diskIops: null,
-      throughput: null,
-      storageClass: 'standard',
-      storageType: DEFAULT_STORAGE_TYPES[instance.providerCode] ?? null,
-      mountPoints:
-        instance.providerCode === CloudType.onprem
-          ? volumeDetailsList.flatMap((item) => item.mountPath).join(',')
-          : null
-    };
-  } else {
-    return null;
+export const getIopsByStorageType = (storageType: StorageType) => {
+  if (storageType === StorageType.IO1) {
+    return IO1_DEFAULT_DISK_IOPS;
+  } else if (storageType === StorageType.GP3) {
+    return GP3_DEFAULT_DISK_IOPS;
+  } else if (storageType === StorageType.UltraSSD_LRS) {
+    return UltraSSD_DEFAULT_DISK_IOPS;
   }
+  return null;
+};
+
+export const getThroughputByStorageType = (storageType: StorageType) => {
+  if (storageType === StorageType.GP3) {
+    return GP3_DEFAULT_DISK_THROUGHPUT;
+  } else if (storageType === StorageType.UltraSSD_LRS) {
+    return UltraSSD_DEFAULT_DISK_THROUGHPUT;
+  }
+  return null;
+};
+
+const getStorageType = (instance: InstanceType) => {
+  if (isEphemeralAwsStorageInstance(instance))
+    //aws ephemeral storage
+    return null;
+  return DEFAULT_STORAGE_TYPES[instance.providerCode] ?? null;
+};
+
+export const getDeviceInfoFromInstance = (instance: InstanceType): DeviceInfo | null => {
+  if (!instance.instanceTypeDetails.volumeDetailsList.length) return null;
+
+  const { volumeDetailsList } = instance.instanceTypeDetails;
+  const storageType = getStorageType(instance);
+
+  return {
+    numVolumes: volumeDetailsList.length,
+    volumeSize: volumeDetailsList[0].volumeSizeGB,
+    storageClass: 'standard',
+    storageType,
+    mountPoints:
+      instance.providerCode === CloudType.onprem
+        ? volumeDetailsList.flatMap((item) => item.mountPath).join(',')
+        : null,
+    diskIops: getIopsByStorageType(storageType),
+    throughput: getThroughputByStorageType(storageType)
+  };
 };
