@@ -130,6 +130,7 @@ export const colors = {
     inputBackground: '#E6E6E6',
     backgroundDisabled: '#EEE',
     colorDisabled: '#555',
+    darkBlue: '#303a78',
     inputBoxShadow: 'inset 0 1px 1px rgb(0 0 0 / 8%), 0 0 8px rgb(239 88 36 / 20%)'
   } as YBAColors
 };

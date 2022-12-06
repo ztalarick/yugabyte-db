@@ -516,4 +516,18 @@ export interface HelmOverridesError {
   overridesErrors: OverridesError[];
 }
 
+export interface UniverseResource {
+  azList: string[];
+  ebsPricePerHour: number;
+  gp3FreePiops: number;
+  gp3FreeThroughput: number;
+  memSizeGB: number;
+  numCores: number;
+  numNodes: number;
+  pricePerHour: number;
+  pricingKnown: boolean;
+  volumeCount: number;
+  volumeSizeGB: number;
+}
+
 //-------------------------------------------------------- Remaining types - Field/API Ends -------------------------------------------------------------------

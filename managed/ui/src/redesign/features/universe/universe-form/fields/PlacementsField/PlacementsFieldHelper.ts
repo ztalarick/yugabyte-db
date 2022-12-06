@@ -139,7 +139,7 @@ export const useNodePlacements = () => {
   const { setValue, getValues } = useFormContext<UniverseFormData>();
   const [
     { universeConfigureTemplate, clusterType, mode },
-    { setUniverseConfigureTemplate }
+    { setUniverseConfigureTemplate, setUniverseResourceTemplate }
   ] = useContext(UniverseFormContext);
 
   //watchers
@@ -155,7 +155,7 @@ export const useNodePlacements = () => {
   const prevPropsCombination = useRef({
     instanceType,
     regionList,
-    totalNodes,
+    totalNodes: Number(totalNodes),
     replicationFactor,
     deviceInfo,
     dedicatedNodes,
@@ -217,14 +217,17 @@ export const useNodePlacements = () => {
         needPlacement &&
         totalNodes >= replicationFactor &&
         !_.isEmpty(regionList) &&
-        !_.isEmpty(instanceType),
-      onSuccess: (data) => {
+        !_.isEmpty(instanceType) &&
+        !_.isEmpty(deviceInfo),
+      onSuccess: async (data) => {
         const cluster = _.find(data.clusters, { clusterType });
         const zones = getPlacementsFromCluster(cluster);
         setValue(PLACEMENTS_FIELD, _.compact(zones));
         setUniverseConfigureTemplate(data);
         setRegionsChanged(false);
         setNeedPlacement(false);
+        let resource = await api.universeResource(data); // set Universe resource template whenever configure is called
+        setUniverseResourceTemplate(resource);
       }
     }
   );
@@ -233,7 +236,7 @@ export const useNodePlacements = () => {
     const propsCombination = {
       instanceType,
       regionList,
-      totalNodes,
+      totalNodes: Number(totalNodes),
       replicationFactor,
       deviceInfo,
       dedicatedNodes,

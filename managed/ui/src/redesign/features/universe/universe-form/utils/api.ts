@@ -12,7 +12,8 @@ import {
   KmsConfig,
   UniverseConfigure,
   RunTimeConfig,
-  HelmOverridesError
+  HelmOverridesError,
+  UniverseResource
 } from './dto';
 
 // define unique names to use them as query keys
@@ -90,6 +91,11 @@ class ApiService {
   universeConfigure = (data: UniverseConfigure): Promise<UniverseDetails> => {
     const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universe_configure`;
     return axios.post<UniverseDetails>(requestUrl, data).then((resp) => resp.data);
+  };
+
+  universeResource = (data: UniverseDetails): Promise<UniverseResource> => {
+    const requestUrl = `${ROOT_URL}/customers/${this.getCustomerId()}/universe_resources`;
+    return axios.post<UniverseResource>(requestUrl, data).then((resp) => resp.data);
   };
 
   createUniverse = (data: UniverseConfigure): Promise<Universe> => {

@@ -32,19 +32,23 @@ interface CreateReadReplicaProps {
 export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
   const { t } = useTranslation();
   const [contextState, contextMethods] = useContext(UniverseFormContext);
+  const { initializeForm, setUniverseResourceTemplate } = contextMethods;
   const { uuid } = props;
 
   const { isLoading, data: universe } = useQuery(
     [QUERY_KEY.fetchUniverse, uuid],
     () => api.fetchUniverse(uuid),
     {
-      onSuccess: (resp) => {
+      onSuccess: async (resp) => {
         //initialize form
-        contextMethods.initializeForm({
+        initializeForm({
           universeConfigureTemplate: _.cloneDeep(resp.universeDetails),
           clusterType: ClusterType.ASYNC,
           mode: ClusterModes.CREATE
         });
+        //set Universe Resource Template
+        const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
+        setUniverseResourceTemplate(resourceResponse);
       }
     }
   );

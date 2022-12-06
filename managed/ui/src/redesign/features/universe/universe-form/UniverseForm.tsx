@@ -9,7 +9,8 @@ import {
   GFlags,
   HelmOverrides,
   InstanceConfiguration,
-  UserTags
+  UserTags,
+  UniverseResourceContainer
 } from './sections';
 import { UniverseFormData, ClusterType } from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
@@ -39,7 +40,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   const { t } = useTranslation();
 
   //context state
-  const { clusterType } = useContext(UniverseFormContext)[0];
+  const { clusterType, universeResourceTemplate } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
 
   //init form
@@ -112,12 +113,18 @@ export const UniverseForm: FC<UniverseFormProps> = ({
     return (
       <>
         <Grid container justifyContent="space-between">
-          <Grid item lg={6}>
-            <Box width="100%" display="flex" justifyContent="flex-start" alignItems="center">
-              Placeholder to Paint Cost estimation
+          <Grid item lg={8}>
+            <Box
+              width="100%"
+              display="flex"
+              flexShrink={1}
+              justifyContent="flex-start"
+              alignItems="center"
+            >
+              <UniverseResourceContainer data={universeResourceTemplate} />
             </Box>
           </Grid>
-          <Grid item lg={6}>
+          <Grid item lg={4}>
             <Box width="100%" display="flex" justifyContent="flex-end">
               <YBButton variant="secondary" size="large" onClick={() => onCancel()}>
                 {t('common.cancel')}

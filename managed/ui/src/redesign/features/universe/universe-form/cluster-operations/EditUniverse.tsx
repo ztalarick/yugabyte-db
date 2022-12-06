@@ -40,7 +40,7 @@ interface EditUniverseProps {
 export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
   const [contextState, contextMethods] = useContext(UniverseFormContext);
   const { isLoading, universeConfigureTemplate } = contextState;
-  const { initializeForm } = contextMethods;
+  const { initializeForm, setUniverseResourceTemplate } = contextMethods;
   const [showRNModal, setRNModal] = useState(false); //RN -> Resize Nodes
   const [showSRModal, setSRModal] = useState(false); //SR -> Smart Resize
   const [showFMModal, setFMModal] = useState(false); //FM -> Full Move
@@ -50,12 +50,15 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     [QUERY_KEY.fetchUniverse, uuid],
     () => api.fetchUniverse(uuid),
     {
-      onSuccess: (resp) => {
+      onSuccess: async (resp) => {
         initializeForm({
           universeConfigureTemplate: _.cloneDeep(resp.universeDetails),
           clusterType: ClusterType.PRIMARY,
           mode: ClusterModes.EDIT
         });
+        //set Universe Resource Template
+        const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
+        setUniverseResourceTemplate(resourceResponse);
       },
       onError: (err) => {
         console.log(err);
