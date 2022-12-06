@@ -6,6 +6,7 @@ import { api, QUERY_KEY } from '../utils/api';
 import { UniverseForm } from '../UniverseForm';
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { YBLoading } from '../../../../../components/common/indicators';
+import { DeleteClusterModal } from './action-modals/DeleteClusterModal';
 import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 import {
   editReadReplica,
@@ -20,7 +21,6 @@ import {
   UniverseConfigure,
   CloudType
 } from '../utils/dto';
-import { DeleteClusterModal } from './action-modals/DeleteClusterModal';
 
 interface EditReadReplicaProps {
   uuid: string;
@@ -28,19 +28,22 @@ interface EditReadReplicaProps {
 
 export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
   const [contextState, contextMethods] = useContext(UniverseFormContext);
-
+  const { initializeForm, setUniverseResourceTemplate } = contextMethods;
   const [showDeleteRRModal, setShowDeleteRRModal] = useState(false);
 
   const { isLoading, data: universe } = useQuery(
     [QUERY_KEY.fetchUniverse, uuid],
     () => api.fetchUniverse(uuid),
     {
-      onSuccess: (resp) => {
-        contextMethods.initializeForm({
+      onSuccess: async (resp) => {
+        initializeForm({
           universeConfigureTemplate: _.cloneDeep(resp.universeDetails),
           clusterType: ClusterType.ASYNC,
           mode: ClusterModes.EDIT
         });
+        //set Universe Resource Template
+        const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
+        setUniverseResourceTemplate(resourceResponse);
       },
       onError: (err) => {
         console.log(err);

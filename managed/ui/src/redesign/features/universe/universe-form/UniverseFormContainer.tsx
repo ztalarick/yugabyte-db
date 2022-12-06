@@ -11,7 +11,13 @@ import {
   EditUniverse,
   EditReadReplica
 } from './cluster-operations';
-import { UniverseConfigure, ClusterType, ClusterModes, UniverseFormData } from './utils/dto';
+import {
+  UniverseConfigure,
+  ClusterType,
+  ClusterModes,
+  UniverseFormData,
+  UniverseResource
+} from './utils/dto';
 import { useFormMainStyles } from './universeMainStyle';
 
 export interface UniverseFormContextState {
@@ -22,6 +28,7 @@ export interface UniverseFormContextState {
   mode: ClusterModes;
   isLoading: boolean; // To safeguard against bad defaults
   newUniverse: boolean; // Fresh Universe ( set to true only in Primary + RR flow )
+  universeResourceTemplate: UniverseResource | null;
 }
 
 const initialState: UniverseFormContextState = {
@@ -31,7 +38,8 @@ const initialState: UniverseFormContextState = {
   asyncFormData: null,
   mode: ClusterModes.CREATE,
   isLoading: true,
-  newUniverse: false
+  newUniverse: false,
+  universeResourceTemplate: null
 };
 
 //Avoiding using global state since we are using react-query
@@ -40,6 +48,10 @@ const createFormMethods = (contextState: UniverseFormContextState) => ({
     ...contextState,
     universeConfigureTemplate: data,
     isLoading: false
+  }),
+  setUniverseResourceTemplate: (data: UniverseResource): UniverseFormContextState => ({
+    ...contextState,
+    universeResourceTemplate: data
   }),
   //This method will be used only in case of Create Primary Cluster + Read Replica flow
   setPrimaryFormData: (data: UniverseFormData): UniverseFormContextState => ({

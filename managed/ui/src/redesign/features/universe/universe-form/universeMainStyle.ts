@@ -61,15 +61,17 @@ export const useFormMainStyles = makeStyles((theme) => ({
   formContainer: {
     display: 'flex',
     flexDirection: 'column',
-    height: 'auto',
+    height: '100%',
     padding: theme.spacing(0, 3),
-    width: '100%'
+    width: '100%',
+    flexGrow: 1
   },
 
   formFooter: {
     display: 'flex',
     width: '100%',
-    padding: theme.spacing(1, 3),
+    flexShrink: 1,
+    padding: theme.spacing(2, 3),
     background: '#f6f6f5'
   },
 
