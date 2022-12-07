@@ -1765,6 +1765,7 @@ YBPreloadRelCache()
 	YbRegisterSysTableForPrefetching(AttributeRelationId);             // pg_attribute
 	YbRegisterSysTableForPrefetching(OperatorClassRelationId);         // pg_opclass
 	YbRegisterSysTableForPrefetching(AccessMethodRelationId);          // pg_am
+	YbRegisterSysTableForPrefetching(AccessMethodProcedureRelationId); // pg_amproc
 	YbRegisterSysTableForPrefetching(IndexRelationId);                 // pg_index
 	YbRegisterSysTableForPrefetching(RewriteRelationId);               // pg_rewrite
 	YbRegisterSysTableForPrefetching(AttrDefaultRelationId);           // pg_attrdef
@@ -1775,7 +1776,6 @@ YBPreloadRelCache()
 	YbRegisterSysTableForPrefetching(AuthIdRelationId);                // pg_authid
 	if (*YBCGetGFlags()->ysql_catalog_prefetch_additional_tables)
 	{
-		YbRegisterSysTableForPrefetching(AccessMethodProcedureRelationId); // pg_amproc
 		YbRegisterSysTableForPrefetching(CastRelationId);                  // pg_cast
 		if (*YBCGetGFlags()->ysql_catalog_prefetch_pg_amop)
 			YbRegisterSysTableForPrefetching(AccessMethodOperatorRelationId);  // pg_amop
