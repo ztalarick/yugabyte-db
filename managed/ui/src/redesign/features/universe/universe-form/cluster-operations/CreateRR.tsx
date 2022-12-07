@@ -12,6 +12,7 @@ import {
   createReadReplica,
   filterFormDataByClusterType,
   getAsyncCluster,
+  getPrimaryCluster,
   getPrimaryFormData,
   getUserIntent
 } from '../utils/helpers';
@@ -53,33 +54,53 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
     }
   );
 
-  const onSubmit = (formData: UniverseFormData) => {
+  const onSubmit = async (formData: UniverseFormData) => {
+    const PRIMARY_CLUSTER = getPrimaryCluster(contextState.universeConfigureTemplate);
+    const ASYNC_CLUSTER = {
+      userIntent: getUserIntent({ formData }),
+      clusterType: ClusterType.ASYNC,
+      placementInfo: {
+        cloudList: [
+          {
+            uuid: formData.cloudConfig.provider?.uuid as string,
+            code: formData.cloudConfig.provider?.code as CloudType,
+            regionList: getPlacements(formData)
+          }
+        ]
+      }
+    };
+
+    //make a final configure call to check if everything is okay
     const configurePayload: UniverseConfigure = {
       ...contextState.universeConfigureTemplate,
       clusterOperation: ClusterModes.CREATE,
       currentClusterType: ClusterType.ASYNC,
+      clusters: [
+        PRIMARY_CLUSTER,
+        {
+          ...getAsyncCluster(contextState.universeConfigureTemplate),
+          ...ASYNC_CLUSTER
+        }
+      ]
+    };
+    const configureData = await api.universeConfigure(configurePayload);
+
+    //patch the final payload with response from configure call
+    //remove all unwanted nodes in nodeDetailsSet
+    const finalPayload: UniverseConfigure = {
+      ...configureData,
       expectedUniverseVersion: universe?.version,
-      nodeDetailsSet: contextState.universeConfigureTemplate.nodeDetailsSet.filter(
+      nodeDetailsSet: configureData.nodeDetailsSet.filter(
         (node: NodeDetails) => node.state === NodeState.ToBeAdded
       ),
       clusters: [
         {
-          ...getAsyncCluster(contextState.universeConfigureTemplate),
-          userIntent: getUserIntent({ formData }),
-          placementInfo: {
-            cloudList: [
-              {
-                uuid: formData.cloudConfig.provider?.uuid as string,
-                code: formData.cloudConfig.provider?.code as CloudType,
-                regionList: getPlacements(formData)
-              }
-            ]
-          }
+          ...getAsyncCluster(configureData),
+          ...ASYNC_CLUSTER
         }
       ]
     };
-
-    createReadReplica(configurePayload);
+    createReadReplica(finalPayload);
   };
 
   const onCancel = () => {
