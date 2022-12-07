@@ -174,7 +174,6 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
       name={DEVICE_INFO_FIELD}
       render={() => (
         <>
-          <pre>{JSON.stringify(fieldValue, null, 2)}</pre>
           {fieldValue && (
             <Box display="flex" width="100%" flexDirection="column">
               <Box>

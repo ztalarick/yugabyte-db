@@ -21,3 +21,6 @@ rules:
   indent: [1, 2, { 'SwitchCase': 1 }]
   react/jsx-indent: [1, 2]
   react/jsx-wrap-multilines: 1
+settings:
+  import/ignore:
+    - node_modules
