@@ -68,6 +68,9 @@ DEFINE_bool(ysql_catalog_prefetch_additional_tables, true,
             "If true, YB catalog prefetches additional tables upon "
             "connection creation and cache refresh.");
 
+DEFINE_bool(ysql_catalog_prefetch_pg_amop, true,
+            "For testing only -- whether additional tables to prefeth include pg_amop or not.");
+
 namespace yb {
 namespace pggate {
 
@@ -1130,7 +1133,8 @@ YBCStatus YBCGetSharedAuthKey(uint64_t* auth_key) {
 const YBCPgGFlagsAccessor* YBCGetGFlags() {
   static YBCPgGFlagsAccessor accessor = {
       .log_ysql_catalog_versions               = &FLAGS_log_ysql_catalog_versions,
-      .ysql_catalog_prefetch_additional_tables  = &FLAGS_ysql_catalog_prefetch_additional_tables,
+      .ysql_catalog_prefetch_additional_tables = &FLAGS_ysql_catalog_prefetch_additional_tables,
+      .ysql_catalog_prefetch_pg_amop           = &FLAGS_ysql_catalog_prefetch_pg_amop,
       .ysql_disable_index_backfill             = &FLAGS_ysql_disable_index_backfill,
       .ysql_max_read_restart_attempts          = &FLAGS_ysql_max_read_restart_attempts,
       .ysql_max_write_restart_attempts         = &FLAGS_ysql_max_write_restart_attempts,

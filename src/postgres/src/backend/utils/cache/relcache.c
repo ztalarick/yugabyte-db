@@ -1765,7 +1765,6 @@ YBPreloadRelCache()
 	YbRegisterSysTableForPrefetching(AttributeRelationId);             // pg_attribute
 	YbRegisterSysTableForPrefetching(OperatorClassRelationId);         // pg_opclass
 	YbRegisterSysTableForPrefetching(AccessMethodRelationId);          // pg_am
-	YbRegisterSysTableForPrefetching(AccessMethodProcedureRelationId); // pg_amproc
 	YbRegisterSysTableForPrefetching(IndexRelationId);                 // pg_index
 	YbRegisterSysTableForPrefetching(RewriteRelationId);               // pg_rewrite
 	YbRegisterSysTableForPrefetching(AttrDefaultRelationId);           // pg_attrdef
@@ -1776,10 +1775,10 @@ YBPreloadRelCache()
 	YbRegisterSysTableForPrefetching(AuthIdRelationId);                // pg_authid
 	if (*YBCGetGFlags()->ysql_catalog_prefetch_additional_tables)
 	{
-		YbRegisterSysTableForPrefetching(ProcedureRelationId);             // pg_proc
+		YbRegisterSysTableForPrefetching(AccessMethodProcedureRelationId); // pg_amproc
 		YbRegisterSysTableForPrefetching(CastRelationId);                  // pg_cast
-		YbRegisterSysTableForPrefetching(AccessMethodOperatorRelationId);  // pg_amop
-		YbRegisterSysTableForPrefetching(OperatorRelationId);              // pg_operator
+		if (*YBCGetGFlags()->ysql_catalog_prefetch_pg_amop)
+			YbRegisterSysTableForPrefetching(AccessMethodOperatorRelationId);  // pg_amop
 	}
 
 	if (!YBIsDBConnectionValid())
@@ -1816,11 +1815,10 @@ YBPreloadRelCache()
 	YBPreloadCatalogCache(AUTHOID, AUTHNAME);           // pg_authid
 	if (*YBCGetGFlags()->ysql_catalog_prefetch_additional_tables)
 	{
-		YBPreloadCatalogCache(PROCOID, PROCNAMEARGSNSP);    // pg_proc
-		YBPreloadCatalogCache(AMOPOPID, AMOPSTRATEGY);      // pg_amop
 		YBPreloadCatalogCache(AMPROCNUM, -1);               // pg_amproc
 		YBPreloadCatalogCache(CASTSOURCETARGET, -1);        // pg_cast
-		YBPreloadCatalogCache(OPEROID, OPERNAMENSP);        // pg_operator
+		if (*YBCGetGFlags()->ysql_catalog_prefetch_pg_amop)
+			YBPreloadCatalogCache(AMOPOPID, AMOPSTRATEGY);      // pg_amop
 	}
 
 	YBLoadRelationsResult relations_result = YBLoadRelations();
@@ -1844,8 +1842,7 @@ YBPreloadRelCache()
 	if (relations_result.has_partitioned_tables)
 	{
 		YbRegisterSysTableForPrefetching(TypeRelationId);      // pg_type
-		if (!*YBCGetGFlags()->ysql_catalog_prefetch_additional_tables)
-			YbRegisterSysTableForPrefetching(ProcedureRelationId); // pg_proc
+		YbRegisterSysTableForPrefetching(ProcedureRelationId); // pg_proc
 		YbRegisterSysTableForPrefetching(InheritsRelationId);  // pg_inherits
 	}
 
@@ -1855,8 +1852,7 @@ YBPreloadRelCache()
 	if (relations_result.has_partitioned_tables)
 	{
 		YBPreloadCatalogCache(TYPEOID, TYPENAMENSP);     // pg_type
-		if (!*YBCGetGFlags()->ysql_catalog_prefetch_additional_tables)
-			YBPreloadCatalogCache(PROCOID, PROCNAMEARGSNSP); // pg_proc
+		YBPreloadCatalogCache(PROCOID, PROCNAMEARGSNSP); // pg_proc
 		YBPreloadCatalogCache(INHERITSRELID, -1);        // pg_inherits
 	}
 
