@@ -95,6 +95,32 @@ export const getThroughputByStorageType = (storageType: StorageType) => {
   return null;
 };
 
+export const getThroughputByIops = (
+  currentThroughput: number,
+  diskIops: number,
+  storageType: StorageType
+) => {
+  if (storageType === StorageType.GP3) {
+    if (
+      (diskIops > GP3_DEFAULT_DISK_IOPS || currentThroughput > GP3_DEFAULT_DISK_THROUGHPUT) &&
+      diskIops / currentThroughput < GP3_IOPS_TO_MAX_DISK_THROUGHPUT
+    ) {
+      return Math.min(
+        GP3_MAX_THROUGHPUT,
+        Math.max(diskIops / GP3_IOPS_TO_MAX_DISK_THROUGHPUT, GP3_DEFAULT_DISK_THROUGHPUT)
+      );
+    }
+  } else if (storageType === StorageType.UltraSSD_LRS) {
+    const maxThroughput = Math.min(
+      diskIops / UltraSSD_IOPS_TO_MAX_DISK_THROUGHPUT,
+      UltraSSD_DISK_THROUGHPUT_CAP
+    );
+    return Math.max(0, Math.min(maxThroughput, currentThroughput));
+  }
+
+  return currentThroughput;
+};
+
 const getStorageType = (instance: InstanceType) => {
   if (isEphemeralAwsStorageInstance(instance))
     //aws ephemeral storage

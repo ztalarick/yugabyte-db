@@ -85,22 +85,23 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
           </>
         )}
 
-        <Box mt={2}>
-          <Grid container>
-            <Grid lg={6} item container>
-              <SystemDField disabled={!isCreatePrimary} />
-            </Grid>
-          </Grid>
-        </Box>
-
         {provider.code !== CloudType.kubernetes && (
-          <Box mt={2}>
-            <Grid container>
-              <Grid lg={6} item container>
-                <DeploymentPortsField disabled={!isCreatePrimary} />
+          <>
+            <Box mt={2}>
+              <Grid container>
+                <Grid lg={6} item container>
+                  <SystemDField disabled={!isCreatePrimary} />
+                </Grid>
               </Grid>
-            </Grid>
-          </Box>
+            </Box>
+            <Box mt={2}>
+              <Grid container>
+                <Grid lg={6} item container>
+                  <DeploymentPortsField disabled={!isCreatePrimary} />
+                </Grid>
+              </Grid>
+            </Box>
+          </>
         )}
       </Box>
     </Box>

@@ -14,12 +14,7 @@ import {
   getMaxDiskIops,
   getIopsByStorageType,
   getThroughputByStorageType,
-  GP3_DEFAULT_DISK_IOPS,
-  GP3_DEFAULT_DISK_THROUGHPUT,
-  GP3_MAX_THROUGHPUT,
-  GP3_IOPS_TO_MAX_DISK_THROUGHPUT,
-  UltraSSD_IOPS_TO_MAX_DISK_THROUGHPUT,
-  UltraSSD_DISK_THROUGHPUT_CAP
+  getThroughputByIops
 } from './VolumeInfoFieldHelper';
 import { PROVIDER_FIELD, DEVICE_INFO_FIELD, INSTANCE_TYPE_FIELD } from '../../utils/constants';
 import { isEphemeralAwsStorageInstance } from '../InstanceTypeField/InstanceTypeFieldHelper';
@@ -80,36 +75,12 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     if (isEditMode) instanceTypeChanged.current = true;
   }, [instanceType]);
 
-  //helper
-  const getThroughputByIops = (currentThroughput: number) => {
-    const { diskIops, storageType } = fieldValue;
-    if (storageType === StorageType.GP3) {
-      if (
-        (diskIops > GP3_DEFAULT_DISK_IOPS || currentThroughput > GP3_DEFAULT_DISK_THROUGHPUT) &&
-        diskIops / currentThroughput < GP3_IOPS_TO_MAX_DISK_THROUGHPUT
-      ) {
-        return Math.min(
-          GP3_MAX_THROUGHPUT,
-          Math.max(diskIops / GP3_IOPS_TO_MAX_DISK_THROUGHPUT, GP3_DEFAULT_DISK_THROUGHPUT)
-        );
-      }
-    } else if (storageType === StorageType.UltraSSD_LRS) {
-      const maxThroughput = Math.min(
-        diskIops / UltraSSD_IOPS_TO_MAX_DISK_THROUGHPUT,
-        UltraSSD_DISK_THROUGHPUT_CAP
-      );
-      return Math.max(0, Math.min(maxThroughput, currentThroughput));
-    }
-
-    return currentThroughput;
-  };
-
   //reset methods
   const resetThroughput = () => {
-    const { storageType, throughput } = fieldValue;
+    const { storageType, throughput, diskIops } = fieldValue;
     if ([StorageType.IO1, StorageType.GP3, StorageType.UltraSSD_LRS].includes(storageType)) {
       //resetting throughput
-      const throughputVal = getThroughputByIops(Number(throughput));
+      const throughputVal = getThroughputByIops(Number(throughput), diskIops, storageType);
       setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput: throughputVal });
     }
   };
@@ -138,7 +109,8 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   };
 
   const onThroughputChange = (value: any) => {
-    const throughput = getThroughputByIops(Number(value));
+    const { storageType, diskIops } = fieldValue;
+    const throughput = getThroughputByIops(Number(value), diskIops, storageType);
     setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput });
   };
 
@@ -146,6 +118,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     setValue(DEVICE_INFO_FIELD, { ...fieldValue, numVolumes });
   };
 
+  //render
   if (!instance) return null;
 
   const { volumeDetailsList } = instance.instanceTypeDetails;
@@ -153,20 +126,142 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
 
   if (![VolumeType.EBS, VolumeType.SSD, VolumeType.NVME].includes(volumeType)) return null;
 
-  const fixedVolumeSize =
-    [VolumeType.SSD, VolumeType.NVME].includes(volumeType) &&
-    fieldValue?.storageType === StorageType.Scratch &&
-    ![CloudType.kubernetes, CloudType.azu].includes(provider?.code);
+  const renderVolumeInfo = () => {
+    const fixedVolumeSize =
+      [VolumeType.SSD, VolumeType.NVME].includes(volumeType) &&
+      fieldValue?.storageType === StorageType.Scratch &&
+      ![CloudType.kubernetes, CloudType.azu].includes(provider?.code);
 
-  const fixedNumVolumes =
-    [VolumeType.SSD, VolumeType.NVME].includes(volumeType) &&
-    ![CloudType.kubernetes, CloudType.gcp, CloudType.azu].includes(provider?.code);
+    const fixedNumVolumes =
+      [VolumeType.SSD, VolumeType.NVME].includes(volumeType) &&
+      ![CloudType.kubernetes, CloudType.gcp, CloudType.azu].includes(provider?.code);
 
-  const smartResizePossible =
-    [CloudType.aws, CloudType.gcp, CloudType.kubernetes].includes(provider?.code) &&
-    !isEphemeralAwsStorageInstance(instance) &&
-    fieldValue?.storageType !== StorageType.Scratch &&
-    isPrimary;
+    const smartResizePossible =
+      [CloudType.aws, CloudType.gcp].includes(provider?.code) &&
+      !isEphemeralAwsStorageInstance(instance) &&
+      fieldValue?.storageType !== StorageType.Scratch &&
+      isPrimary;
+
+    return (
+      <Box display="flex">
+        <Box display="flex">
+          <YBLabel>{t('universeForm.instanceConfig.volumeInfo')}</YBLabel>
+        </Box>
+
+        <Box display="flex" flex={1}>
+          <Box flex={1}>
+            <YBInput
+              type="number"
+              fullWidth
+              disabled={fixedNumVolumes || !instanceTypeChanged.current || disableNumVolumes}
+              inputProps={{ min: 1 }}
+              value={fieldValue.numVolumes}
+              onChange={(event) => onNumVolumesChanged(event.target.value)}
+            />
+          </Box>
+
+          <Box display="flex" alignItems="center" px={1} flexShrink={1}>
+            x
+          </Box>
+
+          <Box flex={1}>
+            <YBInput
+              type="number"
+              fullWidth
+              disabled={
+                fixedVolumeSize ||
+                (provider?.code !== CloudType.kubernetes &&
+                  !smartResizePossible &&
+                  !instanceTypeChanged.current) ||
+                disableVolumeSize
+              }
+              inputProps={{ min: 1 }}
+              value={fieldValue.volumeSize}
+              onChange={(event) => onVolumeSizeChanged(event.target.value)}
+              onBlur={resetThroughput}
+            />
+          </Box>
+        </Box>
+      </Box>
+    );
+  };
+
+  const renderStorageType = () => {
+    if (
+      [CloudType.gcp, CloudType.azu].includes(provider?.code) ||
+      (volumeType === VolumeType.EBS && provider?.code === CloudType.aws)
+    )
+      return (
+        <Box display="flex">
+          <YBLabel>
+            {provider?.code === CloudType.aws
+              ? t('universeForm.instanceConfig.ebs')
+              : t('universeForm.instanceConfig.ssd')}
+          </YBLabel>
+          <Box flex={1}>
+            <YBSelect
+              fullWidth
+              disabled={disableStorageType}
+              value={fieldValue.storageType}
+              onChange={(event) =>
+                onStorageTypeChanged((event?.target.value as unknown) as StorageType)
+              }
+            >
+              {getStorageTypeOptions(provider?.code).map((item) => (
+                <MenuItem key={item.value} value={item.value}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </YBSelect>
+          </Box>
+        </Box>
+      );
+
+    return null;
+  };
+
+  const renderDiskIops = () => {
+    if (
+      ![StorageType.IO1, StorageType.GP3, StorageType.UltraSSD_LRS].includes(fieldValue.storageType)
+    )
+      return null;
+
+    return (
+      <Box display="flex">
+        <YBLabel>{t('universeForm.instanceConfig.provisionedIops')}</YBLabel>
+        <Box flex={1}>
+          <YBInput
+            type="number"
+            fullWidth
+            disabled={disableIops}
+            inputProps={{ min: 1 }}
+            value={fieldValue.diskIops}
+            onChange={(event) => onDiskIopsChanged(event.target.value)}
+            onBlur={resetThroughput}
+          />
+        </Box>
+      </Box>
+    );
+  };
+
+  const renderThroughput = () => {
+    if (![StorageType.GP3, StorageType.UltraSSD_LRS].includes(fieldValue.storageType)) return null;
+    return (
+      <Box display="flex">
+        <YBLabel> {t('universeForm.instanceConfig.provisionedThroughput')}</YBLabel>
+        <Box flex={1}>
+          <YBInput
+            type="number"
+            fullWidth
+            disabled={disableThroughput}
+            inputProps={{ min: 1 }}
+            value={fieldValue.throughput}
+            onChange={(event) => onThroughputChange(event.target.value)}
+          />
+        </Box>
+      </Box>
+    );
+  };
 
   return (
     <Controller
@@ -179,74 +274,11 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
               <Box>
                 <Grid container spacing={2}>
                   <Grid item lg={12} xs={12}>
-                    <Box display="flex">
-                      <Box display="flex">
-                        <YBLabel>{t('universeForm.instanceConfig.volumeInfo')}</YBLabel>
-                      </Box>
-
-                      <Box display="flex" flex={1}>
-                        <Box flex={1}>
-                          <YBInput
-                            type="number"
-                            fullWidth
-                            disabled={
-                              fixedNumVolumes || !instanceTypeChanged.current || disableNumVolumes
-                            }
-                            inputProps={{ min: 1 }}
-                            value={fieldValue.numVolumes}
-                            onChange={(event) => onNumVolumesChanged(event.target.value)}
-                          />
-                        </Box>
-
-                        <Box display="flex" alignItems="center" px={1} flexShrink={1}>
-                          x
-                        </Box>
-
-                        <Box flex={1}>
-                          <YBInput
-                            type="number"
-                            fullWidth
-                            disabled={
-                              fixedVolumeSize ||
-                              (!smartResizePossible && !instanceTypeChanged.current) ||
-                              disableVolumeSize
-                            }
-                            inputProps={{ min: 1 }}
-                            value={fieldValue.volumeSize}
-                            onChange={(event) => onVolumeSizeChanged(event.target.value)}
-                            onBlur={resetThroughput}
-                          />
-                        </Box>
-                      </Box>
-                    </Box>
+                    {renderVolumeInfo()}
                   </Grid>
 
                   <Grid item lg={12} xs={12}>
-                    {fieldValue.storageType && (
-                      <Box display="flex">
-                        <YBLabel>
-                          {provider?.code === CloudType.aws
-                            ? t('universeForm.instanceConfig.ebs')
-                            : t('universeForm.instanceConfig.ssd')}
-                        </YBLabel>
-                        <Box flex={1}>
-                          <YBSelect
-                            fullWidth
-                            disabled={disableStorageType}
-                            value={fieldValue.storageType}
-                            onChange={(event) =>
-                              onStorageTypeChanged((event?.target.value as unknown) as StorageType)
-                            }
-                          >
-                            {getStorageTypeOptions(provider?.code).map((item) => (
-                              <MenuItem key={item.value} value={item.value}>
-                                {item.label}
-                              </MenuItem>
-                            ))}
-                          </YBSelect>
-                        </Box>
-                      </Box>
-                    )}
+                    {renderStorageType()}
                   </Grid>
                 </Grid>
               </Box>
@@ -255,47 +287,11 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                 <Box mt={1}>
                   <Grid container spacing={2}>
                     <Grid item lg={6} sm={12}>
-                      {[StorageType.IO1, StorageType.GP3, StorageType.UltraSSD_LRS].includes(
-                        fieldValue.storageType
-                      ) && (
-                        <Box display="flex">
-                          <YBLabel>{t('universeForm.instanceConfig.provisionedIops')}</YBLabel>
-                          <Box flex={1}>
-                            <YBInput
-                              type="number"
-                              fullWidth
-                              disabled={disableIops}
-                              inputProps={{ min: 1 }}
-                              value={fieldValue.diskIops}
-                              onChange={(event) => onDiskIopsChanged(event.target.value)}
-                              onBlur={resetThroughput}
-                            />
-                          </Box>
-                        </Box>
-                      )}
+                      {renderDiskIops()}
                     </Grid>
 
                     <Grid item lg={6} sm={12}>
-                      {[StorageType.GP3, StorageType.UltraSSD_LRS].includes(
-                        fieldValue.storageType
-                      ) && (
-                        <Box display="flex">
-                          <YBLabel>
-                            {' '}
-                            {t('universeForm.instanceConfig.provisionedThroughput')}
-                          </YBLabel>
-                          <Box flex={1}>
-                            <YBInput
-                              type="number"
-                              fullWidth
-                              disabled={disableThroughput}
-                              inputProps={{ min: 1 }}
-                              value={fieldValue.throughput}
-                              onChange={(event) => onThroughputChange(event.target.value)}
-                            />
-                          </Box>
-                        </Box>
-                      )}
+                      {renderThroughput()}
                     </Grid>
                   </Grid>
                 </Box>

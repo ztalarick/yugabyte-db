@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import { browserHistory } from 'react-router';
-import { api } from './api';
 import {
   CloudType,
   ClusterType,
@@ -15,30 +14,34 @@ import {
   InstanceTags
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
-import { getPlacementsFromCluster } from '../fields/PlacementsField/PlacementsFieldHelper';
 import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
+import { api } from './api';
+import { getPlacementsFromCluster } from '../fields/PlacementsField/PlacementsFieldHelper';
 
-export const transitToUniverse = (universeUUID: string | undefined) => {
-  if (universeUUID) browserHistory.push(`/universes/${universeUUID}/tasks`);
-};
+export const transitToUniverse = (universeUUID: string) =>
+  browserHistory.push(`/universes/${universeUUID}/tasks`);
 
-//get cluster data by cluster type
-export const getClusterByType = (universeData: UniverseDetails, clusterType: ClusterType) => {
-  return universeData.clusters.find((cluster) => cluster.clusterType === clusterType);
-};
+export const getClusterByType = (universeData: UniverseDetails, clusterType: ClusterType) =>
+  universeData.clusters.find((cluster) => cluster.clusterType === clusterType);
 
-export const getPrimaryCluster = (universeData: UniverseDetails) => {
-  return getClusterByType(universeData, ClusterType.PRIMARY);
-};
+export const getPrimaryCluster = (universeData: UniverseDetails) =>
+  getClusterByType(universeData, ClusterType.PRIMARY);
 
-export const getAsyncCluster = (universeData: UniverseDetails) => {
-  return getClusterByType(universeData, ClusterType.ASYNC);
-};
+export const getAsyncCluster = (universeData: UniverseDetails) =>
+  getClusterByType(universeData, ClusterType.ASYNC);
 
-export const getUniverseName = (universeData: UniverseDetails) => {
-  const primaryCluster = getClusterByType(universeData, ClusterType.PRIMARY);
-  return primaryCluster?.userIntent.universeName;
-};
+export const getUniverseName = (universeData: UniverseDetails) =>
+  _.get(getClusterByType(universeData, ClusterType.PRIMARY), 'userIntent.universeName');
+
+export const getPrimaryFormData = (universeData: UniverseDetails) =>
+  getFormData(universeData, ClusterType.PRIMARY);
+
+export const getAsyncFormData = (universeData: UniverseDetails) =>
+  getFormData(universeData, ClusterType.ASYNC);
+
+//returns fields needs to be copied from Primary to Async in Create+RR flow
+export const getAsyncCopyFields = (formData: UniverseFormData) =>
+  _.pick(formData, ASYNC_COPY_FIELDS);
 
 //Filter form data by cluster type
 export const filterFormDataByClusterType = (
@@ -49,11 +52,7 @@ export const filterFormDataByClusterType = (
   return (_.pick(formData, formFields) as unknown) as UniverseFormData;
 };
 
-//returns fields needs to be copied from Primary to Async in Create+RR flow
-export const getAsyncCopyFields = (formData: UniverseFormData) =>
-  _.pick(formData, ASYNC_COPY_FIELDS);
-
-//transform gflags
+//transform gflags - to consume it in the form
 export const transformGFlagToFlagsArray = (gFlags: Record<string, any> = {}, flagType: string) => {
   const flagsArray = [
     ...Object.keys(gFlags).map((key: string) => ({
@@ -64,12 +63,33 @@ export const transformGFlagToFlagsArray = (gFlags: Record<string, any> = {}, fla
   return flagsArray;
 };
 
-//transform instance tags
+//transform gflags - for universe configure route
+const transformFlagArrayToObject = (
+  flagsArray: Gflag[] = []
+): { masterGFlags: Record<string, any>; tserverGFlags: Record<string, any> } => {
+  let masterGFlags = {},
+    tserverGFlags = {};
+  flagsArray.forEach((flag: Gflag) => {
+    if (flag?.hasOwnProperty('MASTER')) masterGFlags[flag.Name] = `${flag['MASTER']}`;
+    if (flag?.hasOwnProperty('TSERVER')) tserverGFlags[flag.Name] = `${flag['TSERVER']}`;
+  });
+  return { masterGFlags, tserverGFlags };
+};
+
+//transform instance tags - to consume it in the form
 const transformInstanceTags = (instanceTags: Record<string, string> = {}) =>
   Object.entries(instanceTags).map(([key, val]) => ({
     name: key,
     value: val
   }));
+
+//transform instance tags - for universe configure route
+const transformTagsArrayToObject = (instanceTags: InstanceTags) => {
+  return instanceTags.reduce((tagsObj: Record<string, string>, tag: InstanceTag) => {
+    if (tag?.name && tag?.value) tagsObj[tag.name] = `${tag.value}`;
+    return tagsObj;
+  }, {});
+};
 
 //Transform universe data to form data
 export const getFormData = (universeData: UniverseDetails, clusterType: ClusterType) => {
@@ -128,33 +148,6 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
   };
 
   return data;
-};
-
-export const getPrimaryFormData = (universeData: UniverseDetails) => {
-  return getFormData(universeData, ClusterType.PRIMARY);
-};
-
-export const getAsyncFormData = (universeData: UniverseDetails) => {
-  return getFormData(universeData, ClusterType.ASYNC);
-};
-
-const transformFlagArrayToObject = (
-  flagsArray: Gflag[] = []
-): { masterGFlags: Record<string, any>; tserverGFlags: Record<string, any> } => {
-  let masterGFlags = {},
-    tserverGFlags = {};
-  flagsArray.forEach((flag: Gflag) => {
-    if (flag?.hasOwnProperty('MASTER')) masterGFlags[flag.Name] = `${flag['MASTER']}`;
-    if (flag?.hasOwnProperty('TSERVER')) tserverGFlags[flag.Name] = `${flag['TSERVER']}`;
-  });
-  return { masterGFlags, tserverGFlags };
-};
-
-const transformTagsArrayToObject = (instanceTags: InstanceTags) => {
-  return instanceTags.reduce((tagsObj: Record<string, string>, tag: InstanceTag) => {
-    if (tag?.name && tag?.value) tagsObj[tag.name] = `${tag.value}`;
-    return tagsObj;
-  }, {});
 };
 
 //Transform form data to intent
@@ -245,7 +238,7 @@ export const createUniverse = async ({
   } catch (error) {
     console.error(error);
   } finally {
-    transitToUniverse(response?.universeUUID);
+    response?.universeUUID && transitToUniverse(response.universeUUID);
   }
 };
 
