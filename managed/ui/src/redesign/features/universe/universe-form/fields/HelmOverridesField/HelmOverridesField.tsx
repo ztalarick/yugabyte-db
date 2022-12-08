@@ -1,26 +1,27 @@
-import React, { ReactElement, useState, useContext } from 'react';
+import React, { ReactElement, useState } from 'react';
 import { Box, Grid } from '@material-ui/core';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useFormMainStyles } from '../../universeMainStyle';
-import { UniverseFormData } from '../../utils/dto';
+import { UniverseConfigure, UniverseFormData } from '../../utils/dto';
 import { YBButton } from '../../../../../components';
-import { UniverseFormContext } from '../../UniverseFormContainer';
 import { UNIVERSE_OVERRIDES_FIELD, AZ_OVERRIDES_FIELD } from '../../utils/constants';
 import { HelmOverridesModal } from './HelmOverridesModal';
 
 interface HelmOverridesFieldProps {
   disabled: boolean;
+  universeConfigureTemplate: UniverseConfigure;
 }
 
-export const HelmOverridesField = ({ disabled }: HelmOverridesFieldProps): ReactElement => {
+export const HelmOverridesField = ({
+  disabled,
+  universeConfigureTemplate
+}: HelmOverridesFieldProps): ReactElement => {
   const [showOverridesModal, setShowOverridesModal] = useState(false);
 
   const { setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const classes = useFormMainStyles();
-
-  const { universeConfigureTemplate } = useContext(UniverseFormContext)[0];
 
   //field data
   const azOverrides = useWatch({ name: AZ_OVERRIDES_FIELD });

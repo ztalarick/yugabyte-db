@@ -158,7 +158,11 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
               <Box mt={1}>
                 <Grid container spacing={3}>
                   <Grid lg={6} item container>
-                    <RootCertificateField disabled={!isCreatePrimary} />
+                    <RootCertificateField
+                      disabled={!isCreatePrimary}
+                      isPrimary={isPrimary}
+                      isCreateMode={isCreateMode}
+                    />
                   </Grid>
                 </Grid>
               </Box>

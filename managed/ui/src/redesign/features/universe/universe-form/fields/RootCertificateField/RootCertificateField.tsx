@@ -1,29 +1,30 @@
-import React, { FC, ChangeEvent, useContext } from 'react';
+import React, { FC, ChangeEvent } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { api, QUERY_KEY } from '../../utils/api';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../components';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import { CloudType, UniverseFormData, ClusterModes, ClusterType } from '../../utils/dto';
+import { CloudType, UniverseFormData } from '../../utils/dto';
 import { PROVIDER_FIELD, ROOT_CERT_FIELD } from '../../utils/constants';
 import { useFormFieldStyles } from '../../universeMainStyle';
 
 const getOptionLabel = (option: Record<string, string>): string => option.label ?? '';
 interface RootCertificateFieldProps {
   disabled: boolean;
+  isPrimary: boolean;
+  isCreateMode: boolean;
 }
 
-export const RootCertificateField: FC<RootCertificateFieldProps> = ({ disabled }) => {
+export const RootCertificateField: FC<RootCertificateFieldProps> = ({
+  disabled,
+  isPrimary,
+  isCreateMode
+}) => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const classes = useFormFieldStyles();
 
-  //form context
-  const { mode, clusterType } = useContext(UniverseFormContext)[0];
-  const isPrimary = clusterType === ClusterType.PRIMARY;
-  const isEdit = mode === ClusterModes.EDIT;
   //provider data
   const provider = useWatch({ name: PROVIDER_FIELD });
 
@@ -41,7 +42,7 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({ disabled }
     let isDisabled = false;
 
     if (option?.certType === 'CustomCertHostPath') {
-      if (isPrimary && !isEdit) {
+      if (isPrimary && isCreateMode) {
         isDisabled = provider?.code !== CloudType.onprem;
       } else {
         isDisabled = provider?.code === CloudType.onprem;

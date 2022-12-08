@@ -92,7 +92,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
               <Grid container spacing={3}>
                 <Grid item sm={12} lg={6}>
                   <Box display="flex">
-                    <YBLabel>{t('universeForm.instanceConfig.YCQLAuthPassword')}</YBLabel>
+                    <YBLabel>{t('universeForm.instanceConfig.ycqlAuthPassword')}</YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
                         name={YCQL_PASSWORD_FIELD}
@@ -101,7 +101,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                           required:
                             !disabled && ycqlAuthEnabled
                               ? (t('universeForm.validation.required', {
-                                  field: t('universeForm.instanceConfig.YCQLAuthPassword')
+                                  field: t('universeForm.instanceConfig.ycqlAuthPassword')
                                 }) as string)
                               : '',
                           pattern: {

@@ -25,13 +25,11 @@ export const UserTags = (_: UserTagsProps): ReactElement | null => {
     [CloudType.aws, CloudType.gcp, CloudType.azu].includes(provider?.code)
   )
     return (
-      <Box>
-        <Box className={classes.sectionContainer} borderBottom="0px">
-          <Typography className={classes.sectionHeaderFont}>
-            {t('universeForm.userTags.title')}
-          </Typography>
-        </Box>
-        <Box mt={2}>
+      <Box className={classes.sectionContainer}>
+        <Typography className={classes.sectionHeaderFont}>
+          {t('universeForm.userTags.title')}
+        </Typography>
+        <Box display="flex" width="100%" mt={2}>
           <Grid container lg={6}>
             <UserTagsField />
           </Grid>

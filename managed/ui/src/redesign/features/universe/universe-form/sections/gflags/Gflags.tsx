@@ -1,4 +1,5 @@
 import React, { FC, useContext } from 'react';
+import _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { useWatch, useFormContext } from 'react-hook-form';
 import { Box, Typography } from '@material-ui/core';
@@ -21,10 +22,10 @@ export const GFlags: FC<GflagsProps> = () => {
   const isEditPrimary = isEditMode && isPrimary; //Editing Primary Cluster
 
   //form Data
-  const { control } = useFormContext<Partial<UniverseFormData>>();
+  const { control, getValues } = useFormContext<Partial<UniverseFormData>>();
   const dbVersion = useWatch({ name: SOFTWARE_VERSION_FIELD });
 
-  if (!isPrimary) return null;
+  if (!isPrimary || (isEditPrimary && _.isEmpty(getValues(GFLAGS_FIELD)))) return null;
 
   return (
     <Box className={classes.sectionContainer}>
