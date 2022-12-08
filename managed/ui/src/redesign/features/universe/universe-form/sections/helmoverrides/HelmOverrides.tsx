@@ -16,7 +16,7 @@ export const HelmOverrides = (_: HelmOverridesProps): ReactElement | null => {
   const { t } = useTranslation();
 
   //form context
-  const { mode, clusterType } = useContext(UniverseFormContext)[0];
+  const { mode, clusterType, universeConfigureTemplate } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
   const isCreateMode = mode === ClusterModes.CREATE; //Form is in create mode
   const isCreatePrimary = isPrimary && isCreateMode;
@@ -34,7 +34,10 @@ export const HelmOverrides = (_: HelmOverridesProps): ReactElement | null => {
         </Box>
         <Box>
           <Grid container lg={6}>
-            <HelmOverridesField disabled={false} />
+            <HelmOverridesField
+              disabled={false}
+              universeConfigureTemplate={universeConfigureTemplate}
+            />
           </Grid>
         </Box>
       </Box>

@@ -20,10 +20,10 @@ export const UserTagsField = (_: UserTagsFieldProps): ReactElement => {
 
   return (
     <Grid container direction="column">
-      <Box display="flex" flexDirection="column">
+      <Box display="flex" flexDirection="column" mb={fields?.length ? 2 : 0}>
         {fields.map((field, index) => {
           return (
-            <Grid container key={field.name} spacing={1} alignItems="center">
+            <Grid container key={field.id} spacing={1} alignItems="center">
               <Grid item xs>
                 <YBInputField
                   name={`${USER_TAGS_FIELD}.${index}.name` as FieldArrayPath<InstanceTag>}
@@ -47,7 +47,7 @@ export const UserTagsField = (_: UserTagsFieldProps): ReactElement => {
           );
         })}
       </Box>
-      <Box mt={2}>
+      <Box>
         <YBButton variant="primary" onClick={() => append({ name: '', value: '' })}>
           <span className="fa fa-plus" />
           {t('universeForm.userTags.addRow')}

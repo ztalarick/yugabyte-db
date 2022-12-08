@@ -227,9 +227,9 @@ export const HelmOverridesModal = ({
               {t('universeForm.helmOverrides.availabilityZone')}:
             </Typography>
           </Box>
-          {fields.map((_, index) => {
+          {fields.map((field, index) => {
             return (
-              <Box mt={1}>
+              <Box mt={1} key={field.id}>
                 <Box>
                   <Typography variant="h6">
                     {t('universeForm.helmOverrides.azOverrides')} {index + 1}:
