@@ -78,7 +78,6 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
               disabled={false}
               value={field.name}
               onChange={(e) => {
-                console.log(e.target.value);
                 handleAZChange(field, e.target.value, index);
               }}
             >
@@ -127,7 +126,7 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
         <Typography variant="h5">{t('universeForm.cloudConfig.azHeader')}</Typography>
         {renderHeader}
         {renderPlacements()}
-        {unUsedZones.length > 0 && fields.length < replicationFactor && (
+        {!isLoading && unUsedZones.length > 0 && fields.length < replicationFactor && (
           <Box display="flex" justifyContent={'flex-start'} mr={0.5} mt={1}>
             <YBButton
               style={{ width: '150px' }}

@@ -264,7 +264,7 @@ export const mainTheme = createTheme({
       colorPrimary: {
         // color: colors.primary[600],
         '&&.Mui-checked': {
-          color: colors.primary[600]
+          color: colors.orange[500]
         }
       }
     },

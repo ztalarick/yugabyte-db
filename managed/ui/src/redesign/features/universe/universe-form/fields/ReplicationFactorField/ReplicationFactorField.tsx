@@ -14,7 +14,8 @@ interface ReplicationFactorProps {
 
 const useStyles = makeStyles((theme: Theme) => ({
   rfButton: {
-    height: themeVariables.inputHeight
+    height: themeVariables.inputHeight,
+    borderWidth: '0.5px !important'
   }
 }));
 

@@ -14,7 +14,7 @@ interface ProvidersFieldProps {
   filterByProvider: string | null; //pass only if there is a need to filter the providers list by code
 }
 
-// simplified provider object with bare minimum fields needed in UI
+// simplified provider object with minimum fields needed in UI
 export type ProviderMin = Pick<Provider, 'uuid' | 'code'>;
 const getOptionLabel = (option: Record<string, string>): string => option.name;
 
@@ -26,17 +26,16 @@ export const ProvidersField = ({
   const { t } = useTranslation();
   const { data, isLoading } = useQuery(QUERY_KEY.getProvidersList, api.getProvidersList);
 
-  //sort by provider code and name
-  let providersList = filterByProvider
-    ? (data || []).filter((p) => p.code === filterByProvider)
-    : data || [];
-  providersList = _.sortBy(providersList || [], 'code', 'name');
+  let providersList: Provider[] = [];
+  if (!isLoading && data) {
+    providersList = filterByProvider ? data.filter((p) => p.code === filterByProvider) : data;
+    providersList = _.sortBy(providersList, 'code', 'name'); //sort by provider code and name
+  }
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
     if (option) {
       const { code, uuid } = option;
       setValue(PROVIDER_FIELD, { code, uuid }, { shouldValidate: true });
-
       //Reset fields on provider change
       setValue(ACCESS_KEY_FIELD, null, { shouldValidate: true });
       setValue(INSTANCE_TYPE_FIELD, null);
