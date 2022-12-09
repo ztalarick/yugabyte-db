@@ -17,6 +17,15 @@ import { useFormMainStyles } from './universeMainStyle';
 import { UniverseFormContext } from './UniverseFormContainer';
 import { UNIVERSE_NAME_FIELD } from './utils/constants';
 
+//How to add new form field ?
+// - add field to it's corresponding config type (CloudConfigFormValue/InstanceConfigFormValue/AdvancedConfigFormValue/..) present in UniverseFormData type at dto.ts
+// - set default value in corresponding const (DEFAULT_CLOUD_CONFIG/DEFAULT_INSTANCE_CONFIGDEFAULT_ADVANCED_CONFIG/..) presnt in DEFAULT_FORM_DATA at dto.ts
+// - populate form value from universe object in getFormData() at utils/helpers
+// - Map form value to universe payload in getUserIntent() at utils/helper before submitting
+// - Submit logic/flags needed for each cluster operation is written in it's own file(CreateUniverse/CreateRR/EditUniverse/EditRR)
+// - Add individual field component in
+// - Import actual form field ui component in corresponding section(cloud/instance/advanced/..)
+
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
   onFormSubmit: (data: UniverseFormData) => void;
@@ -24,7 +33,7 @@ interface UniverseFormProps {
   onClusterTypeChange?: (data: UniverseFormData) => void;
   onDeleteRR?: () => void;
   submitLabel?: string;
-  isNewUniverse?: boolean; // This flag is used only in new cluster creation flow
+  isNewUniverse?: boolean; // This flag is used only in new cluster creation flow - we don't have proper state params to differentiate
 }
 
 export const UniverseForm: FC<UniverseFormProps> = ({
@@ -54,9 +63,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
 
   //methods
   const triggerValidation = () => trigger(undefined, { shouldFocus: true }); //Trigger validation and focus on fields with errors , undefined = validate all fields
-
   const onSubmit = (formData: UniverseFormData) => onFormSubmit(formData);
-
   const switchClusterType = () => onClusterTypeChange && onClusterTypeChange(getValues());
 
   //switching from primary to RR and vice versa  (Create Primary + RR flow)

@@ -197,7 +197,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
 //Form Submit helpers
 const patchConfigResponse = (response: UniverseDetails, original: UniverseDetails) => {
   const clusterIndex = response.clusters.findIndex(
-    (cluster: Cluster) => cluster.clusterType === response.currentClusterType
+    (cluster: Cluster) => cluster.clusterType === ClusterType.PRIMARY
   );
 
   response.clusterOperation = original.clusterOperation;
