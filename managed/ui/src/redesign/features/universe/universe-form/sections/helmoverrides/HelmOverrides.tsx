@@ -1,17 +1,14 @@
-import React, { ReactElement, useContext } from 'react';
-import { useWatch } from 'react-hook-form';
+import React, { FC, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
-import { HelmOverridesField } from '../../fields';
+import { useSectionStyles } from '../../universeMainStyle';
 import { UniverseFormContext } from '../../UniverseFormContainer';
-
+import { HelmOverridesField } from '../../fields';
 import { CloudType, ClusterType, ClusterModes } from '../../utils/dto';
 import { PROVIDER_FIELD } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
 
-interface HelmOverridesProps {}
-
-export const HelmOverrides = (_: HelmOverridesProps): ReactElement | null => {
+export const HelmOverrides: FC = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
 
@@ -26,7 +23,7 @@ export const HelmOverrides = (_: HelmOverridesProps): ReactElement | null => {
 
   if (isCreatePrimary && provider?.code === CloudType.kubernetes)
     return (
-      <Box>
+      <Box data-testid="helm-overrides-section">
         <Box mt={2}>
           <Typography className={classes.sectionHeaderFont}>
             {t('universeForm.helmOverrides.title')}

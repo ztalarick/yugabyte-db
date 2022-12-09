@@ -1,9 +1,9 @@
 import React, { FC, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography } from '@material-ui/core';
-import { useForm } from 'react-hook-form';
+import { YBCheckbox, YBInputField, YBModal } from '../../../../../components';
 import { api } from '../../utils/api';
-import { YBModal, YBCheckbox, YBInputField } from '../../../../../components';
 import { getAsyncCluster, getUniverseName, transitToUniverse } from '../../utils/helpers';
 import { UniverseDetails } from '../../utils/dto';
 
@@ -32,9 +32,9 @@ export const DeleteClusterModal: FC<DeleteClusterModalProps> = ({
 
   //init form
   const {
-    handleSubmit,
     control,
-    formState: { isValid }
+    formState: { isValid },
+    handleSubmit
   } = useForm<DeleteClusterFormValues>({
     defaultValues: DEFAULT_VALUES,
     mode: 'onChange',
@@ -42,53 +42,55 @@ export const DeleteClusterModal: FC<DeleteClusterModalProps> = ({
   });
 
   const handleFormSubmit = handleSubmit(async () => {
-    const universeUUID = universeData.universeUUID;
     const asyncCluster = getAsyncCluster(universeData);
     const clusterUUID = asyncCluster?.uuid;
+    const universeUUID = universeData.universeUUID;
 
-    if (clusterUUID) {
-      try {
-        await api.deleteCluster(clusterUUID, universeUUID, forceDelete);
-      } catch (e) {
-        console.log(e);
-      } finally {
-        transitToUniverse(universeUUID);
-      }
+    if (!clusterUUID) return;
+
+    try {
+      await api.deleteCluster(clusterUUID, universeUUID, forceDelete);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      transitToUniverse(universeUUID);
     }
   });
 
   const forceDeleteCheckBox = () => {
     return (
       <YBCheckbox
-        size="medium"
-        onChange={(e) => setForceDelete(e.target.checked)}
         defaultChecked={forceDelete}
         value={forceDelete}
         label={t('universeForm.deleteClusterModal.forceDeleteCheckbox')}
+        size="medium"
+        onChange={(e) => setForceDelete(e.target.checked)}
       />
     );
   };
 
   return (
     <YBModal
-      title={t('universeForm.deleteClusterModal.modalTitle', { universeName })}
       open={open}
       overrideHeight={300}
       titleSeparator
-      size="sm"
       cancelLabel={t('common.no')}
       submitLabel={t('common.yes')}
+      size="sm"
+      title={t('universeForm.deleteClusterModal.modalTitle', { universeName })}
+      actionsInfo={forceDeleteCheckBox()}
       onClose={onClose}
       onSubmit={handleFormSubmit}
-      actionsInfo={forceDeleteCheckBox()}
       buttonProps={{
         primary: {
           disabled: !isValid
         }
       }}
       dialogContentProps={{ style: { paddingTop: 20 } }}
+      submitTestId="submit-delete-cluster"
+      cancelTestId="close-delete-cluster"
     >
-      <Box display="flex" width="100%" flexDirection="column">
+      <Box display="flex" width="100%" flexDirection="column" data-testid="delete-cluster-modal">
         <Box>
           <Typography variant="body2">
             {t('universeForm.deleteClusterModal.deleteRRMessage')}
@@ -100,18 +102,18 @@ export const DeleteClusterModal: FC<DeleteClusterModalProps> = ({
           </Typography>
           <Box>
             <YBInputField
+              fullWidth
               control={control}
               placeholder={universeName}
+              name="universeName"
+              inputProps={{
+                autoFocus: true,
+                'data-testid': 'validate-universename'
+              }}
               rules={{
                 validate: {
                   universeNameMatch: (value) => value === universeName
                 }
-              }}
-              name="universeName"
-              fullWidth
-              inputProps={{
-                autoFocus: true,
-                'data-testid': 'deleteRR-universename'
               }}
             />
           </Box>

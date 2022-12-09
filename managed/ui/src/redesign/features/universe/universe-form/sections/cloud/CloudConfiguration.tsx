@@ -3,16 +3,17 @@ import _ from 'lodash';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Grid } from '@material-ui/core';
+import { useSectionStyles } from '../../universeMainStyle';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 import {
-  UniverseNameField,
+  DefaultRegionField,
   PlacementsField,
   ProvidersField,
   RegionsField,
   ReplicationFactor,
   TotalNodesField,
-  DefaultRegionField
+  UniverseNameField
 } from '../../fields';
-import { UniverseFormContext } from '../../UniverseFormContainer';
 import { getPrimaryCluster } from '../../utils/helpers';
 import { ClusterModes, ClusterType } from '../../utils/dto';
 import { useSectionStyles } from '../../universeMainStyle';
@@ -30,9 +31,7 @@ import { getPrimaryCluster } from '../../utils/helpers';
 import { ClusterModes, ClusterType } from '../../utils/dto';
 import { useSectionStyles } from '../../universeMainStyle';
 
-interface CloudConfigProps {}
-
-export const CloudConfiguration: FC<CloudConfigProps> = () => {
+export const CloudConfiguration: FC = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
 
@@ -42,7 +41,7 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
     featureFlags.test.enableGeoPartitioning || featureFlags.released.enableGeoPartitioning;
 
   //form context
-  const { mode, clusterType, universeConfigureTemplate } = useContext(UniverseFormContext)[0];
+  const { clusterType, mode, universeConfigureTemplate } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
   const isEditMode = mode === ClusterModes.EDIT; //Form is in edit mode
   const isCreatePrimary = !isEditMode && isPrimary; //Creating Primary Cluster
@@ -54,7 +53,7 @@ export const CloudConfiguration: FC<CloudConfigProps> = () => {
     : null;
 
   return (
-    <Box className={classes.sectionContainer}>
+    <Box className={classes.sectionContainer} data-testid="cloud-config-section">
       <Grid container spacing={3}>
         <Grid item lg={6}>
           <Box mb={4}>

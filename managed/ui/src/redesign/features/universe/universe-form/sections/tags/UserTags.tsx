@@ -1,7 +1,8 @@
-import React, { ReactElement, useContext } from 'react';
-import { useWatch } from 'react-hook-form';
+import React, { FC, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
+import { useSectionStyles } from '../../universeMainStyle';
 import { UniverseFormContext } from '../../UniverseFormContainer';
 import { UserTagsField } from '../../fields';
 import { CloudType, ClusterType } from '../../utils/dto';
@@ -14,9 +15,7 @@ import { CloudType, ClusterType } from '../../utils/dto';
 import { PROVIDER_FIELD } from '../../utils/constants';
 import { useSectionStyles } from '../../universeMainStyle';
 
-interface UserTagsProps {}
-
-export const UserTags = (_: UserTagsProps): ReactElement | null => {
+export const UserTags: FC = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
 
@@ -31,7 +30,7 @@ export const UserTags = (_: UserTagsProps): ReactElement | null => {
     [CloudType.aws, CloudType.gcp, CloudType.azu].includes(provider?.code)
   )
     return (
-      <Box className={classes.sectionContainer}>
+      <Box className={classes.sectionContainer} data-testid="user-tags-section">
         <Typography className={classes.sectionHeaderFont}>
           {t('universeForm.userTags.title')}
         </Typography>

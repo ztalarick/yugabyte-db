@@ -2,27 +2,31 @@ import React, { FC, useContext, useState } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { browserHistory } from 'react-router';
-import { api, QUERY_KEY } from '../utils/api';
-import { UniverseForm } from '../UniverseForm';
 import { UniverseFormContext } from '../UniverseFormContainer';
-import { ResizeNodeModal, SmartResizeModal, FullMoveModal } from './action-modals';
+import { UniverseForm } from '../UniverseForm';
+import { FullMoveModal, ResizeNodeModal, SmartResizeModal } from './action-modals';
 import { YBLoading } from '../../../../../components/common/indicators';
 import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
-import { getPrimaryFormData, transitToUniverse } from '../utils/helpers';
+import { api, QUERY_KEY } from '../utils/api';
 import {
-  ClusterType,
-  UniverseFormData,
-  ClusterModes,
+  getPrimaryFormData,
+  transformTagsArrayToObject,
+  transitToUniverse
+} from '../utils/helpers';
+import {
   Cluster,
+  ClusterModes,
+  ClusterType,
   UniverseConfigure,
+  UniverseFormData,
   UniverseDetails
 } from '../utils/dto';
 import {
-  REGIONS_FIELD,
-  TOTAL_NODES_FIELD,
   DEVICE_INFO_FIELD,
-  REPLICATION_FACTOR_FIELD,
   INSTANCE_TYPE_FIELD,
+  REGIONS_FIELD,
+  REPLICATION_FACTOR_FIELD,
+  TOTAL_NODES_FIELD,
   USER_TAGS_FIELD
 } from '../utils/constants';
 
@@ -41,9 +45,11 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
   const [contextState, contextMethods] = useContext(UniverseFormContext);
   const { isLoading, universeConfigureTemplate } = contextState;
   const { initializeForm, setUniverseResourceTemplate } = contextMethods;
+
+  //Local states
+  const [showFMModal, setFMModal] = useState(false); //FM -> Full Move
   const [showRNModal, setRNModal] = useState(false); //RN -> Resize Nodes
   const [showSRModal, setSRModal] = useState(false); //SR -> Smart Resize
-  const [showFMModal, setFMModal] = useState(false); //FM -> Full Move
   const [universePayload, setUniversePayload] = useState<UniverseDetails | null>(null);
 
   const { isLoading: isUniverseLoading, data: originalData } = useQuery(
@@ -52,9 +58,9 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     {
       onSuccess: async (resp) => {
         initializeForm({
-          universeConfigureTemplate: _.cloneDeep(resp.universeDetails),
           clusterType: ClusterType.PRIMARY,
-          mode: ClusterModes.EDIT
+          mode: ClusterModes.EDIT,
+          universeConfigureTemplate: _.cloneDeep(resp.universeDetails)
         });
         //set Universe Resource Template
         const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
@@ -66,6 +72,8 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     }
   );
 
+  const onCancel = () => browserHistory.goBack();
+
   const submitEditUniverse = async (finalPayload: UniverseConfigure) => {
     try {
       await api.editUniverse(finalPayload, uuid);
@@ -76,16 +84,11 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     }
   };
 
-  const onCancel = () => {
-    browserHistory.goBack();
-  };
-
   if (isUniverseLoading || isLoading || !originalData?.universeDetails) return <YBLoading />;
 
   const initialFormData = getPrimaryFormData(originalData.universeDetails);
 
   const onSubmit = async (formData: UniverseFormData) => {
-    console.log(initialFormData);
     if (!_.isEqual(formData, initialFormData)) {
       const payload = _.cloneDeep(universeConfigureTemplate);
       payload.currentClusterType = ClusterType.PRIMARY;
@@ -100,12 +103,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       userIntent.replicationFactor = _.get(formData, REPLICATION_FACTOR_FIELD);
       userIntent.instanceType = _.get(formData, INSTANCE_TYPE_FIELD);
       userIntent.deviceInfo = _.get(formData, DEVICE_INFO_FIELD);
-      userIntent.instanceTags = {};
-      _.get(formData, USER_TAGS_FIELD, []).forEach((t) => {
-        if (t?.name && t?.value) {
-          userIntent.instanceTags[t.name] = t.value;
-        }
-      });
+      userIntent.instanceTags = transformTagsArrayToObject(_.get(formData, USER_TAGS_FIELD, []));
       payload.clusters[primaryIndex].placementInfo.cloudList[0].regionList = getPlacements(
         formData
       );
