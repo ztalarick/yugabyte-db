@@ -2,11 +2,11 @@ import React, { FC, useContext, useState } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { browserHistory } from 'react-router';
-import { api, QUERY_KEY } from '../utils/api';
-import { UniverseForm } from '../UniverseForm';
 import { UniverseFormContext } from '../UniverseFormContainer';
-import { YBLoading } from '../../../../../components/common/indicators';
+import { UniverseForm } from '../UniverseForm';
 import { DeleteClusterModal } from './action-modals/DeleteClusterModal';
+import { YBLoading } from '../../../../../components/common/indicators';
+import { api, QUERY_KEY } from '../utils/api';
 import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 import {
   editReadReplica,
@@ -14,13 +14,7 @@ import {
   getAsyncFormData,
   getUserIntent
 } from '../utils/helpers';
-import {
-  ClusterType,
-  UniverseFormData,
-  ClusterModes,
-  UniverseConfigure,
-  CloudType
-} from '../utils/dto';
+import { CloudType, ClusterModes, ClusterType, UniverseFormData } from '../utils/dto';
 
 interface EditReadReplicaProps {
   uuid: string;
@@ -37,9 +31,9 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
     {
       onSuccess: async (resp) => {
         initializeForm({
-          universeConfigureTemplate: _.cloneDeep(resp.universeDetails),
           clusterType: ClusterType.ASYNC,
-          mode: ClusterModes.EDIT
+          mode: ClusterModes.EDIT,
+          universeConfigureTemplate: _.cloneDeep(resp.universeDetails)
         });
         //set Universe Resource Template
         const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
@@ -51,8 +45,10 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
     }
   );
 
+  const onCancel = () => browserHistory.goBack();
+
   const onSubmit = (formData: UniverseFormData) => {
-    const configurePayload: UniverseConfigure = {
+    const configurePayload = {
       ...contextState.universeConfigureTemplate,
       clusterOperation: ClusterModes.EDIT,
       currentClusterType: ClusterType.ASYNC,
@@ -77,34 +73,28 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
     editReadReplica(configurePayload);
   };
 
-  const onCancel = () => {
-    browserHistory.goBack();
-  };
-
   if (isLoading || contextState.isLoading) return <YBLoading />;
 
-  if (!universe) return null;
+  if (!universe?.universeDetails) return null;
 
   //get async form data and intitalize the form
   const initialFormData = getAsyncFormData(universe.universeDetails);
 
-  if (universe?.universeDetails)
-    return (
-      <>
-        {showDeleteRRModal && (
-          <DeleteClusterModal
-            open={showDeleteRRModal}
-            onClose={() => setShowDeleteRRModal(false)}
-            universeData={universe.universeDetails}
-          />
-        )}
-        <UniverseForm
-          defaultFormData={initialFormData}
-          onFormSubmit={(data: UniverseFormData) => onSubmit(data)}
-          onCancel={onCancel}
-          onDeleteRR={() => setShowDeleteRRModal(true)}
+  return (
+    <>
+      {showDeleteRRModal && (
+        <DeleteClusterModal
+          open={showDeleteRRModal}
+          universeData={universe.universeDetails}
+          onClose={() => setShowDeleteRRModal(false)}
         />
-      </>
-    );
-  else return <></>;
+      )}
+      <UniverseForm
+        defaultFormData={initialFormData}
+        onFormSubmit={(data: UniverseFormData) => onSubmit(data)}
+        onCancel={onCancel}
+        onDeleteRR={() => setShowDeleteRRModal(true)}
+      />
+    </>
+  );
 };

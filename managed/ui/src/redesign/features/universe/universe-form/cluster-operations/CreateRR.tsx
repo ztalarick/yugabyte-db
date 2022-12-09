@@ -3,10 +3,10 @@ import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
 import { browserHistory } from 'react-router';
-import { api, QUERY_KEY } from '../utils/api';
-import { UniverseForm } from '../UniverseForm';
 import { UniverseFormContext } from '../UniverseFormContainer';
+import { UniverseForm } from '../UniverseForm';
 import { YBLoading } from '../../../../../components/common/indicators';
+import { api, QUERY_KEY } from '../utils/api';
 import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 import {
   createReadReplica,
@@ -17,24 +17,22 @@ import {
   getUserIntent
 } from '../utils/helpers';
 import {
-  ClusterType,
-  UniverseFormData,
-  ClusterModes,
-  UniverseConfigure,
   CloudType,
+  ClusterModes,
+  ClusterType,
   NodeDetails,
-  NodeState
+  NodeState,
+  UniverseFormData
 } from '../utils/dto';
 
 interface CreateReadReplicaProps {
   uuid: string;
 }
 
-export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
+export const CreateReadReplica: FC<CreateReadReplicaProps> = ({ uuid }) => {
   const { t } = useTranslation();
   const [contextState, contextMethods] = useContext(UniverseFormContext);
   const { initializeForm, setUniverseResourceTemplate } = contextMethods;
-  const { uuid } = props;
 
   const { isLoading, data: universe } = useQuery(
     [QUERY_KEY.fetchUniverse, uuid],
@@ -43,9 +41,9 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
       onSuccess: async (resp) => {
         //initialize form
         initializeForm({
-          universeConfigureTemplate: _.cloneDeep(resp.universeDetails),
           clusterType: ClusterType.ASYNC,
-          mode: ClusterModes.CREATE
+          mode: ClusterModes.CREATE,
+          universeConfigureTemplate: _.cloneDeep(resp.universeDetails)
         });
         //set Universe Resource Template
         const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
@@ -53,6 +51,8 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
       }
     }
   );
+
+  const onCancel = () => browserHistory.goBack();
 
   const onSubmit = async (formData: UniverseFormData) => {
     const PRIMARY_CLUSTER = getPrimaryCluster(contextState.universeConfigureTemplate);
@@ -71,7 +71,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
     };
 
     //make a final configure call to check if everything is okay
-    const configurePayload: UniverseConfigure = {
+    const configurePayload = {
       ...contextState.universeConfigureTemplate,
       clusterOperation: ClusterModes.CREATE,
       currentClusterType: ClusterType.ASYNC,
@@ -87,7 +87,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
 
     //patch the final payload with response from configure call
     //remove all unwanted nodes in nodeDetailsSet
-    const finalPayload: UniverseConfigure = {
+    const finalPayload = {
       ...configureData,
       expectedUniverseVersion: universe?.version,
       nodeDetailsSet: configureData.nodeDetailsSet.filter(
@@ -101,10 +101,6 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = (props) => {
       ]
     };
     createReadReplica(finalPayload);
-  };
-
-  const onCancel = () => {
-    browserHistory.goBack();
   };
 
   if (isLoading || contextState.isLoading) return <YBLoading />;

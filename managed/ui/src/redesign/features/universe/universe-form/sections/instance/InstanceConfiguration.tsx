@@ -1,10 +1,11 @@
 import React, { FC, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useQuery } from 'react-query';
 import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
-import { api, QUERY_KEY } from '../../utils/api';
 import { Box, Grid, Typography } from '@material-ui/core';
+import { useSectionStyles } from '../../universeMainStyle';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 import {
   AssignPublicIPField,
   ClientToNodeTLSField,
@@ -21,7 +22,7 @@ import {
   DedicatedNodesField
 } from '../../fields';
 import { YBLabel } from '../../../../../components';
-import { UniverseFormContext } from '../../UniverseFormContainer';
+import { api, QUERY_KEY } from '../../utils/api';
 import {
   AccessKey,
   CloudType,
@@ -36,11 +37,8 @@ import {
   NODE_TO_NODE_ENCRYPT_FIELD,
   ACCESS_KEY_FIELD
 } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
 
-interface InstanceConfigProps {}
-
-export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
+export const InstanceConfiguration: FC = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
 
@@ -70,17 +68,16 @@ export const InstanceConfiguration: FC<InstanceConfigProps> = () => {
   const encryptionEnabled = useWatch({ name: EAR_FIELD });
   const clientNodeTLSEnabled = useWatch({ name: CLIENT_TO_NODE_ENCRYPT_FIELD });
   const nodeNodeTLSEnabled = useWatch({ name: NODE_TO_NODE_ENCRYPT_FIELD });
+  const accessKey = useWatch({ name: ACCESS_KEY_FIELD });
 
   //access key info
-  const currentAccessKey = useWatch({ name: ACCESS_KEY_FIELD });
   const accessKeys = useSelector((state: any) => state.cloud.accessKeys);
   const currentAccessKeyInfo = accessKeys.data.find(
-    (key: AccessKey) =>
-      key.idKey.providerUUID === provider?.uuid && key.idKey.keyCode === currentAccessKey
+    (key: AccessKey) => key.idKey.providerUUID === provider?.uuid && key.idKey.keyCode === accessKey
   );
 
   return (
-    <Box className={classes.sectionContainer}>
+    <Box className={classes.sectionContainer} data-testid="instance-config-section">
       <Typography className={classes.sectionHeaderFont}>
         {t('universeForm.instanceConfig.title')}
       </Typography>

@@ -1,7 +1,7 @@
 import React, { FC } from 'react';
-import pluralize from 'pluralize';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, makeStyles, Theme } from '@material-ui/core';
+import pluralize from 'pluralize';
+import { Box, Theme, Typography, makeStyles } from '@material-ui/core';
 import { YBModal } from '../../../../../components';
 import { getPrimaryCluster } from '../../utils/helpers';
 import { Cluster, UniverseDetails } from '../../utils/dto';
@@ -11,24 +11,24 @@ const useStyles = makeStyles((theme: Theme) => ({
     color: '#8d8f9a'
   },
   regionBox: {
+    backgroundColor: '#f7f7f7',
     borderRadius: theme.spacing[0.75],
-    padding: theme.spacing(1.5, 2),
-    backgroundColor: '#f7f7f7'
+    padding: theme.spacing(1.5, 2)
   }
 }));
 
 interface FMModalProps {
-  open: boolean;
-  oldConfigData: UniverseDetails;
   newConfigData: UniverseDetails;
+  oldConfigData: UniverseDetails;
+  open: boolean;
   onClose: () => void;
   onSubmit: () => void;
 }
 
 export const FullMoveModal: FC<FMModalProps> = ({
-  open,
-  oldConfigData,
   newConfigData,
+  oldConfigData,
+  open,
   onClose,
   onSubmit
 }) => {
@@ -38,8 +38,7 @@ export const FullMoveModal: FC<FMModalProps> = ({
   const newPrimaryCluster = getPrimaryCluster(newConfigData);
 
   const renderConfig = (cluster: Cluster, isNew: boolean) => {
-    const { userIntent, placementInfo } = cluster;
-    console.log(placementInfo);
+    const { placementInfo, userIntent } = cluster;
     return (
       <Box
         display="flex"
@@ -94,8 +93,10 @@ export const FullMoveModal: FC<FMModalProps> = ({
       onSubmit={onSubmit}
       overrideHeight="auto"
       titleSeparator
+      submitTestId="submit-full-move"
+      cancelTestId="close-full-move"
     >
-      <Box display="flex" width="100%" flexDirection="column">
+      <Box display="flex" width="100%" flexDirection="column" data-testid="full-move-modal">
         <Box>
           <Typography variant="body2">
             {t('universeForm.fullMoveModal.modalDescription')}

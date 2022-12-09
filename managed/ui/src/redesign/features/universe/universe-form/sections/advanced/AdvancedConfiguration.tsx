@@ -2,6 +2,8 @@ import React, { FC, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
+import { useSectionStyles } from '../../universeMainStyle';
+import { UniverseFormContext } from '../../UniverseFormContainer';
 import {
   AccessKeysField,
   ARNField,
@@ -11,24 +13,20 @@ import {
   NetworkAccessField,
   SystemDField
 } from '../../fields';
-import { UniverseFormContext } from '../../UniverseFormContainer';
 import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
 import { PROVIDER_FIELD } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
 
-interface AdvancedConfigProps {}
-
-export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
+export const AdvancedConfiguration: FC = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
 
   //form context
-  const { mode, clusterType, newUniverse } = useContext(UniverseFormContext)[0];
+  const { clusterType, mode, newUniverse } = useContext(UniverseFormContext)[0];
 
   const isPrimary = clusterType === ClusterType.PRIMARY;
   const isCreateMode = mode === ClusterModes.CREATE; //Form is in edit mode
-  const isCreateRR = !newUniverse && isCreateMode && !isPrimary; //Adding Async Cluster to an existing Universe
   const isCreatePrimary = isCreateMode && isPrimary; //Editing Primary Cluster
+  const isCreateRR = !newUniverse && isCreateMode && !isPrimary; //Adding Async Cluster to an existing Universe
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -36,7 +34,7 @@ export const AdvancedConfiguration: FC<AdvancedConfigProps> = () => {
   if (!provider?.code) return null;
 
   return (
-    <Box className={classes.sectionContainer}>
+    <Box className={classes.sectionContainer} data-testid="advanced-config-section">
       <Typography className={classes.sectionHeaderFont}>
         {t('universeForm.advancedConfig.title')}
       </Typography>

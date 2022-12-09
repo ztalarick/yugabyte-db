@@ -1,17 +1,17 @@
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
-import { api } from '../../utils/api';
 import { Box, Typography } from '@material-ui/core';
-import { YBModal, YBCheckbox, YBLabel, YBInputField } from '../../../../../components';
+import { YBCheckbox, YBInputField, YBLabel, YBModal } from '../../../../../components';
+import { api } from '../../utils/api';
 import { transitToUniverse } from '../../utils/helpers';
 import { UniverseConfigure, ClusterType } from '../../utils/dto';
 import { UPDATE_ACTIONS } from '../EditUniverse';
 
 interface RNModalProps {
   open: boolean;
-  onClose: () => void;
   universeData: UniverseConfigure;
+  onClose: () => void;
 }
 
 type ResizeFormValues = {
@@ -22,10 +22,10 @@ const defaultValues: ResizeFormValues = {
   timeDelay: 180
 };
 
-export const ResizeNodeModal: FC<RNModalProps> = ({ open, onClose, universeData }) => {
+export const ResizeNodeModal: FC<RNModalProps> = ({ open, universeData, onClose }) => {
   const [isResizeConfirmed, setResizeConfirm] = useState(false);
   const { t } = useTranslation();
-  const { handleSubmit, control } = useForm<ResizeFormValues>({
+  const { control, handleSubmit } = useForm<ResizeFormValues>({
     defaultValues
   });
 
@@ -46,13 +46,13 @@ export const ResizeNodeModal: FC<RNModalProps> = ({ open, onClose, universeData 
     if (primaryCluster && universeData) {
       let payload = {
         clusters: [primaryCluster],
-        ybSoftwareVersion: primaryCluster?.userIntent.ybSoftwareVersion,
-        universeUUID: universeData?.universeUUID,
-        upgradeOption: 'Rolling',
-        taskType: 'Resize_Node',
         nodePrefix: universeData?.nodePrefix,
         sleepAfterMasterRestartMillis: formValues.timeDelay * 1000,
-        sleepAfterTServerRestartMillis: formValues.timeDelay * 1000
+        sleepAfterTServerRestartMillis: formValues.timeDelay * 1000,
+        taskType: 'Resize_Node',
+        universeUUID: universeData?.universeUUID,
+        upgradeOption: 'Rolling',
+        ybSoftwareVersion: primaryCluster?.userIntent.ybSoftwareVersion
       };
       universeData?.universeUUID && submitResizeForm(payload, universeData.universeUUID);
     }
@@ -61,11 +61,11 @@ export const ResizeNodeModal: FC<RNModalProps> = ({ open, onClose, universeData 
   const confirmResizeCheckBox = () => {
     return (
       <YBCheckbox
-        size="medium"
-        onChange={(e) => setResizeConfirm(e.target.checked)}
         defaultChecked={isResizeConfirmed}
         value={isResizeConfirmed}
+        onChange={(e) => setResizeConfirm(e.target.checked)}
         label={t('universeForm.resizeNodeModal.confirmResizeCheckbox')}
+        size="medium"
       />
     );
   };
@@ -81,7 +81,6 @@ export const ResizeNodeModal: FC<RNModalProps> = ({ open, onClose, universeData 
       buttonProps={{
         primary: {
           disabled: !isResizeConfirmed
-          // showSpinner: isLoadingCreateMutation
         }
       }}
       dialogContentProps={{ style: { paddingTop: 20 } }}
@@ -90,8 +89,10 @@ export const ResizeNodeModal: FC<RNModalProps> = ({ open, onClose, universeData 
       overrideWidth={600}
       titleSeparator
       actionsInfo={confirmResizeCheckBox()}
+      submitTestId="submit-resize-node"
+      cancelTestId="close-resize-node"
     >
-      <Box display="flex" width="100%">
+      <Box display="flex" width="100%" data-testid="resize-node-modal">
         {universeData?.updateOptions?.includes(UPDATE_ACTIONS.SMART_RESIZE_NON_RESTART) ? (
           <Typography variant="body2">
             {t('universeForm.resizeNodeModal.modalDescription')}
@@ -105,10 +106,9 @@ export const ResizeNodeModal: FC<RNModalProps> = ({ open, onClose, universeData 
                 type="number"
                 name="timeDelay"
                 fullWidth
-                // disabled={disabled}
                 inputProps={{
                   autoFocus: true,
-                  'data-testid': 'timeDelay'
+                  'data-testid': 'time-delay'
                 }}
               />
             </Box>

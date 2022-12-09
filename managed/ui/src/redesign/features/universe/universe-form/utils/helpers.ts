@@ -53,18 +53,15 @@ export const filterFormDataByClusterType = (
 };
 
 //transform gflags - to consume it in the form
-export const transformGFlagToFlagsArray = (gFlags: Record<string, any> = {}, flagType: string) => {
-  const flagsArray = [
-    ...Object.keys(gFlags).map((key: string) => ({
-      Name: key,
-      [flagType]: gFlags[key]
-    }))
-  ];
-  return flagsArray;
-};
+export const transformGFlagToFlagsArray = (gFlags: Record<string, any> = {}, flagType: string) => [
+  ...Object.keys(gFlags).map((key: string) => ({
+    Name: key,
+    [flagType]: gFlags[key]
+  }))
+];
 
 //transform gflags - for universe configure route
-const transformFlagArrayToObject = (
+export const transformFlagArrayToObject = (
   flagsArray: Gflag[] = []
 ): { masterGFlags: Record<string, any>; tserverGFlags: Record<string, any> } => {
   let masterGFlags = {},
@@ -77,19 +74,18 @@ const transformFlagArrayToObject = (
 };
 
 //transform instance tags - to consume it in the form
-const transformInstanceTags = (instanceTags: Record<string, string> = {}) =>
+export const transformInstanceTags = (instanceTags: Record<string, string> = {}) =>
   Object.entries(instanceTags).map(([key, val]) => ({
     name: key,
     value: val
   }));
 
 //transform instance tags - for universe configure route
-const transformTagsArrayToObject = (instanceTags: InstanceTags) => {
-  return instanceTags.reduce((tagsObj: Record<string, string>, tag: InstanceTag) => {
+export const transformTagsArrayToObject = (instanceTags: InstanceTags) =>
+  instanceTags.reduce((tagsObj: Record<string, string>, tag: InstanceTag) => {
     if (tag?.name && tag?.value) tagsObj[tag.name] = `${tag.value}`;
     return tagsObj;
   }, {});
-};
 
 //Transform universe data to form data
 export const getFormData = (universeData: UniverseDetails, clusterType: ClusterType) => {
@@ -195,27 +191,6 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
 };
 
 //Form Submit helpers
-const patchConfigResponse = (response: UniverseDetails, original: UniverseDetails) => {
-  const clusterIndex = response.clusters.findIndex(
-    (cluster: Cluster) => cluster.clusterType === ClusterType.PRIMARY
-  );
-
-  response.clusterOperation = original.clusterOperation;
-  response.currentClusterType = original.currentClusterType;
-  response.encryptionAtRestConfig = original.encryptionAtRestConfig;
-
-  const userIntent = response.clusters[clusterIndex].userIntent;
-  userIntent.instanceTags = original.clusters[clusterIndex].userIntent.instanceTags;
-  userIntent.masterGFlags = original.clusters[clusterIndex].userIntent.masterGFlags;
-  userIntent.tserverGFlags = original.clusters[clusterIndex].userIntent.tserverGFlags;
-
-  if (userIntent.enableYCQLAuth)
-    userIntent.ycqlPassword = original.clusters[clusterIndex].userIntent.ycqlPassword;
-
-  if (userIntent.enableYSQLAuth)
-    userIntent.ysqlPassword = original.clusters[clusterIndex].userIntent.ysqlPassword;
-};
-
 export const createUniverse = async ({
   configurePayload,
   universeContextData
@@ -226,12 +201,22 @@ export const createUniverse = async ({
   let response;
   try {
     // in create mode no configure call is made with all form fields ( intent )
+    const configPayload = configurePayload as UniverseDetails;
     const finalPayload = await api.universeConfigure(
-      _.merge(universeContextData.universeConfigureTemplate, configurePayload)
+      _.merge(universeContextData.universeConfigureTemplate, configPayload)
     );
 
-    //some data format changes after configure call
-    patchConfigResponse(finalPayload, configurePayload as UniverseDetails);
+    //patch - start -- some data format changes after configure call
+    const clusterIndex = finalPayload.clusters.findIndex(
+      (cluster: Cluster) => cluster.clusterType === ClusterType.PRIMARY
+    );
+    const userIntent = finalPayload.clusters[clusterIndex].userIntent;
+    finalPayload.encryptionAtRestConfig = configPayload.encryptionAtRestConfig;
+    if (userIntent.enableYCQLAuth)
+      userIntent.ycqlPassword = configPayload.clusters[clusterIndex].userIntent.ycqlPassword;
+    if (userIntent.enableYSQLAuth)
+      userIntent.ysqlPassword = configPayload.clusters[clusterIndex].userIntent.ysqlPassword;
+    //patch - end
 
     // now everything is ready to create universe
     response = await api.createUniverse(finalPayload);

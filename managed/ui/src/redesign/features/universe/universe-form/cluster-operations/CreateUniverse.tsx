@@ -1,11 +1,12 @@
 import React, { FC, useContext } from 'react';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { browserHistory } from 'react-router';
 import { useUpdateEffect, useEffectOnce } from 'react-use';
-import { UniverseForm } from '../UniverseForm';
+import { browserHistory } from 'react-router';
 import { UniverseFormContext } from '../UniverseFormContainer';
+import { UniverseForm } from '../UniverseForm';
 import { YBLoading } from '../../../../../components/common/indicators';
+import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 import {
   createUniverse,
   filterFormDataByClusterType,
@@ -20,20 +21,17 @@ import {
   CloudType,
   UniverseConfigure
 } from '../utils/dto';
-import { getPlacements } from '../fields/PlacementsField/PlacementsFieldHelper';
 
-interface CreateUniverseProps {}
-
-export const CreateUniverse: FC<CreateUniverseProps> = () => {
+export const CreateUniverse: FC = () => {
   const { t } = useTranslation();
   const [contextState, contextMethods] = useContext(UniverseFormContext);
-  const { isLoading, primaryFormData, asyncFormData, clusterType } = contextState;
+  const { asyncFormData, clusterType, isLoading, primaryFormData } = contextState;
   const {
     initializeForm,
-    toggleClusterType,
     setPrimaryFormData,
     setAsyncFormData,
-    setLoader
+    setLoader,
+    toggleClusterType
   } = contextMethods;
   const featureFlags = useSelector((state: any) => state.featureFlags);
   const isPrimary = clusterType === ClusterType.PRIMARY;
@@ -57,6 +55,8 @@ export const CreateUniverse: FC<CreateUniverseProps> = () => {
   useUpdateEffect(() => {
     setLoader(false);
   }, [clusterType]);
+
+  const onCancel = () => browserHistory.goBack();
 
   const onSubmit = (primaryData: UniverseFormData, asyncData: UniverseFormData) => {
     const configurePayload: UniverseConfigure = {
@@ -112,10 +112,6 @@ export const CreateUniverse: FC<CreateUniverseProps> = () => {
       configurePayload.encryptionAtRestConfig.configUUID = primaryData.instanceConfig.kmsConfig;
     }
     createUniverse({ configurePayload, universeContextData: contextState });
-  };
-
-  const onCancel = () => {
-    browserHistory.goBack();
   };
 
   if (isLoading) return <YBLoading />;

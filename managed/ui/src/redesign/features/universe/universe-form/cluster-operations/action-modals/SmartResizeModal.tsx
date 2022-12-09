@@ -1,6 +1,6 @@
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, makeStyles, Theme } from '@material-ui/core';
+import { Box, Theme, Typography, makeStyles } from '@material-ui/core';
 import { YBModal, YBButton } from '../../../../../components';
 import { getPrimaryCluster } from '../../utils/helpers';
 import { UniverseDetails } from '../../utils/dto';
@@ -12,21 +12,21 @@ const useStyles = makeStyles((theme: Theme) => ({
 }));
 
 interface SRModalProps {
-  open: boolean;
-  oldConfigData: UniverseDetails;
   newConfigData: UniverseDetails;
-  onClose: () => void;
-  handleSmartResize: () => void;
+  oldConfigData: UniverseDetails;
+  open: boolean;
   handleFullMove: () => void;
+  handleSmartResize: () => void;
+  onClose: () => void;
 }
 
 export const SmartResizeModal: FC<SRModalProps> = ({
-  open,
-  onClose,
-  oldConfigData,
   newConfigData,
+  oldConfigData,
+  open,
+  handleFullMove,
   handleSmartResize,
-  handleFullMove
+  onClose
 }) => {
   const { t } = useTranslation();
   const classes = useStyles();
@@ -42,22 +42,18 @@ export const SmartResizeModal: FC<SRModalProps> = ({
       size="sm"
       cancelLabel={t('common.cancel')}
       submitLabel={t('universeForm.fullMoveModal.submitLabel')}
-      buttonProps={{
-        primary: {
-          //   disabled: true
-          // showSpinner: isLoadingCreateMutation
-        }
-      }}
       dialogContentProps={{ style: { paddingTop: 20 } }}
       onSubmit={handleFullMove}
       titleSeparator
+      submitTestId="submit-full-move"
+      cancelTestId="close-smart-resize"
       actionsInfo={
-        <YBButton variant="primary" onClick={handleSmartResize}>
+        <YBButton data-testid="open-smart-resize" variant="primary" onClick={handleSmartResize}>
           {t('universeForm.smartResizeModal.buttonLabel')}
         </YBButton>
       }
     >
-      <Box display="flex" width="100%" flexDirection="column">
+      <Box display="flex" width="100%" flexDirection="column" data-testid="smart-resize-modal">
         <Box>
           <Typography variant="body2">
             {t('universeForm.smartResizeModal.modalDescription', {
@@ -69,17 +65,21 @@ export const SmartResizeModal: FC<SRModalProps> = ({
           <Box flex={1} className={classes.greyText} p={1}>
             <Typography variant="h5">{t('universeForm.current')}</Typography>
             <Box mt={2} display="inline-block" width="100%">
-              <b>{oldIntent?.instanceType}</b>&nbsp;{t('universeForm.perInstanceType')}
+              <b data-testid="old-instance-type">{oldIntent?.instanceType}</b>&nbsp;
+              {t('universeForm.perInstanceType')}
               <br />
-              <b>{oldIntent?.deviceInfo?.volumeSize}Gb</b>&nbsp;{t('universeForm.perInstance')}
+              <b data-testid="old-volume-size">{oldIntent?.deviceInfo?.volumeSize}Gb</b>&nbsp;
+              {t('universeForm.perInstance')}
             </Box>
           </Box>
           <Box flex={1} p={1}>
             <Typography variant="h5">{t('universeForm.new')}</Typography>
             <Box mt={2} display="inline-block" width="100%">
-              <b>{newIntent?.instanceType}</b>&nbsp;{t('universeForm.perInstanceType')}
+              <b data-testid="new-instance-type">{newIntent?.instanceType}</b>&nbsp;
+              {t('universeForm.perInstanceType')}
               <br />
-              <b>{newIntent?.deviceInfo?.volumeSize}Gb</b>&nbsp;{t('universeForm.perInstance')}
+              <b data-testid="new-volume-size">{newIntent?.deviceInfo?.volumeSize}Gb</b>&nbsp;
+              {t('universeForm.perInstance')}
             </Box>
           </Box>
         </Box>

@@ -5,11 +5,11 @@ import { YBCost, Multiplier } from '../../../../../components';
 import { UniverseResource } from '../../utils/dto';
 
 interface ResourceCountProps {
-  size: any;
   kind?: string;
-  unit?: string;
   pluralizeKind?: boolean;
   pluralizeUnit?: boolean;
+  size: any;
+  unit?: string;
 }
 
 interface UniverseResourceProps {
@@ -17,47 +17,42 @@ interface UniverseResourceProps {
 }
 
 const useStyles = makeStyles((theme: Theme) => ({
+  fullOpacity: {
+    opacity: 1
+  },
+  halfOpacity: {
+    opacity: 0.5
+  },
   resourceCountContainer: {
     marginRight: theme.spacing(4),
     minWidth: '70px',
     textAlign: 'left'
   },
-
   resourceCountSize: {
+    color: theme.palette.ybacolors.darkBlue,
+    display: 'inline-block',
     fontSize: theme.spacing(4),
     fontWeight: 500,
-    color: theme.palette.ybacolors.darkBlue,
-    textOverflow: 'ellipsis',
-    display: 'inline-block'
+    textOverflow: 'ellipsis'
   },
-
   resourceCountUnit: {
+    color: theme.palette.ybacolors.darkBlue,
     fontSize: theme.spacing(1.75),
-    fontWeight: 400,
-    color: theme.palette.ybacolors.darkBlue
+    fontWeight: 400
   },
-
   resourceCountKind: {
+    color: '#333',
     fontSize: theme.spacing(1.75),
-    fontWeight: 300,
-    color: '#333'
-  },
-
-  fullOpacity: {
-    opacity: 1
-  },
-
-  halfOpacity: {
-    opacity: 0.5
+    fontWeight: 300
   }
 }));
 
 export const ResourceCount: FC<ResourceCountProps> = ({
-  size,
   kind,
-  unit,
   pluralizeKind,
-  pluralizeUnit
+  pluralizeUnit,
+  size,
+  unit
 }) => {
   const classes = useStyles();
   return (
@@ -97,10 +92,11 @@ export const UniverseResourceContainer: FC<UniverseResourceProps> = ({ data }) =
 
   return (
     <Box
-      display={'flex'}
-      width="100%"
-      flexDirection={'row'}
+      display="flex"
+      data-testid="cost-estimator"
+      flexDirection="row"
       justifyContent="center"
+      width="100%"
       className={data ? classes.fullOpacity : classes.halfOpacity}
     >
       <ResourceCount size={numCores || 0} kind="Core" pluralizeKind />
