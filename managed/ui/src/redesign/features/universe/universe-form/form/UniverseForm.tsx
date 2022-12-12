@@ -1,7 +1,7 @@
 import React, { useContext, FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, FormProvider } from 'react-hook-form';
-import { Typography, Grid, Box } from '@material-ui/core';
+import { Typography, Grid, Box, Link } from '@material-ui/core';
 import { YBButton } from '../../../../components';
 import {
   AdvancedConfiguration,
@@ -13,7 +13,7 @@ import {
   UniverseResourceContainer
 } from './sections';
 import { UniverseFormContext } from '../UniverseFormContainer';
-import { UniverseFormData, ClusterType } from '../utils/dto';
+import { UniverseFormData, ClusterType, ClusterModes } from '../utils/dto';
 import { UNIVERSE_NAME_FIELD } from '../utils/constants';
 import { useFormMainStyles } from '../universeMainStyle';
 
@@ -49,8 +49,12 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   const { t } = useTranslation();
 
   //context state
-  const { clusterType, universeResourceTemplate } = useContext(UniverseFormContext)[0];
+  const { asyncFormData, clusterType, mode, universeResourceTemplate } = useContext(
+    UniverseFormContext
+  )[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
+  const isEditMode = mode === ClusterModes.EDIT;
+  const isEditRR = isEditMode && !isPrimary;
 
   //init form
   const formMethods = useForm<UniverseFormData>({
@@ -105,11 +109,24 @@ export const UniverseForm: FC<UniverseFormProps> = ({
               flexShrink={1}
               display={'flex'}
               ml={2}
+              mr={1}
               alignItems="center"
               className={!isPrimary ? classes.selectedTab : classes.disabledTab}
             >
               {t('universeForm.rrTab')}
             </Box>
+            {/* show during new universe creation only */}
+            {isNewUniverse && onDeleteRR && !!asyncFormData && (
+              <YBButton
+                className={classes.clearRRButton}
+                component={Link}
+                variant="ghost"
+                size="small"
+                onClick={onDeleteRR}
+              >
+                {t('universeForm.clearReadReplica')}
+              </YBButton>
+            )}
           </>
         )}
       </>
@@ -133,7 +150,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
           </Grid>
           <Grid item lg={4}>
             <Box width="100%" display="flex" justifyContent="flex-end">
-              <YBButton variant="secondary" size="large" onClick={() => onCancel()}>
+              <YBButton variant="secondary" size="large" onClick={onCancel}>
                 {t('common.cancel')}
               </YBButton>
               &nbsp;
@@ -146,7 +163,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
                 </YBButton>
               )}
               {/* shown only during edit RR flow */}
-              {onDeleteRR && (
+              {onDeleteRR && isEditRR && (
                 <YBButton variant="secondary" size="large" onClick={onDeleteRR}>
                   {t('universeForm.actions.deleteRR')}
                 </YBButton>

@@ -16,6 +16,7 @@
       "configReadReplica": "Configure read replica",
       "createUniverse": "Create universe",
       "current": "Current :",
+      "clearReadReplica": "Clear Read Replica",
       "editReadReplica": "Edit read replica",
       "editUniverse": "Edit universe",
       "new": "New :",
