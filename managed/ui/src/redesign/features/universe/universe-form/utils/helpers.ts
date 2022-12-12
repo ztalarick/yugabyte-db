@@ -16,7 +16,7 @@ import {
 import { UniverseFormContextState } from '../UniverseFormContainer';
 import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
 import { api } from './api';
-import { getPlacementsFromCluster } from '../fields/PlacementsField/PlacementsFieldHelper';
+import { getPlacementsFromCluster } from '../form/fields/PlacementsField/PlacementsFieldHelper';
 
 export const transitToUniverse = (universeUUID: string) =>
   browserHistory.push(`/universes/${universeUUID}/tasks`);

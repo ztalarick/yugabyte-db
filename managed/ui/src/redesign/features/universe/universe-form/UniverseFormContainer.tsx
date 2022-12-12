@@ -5,12 +5,10 @@ import { RouteComponentProps } from 'react-router-dom';
 import { api, QUERY_KEY } from './utils/api';
 import { Box } from '@material-ui/core';
 import { YBLoading } from '../../../../components/common/indicators';
-import {
-  CreateUniverse,
-  CreateReadReplica,
-  EditUniverse,
-  EditReadReplica
-} from './cluster-operations';
+import { CreateReadReplica } from './CreateRR';
+import { CreateUniverse } from './CreateUniverse';
+import { EditReadReplica } from './EditRR';
+import { EditUniverse } from './EditUniverse';
 import {
   UniverseConfigure,
   ClusterType,
