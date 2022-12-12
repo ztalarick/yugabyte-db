@@ -14,8 +14,10 @@ import {
   getUserIntent
 } from './utils/helpers';
 import {
+  Cluster,
   ClusterType,
   ClusterModes,
+  NodeDetails,
   DEFAULT_FORM_DATA,
   UniverseFormData,
   CloudType,
@@ -25,7 +27,13 @@ import {
 export const CreateUniverse: FC = () => {
   const { t } = useTranslation();
   const [contextState, contextMethods] = useContext(UniverseFormContext);
-  const { asyncFormData, clusterType, isLoading, primaryFormData } = contextState;
+  const {
+    asyncFormData,
+    clusterType,
+    isLoading,
+    primaryFormData,
+    universeConfigureTemplate
+  } = contextState;
   const {
     initializeForm,
     setPrimaryFormData,
@@ -55,6 +63,27 @@ export const CreateUniverse: FC = () => {
   useUpdateEffect(() => {
     setLoader(false);
   }, [clusterType]);
+
+  const handleClearRR = () => {
+    const primaryClusterUUID = universeConfigureTemplate.clusters.find(
+      (cluster: Cluster) => cluster.clusterType === ClusterType.PRIMARY
+    ).uuid;
+    //1. Remove async cluster from clusters array
+    //2. Remove nodes related to async cluster
+    initializeForm({
+      clusterType: ClusterType.PRIMARY,
+      asyncFormData: null,
+      universeConfigureTemplate: {
+        ...universeConfigureTemplate,
+        clusters: universeConfigureTemplate.clusters.filter(
+          (cluster: Cluster) => cluster.clusterType === ClusterType.PRIMARY
+        ),
+        nodeDetailsSet: universeConfigureTemplate.nodeDetailsSet.filter(
+          (node: NodeDetails) => node.placementUuid === primaryClusterUUID
+        )
+      }
+    });
+  };
 
   const onCancel = () => browserHistory.goBack();
 
@@ -128,6 +157,7 @@ export const CreateUniverse: FC = () => {
         }
         submitLabel={t('common.create')}
         onCancel={onCancel}
+        onDeleteRR={handleClearRR} //Clearing configured RR ( UI only operation)
         onClusterTypeChange={(data: UniverseFormData) => {
           setLoader(true);
           setPrimaryFormData(data);
@@ -146,6 +176,7 @@ export const CreateUniverse: FC = () => {
         }
         onFormSubmit={(data: UniverseFormData) => onSubmit(primaryFormData, data)}
         onCancel={onCancel}
+        onDeleteRR={handleClearRR} //Clearing configured RR ( UI only operation )
         submitLabel={t('common.create')}
         onClusterTypeChange={(data: UniverseFormData) => {
           setLoader(true);

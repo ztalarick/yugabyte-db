@@ -78,6 +78,16 @@ export const useFormMainStyles = makeStyles((theme) => ({
   formButtons: {
     height: theme.spacing(3.75),
     borderRadius: theme.spacing(0.5)
+  },
+
+  clearRRButton: {
+    padding: '1px !important',
+    '& span': {
+      color: theme.palette.orange[300],
+      marginLeft: theme.spacing(0),
+      fontSize: '12px !important',
+      textDecoration: 'underline'
+    }
   }
 }));
 
