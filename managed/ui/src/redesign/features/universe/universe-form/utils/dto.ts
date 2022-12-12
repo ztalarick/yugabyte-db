@@ -1,4 +1,4 @@
-import { ProviderMin } from '../fields/ProvidersField/ProvidersField';
+import { ProviderMin } from '../form/fields/ProvidersField/ProvidersField';
 
 //This File has enum, interfaces, dto related Universe Form and divided to help in finding theme easily
 //--------------------------------------------------------- Most Used OR Common Types - Starts --------------------------------------------------------
