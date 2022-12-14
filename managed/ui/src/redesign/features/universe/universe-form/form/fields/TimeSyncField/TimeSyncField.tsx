@@ -1,9 +1,9 @@
 import React, { ReactElement } from 'react';
-import { Box } from '@material-ui/core';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { CloudType, UniverseFormData } from '../../../utils/dto';
+import { Box } from '@material-ui/core';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../../components';
+import { CloudType, UniverseFormData } from '../../../utils/dto';
 import { TIME_SYNC_FIELD, PROVIDER_FIELD } from '../../../utils/constants';
 
 interface TimeSyncFieldProps {
@@ -20,23 +20,28 @@ export const TimeSyncField = ({ disabled }: TimeSyncFieldProps): ReactElement =>
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
+  //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
 
   const stringMap = { provider: PROVIDER_FRIENDLY_NAME[provider?.code] };
 
   return (
-    <Box display="flex" width="100%">
-      <YBLabel>{t('universeForm.instanceConfig.useTimeSync', stringMap)}</YBLabel>
+    <Box display="flex" width="100%" data-testid="TimeSyncField-Container">
+      <YBLabel dataTestId="TimeSyncField-Label">
+        {t('universeForm.instanceConfig.useTimeSync', stringMap)}
+      </YBLabel>
       <Box flex={1}>
         <YBToggleField
           name={TIME_SYNC_FIELD}
           inputProps={{
-            'data-testid': 'useTimeSync'
+            'data-testid': 'TimeSyncField-Toggle'
           }}
           control={control}
           disabled={disabled}
         />
-        <YBHelper>{t('universeForm.instanceConfig.useTimeSyncHelper', stringMap)}</YBHelper>
+        <YBHelper dataTestId="TimeSyncField-Helper">
+          {t('universeForm.instanceConfig.useTimeSyncHelper', stringMap)}
+        </YBHelper>
       </Box>
     </Box>
   );

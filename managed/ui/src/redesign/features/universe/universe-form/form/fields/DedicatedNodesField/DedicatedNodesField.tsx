@@ -1,9 +1,9 @@
 import React, { ReactElement } from 'react';
-import { Box } from '@material-ui/core';
-import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { UniverseFormData } from '../../../utils/dto';
+import { useFormContext } from 'react-hook-form';
+import { Box } from '@material-ui/core';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../../components';
+import { UniverseFormData } from '../../../utils/dto';
 import { DEDICATED_NODES_FIELD } from '../../../utils/constants';
 
 interface DedicatedNodesFieldProps {
@@ -15,18 +15,22 @@ export const DedicatedNodesField = ({ disabled }: DedicatedNodesFieldProps): Rea
   const { t } = useTranslation();
 
   return (
-    <Box display="flex" width="100%">
-      <YBLabel>{t('universeForm.instanceConfig.dedicatedNodes')}</YBLabel>
+    <Box display="flex" width="100%" data-testid="DedicatedNodesField-Container">
+      <YBLabel dataTestId="DedicatedNodesField-Label">
+        {t('universeForm.instanceConfig.dedicatedNodes')}
+      </YBLabel>
       <Box flex={1}>
         <YBToggleField
           name={DEDICATED_NODES_FIELD}
           inputProps={{
-            'data-testid': 'dedicatedNodes'
+            'data-testid': 'DedicatedNodesField-Toggle'
           }}
           control={control}
           disabled={disabled}
         />
-        <YBHelper>{t('universeForm.instanceConfig.dedicatedNodesHelper')}</YBHelper>
+        <YBHelper dataTestId="DedicatedNodesField-Helper">
+          {t('universeForm.instanceConfig.dedicatedNodesHelper')}
+        </YBHelper>
       </Box>
     </Box>
   );

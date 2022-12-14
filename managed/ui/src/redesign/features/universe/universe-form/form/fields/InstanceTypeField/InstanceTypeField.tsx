@@ -1,10 +1,17 @@
 import React, { ChangeEvent, FC } from 'react';
 import pluralize from 'pluralize';
-import { Box } from '@material-ui/core';
-import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useQuery } from 'react-query';
+import { useUpdateEffect } from 'react-use';
 import { useTranslation } from 'react-i18next';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { Box } from '@material-ui/core';
+import { YBLabel, YBAutoComplete, YBHelper, YBHelperVariants } from '../../../../../../components';
 import { api, QUERY_KEY } from '../../../utils/api';
+import {
+  sortAndGroup,
+  DEFAULT_INSTANCE_TYPES,
+  isEphemeralAwsStorageInstance
+} from './InstanceTypeFieldHelper';
 import {
   CloudType,
   InstanceType,
@@ -12,12 +19,6 @@ import {
   StorageType,
   UniverseFormData
 } from '../../../utils/dto';
-import { YBLabel, YBAutoComplete, YBHelper, YBHelperVariants } from '../../../../../../components';
-import {
-  sortAndGroup,
-  DEFAULT_INSTANCE_TYPES,
-  isEphemeralAwsStorageInstance
-} from './InstanceTypeFieldHelper';
 import { INSTANCE_TYPE_FIELD, PROVIDER_FIELD, DEVICE_INFO_FIELD } from '../../../utils/constants';
 
 const getOptionLabel = (op: Record<string, string>): string => {
@@ -40,6 +41,7 @@ export const InstanceTypeField: FC = () => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
+  //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
   const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
 
@@ -47,7 +49,7 @@ export const InstanceTypeField: FC = () => {
     setValue(INSTANCE_TYPE_FIELD, option?.instanceTypeCode, { shouldValidate: true });
   };
 
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, refetch } = useQuery(
     [QUERY_KEY.getInstanceTypes, provider?.uuid],
     () => api.getInstanceTypes(provider?.uuid),
     {
@@ -62,6 +64,14 @@ export const InstanceTypeField: FC = () => {
       }
     }
   );
+
+  useUpdateEffect(() => {
+    //Reset instance type after provider change
+    setValue(INSTANCE_TYPE_FIELD, null);
+    //refetch instances based on changed provider
+    refetch();
+  }, [provider]);
+
   const instanceTypes = sortAndGroup(data, provider?.code);
 
   return (
@@ -87,8 +97,10 @@ export const InstanceTypeField: FC = () => {
           deviceInfo?.storageType === StorageType.Scratch;
 
         return (
-          <Box display="flex" width="100%">
-            <YBLabel>{t('universeForm.instanceConfig.instanceType')}</YBLabel>
+          <Box display="flex" width="100%" data-testid="InstanceTypeField-Container">
+            <YBLabel dataTestId="InstanceTypeField-Label">
+              {t('universeForm.instanceConfig.instanceType')}
+            </YBLabel>
             <Box flex={1}>
               <YBAutoComplete
                 loading={isLoading}
@@ -99,7 +111,8 @@ export const InstanceTypeField: FC = () => {
                 onChange={handleChange}
                 ybInputProps={{
                   error: !!fieldState.error,
-                  helperText: fieldState.error?.message
+                  helperText: fieldState.error?.message,
+                  'data-testid': 'InstanceTypeField-AutoComplete'
                 }}
                 groupBy={
                   [CloudType.aws, CloudType.gcp, CloudType.azu].includes(provider?.code)
@@ -109,7 +122,7 @@ export const InstanceTypeField: FC = () => {
               />
 
               {(isAWSEphemeralStorage || isGCPEphemeralStorage) && (
-                <YBHelper variant={YBHelperVariants.warning}>
+                <YBHelper dataTestId="InstanceTypeField-Helper" variant={YBHelperVariants.warning}>
                   {t('universeForm.instanceConfig.ephemeralStorage')}
                 </YBHelper>
               )}

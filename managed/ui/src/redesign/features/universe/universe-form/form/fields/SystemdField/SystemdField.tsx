@@ -1,9 +1,9 @@
 import React, { ReactElement } from 'react';
-import { Box } from '@material-ui/core';
-import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { UniverseFormData } from '../../../utils/dto';
+import { useFormContext } from 'react-hook-form';
+import { Box } from '@material-ui/core';
 import { YBLabel, YBToggleField } from '../../../../../../components';
+import { UniverseFormData } from '../../../utils/dto';
 import { SYSTEMD_FIELD } from '../../../utils/constants';
 
 interface SystemDFieldProps {
@@ -15,13 +15,15 @@ export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
   const { t } = useTranslation();
 
   return (
-    <Box display="flex" width="100%">
-      <YBLabel>{t('universeForm.advancedConfig.enableSystemD')}</YBLabel>
+    <Box display="flex" width="100%" data-testid="SystemDField-Container">
+      <YBLabel dataTestId="SystemDField-Label">
+        {t('universeForm.advancedConfig.enableSystemD')}
+      </YBLabel>
       <Box flex={1}>
         <YBToggleField
           name={SYSTEMD_FIELD}
           inputProps={{
-            'data-testid': 'systemD'
+            'data-testid': 'SystemDField-Toggle'
           }}
           control={control}
           disabled={disabled}

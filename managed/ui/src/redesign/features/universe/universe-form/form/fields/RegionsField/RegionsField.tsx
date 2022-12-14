@@ -1,7 +1,7 @@
 import React, { ChangeEvent, ReactElement } from 'react';
 import _ from 'lodash';
-import { useUpdateEffect } from 'react-use';
 import { useQuery } from 'react-query';
+import { useUpdateEffect } from 'react-use';
 import { useTranslation } from 'react-i18next';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { Box } from '@material-ui/core';
@@ -20,8 +20,9 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  //Listen to provider value change
-  const provider = useWatch({ name: PROVIDER_FIELD });
+  //watchers
+  const provider = useWatch({ name: PROVIDER_FIELD }); //Listen to provider value change
+
   const { isFetching, data } = useQuery(
     [QUERY_KEY.getRegionsList, provider?.uuid],
     () => api.getRegionsList(provider?.uuid),
@@ -52,7 +53,7 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
   }, [provider]);
 
   return (
-    <Box display="flex" width="100%" flexDirection={'row'}>
+    <Box display="flex" width="100%" flexDirection={'row'} data-testid="RegionsField-Container">
       <Controller
         name={REGIONS_FIELD}
         control={control}
@@ -65,7 +66,9 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
           const value = field.value.map((region) => regionsListMap[region]);
           return (
             <>
-              <YBLabel>{t('universeForm.cloudConfig.regionsField')}</YBLabel>
+              <YBLabel dataTestId="RegionsField-Label">
+                {t('universeForm.cloudConfig.regionsField')}
+              </YBLabel>
               <Box flex={1}>
                 <YBAutoComplete
                   multiple={true}
@@ -78,7 +81,8 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
                   disabled={disabled}
                   ybInputProps={{
                     error: !!fieldState.error,
-                    helperText: fieldState.error?.message
+                    helperText: fieldState.error?.message,
+                    'data-testid': 'RegionsField-AutoComplete'
                   }}
                 />
               </Box>

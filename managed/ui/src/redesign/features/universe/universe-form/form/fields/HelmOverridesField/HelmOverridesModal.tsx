@@ -1,17 +1,8 @@
 import React, { ReactElement, useState } from 'react';
 import { useMutation } from 'react-query';
-import { Box, Grid, IconButton, Typography, InputAdornment } from '@material-ui/core';
 import { useTranslation } from 'react-i18next';
 import { useFieldArray, FieldArrayPath, useForm } from 'react-hook-form';
-import { api } from '../../../utils/api';
-import { useFormMainStyles } from '../../../universeMainStyle';
-import {
-  AZOverrides,
-  Cluster,
-  ClusterType,
-  HelmOverridesError,
-  UniverseConfigure
-} from '../../../utils/dto';
+import { Box, Grid, IconButton, Typography, InputAdornment } from '@material-ui/core';
 import {
   YBButton,
   YBCheckbox,
@@ -20,6 +11,16 @@ import {
   YBAlert,
   AlertVariant
 } from '../../../../../../components';
+import { api } from '../../../utils/api';
+import {
+  AZOverrides,
+  Cluster,
+  ClusterType,
+  HelmOverridesError,
+  UniverseConfigure
+} from '../../../utils/dto';
+import { useFormMainStyles } from '../../../universeMainStyle';
+//Icons
 import { AZ_OVERRIDES_FIELD, UNIVERSE_OVERRIDES_FIELD } from '../../../utils/constants';
 import { ReactComponent as CloseIcon } from '../../../../../../assets/close.svg';
 
@@ -168,6 +169,8 @@ export const HelmOverridesModal = ({
       title={t('universeForm.helmOverrides.k8sOverrides')}
       cancelLabel={t('common.cancel')}
       submitLabel={t('common.validateAndSave')}
+      cancelTestId="HelmOverridesModal-CancelButton"
+      submitTestId="HelmOverridesModal-SubmitButton"
       onClose={onClose}
       titleSeparator
       onSubmit={handleSave}
@@ -176,6 +179,9 @@ export const HelmOverridesModal = ({
           checked={forceConfirm}
           onChange={() => setForceConfirm(!forceConfirm)}
           label={t('universeForm.helmOverrides.forceApply')}
+          inputProps={{
+            'data-testid': 'HelmOverridesModal-ForceConfirm'
+          }}
         />
       }
     >
@@ -218,6 +224,9 @@ export const HelmOverridesModal = ({
           rows={8}
           maxRows={8}
           placeholder={UNIVERSE_OVERRIDE_SAMPLE}
+          inputProps={{
+            'data-testid': 'HelmOverridesModal-UniverseOverrideInput'
+          }}
         />
       </Box>
       <Grid container direction="column">
@@ -243,10 +252,17 @@ export const HelmOverridesModal = ({
                   rows={5}
                   maxRows={5}
                   placeholder={AZ_OVERRIDE_SAMPLE}
+                  inputProps={{
+                    'data-testid': `HelmOverridesModal-UniverseOverrideInput${index}`
+                  }}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton onClick={() => remove(index)} tabIndex="-1">
+                        <IconButton
+                          onClick={() => remove(index)}
+                          tabIndex="-1"
+                          data-testid={`HelmOverridesModal-InputClose${index}`}
+                        >
                           <CloseIcon />
                         </IconButton>
                       </InputAdornment>
@@ -261,6 +277,7 @@ export const HelmOverridesModal = ({
           <YBButton
             className={classes.formButtons}
             variant="primary"
+            data-testid={`HelmOverridesModal-AddAZButton`}
             onClick={() => append({ value: '' })}
           >
             <span className="fa fa-plus" />

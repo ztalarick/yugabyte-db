@@ -7,7 +7,7 @@ import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../../components';
 import { api, QUERY_KEY } from '../../../utils/api';
 import { UniverseFormData, Provider, DEFAULT_CLOUD_CONFIG } from '../../../utils/dto';
-import { PROVIDER_FIELD, ACCESS_KEY_FIELD, INSTANCE_TYPE_FIELD } from '../../../utils/constants';
+import { PROVIDER_FIELD } from '../../../utils/constants';
 
 interface ProvidersFieldProps {
   disabled?: boolean;
@@ -36,16 +36,13 @@ export const ProvidersField = ({
     if (option) {
       const { code, uuid } = option;
       setValue(PROVIDER_FIELD, { code, uuid }, { shouldValidate: true });
-      //Reset fields on provider change
-      setValue(ACCESS_KEY_FIELD, null, { shouldValidate: true });
-      setValue(INSTANCE_TYPE_FIELD, null);
     } else {
       setValue(PROVIDER_FIELD, DEFAULT_CLOUD_CONFIG.provider, { shouldValidate: true });
     }
   };
 
   return (
-    <Box display="flex" width="100%" flexDirection={'row'}>
+    <Box display="flex" width="100%" flexDirection={'row'} data-testid="ProvidersField-Container">
       <Controller
         name={PROVIDER_FIELD}
         control={control}
@@ -59,7 +56,9 @@ export const ProvidersField = ({
             providersList.find((provider) => provider.uuid === field.value?.uuid) || null;
           return (
             <>
-              <YBLabel>{t('universeForm.cloudConfig.providerField')}</YBLabel>
+              <YBLabel dataTestId="ProvidersField-Label">
+                {t('universeForm.cloudConfig.providerField')}
+              </YBLabel>
               <Box flex={1}>
                 <YBAutoComplete
                   loading={isLoading}
@@ -71,7 +70,8 @@ export const ProvidersField = ({
                   disabled={disabled}
                   ybInputProps={{
                     error: !!fieldState.error,
-                    helperText: fieldState.error?.message
+                    helperText: fieldState.error?.message,
+                    'data-testid': 'ProvidersField-AutoComplete'
                   }}
                 />
               </Box>

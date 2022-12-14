@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useFormContext, ValidateResult } from 'react-hook-form';
 import { Box } from '@material-ui/core';
 import { YBInputField, YBLabel } from '../../../../../../components';
+import { api } from '../../../../../../helpers/api';
 import { UniverseFormData } from '../../../utils/dto';
 import { UNIVERSE_NAME_FIELD } from '../../../utils/constants';
-import { api } from '../../../../../../helpers/api';
 
 interface UniverseNameFieldProps {
   disabled?: boolean;
@@ -15,6 +15,7 @@ export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactEl
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
+  //validate universe name if exists
   const validateUniverseName = async (value_: unknown): Promise<ValidateResult> => {
     const value = value_ as string;
     if (disabled || !value_) return true; // don't validate disabled field or empty
@@ -30,8 +31,10 @@ export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactEl
   };
 
   return (
-    <Box display="flex" width="100%">
-      <YBLabel>{t('universeForm.cloudConfig.universeName')}</YBLabel>
+    <Box display="flex" width="100%" data-testid="UniverseNameField-Container">
+      <YBLabel dataTestId="UniverseNameField-Label">
+        {t('universeForm.cloudConfig.universeName')}
+      </YBLabel>
       <Box flex={1}>
         <YBInputField
           control={control}
@@ -48,7 +51,7 @@ export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactEl
           disabled={disabled}
           inputProps={{
             autoFocus: true,
-            'data-testid': 'InputUniverseName'
+            'data-testid': 'UniverseNameField-Input'
           }}
         />
       </Box>

@@ -1,12 +1,11 @@
 import React, { FC, useRef } from 'react';
-import { Box, Grid, MenuItem } from '@material-ui/core';
-import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useQuery } from 'react-query';
-import { useTranslation } from 'react-i18next';
 import { useUpdateEffect } from 'react-use';
-import { CloudType, StorageType, UniverseFormData, VolumeType } from '../../../utils/dto';
-import { api, QUERY_KEY } from '../../../utils/api';
+import { useTranslation } from 'react-i18next';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { Box, Grid, MenuItem } from '@material-ui/core';
 import { YBInput, YBLabel, YBSelect } from '../../../../../../components';
+import { api, QUERY_KEY } from '../../../utils/api';
 import {
   getStorageTypeOptions,
   getDeviceInfoFromInstance,
@@ -16,8 +15,9 @@ import {
   getThroughputByStorageType,
   getThroughputByIops
 } from './VolumeInfoFieldHelper';
-import { PROVIDER_FIELD, DEVICE_INFO_FIELD, INSTANCE_TYPE_FIELD } from '../../../utils/constants';
 import { isEphemeralAwsStorageInstance } from '../InstanceTypeField/InstanceTypeFieldHelper';
+import { CloudType, StorageType, UniverseFormData, VolumeType } from '../../../utils/dto';
+import { PROVIDER_FIELD, DEVICE_INFO_FIELD, INSTANCE_TYPE_FIELD } from '../../../utils/constants';
 
 interface VolumeInfoFieldProps {
   isEditMode: boolean;
@@ -42,7 +42,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   const { t } = useTranslation();
   const instanceTypeChanged = useRef(false);
 
-  //field values
+  //watchers
   const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -145,7 +145,9 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     return (
       <Box display="flex">
         <Box display="flex">
-          <YBLabel>{t('universeForm.instanceConfig.volumeInfo')}</YBLabel>
+          <YBLabel dataTestId="VolumeInfoField-Label">
+            {t('universeForm.instanceConfig.volumeInfo')}
+          </YBLabel>
         </Box>
 
         <Box display="flex" flex={1}>
@@ -154,7 +156,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
               type="number"
               fullWidth
               disabled={fixedNumVolumes || !instanceTypeChanged.current || disableNumVolumes}
-              inputProps={{ min: 1 }}
+              inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-VolumeInput' }}
               value={fieldValue.numVolumes}
               onChange={(event) => onNumVolumesChanged(event.target.value)}
             />
@@ -175,7 +177,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                   !instanceTypeChanged.current) ||
                 disableVolumeSize
               }
-              inputProps={{ min: 1 }}
+              inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-VolumeSizeInput' }}
               value={fieldValue.volumeSize}
               onChange={(event) => onVolumeSizeChanged(event.target.value)}
               onBlur={resetThroughput}
@@ -193,7 +195,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     )
       return (
         <Box display="flex">
-          <YBLabel>
+          <YBLabel dataTestId="VolumeInfoField-StorageTypeLabel">
             {provider?.code === CloudType.aws
               ? t('universeForm.instanceConfig.ebs')
               : t('universeForm.instanceConfig.ssd')}
@@ -203,6 +205,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
               fullWidth
               disabled={disableStorageType}
               value={fieldValue.storageType}
+              inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-StorageTypeSelect' }}
               onChange={(event) =>
                 onStorageTypeChanged((event?.target.value as unknown) as StorageType)
               }
@@ -228,13 +231,15 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
 
     return (
       <Box display="flex">
-        <YBLabel>{t('universeForm.instanceConfig.provisionedIops')}</YBLabel>
+        <YBLabel dataTestId="VolumeInfoField-DiskIopsLabel">
+          {t('universeForm.instanceConfig.provisionedIops')}
+        </YBLabel>
         <Box flex={1}>
           <YBInput
             type="number"
             fullWidth
             disabled={disableIops}
-            inputProps={{ min: 1 }}
+            inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-DiskIopsInput' }}
             value={fieldValue.diskIops}
             onChange={(event) => onDiskIopsChanged(event.target.value)}
             onBlur={resetThroughput}
@@ -248,13 +253,16 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     if (![StorageType.GP3, StorageType.UltraSSD_LRS].includes(fieldValue.storageType)) return null;
     return (
       <Box display="flex">
-        <YBLabel> {t('universeForm.instanceConfig.provisionedThroughput')}</YBLabel>
+        <YBLabel dataTestId="VolumeInfoField-ThroughputLabel">
+          {' '}
+          {t('universeForm.instanceConfig.provisionedThroughput')}
+        </YBLabel>
         <Box flex={1}>
           <YBInput
             type="number"
             fullWidth
             disabled={disableThroughput}
-            inputProps={{ min: 1 }}
+            inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-ThroughputInput' }}
             value={fieldValue.throughput}
             onChange={(event) => onThroughputChange(event.target.value)}
           />

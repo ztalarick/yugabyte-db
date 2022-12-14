@@ -11,7 +11,15 @@ const useYBLabelStyles = makeStyles(() => ({
   }
 }));
 
-export const YBLabel: FC = ({ children }) => {
+interface YBLabelProps {
+  dataTestId?: string;
+}
+
+export const YBLabel: FC<YBLabelProps> = ({ children, dataTestId }) => {
   const classes = useYBLabelStyles();
-  return <Box className={classes.container}>{children}</Box>;
+  return (
+    <Box className={classes.container} data-testid={dataTestId}>
+      {children}
+    </Box>
+  );
 };

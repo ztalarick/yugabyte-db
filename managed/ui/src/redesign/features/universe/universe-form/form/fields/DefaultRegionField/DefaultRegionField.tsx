@@ -1,10 +1,11 @@
 import React, { ReactElement } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
-import { Box, MenuItem } from '@material-ui/core';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
+import { Box, MenuItem } from '@material-ui/core';
 import { YBHelper, YBLabel, YBSelectField, YBToggleField } from '../../../../../../components';
+import { api, QUERY_KEY } from '../../../utils/api';
 import { Region, UniverseFormData } from '../../../utils/dto';
 import {
   DEFAULT_REGION_FIELD,
@@ -12,7 +13,6 @@ import {
   PROVIDER_FIELD,
   REGIONS_FIELD
 } from '../../../utils/constants';
-import { api, QUERY_KEY } from '../../../utils/api';
 
 interface DefaultRegionsFieldProps {
   disabled?: boolean;
@@ -22,8 +22,8 @@ export const DefaultRegionField = ({ disabled }: DefaultRegionsFieldProps): Reac
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  //Listen to provider value change
-  const provider = useWatch({ name: PROVIDER_FIELD });
+  //watchers
+  const provider = useWatch({ name: PROVIDER_FIELD }); //Listen to provider value change
   const regions = useWatch({ name: REGIONS_FIELD }); //regions selected in region field
   const { data: regionsData } = useQuery([QUERY_KEY.getRegionsList, provider?.uuid], () =>
     api.getRegionsList(provider?.uuid)
@@ -38,13 +38,18 @@ export const DefaultRegionField = ({ disabled }: DefaultRegionsFieldProps): Reac
   return (
     <>
       <Box display="flex" width="100%">
-        <YBLabel>{t('universeForm.cloudConfig.defaultRegion')}</YBLabel>
+        <YBLabel dataTestId="DefaultRegionField-Label">
+          {t('universeForm.cloudConfig.defaultRegion')}
+        </YBLabel>
         <Box flex={1}>
           <YBSelectField
             name={DEFAULT_REGION_FIELD}
             control={control}
             fullWidth
             disabled={disabled}
+            inputProps={{
+              'data-testid': 'DefaultRegionField-Select'
+            }}
           >
             {regionsList.map((region: Region) => (
               <MenuItem key={region.uuid} value={region.uuid}>
@@ -56,17 +61,21 @@ export const DefaultRegionField = ({ disabled }: DefaultRegionsFieldProps): Reac
       </Box>
 
       <Box display="flex" width="100%" mt={1}>
-        <YBLabel>{t('universeForm.cloudConfig.mastersInDefaultRegion')}</YBLabel>
+        <YBLabel dataTestId="DefaultRegionField-MastersLabel">
+          {t('universeForm.cloudConfig.mastersInDefaultRegion')}
+        </YBLabel>
         <Box flex={1}>
           <YBToggleField
             name={MASTERS_IN_DEFAULT_REGION_FIELD}
             inputProps={{
-              'data-testid': 'enableIPV6'
+              'data-testid': 'DefaultRegionField-MastersToggle'
             }}
             control={control}
             disabled={disabled}
           />
-          <YBHelper>{t('universeForm.cloudConfig.mastersInDefaultRegionHelper')}</YBHelper>
+          <YBHelper dataTestId="DefaultRegionField-MastersHelper">
+            {t('universeForm.cloudConfig.mastersInDefaultRegionHelper')}
+          </YBHelper>
         </Box>
       </Box>
     </>

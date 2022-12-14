@@ -1,9 +1,9 @@
 import React, { FC } from 'react';
-import { Box, Grid } from '@material-ui/core';
-import { Controller, useWatch, useFormContext } from 'react-hook-form';
-import { CloudType, DEFAULT_COMMUNICATION_PORTS, UniverseFormData } from '../../../utils/dto';
-import { YBInput, YBToggleField, YBLabel } from '../../../../../../components';
 import { useTranslation } from 'react-i18next';
+import { Controller, useWatch, useFormContext } from 'react-hook-form';
+import { Box, Grid } from '@material-ui/core';
+import { YBInput, YBToggleField, YBLabel } from '../../../../../../components';
+import { CloudType, DEFAULT_COMMUNICATION_PORTS, UniverseFormData } from '../../../utils/dto';
 import {
   COMMUNICATION_PORTS_FIELD,
   YCQL_FIELD,
@@ -23,6 +23,7 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
+  //watchers
   const ysqlEnabled = useWatch({ name: YSQL_FIELD });
   const ycqlEnabled = useWatch({ name: YCQL_FIELD });
   const yedisEnabled = useWatch({ name: YEDIS_FIELD });
@@ -49,13 +50,15 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
       name={COMMUNICATION_PORTS_FIELD}
       render={({ field: { value, onChange } }) => {
         return (
-          <Box display="flex" alignItems="flex-start">
-            <YBLabel>{t('universeForm.advancedConfig.overridePorts')}</YBLabel>
+          <Box display="flex" alignItems="flex-start" data-testid="DeploymentPortsField-Container">
+            <YBLabel dataTestId="DeploymentPortsField-Label">
+              {t('universeForm.advancedConfig.overridePorts')}
+            </YBLabel>
             <Box flex={1} display="flex" flexDirection="column">
               <YBToggleField
                 name={CUSTOMIZE_PORT_FIELD}
                 inputProps={{
-                  'data-testid': 'customizePort'
+                  'data-testid': 'DeploymentPortsField-CoustomizePortToggle'
                 }}
                 control={control}
                 disabled={disabled}
@@ -63,9 +66,11 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
               {customizePort && (
                 <Grid container>
                   {portsConfig.map((item) => (
-                    <Grid lg={6}>
+                    <Grid lg={6} key={item.id}>
                       <Box display="flex" mr={4}>
-                        <YBLabel>{t(`universeForm.advancedConfig.${item.id}`)}</YBLabel>
+                        <YBLabel dataTestId={`DeploymentPortsField-${item.id}`}>
+                          {t(`universeForm.advancedConfig.${item.id}`)}
+                        </YBLabel>
                         <Box flex={1}>
                           <YBInput
                             disabled={disabled}
@@ -85,6 +90,9 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
                                 DEFAULT_COMMUNICATION_PORTS[item.id];
                               port = port > MAX_PORT ? MAX_PORT : port;
                               onChange({ ...value, [item.id]: port });
+                            }}
+                            inputProps={{
+                              'data-testid': `DeploymentPortsField-Input${item.id}`
                             }}
                           />
                         </Box>
