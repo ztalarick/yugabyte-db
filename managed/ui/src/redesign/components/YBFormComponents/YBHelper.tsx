@@ -11,6 +11,7 @@ export enum YBHelperVariants {
 interface YBHelperProps {
   variant?: YBHelperVariants;
   children?: React.ReactNode;
+  dataTestId?: string;
 }
 
 const useYBHelperStyles = makeStyles((theme) => ({
@@ -31,7 +32,11 @@ const useYBHelperStyles = makeStyles((theme) => ({
   }
 }));
 
-export const YBHelper = ({ children, variant = YBHelperVariants.primary }: YBHelperProps) => {
+export const YBHelper = ({
+  children,
+  variant = YBHelperVariants.primary,
+  dataTestId
+}: YBHelperProps) => {
   const classes = useYBHelperStyles();
   return (
     <Box
@@ -41,6 +46,7 @@ export const YBHelper = ({ children, variant = YBHelperVariants.primary }: YBHel
         variant === YBHelperVariants.error && classes.error,
         variant === YBHelperVariants.success && classes.success
       )}
+      data-testid={dataTestId}
     >
       {children}
     </Box>

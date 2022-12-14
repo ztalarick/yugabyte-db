@@ -29,6 +29,7 @@ export const ReplicationFactor = ({
   const { setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const classes = useStyles();
+
   const {
     field: { value }
   } = useController({
@@ -40,8 +41,10 @@ export const ReplicationFactor = ({
   };
 
   return (
-    <Box width="100%" display="flex">
-      <YBLabel>{t('universeForm.cloudConfig.replicationField')}</YBLabel>
+    <Box width="100%" display="flex" data-testid="ReplicationFactor-Container">
+      <YBLabel dataTestId="ReplicationFactor-Label">
+        {t('universeForm.cloudConfig.replicationField')}
+      </YBLabel>
       <Box flex={1}>
         <ButtonGroup variant="contained" color="default">
           {(isPrimary ? PRIMARY_RF : ASYNC_RF).map((factor) => {
@@ -49,6 +52,7 @@ export const ReplicationFactor = ({
               <YBButton
                 key={factor}
                 className={classes.rfButton}
+                data-testid={`ReplicationFactor-option${factor}`}
                 disabled={factor !== value && disabled}
                 variant={factor === value ? 'primary' : 'secondary'}
                 onClick={(e: any) => {

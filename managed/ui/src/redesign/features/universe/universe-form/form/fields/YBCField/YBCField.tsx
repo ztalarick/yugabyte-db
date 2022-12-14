@@ -1,7 +1,7 @@
 import React, { ReactElement } from 'react';
-import { Box } from '@material-ui/core';
 import { useTranslation } from 'react-i18next';
 import { useFormContext } from 'react-hook-form';
+import { Box } from '@material-ui/core';
 import { YBInputField, YBLabel } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import { YBC_PACKAGE_PATH_FIELD } from '../../../utils/constants';
@@ -15,8 +15,10 @@ export const YBCField = ({ disabled }: YBCFieldProps): ReactElement => {
   const { t } = useTranslation();
 
   return (
-    <Box display="flex" width="100%">
-      <YBLabel>{t('universeForm.advancedConfig.ybcPackagePath')}</YBLabel>
+    <Box display="flex" width="100%" data-testid="YBCField-Container">
+      <YBLabel dataTestId="YBCField-Label">
+        {t('universeForm.advancedConfig.ybcPackagePath')}
+      </YBLabel>
       <Box flex={1}>
         <YBInputField
           control={control}
@@ -24,7 +26,7 @@ export const YBCField = ({ disabled }: YBCFieldProps): ReactElement => {
           fullWidth
           disabled={disabled}
           inputProps={{
-            'data-testid': 'ybcPackage'
+            'data-testid': 'YBCField-Input'
           }}
         />
       </Box>

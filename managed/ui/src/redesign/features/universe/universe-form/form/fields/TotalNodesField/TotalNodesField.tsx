@@ -7,7 +7,6 @@ import { YBInputField, YBLabel } from '../../../../../../components';
 import { UniverseFormData, CloudType } from '../../../utils/dto';
 import {
   TOTAL_NODES_FIELD,
-  AUTO_PLACEMENT_FIELD,
   REPLICATION_FACTOR_FIELD,
   PLACEMENTS_FIELD,
   PROVIDER_FIELD
@@ -21,16 +20,18 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
+  //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
-  const autoPlacement = useWatch({ name: AUTO_PLACEMENT_FIELD });
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
   const placements = useWatch({ name: PLACEMENTS_FIELD });
   const currentTotalNodes = getValues(TOTAL_NODES_FIELD);
 
+  //set TotalNodes to RF Value when totalNodes < RF
   useUpdateEffect(() => {
     if (replicationFactor > currentTotalNodes) setValue(TOTAL_NODES_FIELD, replicationFactor);
   }, [replicationFactor]);
 
+  //set Total Nodes to TotalNodesInAZ Value in placements
   useUpdateEffect(() => {
     if (placements && placements.length) {
       const initalCount = 0;
@@ -42,8 +43,8 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
   }, [placements]);
 
   return (
-    <Box display="flex" width="100%">
-      <YBLabel>
+    <Box display="flex" width="100%" data-testid="TotalNodesField-Container">
+      <YBLabel dataTestId="TotalNodesField-Label">
         {provider?.code === CloudType.kubernetes
           ? t('universeForm.cloudConfig.totalPodsField')
           : t('universeForm.cloudConfig.totalNodesField')}
@@ -54,9 +55,9 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
           name={TOTAL_NODES_FIELD}
           // fullWidth
           type="number"
-          disabled={!autoPlacement ? true : disabled}
+          disabled={disabled}
           inputProps={{
-            'data-testid': 'InputTotalNodes',
+            'data-testid': 'TotalNodesField-Input',
             min: replicationFactor
           }}
         />

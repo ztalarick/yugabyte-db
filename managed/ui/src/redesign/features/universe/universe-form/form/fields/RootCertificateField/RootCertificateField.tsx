@@ -1,10 +1,10 @@
 import React, { FC, ChangeEvent } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
-import { api, QUERY_KEY } from '../../../utils/api';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../../components';
+import { api, QUERY_KEY } from '../../../utils/api';
 import { CloudType, UniverseFormData } from '../../../utils/dto';
 import { PROVIDER_FIELD, ROOT_CERT_FIELD } from '../../../utils/constants';
 import { useFormFieldStyles } from '../../../universeMainStyle';
@@ -25,8 +25,8 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({
   const { t } = useTranslation();
   const classes = useFormFieldStyles();
 
-  //provider data
-  const provider = useWatch({ name: PROVIDER_FIELD });
+  //watchers
+  const provider = useWatch({ name: PROVIDER_FIELD }); //provider data
 
   //fetch data
   const { data: certificates = [], isLoading } = useQuery(
@@ -71,8 +71,10 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({
       render={({ field, fieldState }) => {
         const value = certificates.find((i) => i.uuid === field.value) ?? '';
         return (
-          <Box display="flex" width="100%">
-            <YBLabel>{t('universeForm.instanceConfig.rootCertificate')}</YBLabel>
+          <Box display="flex" width="100%" data-testid="RootCertificateField-Container">
+            <YBLabel dataTestId="RootCertificateField-Label">
+              {t('universeForm.instanceConfig.rootCertificate')}
+            </YBLabel>
             <Box flex={1}>
               <YBAutoComplete
                 disabled={disabled}
@@ -85,7 +87,8 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({
                 ybInputProps={{
                   placeholder: t('universeForm.instanceConfig.rootCertificatePlaceHolder'),
                   error: !!fieldState.error,
-                  helperText: fieldState.error?.message
+                  helperText: fieldState.error?.message,
+                  'data-testid': 'RootCertificateField-AutoComplete'
                 }}
               />
             </Box>

@@ -1,9 +1,9 @@
 import React, { ReactElement } from 'react';
-import { Box } from '@material-ui/core';
-import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { UniverseFormData } from '../../../utils/dto';
+import { useFormContext } from 'react-hook-form';
+import { Box } from '@material-ui/core';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../../components';
+import { UniverseFormData } from '../../../utils/dto';
 import { NODE_TO_NODE_ENCRYPT_FIELD } from '../../../utils/constants';
 
 interface NodeToNodeTLSFieldProps {
@@ -15,18 +15,22 @@ export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): React
   const { t } = useTranslation();
 
   return (
-    <Box display="flex" width="100%">
-      <YBLabel>{t('universeForm.instanceConfig.enableNodeToNodeTLS')}</YBLabel>
+    <Box display="flex" width="100%" data-testid="NodeToNodeTLSField-Container">
+      <YBLabel dataTestId="NodeToNodeTLSField-Label">
+        {t('universeForm.instanceConfig.enableNodeToNodeTLS')}
+      </YBLabel>
       <Box flex={1}>
         <YBToggleField
           name={NODE_TO_NODE_ENCRYPT_FIELD}
           inputProps={{
-            'data-testid': 'NodeToNodeTLS'
+            'data-testid': 'NodeToNodeTLSField-Toggle'
           }}
           control={control}
           disabled={disabled}
         />
-        <YBHelper>{t('universeForm.instanceConfig.enableNodeToNodeTLSHelper')}</YBHelper>
+        <YBHelper dataTestId="NodeToNodeTLSField-Helper">
+          {t('universeForm.instanceConfig.enableNodeToNodeTLSHelper')}
+        </YBHelper>
       </Box>
     </Box>
   );

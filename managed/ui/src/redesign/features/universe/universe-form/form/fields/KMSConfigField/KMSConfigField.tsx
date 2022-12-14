@@ -1,12 +1,11 @@
 import React, { FC, ChangeEvent } from 'react';
-import { Box } from '@material-ui/core';
-import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
-import { api, QUERY_KEY } from '../../../utils/api';
-import { DEFAULT_INSTANCE_CONFIG, UniverseFormData } from '../../../utils/dto';
-import { KmsConfig } from '../../../../../../helpers/dtos';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { Box } from '@material-ui/core';
 import { YBLabel, YBAutoComplete } from '../../../../../../components';
+import { api, QUERY_KEY } from '../../../utils/api';
+import { DEFAULT_INSTANCE_CONFIG, KmsConfig, UniverseFormData } from '../../../utils/dto';
 import { KMS_CONFIG_FIELD, EAR_FIELD } from '../../../utils/constants';
 
 const renderOption = (op: Record<string, string>): string => {
@@ -27,7 +26,7 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
   const { setValue, control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
-  //field data
+  //watchers
   const encryptionEnabled = useWatch({ name: EAR_FIELD });
 
   //fetch data
@@ -55,8 +54,10 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
       render={({ field, fieldState }) => {
         const value = kmsConfigs.find((i) => i.metadata.configUUID === field.value) ?? '';
         return (
-          <Box display="flex" width="100%">
-            <YBLabel>{t('universeForm.instanceConfig.kmsConfig')}</YBLabel>
+          <Box display="flex" width="100%" data-testid="KMSConfigField-Container">
+            <YBLabel dataTestId="KMSConfigField-Label">
+              {t('universeForm.instanceConfig.kmsConfig')}
+            </YBLabel>
             <Box flex={1}>
               <YBAutoComplete
                 disabled={disabled}
@@ -66,7 +67,8 @@ export const KMSConfigField: FC<KMSConfigFieldProps> = ({ disabled }) => {
                   placeholder: t('universeForm.instanceConfig.kmsConfigPlaceHolder'),
                   error: !!fieldState.error,
                   helperText: fieldState.error?.message,
-                  InputProps: { autoFocus: true }
+                  InputProps: { autoFocus: true },
+                  'data-testid': 'KMSConfigField-AutoComplete'
                 }}
                 ref={field.ref}
                 getOptionLabel={getOptionLabel}

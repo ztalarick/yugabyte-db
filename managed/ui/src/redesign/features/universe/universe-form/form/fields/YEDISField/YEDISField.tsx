@@ -1,9 +1,9 @@
 import React, { ReactElement } from 'react';
-import { Box } from '@material-ui/core';
-import { useFormContext } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { UniverseFormData } from '../../../utils/dto';
+import { useFormContext } from 'react-hook-form';
+import { Box } from '@material-ui/core';
 import { YBLabel, YBHelper, YBToggleField } from '../../../../../../components';
+import { UniverseFormData } from '../../../utils/dto';
 import { YEDIS_FIELD } from '../../../utils/constants';
 interface YEDISFieldProps {
   disabled: boolean;
@@ -14,18 +14,22 @@ export const YEDISField = ({ disabled }: YEDISFieldProps): ReactElement => {
   const { t } = useTranslation();
 
   return (
-    <Box display="flex" width="100%">
-      <YBLabel>{t('universeForm.instanceConfig.enableYEDIS')}</YBLabel>
+    <Box display="flex" width="100%" data-testid="YEDISField-Container">
+      <YBLabel dataTestId="YEDISField-Label">
+        {t('universeForm.instanceConfig.enableYEDIS')}
+      </YBLabel>
       <Box flex={1}>
         <YBToggleField
           name={YEDIS_FIELD}
           inputProps={{
-            'data-testid': 'Yedis'
+            'data-testid': 'YEDISField-Toggle'
           }}
           control={control}
           disabled={disabled}
         />
-        <YBHelper>{t('universeForm.instanceConfig.enableYEDISHelper')}</YBHelper>
+        <YBHelper dataTestId="YEDISField-Helper">
+          {t('universeForm.instanceConfig.enableYEDISHelper')}
+        </YBHelper>
       </Box>
     </Box>
   );

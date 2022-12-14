@@ -1,8 +1,9 @@
 import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
+import { useFormContext, useFieldArray, useWatch, Controller } from 'react-hook-form';
 import { Box, Typography, MenuItem } from '@material-ui/core';
-import { YBButton, YBSelect, YBInput, YBLabel, YBCheckbox } from '../../../../../../components';
+import { YBButton, YBSelect, YBLabel, YBCheckbox, YBInput } from '../../../../../../components';
+import { YBLoadingCircleIcon } from '../../../../../../../components/common/indicators';
 import { PlacementStatus } from './PlacementStatus';
 import { useGetAllZones, useGetUnusedZones, useNodePlacements } from './PlacementsFieldHelper';
 import { Placement, UniverseFormData, CloudType } from '../../../utils/dto';
@@ -16,11 +17,14 @@ interface PlacementsFieldProps {
   disabled: boolean;
 }
 
+//Extended for useFieldArray
 export type PlacementWithId = Placement & { id: any };
 
 export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+
+  //watchers
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
 
@@ -37,17 +41,21 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
   const renderHeader = (
     <Box flex={1} mt={1} display="flex" flexDirection="row">
       <Box flex={2}>
-        <YBLabel>{t('universeForm.cloudConfig.azNameLabel')}</YBLabel>
+        <YBLabel dataTestId="PlacementsField-AZNameLabel">
+          {t('universeForm.cloudConfig.azNameLabel')}
+        </YBLabel>
       </Box>
       <Box flexShrink={1} width="150px">
-        <YBLabel>
+        <YBLabel dataTestId="PlacementsField-IndividualUnitLabel">
           {provider?.code === CloudType.kubernetes
             ? t('universeForm.cloudConfig.azPodsLabel')
             : t('universeForm.cloudConfig.azNodesLabel')}
         </YBLabel>
       </Box>
       <Box flexShrink={1} width="100px">
-        <YBLabel>{t('universeForm.cloudConfig.preferredAZLabel')}</YBLabel>
+        <YBLabel dataTestId="PlacementsField-PreferredLabel">
+          {t('universeForm.cloudConfig.preferredAZLabel')}
+        </YBLabel>
       </Box>
     </Box>
   );
@@ -58,29 +66,29 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
     update(index, updateAz);
   };
 
-  //validates numNodesINAZ >= RF
-  const validateNodeCount = (index: number, newValue: number) => {
+  //get Minimum AZ count to update before making universe_configure call
+  const getMinCountAZ = (index: number) => {
     const initialCount = 0;
     const totalNodesinAz = fields
       .map((e) => e.numNodesInAZ)
       .reduce((prev, cur) => prev + cur, initialCount);
-    return (
-      totalNodesinAz - fields[index].numNodesInAZ + newValue >= getValues(REPLICATION_FACTOR_FIELD)
-    );
+    return fields[index].numNodesInAZ - (totalNodesinAz - getValues(REPLICATION_FACTOR_FIELD)) || 1;
   };
 
   const renderPlacements = () => {
     return fields.map((field: PlacementWithId, index: number) => {
-      const numNodesLabel = `${PLACEMENTS_FIELD}.${index}.numNodesInAZ` as any;
-      const prefferedAZLabel = `${PLACEMENTS_FIELD}.${index}.isAffinitized` as any;
+      const prefferedAZField = `${PLACEMENTS_FIELD}.${index}.isAffinitized` as any;
 
       return (
         <Box flex={1} display="flex" mb={1} flexDirection="row" key={field.id}>
           <Box flex={2} mr={0.5}>
             <YBSelect
               fullWidth
-              disabled={false}
+              disabled={isLoading}
               value={field.name}
+              inputProps={{
+                'data-testid': `PlacementsField-AZName${index}`
+              }}
               onChange={(e) => {
                 handleAZChange(field, e.target.value, index);
               }}
@@ -93,30 +101,42 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
             </YBSelect>
           </Box>
           <Box flexShrink={1} width="150px" mr={0.5}>
-            <YBInput
-              type="number"
-              fullWidth
-              disabled={false}
-              inputProps={{
-                min: 1
-              }}
-              value={field.numNodesInAZ}
-              onChange={(e) => {
-                if (validateNodeCount(index, Number(e.target.value)))
-                  setValue(numNodesLabel, Number(e.target.value));
-              }}
+            <Controller
+              control={control}
+              name={`${PLACEMENTS_FIELD}.${index}.numNodesInAZ` as const}
+              render={({ field: { onChange, ref, ...rest } }) => (
+                <YBInput
+                  type="number"
+                  fullWidth
+                  inputRef={ref}
+                  disabled={isLoading}
+                  onChange={(e) => {
+                    if (!e.target.value || Number(e.target.value) < getMinCountAZ(index))
+                      onChange(getMinCountAZ(index));
+                    else onChange(Number(e.target.value));
+                  }}
+                  {...rest}
+                  inputProps={{
+                    'data-testid': `PlacementsField-IndividualCount${index}`
+                  }}
+                />
+              )}
             />
           </Box>
           <Box flexShrink={1} display="flex" alignItems="center" width="100px">
             <YBCheckbox
               size="medium"
-              name={prefferedAZLabel}
+              name={prefferedAZField}
               onChange={(e) => {
-                setValue(prefferedAZLabel, e.target.checked);
+                setValue(prefferedAZField, e.target.checked);
               }}
               defaultChecked={field.isAffinitized}
               value={field.isAffinitized}
+              disabled={isLoading}
               label=""
+              inputProps={{
+                'data-testid': `PlacementsField-PrefferedCheckbox${index}`
+              }}
             />
           </Box>
         </Box>
@@ -130,11 +150,13 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
         <Typography variant="h5">{t('universeForm.cloudConfig.azHeader')}</Typography>
         {renderHeader}
         {renderPlacements()}
-        {!isLoading && unUsedZones.length > 0 && fields.length < replicationFactor && (
+        {unUsedZones.length > 0 && fields.length < replicationFactor && (
           <Box display="flex" justifyContent={'flex-start'} mr={0.5} mt={1}>
             <YBButton
               style={{ width: '150px' }}
               variant="primary"
+              disabled={isLoading}
+              data-testid="PlacementsField-AddAZButton"
               onClick={() =>
                 append({
                   ...unUsedZones[0],
@@ -153,6 +175,18 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
     );
   }
 
-  if (isLoading) return <>Loading Placements..</>;
+  if (isLoading)
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems={'center'}
+        height="100%"
+        flexDirection={'column'}
+      >
+        <YBLoadingCircleIcon size="small" />
+        Loading placements
+      </Box>
+    );
   return <></>;
 };

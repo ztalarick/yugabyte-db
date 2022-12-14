@@ -1,8 +1,8 @@
 import React, { ReactElement } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useUpdateEffect } from 'react-use';
-import { Box, Grid } from '@material-ui/core';
+import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
+import { Box, Grid } from '@material-ui/core';
 import {
   YBLabel,
   YBHelper,
@@ -32,6 +32,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
   } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
+  //watchers
   const ycqlEnabled = useWatch({ name: YCQL_FIELD });
   const ysqlEnabled = useWatch({ name: YSQL_FIELD });
   const ycqlAuthEnabled = useWatch({ name: YCQL_AUTH_FIELD });
@@ -43,9 +44,11 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
   }, [ycqlEnabled]);
 
   return (
-    <Box display="flex" width="100%" flexDirection="column">
+    <Box display="flex" width="100%" flexDirection="column" data-testid="YCQLField-Container">
       <Box display="flex">
-        <YBLabel>{t('universeForm.instanceConfig.enableYCQL')}</YBLabel>
+        <YBLabel dataTestId="YCQLField-EnableLabel">
+          {t('universeForm.instanceConfig.enableYCQL')}
+        </YBLabel>
         <Box flex={1}>
           <YBTooltip
             title={
@@ -57,12 +60,14 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
               <YBToggleField
                 name={YCQL_FIELD}
                 inputProps={{
-                  'data-testid': 'YCQL'
+                  'data-testid': 'YCQLField-EnableToggle'
                 }}
                 control={control}
                 disabled={disabled || !ysqlEnabled}
               />
-              <YBHelper>{t('universeForm.instanceConfig.enableYCQLHelper')}</YBHelper>
+              <YBHelper dataTestId="YCQLField-EnableHelper">
+                {t('universeForm.instanceConfig.enableYCQLHelper')}
+              </YBHelper>
             </div>
           </YBTooltip>
         </Box>
@@ -72,17 +77,21 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
         <Box mt={1}>
           {!isAuthEnforced && (
             <Box display="flex">
-              <YBLabel>{t('universeForm.instanceConfig.enableYCQLAuth')}</YBLabel>
+              <YBLabel dataTestId="YCQLField-AuthLabel">
+                {t('universeForm.instanceConfig.enableYCQLAuth')}
+              </YBLabel>
               <Box flex={1}>
                 <YBToggleField
                   name={YCQL_AUTH_FIELD}
                   inputProps={{
-                    'data-testid': 'YCQLAuth'
+                    'data-testid': 'YCQLField-AuthToggle'
                   }}
                   control={control}
                   disabled={disabled}
                 />
-                <YBHelper>{t('universeForm.instanceConfig.enableYCQLAuthHelper')}</YBHelper>
+                <YBHelper dataTestId="YCQLField-AuthHelper">
+                  {t('universeForm.instanceConfig.enableYCQLAuthHelper')}
+                </YBHelper>
               </Box>
             </Box>
           )}
@@ -92,7 +101,9 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
               <Grid container spacing={3}>
                 <Grid item sm={12} lg={6}>
                   <Box display="flex">
-                    <YBLabel>{t('universeForm.instanceConfig.ycqlAuthPassword')}</YBLabel>
+                    <YBLabel dataTestId="YCQLField-PasswordLabel">
+                      {t('universeForm.instanceConfig.ycqlAuthPassword')}
+                    </YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
                         name={YCQL_PASSWORD_FIELD}
@@ -112,7 +123,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                         fullWidth
                         inputProps={{
                           autoComplete: 'new-password',
-                          'data-testid': 'InputYcqlPassword'
+                          'data-testid': 'YCQLField-PasswordLabelInput'
                         }}
                         error={!!errors?.instanceConfig?.ycqlPassword}
                         helperText={errors?.instanceConfig?.ycqlPassword?.message}
@@ -122,7 +133,9 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                 </Grid>
                 <Grid item sm={12} lg={6}>
                   <Box display="flex">
-                    <YBLabel>{t('universeForm.instanceConfig.confirmPassword')}</YBLabel>
+                    <YBLabel dataTestId="YCQLField-ConfirmPasswordLabel">
+                      {t('universeForm.instanceConfig.confirmPassword')}
+                    </YBLabel>
                     <Box flex={1}>
                       <YBPasswordField
                         name={YCQL_CONFIRM_PASSWORD_FIELD}
@@ -138,7 +151,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                         fullWidth
                         inputProps={{
                           autoComplete: 'new-password',
-                          'data-testid': 'InputConfirmYcqlPassword'
+                          'data-testid': 'YCQLField-ConfirmPasswordInput'
                         }}
                         error={!!errors?.instanceConfig?.ycqlConfirmPassword}
                         helperText={errors?.instanceConfig?.ycqlConfirmPassword?.message}

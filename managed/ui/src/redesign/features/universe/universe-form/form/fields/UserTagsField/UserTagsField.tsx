@@ -1,10 +1,11 @@
 import React, { ReactElement } from 'react';
-import { useFormContext, useFieldArray, FieldArrayPath } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { useFormContext, useFieldArray, FieldArrayPath } from 'react-hook-form';
 import { Box, Grid, IconButton } from '@material-ui/core';
-import { UniverseFormData, InstanceTag } from '../../../utils/dto';
 import { YBButton, YBInputField } from '../../../../../../components';
+import { UniverseFormData, InstanceTag } from '../../../utils/dto';
 import { USER_TAGS_FIELD } from '../../../utils/constants';
+//Icons
 import { ReactComponent as CloseIcon } from '../../../../../../assets/close.svg';
 
 interface UserTagsFieldProps {}
@@ -19,7 +20,7 @@ export const UserTagsField = (_: UserTagsFieldProps): ReactElement => {
   });
 
   return (
-    <Grid container direction="column">
+    <Grid container direction="column" data-testid="UserTagsField-Container">
       <Box display="flex" flexDirection="column" mb={fields?.length ? 2 : 0}>
         {fields.map((field, index) => {
           return (
@@ -29,6 +30,9 @@ export const UserTagsField = (_: UserTagsFieldProps): ReactElement => {
                   name={`${USER_TAGS_FIELD}.${index}.name` as FieldArrayPath<InstanceTag>}
                   control={control}
                   fullWidth
+                  inputProps={{
+                    'data-testid': `UniverseNameField-NameInput${index}`
+                  }}
                 />
               </Grid>
               <Grid item xs>
@@ -36,10 +40,17 @@ export const UserTagsField = (_: UserTagsFieldProps): ReactElement => {
                   name={`${USER_TAGS_FIELD}.${index}.value` as FieldArrayPath<InstanceTag>}
                   control={control}
                   fullWidth
+                  inputProps={{
+                    'data-testid': `UniverseNameField-ValueInput${index}`
+                  }}
                 />
               </Grid>
               <Grid item>
-                <IconButton color="primary" onClick={() => remove(index)}>
+                <IconButton
+                  color="primary"
+                  data-testid={`UniverseNameField-RemoveButton${index}`}
+                  onClick={() => remove(index)}
+                >
                   <CloseIcon />
                 </IconButton>
               </Grid>
@@ -48,7 +59,11 @@ export const UserTagsField = (_: UserTagsFieldProps): ReactElement => {
         })}
       </Box>
       <Box>
-        <YBButton variant="primary" onClick={() => append({ name: '', value: '' })}>
+        <YBButton
+          variant="primary"
+          data-testid={`UniverseNameField-AddTagsButton`}
+          onClick={() => append({ name: '', value: '' })}
+        >
           <span className="fa fa-plus" />
           {t('universeForm.userTags.addRow')}
         </YBButton>

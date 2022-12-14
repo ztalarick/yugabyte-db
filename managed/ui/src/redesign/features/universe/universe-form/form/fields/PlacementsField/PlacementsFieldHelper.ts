@@ -1,4 +1,4 @@
-import { useRef, useState, useContext } from 'react';
+import { useRef, useState, useContext, useEffect } from 'react';
 import _ from 'lodash';
 import { useUpdateEffect } from 'react-use';
 import { useQuery } from 'react-query';
@@ -99,7 +99,7 @@ export const useGetAllZones = () => {
     { enabled: !!provider?.uuid } // make sure query won't run when there's no provider defined
   );
 
-  useUpdateEffect(() => {
+  useEffect(() => {
     const selectedRegions = new Set(regionList);
 
     const zones = (allRegions || [])
@@ -115,7 +115,7 @@ export const useGetAllZones = () => {
       });
 
     setAllAZ(_.sortBy(zones, 'name'));
-  }, [regionList, allRegions]);
+  }, [allRegions, regionList]);
 
   return allAZ;
 };
