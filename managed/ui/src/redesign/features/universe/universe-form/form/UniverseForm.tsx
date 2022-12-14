@@ -10,7 +10,8 @@ import {
   HelmOverrides,
   InstanceConfiguration,
   UserTags,
-  UniverseResourceContainer
+  UniverseResourceContainer,
+  SecurityConfiguration
 } from './sections';
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { UniverseFormData, ClusterType, ClusterModes } from '../utils/dto';
@@ -184,6 +185,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
       <>
         <CloudConfiguration />
         <InstanceConfiguration />
+        <SecurityConfiguration />
         <AdvancedConfiguration />
         <GFlags />
         <UserTags />

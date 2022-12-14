@@ -48,26 +48,21 @@ export const CloudConfiguration: FC = () => {
             </Typography>
           </Box>
           {isPrimary && (
-            <Box mt={1}>
+            <Box mt={2}>
               <UniverseNameField disabled={isEditPrimary} />
             </Box>
           )}
-          <Box mt={1}>
+          <Box mt={2}>
             <ProvidersField disabled={isEditMode} filterByProvider={primaryProviderCode} />
           </Box>
-          <Box mt={1}>
+          <Box mt={2}>
             <RegionsField disabled={false} />
           </Box>
-          <Box
-            mt={1}
-            flexDirection={isPrimary ? 'row' : 'column'}
-            display="flex"
-            alignItems="flex-start"
-          >
+          <Box mt={2}>
             <TotalNodesField disabled={false} />
-            <Box mt={isPrimary ? 0 : 1}>
-              <ReplicationFactor disabled={isEditMode} isPrimary={isPrimary} />
-            </Box>
+          </Box>
+          <Box mt={2}>
+            <ReplicationFactor disabled={isEditMode} isPrimary={isPrimary} />
           </Box>
           {isCreatePrimary && isGeoPartitionEnabled && (
             <Box mt={2} display="flex" flexDirection="column">

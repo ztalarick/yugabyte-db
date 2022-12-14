@@ -1,13 +1,16 @@
 import React, { FC } from 'react';
 import { Box, makeStyles } from '@material-ui/core';
 
-const useYBLabelStyles = makeStyles(() => ({
+const useYBLabelStyles = makeStyles((theme) => ({
   container: {
     width: '150px',
     alignItems: 'center',
     display: 'flex',
     fontSize: '13px',
-    fontWeight: 500
+    fontWeight: 500,
+    fontFamily: 'Inter',
+    color: theme.palette.ybacolors.labelBackground,
+    fontStyle: 'normal'
   }
 }));
 

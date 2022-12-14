@@ -94,7 +94,7 @@ export const useFormMainStyles = makeStyles((theme) => ({
 export const useSectionStyles = makeStyles((theme) => ({
   sectionContainer: {
     display: 'flex',
-    padding: theme.spacing(2, 0),
+    padding: theme.spacing(5, 0),
     flexDirection: 'column',
     borderBottom: `1px solid ${theme.palette.ybacolors.ybGrayHover}`
   },

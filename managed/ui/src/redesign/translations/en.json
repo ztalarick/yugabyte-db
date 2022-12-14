@@ -57,10 +57,10 @@
       "cloudConfig": {
         "addZoneButton": "Add Zone",
         "autoPlacementField": "Auto Placement",
-        "azHeader": "Availability Zones",
+        "azHeader": "Availability Zone",
         "azNameLabel": "Name",
-        "azNodesLabel": "Individual Nodes",
-        "azPodsLabel": "Individual Pods",
+        "azNodesLabel": "Nodes",
+        "azPodsLabel": "Pods",
         "defaultRegion": "Default Region",
         "mastersInDefaultRegion": "Masters in Default Region Only",
         "mastersInDefaultRegionHelper": "Forces placement of all masters in Default Region.",
@@ -79,8 +79,8 @@
         "regionsField": "Regions",
         "replicationField": "Replication Factor",
         "title": "Cloud Configuration",
-        "totalNodesField": "Total Nodes",
-        "totalPodsField": "Total Pods",
+        "totalNodesField": "Number of Nodes",
+        "totalPodsField": "Number of Pods",
         "universeName": "Name",
         "universeNameInUse": "Name already in use"
       },
@@ -169,6 +169,9 @@
         "volumeInfo": "Volume Info",
         "ysqlAuthPassword": "YSQL Auth Password",
         "ycqlAuthPassword": "YCQL Auth Password"
+      },
+      "securityConfig": {
+        "title": "Security Configuration"
       },
       "resizeNodeModal": {
         "cancelLabel": "Cancel",
