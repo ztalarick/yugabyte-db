@@ -14,8 +14,9 @@ import {
   TimeSyncField,
   YEDISField,
   YCQLField,
-  YSQLField,
+  YSQLField
 } from '../../fields';
+import { YBLabel } from '../../../../../../components';
 import { api, QUERY_KEY } from '../../../utils/api';
 import { UniverseFormContext } from '../../../UniverseFormContainer';
 import {
@@ -67,14 +68,17 @@ export const SecurityConfiguration: FC = () => {
   );
 
   return (
-    <Box className={classes.sectionContainer} data-testid="instance-config-section">
+    <Box className={classes.sectionContainer} data-testid="security-config-section">
       <Typography className={classes.sectionHeaderFont}>
         {t('universeForm.securityConfig.title')}
       </Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         {[CloudType.aws, CloudType.gcp, CloudType.azu].includes(provider?.code) && (
           <>
-            <Box mt={2}>
+            <Box mt={5}>
+              <Typography className={classes.subsectionHeaderFont}>
+                {t('universeForm.securityConfig.IPSettings.title')}
+              </Typography>
               <Grid container>
                 <Grid lg={6} item container>
                   <AssignPublicIPField disabled={!isCreatePrimary} />
@@ -102,68 +106,102 @@ export const SecurityConfiguration: FC = () => {
           CloudType.kubernetes
         ].includes(provider?.code) && (
           <>
-            {(clientNodeTLSEnabled || nodeNodeTLSEnabled) && (
-              <Box mt={1}>
-                <Grid container spacing={3}>
-                  <Grid lg={6} item container>
-                    <RootCertificateField
-                      disabled={!isCreatePrimary}
-                      isPrimary={isPrimary}
-                      isCreateMode={isCreateMode}
-                    />
+            <Box
+              display="flex"
+              width="100%"
+              flexDirection="column"
+              data-testid="AuthenticationSettings-Container"
+              mt={6}
+            >
+              <Typography className={classes.subsectionHeaderFont}>
+                {t('universeForm.securityConfig.authSettings.title')}
+              </Typography>
+
+              <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" mt={2}>
+                <Box mt={3} ml={2}>
+                  <YSQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
+                </Box>
+                <Box mt={2} border="0.5px solid #E5E5E6" height="0px"></Box>
+
+                <Box mt={3} ml={2}>
+                  <YCQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
+                </Box>
+                <Box mt={2} border="0.5px solid #E5E5E6" height="0px"></Box>
+
+                <Box mt={3} ml={2} mb={2}>
+                  <Grid container>
+                    <Grid lg={6} item container>
+                      <YEDISField disabled={!isCreatePrimary} />
+                    </Grid>
                   </Grid>
-                </Grid>
+                </Box>
               </Box>
-            )}
-
-            <Box mt={2}>
-              <YSQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
             </Box>
 
-            <Box mt={2}>
-              <YCQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
-            </Box>
+            <Box
+              display="flex"
+              width="100%"
+              flexDirection="column"
+              data-testid="AuthenticationSettings-Container"
+              mt={6}
+            >
+              <Typography className={classes.subsectionHeaderFont}>
+                {t('universeForm.securityConfig.encryptionSettings.title')}
+              </Typography>
 
-            <Box mt={2}>
-              <Grid container>
-                <Grid lg={6} item container>
-                  <YEDISField disabled={!isCreatePrimary} />
-                </Grid>
-              </Grid>
-            </Box>
-
-            <Box mt={2}>
-              <Grid container>
-                <Grid lg={6} item container>
-                  <NodeToNodeTLSField disabled={!isCreatePrimary} />
-                </Grid>
-              </Grid>
-            </Box>
-
-            <Box mt={2}>
-              <Grid container>
-                <Grid lg={6} item container>
-                  <ClientToNodeTLSField disabled={!isCreatePrimary} />
-                </Grid>
-              </Grid>
-            </Box>
-            <Box mt={2}>
-              <Grid container>
-                <Grid lg={6} item container>
-                  <EncryptionAtRestField disabled={!isCreatePrimary} />
-                </Grid>
-              </Grid>
-            </Box>
-
-            {encryptionEnabled && isPrimary && (
-              <Box mt={1}>
-                <Grid container spacing={3}>
-                  <Grid lg={6} item container>
-                    <KMSConfigField disabled={!isCreatePrimary} />
+              <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" mt={2}>
+                <Box mt={3} ml={2}>
+                  {/* ADD YBLABEL */}
+                  <Grid container>
+                    <Grid lg={6} item container>
+                      <NodeToNodeTLSField disabled={!isCreatePrimary} />
+                    </Grid>
                   </Grid>
-                </Grid>
+                </Box>
+
+                <Box mt={3} ml={2}>
+                  <Grid container>
+                    <Grid lg={6} item container>
+                      <ClientToNodeTLSField disabled={!isCreatePrimary} />
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                {(clientNodeTLSEnabled || nodeNodeTLSEnabled) && (
+                  <Box mt={3} ml={2}>
+                    <Grid container spacing={3}>
+                      <Grid lg={6} item container>
+                        <RootCertificateField
+                          disabled={!isCreatePrimary}
+                          isPrimary={isPrimary}
+                          isCreateMode={isCreateMode}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+                <Box mt={2} border="0.5px solid #E5E5E6" height="0px"></Box>
+
+                <Box mt={3} ml={2} mb={2}>
+                  {/* ADD YBLABEL */}
+                  <Grid container>
+                    <Grid lg={6} item container>
+                      <EncryptionAtRestField disabled={!isCreatePrimary} />
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                {encryptionEnabled && isPrimary && (
+                  <Box mt={2} ml={2} mb={2}>
+                    <Grid container spacing={3}>
+                      <Grid lg={6} item container>
+                        <KMSConfigField disabled={!isCreatePrimary} />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
               </Box>
-            )}
+            </Box>
           </>
         )}
       </Box>

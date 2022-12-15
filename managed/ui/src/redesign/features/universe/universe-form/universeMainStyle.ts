@@ -99,9 +99,14 @@ export const useSectionStyles = makeStyles((theme) => ({
     borderBottom: `1px solid ${theme.palette.ybacolors.ybGrayHover}`
   },
   sectionHeaderFont: {
-    fontFamily: 'Rubik,Helvetica Neue,sans-serif',
-    fontWeight: 500,
+    fontFamily: 'Inter',
+    fontWeight: 700,
     fontSize: theme.spacing(2.25)
+  },
+  subsectionHeaderFont: {
+    fontFamily: 'Inter',
+    fontWeight: 600,
+    fontSize: "15px"
   }
 }));
 

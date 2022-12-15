@@ -40,18 +40,22 @@ export const AdvancedConfiguration: FC = () => {
       </Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={2}>
-          <Grid container spacing={3}>
+          <Grid container spacing={5}>
             <Grid lg={6} item container>
               <DBVersionField disabled={!isCreatePrimary} />
             </Grid>
+          </Grid>
+        </Box>
 
-            {provider.code !== CloudType.kubernetes && (
+        {provider.code !== CloudType.kubernetes && (
+          <Box mt={2}>
+            <Grid container spacing={3}>
               <Grid lg={6} item container>
                 <AccessKeysField disabled={!isCreatePrimary && !isCreateRR} />
               </Grid>
-            )}
-          </Grid>
-        </Box>
+            </Grid>
+          </Box>
+        )}
 
         {provider.code === CloudType.aws && (
           <Box mt={2}>

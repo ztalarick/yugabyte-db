@@ -15,22 +15,22 @@ export const EncryptionAtRestField = ({ disabled }: EncryptionAtRestFieldProps):
 
   return (
     <Box display="flex" width="100%" data-testid="EncryptionAtRestField-Container">
+      {/* <Box flex={1}> */}
+      <YBToggleField
+        name={EAR_FIELD}
+        inputProps={{
+          'data-testid': 'EncryptionAtRestField-Toggle'
+        }}
+        control={control}
+        disabled={disabled}
+      />
       <YBLabel dataTestId="EncryptionAtRestField-Label">
-        {t('universeForm.instanceConfig.enableEncryptionAtRest')}
+        {t('universeForm.securityConfig.encryptionSettings.enableEncryptionAtRest')}
       </YBLabel>
-      <Box flex={1}>
-        <YBToggleField
-          name={EAR_FIELD}
-          inputProps={{
-            'data-testid': 'EncryptionAtRestField-Toggle'
-          }}
-          control={control}
-          disabled={disabled}
-        />
-        <YBHelper dataTestId="EncryptionAtRestField-Helper">
+      {/* <YBHelper dataTestId="EncryptionAtRestField-Helper">
           {t('universeForm.instanceConfig.enableEncryptionAtRestHelper')}
-        </YBHelper>
-      </Box>
+        </YBHelper> */}
+      {/* </Box> */}
     </Box>
   );
 };

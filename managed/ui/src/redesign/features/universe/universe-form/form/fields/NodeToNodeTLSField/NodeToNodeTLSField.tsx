@@ -16,22 +16,22 @@ export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): React
 
   return (
     <Box display="flex" width="100%" data-testid="NodeToNodeTLSField-Container">
+      {/* <Box flex={1}> */}
+      <YBToggleField
+        name={NODE_TO_NODE_ENCRYPT_FIELD}
+        inputProps={{
+          'data-testid': 'NodeToNodeTLSField-Toggle'
+        }}
+        control={control}
+        disabled={disabled}
+      />
       <YBLabel dataTestId="NodeToNodeTLSField-Label">
-        {t('universeForm.instanceConfig.enableNodeToNodeTLS')}
+        {t('universeForm.securityConfig.encryptionSettings.enableNodeToNodeTLS')}
       </YBLabel>
-      <Box flex={1}>
-        <YBToggleField
-          name={NODE_TO_NODE_ENCRYPT_FIELD}
-          inputProps={{
-            'data-testid': 'NodeToNodeTLSField-Toggle'
-          }}
-          control={control}
-          disabled={disabled}
-        />
-        <YBHelper dataTestId="NodeToNodeTLSField-Helper">
+      {/* <YBHelper dataTestId="NodeToNodeTLSField-Helper">
           {t('universeForm.instanceConfig.enableNodeToNodeTLSHelper')}
-        </YBHelper>
-      </Box>
+        </YBHelper> */}
+      {/* </Box> */}
     </Box>
   );
 };

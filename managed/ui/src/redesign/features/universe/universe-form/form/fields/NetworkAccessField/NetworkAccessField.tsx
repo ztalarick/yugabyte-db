@@ -28,7 +28,7 @@ export const NetworkAccessField = ({ disabled }: NetworkAccessFieldProps): React
       <YBLabel dataTestId="NetworkAccessField-Label">
         {t('universeForm.advancedConfig.enableNetworkAccess')}
       </YBLabel>
-      <Box flex={1}>
+      <Box flex={1} ml={4}>
         <YBToggle
           inputProps={{
             'data-testid': 'NetworkAccessField-Toggle'

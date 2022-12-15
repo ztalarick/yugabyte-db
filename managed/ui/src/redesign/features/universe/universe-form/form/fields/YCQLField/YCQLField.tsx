@@ -45,121 +45,125 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
 
   return (
     <Box display="flex" width="100%" flexDirection="column" data-testid="YCQLField-Container">
-      <Box display="flex">
+      <Box display="flex" flexDirection="row">
+        {/* <Box flex={1}> */}
+        <YBTooltip
+          title={
+            !ysqlEnabled
+              ? (t('universeForm.securityConfig.authSettings.enableYsqlOrYcql') as string)
+              : ''
+          }
+          placement="top-start"
+        >
+          <div>
+            <YBToggleField
+              name={YCQL_FIELD}
+              inputProps={{
+                'data-testid': 'YCQLField-EnableToggle'
+              }}
+              control={control}
+              disabled={disabled || !ysqlEnabled}
+            />
+            {/* <YBHelper dataTestId="YCQLField-EnableHelper">
+              {t('universeForm.instanceConfig.enableYCQLHelper')}
+            </YBHelper> */}
+          </div>
+        </YBTooltip>
         <YBLabel dataTestId="YCQLField-EnableLabel">
-          {t('universeForm.instanceConfig.enableYCQL')}
+          {t('universeForm.securityConfig.authSettings.enableYCQL')}
         </YBLabel>
-        <Box flex={1}>
-          <YBTooltip
-            title={
-              !ysqlEnabled ? (t('universeForm.instanceConfig.enableYsqlOrYcql') as string) : ''
-            }
-            placement="top-start"
-          >
-            <div>
-              <YBToggleField
-                name={YCQL_FIELD}
-                inputProps={{
-                  'data-testid': 'YCQLField-EnableToggle'
-                }}
-                control={control}
-                disabled={disabled || !ysqlEnabled}
-              />
-              <YBHelper dataTestId="YCQLField-EnableHelper">
-                {t('universeForm.instanceConfig.enableYCQLHelper')}
-              </YBHelper>
-            </div>
-          </YBTooltip>
-        </Box>
+        {/* </Box> */}
       </Box>
 
       {ycqlEnabled && (
-        <Box mt={1}>
+        <Box mt={3}>
           {!isAuthEnforced && (
-            <Box display="flex">
+            <Box display="flex" flexDirection="row">
+              {/* <Box flex={1}> */}
+              <YBToggleField
+                name={YCQL_AUTH_FIELD}
+                inputProps={{
+                  'data-testid': 'YCQLField-AuthToggle'
+                }}
+                control={control}
+                disabled={disabled}
+              />
               <YBLabel dataTestId="YCQLField-AuthLabel">
-                {t('universeForm.instanceConfig.enableYCQLAuth')}
+                {t('universeForm.securityConfig.authSettings.enableYCQLAuth')}
               </YBLabel>
-              <Box flex={1}>
-                <YBToggleField
-                  name={YCQL_AUTH_FIELD}
-                  inputProps={{
-                    'data-testid': 'YCQLField-AuthToggle'
-                  }}
-                  control={control}
-                  disabled={disabled}
-                />
-                <YBHelper dataTestId="YCQLField-AuthHelper">
+              {/* <YBHelper dataTestId="YCQLField-AuthHelper">
                   {t('universeForm.instanceConfig.enableYCQLAuthHelper')}
-                </YBHelper>
-              </Box>
+                </YBHelper> */}
+              {/* </Box> */}
             </Box>
           )}
 
           {ycqlAuthEnabled && !disabled && (
-            <Box display="flex">
-              <Grid container spacing={3}>
-                <Grid item sm={12} lg={6}>
-                  <Box display="flex">
-                    <YBLabel dataTestId="YCQLField-PasswordLabel">
-                      {t('universeForm.instanceConfig.ycqlAuthPassword')}
-                    </YBLabel>
-                    <Box flex={1}>
-                      <YBPasswordField
-                        name={YCQL_PASSWORD_FIELD}
-                        control={control}
-                        rules={{
-                          required:
-                            !disabled && ycqlAuthEnabled
-                              ? (t('universeForm.validation.required', {
-                                  field: t('universeForm.instanceConfig.ycqlAuthPassword')
-                                }) as string)
-                              : '',
-                          pattern: {
-                            value: PASSWORD_REGEX,
-                            message: t('universeForm.validation.passwordStrength')
-                          }
-                        }}
-                        fullWidth
-                        inputProps={{
-                          autoComplete: 'new-password',
-                          'data-testid': 'YCQLField-PasswordLabelInput'
-                        }}
-                        error={!!errors?.instanceConfig?.ycqlPassword}
-                        helperText={errors?.instanceConfig?.ycqlPassword?.message}
-                      />
-                    </Box>
+            <Box display="flex" flexDirection="column" mt={3}>
+              {/* <Grid container spacing={3}> */}
+              <Grid item sm={12} lg={6}>
+                <Box display="flex">
+                  <YBLabel dataTestId="YCQLField-PasswordLabel">
+                    {t('universeForm.securityConfig.authSettings.ycqlAuthPassword')}
+                  </YBLabel>
+                  <Box flex={1}>
+                    <YBPasswordField
+                      name={YCQL_PASSWORD_FIELD}
+                      control={control}
+                      rules={{
+                        required:
+                          !disabled && ycqlAuthEnabled
+                            ? (t('universeForm.validation.required', {
+                                field: t(
+                                  'universeForm.securityConfig.authSettings.ycqlAuthPassword'
+                                )
+                              }) as string)
+                            : '',
+                        pattern: {
+                          value: PASSWORD_REGEX,
+                          message: t('universeForm.validation.passwordStrength')
+                        }
+                      }}
+                      fullWidth
+                      inputProps={{
+                        autoComplete: 'new-password',
+                        'data-testid': 'YCQLField-PasswordLabelInput'
+                      }}
+                      error={!!errors?.instanceConfig?.ycqlPassword}
+                      helperText={errors?.instanceConfig?.ycqlPassword?.message}
+                    />
                   </Box>
-                </Grid>
-                <Grid item sm={12} lg={6}>
-                  <Box display="flex">
-                    <YBLabel dataTestId="YCQLField-ConfirmPasswordLabel">
-                      {t('universeForm.instanceConfig.confirmPassword')}
-                    </YBLabel>
-                    <Box flex={1}>
-                      <YBPasswordField
-                        name={YCQL_CONFIRM_PASSWORD_FIELD}
-                        control={control}
-                        rules={{
-                          validate: {
-                            passwordMatch: (value) =>
-                              (ycqlAuthEnabled && value === ycqlPassword) ||
-                              (t('universeForm.validation.confirmPassword') as string)
-                          },
-                          deps: [YCQL_PASSWORD_FIELD, YCQL_AUTH_FIELD]
-                        }}
-                        fullWidth
-                        inputProps={{
-                          autoComplete: 'new-password',
-                          'data-testid': 'YCQLField-ConfirmPasswordInput'
-                        }}
-                        error={!!errors?.instanceConfig?.ycqlConfirmPassword}
-                        helperText={errors?.instanceConfig?.ycqlConfirmPassword?.message}
-                      />
-                    </Box>
-                  </Box>
-                </Grid>
+                </Box>
               </Grid>
+              <Grid item sm={12} lg={6}>
+                <Box display="flex" mt={2}>
+                  <YBLabel dataTestId="YCQLField-ConfirmPasswordLabel">
+                    {t('universeForm.securityConfig.authSettings.confirmPassword')}
+                  </YBLabel>
+                  <Box flex={1}>
+                    <YBPasswordField
+                      name={YCQL_CONFIRM_PASSWORD_FIELD}
+                      control={control}
+                      rules={{
+                        validate: {
+                          passwordMatch: (value) =>
+                            (ycqlAuthEnabled && value === ycqlPassword) ||
+                            (t('universeForm.validation.confirmPassword') as string)
+                        },
+                        deps: [YCQL_PASSWORD_FIELD, YCQL_AUTH_FIELD]
+                      }}
+                      fullWidth
+                      inputProps={{
+                        autoComplete: 'new-password',
+                        'data-testid': 'YCQLField-ConfirmPasswordInput'
+                      }}
+                      error={!!errors?.instanceConfig?.ycqlConfirmPassword}
+                      helperText={errors?.instanceConfig?.ycqlConfirmPassword?.message}
+                    />
+                  </Box>
+                </Box>
+              </Grid>
+              {/* </Grid> */}
             </Box>
           )}
         </Box>

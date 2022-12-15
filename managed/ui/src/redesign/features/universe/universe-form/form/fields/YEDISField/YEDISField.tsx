@@ -15,22 +15,22 @@ export const YEDISField = ({ disabled }: YEDISFieldProps): ReactElement => {
 
   return (
     <Box display="flex" width="100%" data-testid="YEDISField-Container">
+      {/* <Box flex={1}> */}
+      <YBToggleField
+        name={YEDIS_FIELD}
+        inputProps={{
+          'data-testid': 'YEDISField-Toggle'
+        }}
+        control={control}
+        disabled={disabled}
+      />
       <YBLabel dataTestId="YEDISField-Label">
-        {t('universeForm.instanceConfig.enableYEDIS')}
+        {t('universeForm.securityConfig.authSettings.enableYEDIS')}
       </YBLabel>
-      <Box flex={1}>
-        <YBToggleField
-          name={YEDIS_FIELD}
-          inputProps={{
-            'data-testid': 'YEDISField-Toggle'
-          }}
-          control={control}
-          disabled={disabled}
-        />
-        <YBHelper dataTestId="YEDISField-Helper">
-          {t('universeForm.instanceConfig.enableYEDISHelper')}
-        </YBHelper>
-      </Box>
+      {/* <YBHelper dataTestId="YEDISField-Helper">
+        {t('universeForm.instanceConfig.enableYEDISHelper')}
+      </YBHelper> */}
+      {/* </Box> */}
     </Box>
   );
 };

@@ -3,7 +3,7 @@ import { Box, makeStyles } from '@material-ui/core';
 
 const useYBLabelStyles = makeStyles((theme) => ({
   container: {
-    width: '150px',
+    width: '170px',
     alignItems: 'center',
     display: 'flex',
     fontSize: '13px',

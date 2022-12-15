@@ -16,22 +16,22 @@ export const ClientToNodeTLSField = ({ disabled }: ClientToNodeTLSFieldProps): R
 
   return (
     <Box display="flex" width="100%" data-testid="ClientToNodeTLSField-Container">
+      {/* <Box flex={1}> */}
+      <YBToggleField
+        name={CLIENT_TO_NODE_ENCRYPT_FIELD}
+        inputProps={{
+          'data-testid': 'ClientToNodeTLSField-Toggle'
+        }}
+        control={control}
+        disabled={disabled}
+      />
       <YBLabel dataTestId="ClientToNodeTLSField-Label">
-        {t('universeForm.instanceConfig.enableClientToNodeTLS')}
+        {t('universeForm.securityConfig.encryptionSettings.enableClientToNodeTLS')}
       </YBLabel>
-      <Box flex={1}>
-        <YBToggleField
-          name={CLIENT_TO_NODE_ENCRYPT_FIELD}
-          inputProps={{
-            'data-testid': 'ClientToNodeTLSField-Toggle'
-          }}
-          control={control}
-          disabled={disabled}
-        />
-        <YBHelper dataTestId="ClientToNodeTLSField-Helper">
+      {/* <YBHelper dataTestId="ClientToNodeTLSField-Helper">
           {t('universeForm.instanceConfig.enableClientToNodeTLSHelper')}
-        </YBHelper>
-      </Box>
+        </YBHelper> */}
+      {/* </Box> */}
     </Box>
   );
 };

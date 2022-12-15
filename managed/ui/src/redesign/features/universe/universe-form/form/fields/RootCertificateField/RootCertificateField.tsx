@@ -73,7 +73,7 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({
         return (
           <Box display="flex" width="100%" data-testid="RootCertificateField-Container">
             <YBLabel dataTestId="RootCertificateField-Label">
-              {t('universeForm.instanceConfig.rootCertificate')}
+              {t('universeForm.securityConfig.encryptionSettings.rootCertificate')}
             </YBLabel>
             <Box flex={1}>
               <YBAutoComplete
@@ -85,7 +85,9 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({
                 onChange={handleChange}
                 value={(value as unknown) as never}
                 ybInputProps={{
-                  placeholder: t('universeForm.instanceConfig.rootCertificatePlaceHolder'),
+                  placeholder: t(
+                    'universeForm.securityConfig.encryptionSettings.rootCertificatePlaceHolder'
+                  ),
                   error: !!fieldState.error,
                   helperText: fieldState.error?.message,
                   'data-testid': 'RootCertificateField-AutoComplete'

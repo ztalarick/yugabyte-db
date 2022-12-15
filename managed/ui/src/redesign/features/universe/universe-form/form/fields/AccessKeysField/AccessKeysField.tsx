@@ -62,7 +62,6 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
           }}
           name={ACCESS_KEY_FIELD}
           control={control}
-          fullWidth
           disabled={disabled}
         >
           {accessKeysList.map((item: AccessKey) => (

@@ -3,21 +3,11 @@ import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
-import {
-  InstanceTypeField,
-  VolumeInfoField,
-  DedicatedNodesField
-} from '../../fields';
+import { InstanceTypeField, VolumeInfoField, DedicatedNodesField } from '../../fields';
 import { YBLabel } from '../../../../../../components';
 import { UniverseFormContext } from '../../../UniverseFormContainer';
-import {
-  CloudType,
-  ClusterModes,
-  ClusterType
-} from '../../../utils/dto';
-import {
-  PROVIDER_FIELD
-} from '../../../utils/constants';
+import { CloudType, ClusterModes, ClusterType } from '../../../utils/dto';
+import { PROVIDER_FIELD } from '../../../utils/constants';
 import { useSectionStyles } from '../../../universeMainStyle';
 
 export const InstanceConfiguration: FC = () => {
@@ -53,23 +43,18 @@ export const InstanceConfiguration: FC = () => {
           </Grid>
         </Box>
 
-        <Box mt={1}>
+        <Box mt={2}>
           <Grid container spacing={3}>
             <Grid lg={6} item container>
-              <Box display="flex" width="100%">
-                <YBLabel></YBLabel>
-                <Box flex={1}>
-                  <VolumeInfoField
-                    isEditMode={!isCreateMode}
-                    isPrimary={isPrimary}
-                    disableIops={!isCreatePrimary && !isCreateRR}
-                    disableThroughput={!isCreatePrimary && !isCreateRR}
-                    disableStorageType={!isCreatePrimary && !isCreateRR}
-                    disableVolumeSize={false}
-                    disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
-                  />
-                </Box>
-              </Box>
+              <VolumeInfoField
+                isEditMode={!isCreateMode}
+                isPrimary={isPrimary}
+                disableIops={!isCreatePrimary && !isCreateRR}
+                disableThroughput={!isCreatePrimary && !isCreateRR}
+                disableStorageType={!isCreatePrimary && !isCreateRR}
+                disableVolumeSize={false}
+                disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
+              />
             </Grid>
           </Grid>
         </Box>
