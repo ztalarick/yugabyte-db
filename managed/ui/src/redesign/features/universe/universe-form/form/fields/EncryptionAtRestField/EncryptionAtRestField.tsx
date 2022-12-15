@@ -14,7 +14,7 @@ export const EncryptionAtRestField = ({ disabled }: EncryptionAtRestFieldProps):
   const { t } = useTranslation();
 
   return (
-    <Box display="flex" width="100%" data-testid="EncryptionAtRestField-Container">
+    <Box display="flex" width="100%" data-testid="EncryptionAtRestField-Container" mt={2}>
       {/* <Box flex={1}> */}
       <YBToggleField
         name={EAR_FIELD}

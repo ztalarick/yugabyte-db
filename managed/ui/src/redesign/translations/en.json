@@ -172,6 +172,8 @@
         },
         "encryptionSettings": {
           "title": "Encryption Settings",
+          "encryptionInTransit": "Encryption in Transit",
+          "encryptionAtRest": "Encryption at Rest",
           "enableClientToNodeTLS": "Enable Client-to-Node TLS",
           "enableClientToNodeTLSHelper": "Enable encryption in transit for communication between clients and the DB servers.",
           "enableEncryptionAtRest": "Enable Encryption at Rest",

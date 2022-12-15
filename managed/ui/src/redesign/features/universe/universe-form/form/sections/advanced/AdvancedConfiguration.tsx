@@ -89,7 +89,7 @@ export const AdvancedConfiguration: FC = () => {
 
         {provider.code !== CloudType.kubernetes && (
           <>
-            <Box mt={2}>
+            <Box mt={3}>
               <Grid container>
                 <Grid lg={6} item container>
                   <SystemDField disabled={!isCreatePrimary} />

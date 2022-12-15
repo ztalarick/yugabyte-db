@@ -15,7 +15,7 @@ export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): React
   const { t } = useTranslation();
 
   return (
-    <Box display="flex" width="100%" data-testid="NodeToNodeTLSField-Container">
+    <Box display="flex" width="100%" data-testid="NodeToNodeTLSField-Container" mt={2}>
       {/* <Box flex={1}> */}
       <YBToggleField
         name={NODE_TO_NODE_ENCRYPT_FIELD}

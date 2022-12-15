@@ -151,7 +151,9 @@ export const SecurityConfiguration: FC = () => {
 
               <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" mt={2}>
                 <Box mt={3} ml={2}>
-                  {/* ADD YBLABEL */}
+                  <YBLabel dataTestId="YEDISField-Label">
+                    {t('universeForm.securityConfig.encryptionSettings.encryptionInTransit')}
+                  </YBLabel>
                   <Grid container>
                     <Grid lg={6} item container>
                       <NodeToNodeTLSField disabled={!isCreatePrimary} />
@@ -183,7 +185,9 @@ export const SecurityConfiguration: FC = () => {
                 <Box mt={2} border="0.5px solid #E5E5E6" height="0px"></Box>
 
                 <Box mt={3} ml={2} mb={2}>
-                  {/* ADD YBLABEL */}
+                  <YBLabel dataTestId="YEDISField-Label">
+                    {t('universeForm.securityConfig.encryptionSettings.encryptionAtRest')}
+                  </YBLabel>
                   <Grid container>
                     <Grid lg={6} item container>
                       <EncryptionAtRestField disabled={!isCreatePrimary} />
