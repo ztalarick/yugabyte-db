@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Typography, Grid } from '@material-ui/core';
 import {
   DefaultRegionField,
+  MasterPlacementField,
   PlacementsField,
   ProvidersField,
   RegionsField,
@@ -57,6 +58,9 @@ export const CloudConfiguration: FC = () => {
           </Box>
           <Box mt={2}>
             <RegionsField disabled={false} />
+          </Box>
+          <Box>
+            <MasterPlacementField disabled={false} />
           </Box>
           <Box mt={2}>
             <TotalNodesField disabled={false} />

@@ -251,6 +251,7 @@ export interface CloudConfigFormValue {
   placements: Placement[];
   defaultRegion?: string | null;
   mastersInDefaultRegion?: boolean;
+  masterPlacement?: string;
 }
 
 export interface InstanceConfigFormValue {
@@ -334,7 +335,8 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   autoPlacement: true, // "AUTO" is the default value when creating new universe
   placements: [],
   defaultRegion: null,
-  mastersInDefaultRegion: false
+  mastersInDefaultRegion: false,
+  masterPlacement: 'ColocatedMasterMode'
 };
 
 export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {

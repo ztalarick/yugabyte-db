@@ -10,6 +10,7 @@ export const TOTAL_NODES_FIELD = 'cloudConfig.numNodes';
 export const PLACEMENTS_FIELD = 'cloudConfig.placements';
 export const DEFAULT_REGION_FIELD = 'cloudConfig.defaultRegion';
 export const MASTERS_IN_DEFAULT_REGION_FIELD = 'cloudConfig.mastersInDefaultRegion';
+export const MASTERS_PLACEMENT_FIELD = 'cloudConfig.masterPlacement';
 
 //Instance config
 export const INSTANCE_TYPE_FIELD = 'instanceConfig.instanceType';
@@ -98,7 +99,8 @@ export const PRIMARY_FIELDS = [
   CUSTOMIZE_PORT_FIELD,
   DEDICATED_NODES_FIELD,
   UNIVERSE_OVERRIDES_FIELD,
-  AZ_OVERRIDES_FIELD
+  AZ_OVERRIDES_FIELD,
+  MASTERS_PLACEMENT_FIELD
 ];
 
 export const ASYNC_FIELDS = [
@@ -126,7 +128,8 @@ export const ASYNC_FIELDS = [
   CLIENT_TO_NODE_ENCRYPT_FIELD,
   ACCESS_KEY_FIELD,
   ROOT_CERT_FIELD,
-  EAR_FIELD
+  EAR_FIELD,
+  MASTERS_PLACEMENT_FIELD
 ];
 
 export const ASYNC_COPY_FIELDS = [

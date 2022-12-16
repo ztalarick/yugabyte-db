@@ -67,6 +67,8 @@ export const SecurityConfiguration: FC = () => {
     (key: AccessKey) => key.idKey.providerUUID === provider?.uuid && key.idKey.keyCode === accessKey
   );
 
+  if (!provider?.code) return null;
+
   return (
     <Box className={classes.sectionContainer} data-testid="security-config-section">
       <Typography className={classes.sectionHeaderFont}>

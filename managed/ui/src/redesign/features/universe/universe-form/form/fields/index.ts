@@ -13,6 +13,7 @@ export * from './HelmOverridesField/HelmOverridesField';
 export * from './InstanceTypeField/InstanceTypeField';
 export * from './IPV6Field/IPV6Field';
 export * from './KMSConfigField/KMSConfigField';
+export * from './MasterPlacementField/MasterPlacementField';
 export * from './NetworkAccessField/NetworkAccessField';
 export * from './NodeToNodeTLSField/NodeToNodeTLSField';
 export * from './PlacementsField/PlacementsField';
