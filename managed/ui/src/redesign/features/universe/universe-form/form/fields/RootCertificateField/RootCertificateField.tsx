@@ -75,7 +75,7 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({
             <YBLabel dataTestId="RootCertificateField-Label">
               {t('universeForm.securityConfig.encryptionSettings.rootCertificate')}
             </YBLabel>
-            <Box flex={1}>
+            <Box flex={1} paddingRight="120px">
               <YBAutoComplete
                 disabled={disabled}
                 loading={isLoading}

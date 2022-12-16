@@ -74,7 +74,7 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
             <YBLabel dataTestId="DBVersionField-Label">
               {t('universeForm.advancedConfig.dbVersion')}
             </YBLabel>
-            <Box flex={1} ml={4}>
+            <Box flex={1} paddingLeft="95px">
               <YBAutoComplete
                 disabled={disabled}
                 loading={isLoading}

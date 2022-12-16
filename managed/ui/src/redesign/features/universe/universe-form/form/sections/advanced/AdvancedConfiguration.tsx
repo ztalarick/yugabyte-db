@@ -56,6 +56,7 @@ export const AdvancedConfiguration: FC = () => {
             </Grid>
           </Box>
         )}
+
         {provider.code === CloudType.aws && (
           <Box mt={2}>
             <Grid container spacing={3}>
@@ -95,7 +96,7 @@ export const AdvancedConfiguration: FC = () => {
                 </Grid>
               </Grid>
             </Box>
-            <Box mt={2}>
+            <Box mt={3}>
               <Grid container>
                 <Grid lg={6} item container>
                   <DeploymentPortsField disabled={!isCreatePrimary} />

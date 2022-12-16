@@ -173,15 +173,11 @@ export const SecurityConfiguration: FC = () => {
 
                 {(clientNodeTLSEnabled || nodeNodeTLSEnabled) && (
                   <Box mt={3} ml={2}>
-                    <Grid container spacing={3}>
-                      <Grid lg={10} item container>
-                        <RootCertificateField
-                          disabled={!isCreatePrimary}
-                          isPrimary={isPrimary}
-                          isCreateMode={isCreateMode}
-                        />
-                      </Grid>
-                    </Grid>
+                    <RootCertificateField
+                      disabled={!isCreatePrimary}
+                      isPrimary={isPrimary}
+                      isCreateMode={isCreateMode}
+                    />
                   </Box>
                 )}
                 <Box mt={2} border="0.5px solid #E5E5E6" height="0px"></Box>

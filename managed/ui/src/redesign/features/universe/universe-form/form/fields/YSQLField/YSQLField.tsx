@@ -69,6 +69,7 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
               </YBHelper> */}
           </div>
         </YBTooltip>
+
         <YBLabel dataTestId="YSQLField-EnableLabel">
           {t('universeForm.securityConfig.authSettings.enableYSQL')}
         </YBLabel>
@@ -99,70 +100,63 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
 
           {ysqlAuthEnabled && !disabled && (
             <Box display="flex" flexDirection="column" mt={3}>
-              {/* <Grid container spacing={3} lg> */}
-              <Grid item sm={12} lg={10}>
-                <Box display="flex">
-                  <YBLabel dataTestId="YSQLField-PasswordLabel">
-                    {t('universeForm.securityConfig.authSettings.ysqlAuthPassword')}
-                  </YBLabel>
-                  <Box flex={1}>
-                    <YBPasswordField
-                      rules={{
-                        required:
-                          !disabled && ysqlAuthEnabled
-                            ? (t('universeForm.validation.required', {
-                                field: t(
-                                  'universeForm.securityConfig.authSettings.ysqlAuthPassword'
-                                )
-                              }) as string)
-                            : '',
-                        pattern: {
-                          value: PASSWORD_REGEX,
-                          message: t('universeForm.validation.passwordStrength')
-                        }
-                      }}
-                      name={YSQL_PASSWORD_FIELD}
-                      control={control}
-                      fullWidth
-                      inputProps={{
-                        autoComplete: 'new-password',
-                        'data-testid': 'YSQLField-PasswordLabelInput'
-                      }}
-                      error={!!errors?.instanceConfig?.ysqlPassword}
-                      helperText={errors?.instanceConfig?.ysqlPassword?.message}
-                    />
-                  </Box>
+              <Box display="flex">
+                <YBLabel dataTestId="YSQLField-PasswordLabel">
+                  {t('universeForm.securityConfig.authSettings.ysqlAuthPassword')}
+                </YBLabel>
+                <Box flex={1} paddingRight="120px">
+                  <YBPasswordField
+                    rules={{
+                      required:
+                        !disabled && ysqlAuthEnabled
+                          ? (t('universeForm.validation.required', {
+                              field: t('universeForm.securityConfig.authSettings.ysqlAuthPassword')
+                            }) as string)
+                          : '',
+                      pattern: {
+                        value: PASSWORD_REGEX,
+                        message: t('universeForm.validation.passwordStrength')
+                      }
+                    }}
+                    name={YSQL_PASSWORD_FIELD}
+                    control={control}
+                    fullWidth
+                    inputProps={{
+                      autoComplete: 'new-password',
+                      'data-testid': 'YSQLField-PasswordLabelInput'
+                    }}
+                    error={!!errors?.instanceConfig?.ysqlPassword}
+                    helperText={errors?.instanceConfig?.ysqlPassword?.message}
+                  />
                 </Box>
-              </Grid>
-              <Grid item sm={12} lg={10}>
-                <Box display="flex" mt={2}>
-                  <YBLabel dataTestId="YSQLField-ConfirmPasswordLabel">
-                    {t('universeForm.securityConfig.authSettings.confirmPassword')}
-                  </YBLabel>
-                  <Box flex={1}>
-                    <YBPasswordField
-                      name={YSQL_CONFIRM_PASSWORD_FIELD}
-                      control={control}
-                      rules={{
-                        validate: {
-                          passwordMatch: (value) =>
-                            (ysqlAuthEnabled && value === ysqlPassword) ||
-                            (t('universeForm.validation.confirmPassword') as string)
-                        },
-                        deps: [YSQL_PASSWORD_FIELD, YSQL_AUTH_FIELD]
-                      }}
-                      fullWidth
-                      inputProps={{
-                        autoComplete: 'new-password',
-                        'data-testid': 'YSQLField-ConfirmPasswordInput'
-                      }}
-                      error={!!errors?.instanceConfig?.ysqlConfirmPassword}
-                      helperText={errors?.instanceConfig?.ysqlConfirmPassword?.message}
-                    />
-                  </Box>
+              </Box>
+
+              <Box display="flex" mt={2}>
+                <YBLabel dataTestId="YSQLField-ConfirmPasswordLabel">
+                  {t('universeForm.securityConfig.authSettings.confirmPassword')}
+                </YBLabel>
+                <Box flex={1} paddingRight="120px">
+                  <YBPasswordField
+                    name={YSQL_CONFIRM_PASSWORD_FIELD}
+                    control={control}
+                    rules={{
+                      validate: {
+                        passwordMatch: (value) =>
+                          (ysqlAuthEnabled && value === ysqlPassword) ||
+                          (t('universeForm.validation.confirmPassword') as string)
+                      },
+                      deps: [YSQL_PASSWORD_FIELD, YSQL_AUTH_FIELD]
+                    }}
+                    fullWidth
+                    inputProps={{
+                      autoComplete: 'new-password',
+                      'data-testid': 'YSQLField-ConfirmPasswordInput'
+                    }}
+                    error={!!errors?.instanceConfig?.ysqlConfirmPassword}
+                    helperText={errors?.instanceConfig?.ysqlConfirmPassword?.message}
+                  />
                 </Box>
-              </Grid>
-              {/* </Grid> */}
+              </Box>
             </Box>
           )}
         </Box>

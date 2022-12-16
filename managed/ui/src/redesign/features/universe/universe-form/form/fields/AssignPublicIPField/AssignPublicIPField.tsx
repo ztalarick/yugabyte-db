@@ -15,16 +15,10 @@ export const AssignPublicIPField = ({ disabled }: AssignPublicIPFieldProps): Rea
   const { t } = useTranslation();
 
   return (
-    <Box width="100%" data-testid="AssignPublicIPField-Container" mt={2}>
-      <Box>
-        <Box
-          bgcolor="#FFFFFF"
-          border="1px solid #E5E5E6"
-          borderRadius="8px"
-          height="56px"
-          maxWidth="708px"
-        >
-          <Box display="flex" flexDirection="row" ml={2} mt={1.5}>
+    <Box width="100%" data-testid="AssignPublicIPField-Container" mt={2} justifyContent="center">
+      <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" maxWidth="708px">
+        <Box display="flex" flexDirection="row" ml={2} mt={2} mb={2}>
+          <Box justifyContent="center">
             <YBToggleField
               name={ASSIGN_PUBLIC_IP_FIELD}
               inputProps={{
@@ -33,12 +27,11 @@ export const AssignPublicIPField = ({ disabled }: AssignPublicIPFieldProps): Rea
               control={control}
               disabled={disabled}
             />
-            <Box mt={0.5}>
-              <YBLabel dataTestId="AssignPublicIPField-Label">
-                {t('universeForm.instanceConfig.assignPublicIP')}
-              </YBLabel>
-            </Box>
           </Box>
+
+          <YBLabel dataTestId="AssignPublicIPField-Label">
+            {t('universeForm.instanceConfig.assignPublicIP')}
+          </YBLabel>
         </Box>
       </Box>
 
