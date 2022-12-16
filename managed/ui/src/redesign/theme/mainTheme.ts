@@ -470,7 +470,8 @@ export const mainTheme = createTheme({
       },
       icon: {
         color: colors.grey[600],
-        right: 2
+        right: 2,
+        top: 'auto'
       }
     },
     MuiPaper: {

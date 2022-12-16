@@ -48,7 +48,7 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
       <YBLabel dataTestId={'AccessKeysField-Label'}>
         {t('universeForm.advancedConfig.accessKey')}
       </YBLabel>
-      <Box flex={1} ml={4}>
+      <Box flex={1}>
         <YBSelectField
           rules={{
             required: !disabled
@@ -62,6 +62,7 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
           }}
           name={ACCESS_KEY_FIELD}
           control={control}
+          fullWidth
           disabled={disabled}
         >
           {accessKeysList.map((item: AccessKey) => (

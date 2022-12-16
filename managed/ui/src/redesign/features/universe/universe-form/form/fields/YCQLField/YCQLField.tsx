@@ -101,7 +101,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
           {ycqlAuthEnabled && !disabled && (
             <Box display="flex" flexDirection="column" mt={3}>
               {/* <Grid container spacing={3}> */}
-              <Grid item sm={12} lg={6}>
+              <Grid item sm={12} lg={10}>
                 <Box display="flex">
                   <YBLabel dataTestId="YCQLField-PasswordLabel">
                     {t('universeForm.securityConfig.authSettings.ycqlAuthPassword')}
@@ -135,7 +135,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                   </Box>
                 </Box>
               </Grid>
-              <Grid item sm={12} lg={6}>
+              <Grid item sm={12} lg={10}>
                 <Box display="flex" mt={2}>
                   <YBLabel dataTestId="YCQLField-ConfirmPasswordLabel">
                     {t('universeForm.securityConfig.authSettings.confirmPassword')}

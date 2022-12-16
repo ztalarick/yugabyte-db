@@ -112,6 +112,7 @@ export const SecurityConfiguration: FC = () => {
               flexDirection="column"
               data-testid="AuthenticationSettings-Container"
               mt={6}
+              maxWidth="708px"
             >
               <Typography className={classes.subsectionHeaderFont}>
                 {t('universeForm.securityConfig.authSettings.title')}
@@ -144,6 +145,7 @@ export const SecurityConfiguration: FC = () => {
               flexDirection="column"
               data-testid="AuthenticationSettings-Container"
               mt={6}
+              maxWidth="708px"
             >
               <Typography className={classes.subsectionHeaderFont}>
                 {t('universeForm.securityConfig.encryptionSettings.title')}
@@ -172,7 +174,7 @@ export const SecurityConfiguration: FC = () => {
                 {(clientNodeTLSEnabled || nodeNodeTLSEnabled) && (
                   <Box mt={3} ml={2}>
                     <Grid container spacing={3}>
-                      <Grid lg={6} item container>
+                      <Grid lg={10} item container>
                         <RootCertificateField
                           disabled={!isCreatePrimary}
                           isPrimary={isPrimary}

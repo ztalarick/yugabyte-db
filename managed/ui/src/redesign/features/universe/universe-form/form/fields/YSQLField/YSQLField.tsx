@@ -99,8 +99,8 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
 
           {ysqlAuthEnabled && !disabled && (
             <Box display="flex" flexDirection="column" mt={3}>
-              {/* <Grid container spacing={3}> */}
-              <Grid item sm={12} lg={6}>
+              {/* <Grid container spacing={3} lg> */}
+              <Grid item sm={12} lg={10}>
                 <Box display="flex">
                   <YBLabel dataTestId="YSQLField-PasswordLabel">
                     {t('universeForm.securityConfig.authSettings.ysqlAuthPassword')}
@@ -134,7 +134,7 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
                   </Box>
                 </Box>
               </Grid>
-              <Grid item sm={12} lg={6}>
+              <Grid item sm={12} lg={10}>
                 <Box display="flex" mt={2}>
                   <YBLabel dataTestId="YSQLField-ConfirmPasswordLabel">
                     {t('universeForm.securityConfig.authSettings.confirmPassword')}

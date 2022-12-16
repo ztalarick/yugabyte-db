@@ -17,8 +17,14 @@ export const AssignPublicIPField = ({ disabled }: AssignPublicIPFieldProps): Rea
   return (
     <Box width="100%" data-testid="AssignPublicIPField-Container" mt={2}>
       <Box>
-        <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" height="56px">
-          <Box display="flex" flexDirection="row" ml={2} mt={2}>
+        <Box
+          bgcolor="#FFFFFF"
+          border="1px solid #E5E5E6"
+          borderRadius="8px"
+          height="56px"
+          maxWidth="708px"
+        >
+          <Box display="flex" flexDirection="row" ml={2} mt={1.5}>
             <YBToggleField
               name={ASSIGN_PUBLIC_IP_FIELD}
               inputProps={{
