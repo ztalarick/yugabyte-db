@@ -9,7 +9,7 @@ import {
   YBLabel,
   YBTooltip
 } from '../../../../../../components';
-import { UniverseFormData, CloudType } from '../../../utils/dto';
+import { UniverseFormData, CloudType, MasterPlacementType } from '../../../utils/dto';
 import { MASTERS_PLACEMENT_FIELD } from '../../../utils/constants';
 import { string } from 'yup';
 
@@ -38,7 +38,7 @@ const useStyles = makeStyles(() => ({
 export const MasterPlacementField = ({ disabled }: MasterPlacementFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
-  const [masterPlacement, setMasterPlacement] = useState<string>('ColocatedMasterMode');
+  const [masterPlacement, setMasterPlacement] = useState<string>(MasterPlacementType.COLOCATED);
   const classes = useStyles();
 
   return (
@@ -52,11 +52,11 @@ export const MasterPlacementField = ({ disabled }: MasterPlacementFieldProps): R
           orientation={RadioOrientation.Vertical}
           onChange={(e) => {
             setMasterPlacement(e.target.value);
-            // setValue(MASTERS_PLACEMENT_FIELD, e.target.value);
+            setValue(MASTERS_PLACEMENT_FIELD, e.target.value);
           }}
           options={[
             {
-              value: 'ColocatedMasterMode',
+              value: MasterPlacementType.COLOCATED,
               label: (
                 <Box display="flex">
                   {t('universeForm.cloudConfig.colocatedMasterMode')}
@@ -65,7 +65,7 @@ export const MasterPlacementField = ({ disabled }: MasterPlacementFieldProps): R
               )
             },
             {
-              value: 'DedicatedMasterMode',
+              value: MasterPlacementType.DEDICATED,
               label: (
                 <Box display="flex">
                   {t('universeForm.cloudConfig.dedicatedMasterMode')}

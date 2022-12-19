@@ -19,7 +19,11 @@ import {
   StorageType,
   UniverseFormData
 } from '../../../utils/dto';
-import { INSTANCE_TYPE_FIELD, PROVIDER_FIELD, DEVICE_INFO_FIELD } from '../../../utils/constants';
+import {
+  INSTANCE_TYPE_MASTER_FIELD,
+  PROVIDER_FIELD,
+  DEVICE_INFO_MASTER_FIELD
+} from '../../../utils/constants';
 
 const getOptionLabel = (op: Record<string, string>): string => {
   if (!op) return '';
@@ -37,16 +41,16 @@ const renderOption = (option: Record<string, string>) => {
   return <>{getOptionLabel(option)}</>;
 };
 
-export const InstanceTypeField: FC = () => {
+export const InstanceTypeMasterField: FC = () => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
   //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
-  const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
+  const deviceInfo = useWatch({ name: DEVICE_INFO_MASTER_FIELD });
 
   const handleChange = (e: ChangeEvent<{}>, option: any) => {
-    setValue(INSTANCE_TYPE_FIELD, option?.instanceTypeCode, { shouldValidate: true });
+    setValue(INSTANCE_TYPE_MASTER_FIELD, option?.instanceTypeCode, { shouldValidate: true });
   };
 
   const { data, isLoading, refetch } = useQuery(
@@ -56,10 +60,10 @@ export const InstanceTypeField: FC = () => {
       enabled: !!provider?.uuid,
       onSuccess: (data) => {
         // set default/first item as instance type after provider changes
-        if (!getValues(INSTANCE_TYPE_FIELD) && provider?.code && data.length) {
+        if (!getValues(INSTANCE_TYPE_MASTER_FIELD) && provider?.code && data.length) {
           const defaultInstanceType =
             DEFAULT_INSTANCE_TYPES[provider.code] || data[0].instanceTypeCode;
-          setValue(INSTANCE_TYPE_FIELD, defaultInstanceType, { shouldValidate: true });
+          setValue(INSTANCE_TYPE_MASTER_FIELD, defaultInstanceType, { shouldValidate: true });
         }
       }
     }
@@ -67,7 +71,7 @@ export const InstanceTypeField: FC = () => {
 
   useUpdateEffect(() => {
     //Reset instance type after provider change
-    setValue(INSTANCE_TYPE_FIELD, null);
+    setValue(INSTANCE_TYPE_MASTER_FIELD, null);
     //refetch instances based on changed provider
     refetch();
   }, [provider]);
@@ -76,7 +80,7 @@ export const InstanceTypeField: FC = () => {
 
   return (
     <Controller
-      name={INSTANCE_TYPE_FIELD}
+      name={INSTANCE_TYPE_MASTER_FIELD}
       control={control}
       rules={{
         required: t('universeForm.validation.required', {

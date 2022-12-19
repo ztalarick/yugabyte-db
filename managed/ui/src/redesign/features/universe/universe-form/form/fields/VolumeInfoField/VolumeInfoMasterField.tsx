@@ -17,7 +17,11 @@ import {
 } from './VolumeInfoFieldHelper';
 import { isEphemeralAwsStorageInstance } from '../InstanceTypeField/InstanceTypeFieldHelper';
 import { CloudType, StorageType, UniverseFormData, VolumeType } from '../../../utils/dto';
-import { PROVIDER_FIELD, DEVICE_INFO_FIELD, INSTANCE_TYPE_FIELD } from '../../../utils/constants';
+import {
+  PROVIDER_FIELD,
+  DEVICE_INFO_MASTER_FIELD,
+  INSTANCE_TYPE_MASTER_FIELD
+} from '../../../utils/constants';
 
 interface VolumeInfoFieldProps {
   isEditMode: boolean;
@@ -29,7 +33,7 @@ interface VolumeInfoFieldProps {
   disableNumVolumes: boolean;
 }
 
-export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
+export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
   isEditMode,
   isPrimary,
   disableIops,
@@ -43,8 +47,8 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   const instanceTypeChanged = useRef(false);
 
   //watchers
-  const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
-  const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
+  const fieldValue = useWatch({ name: DEVICE_INFO_MASTER_FIELD });
+  const instanceType = useWatch({ name: INSTANCE_TYPE_MASTER_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
 
   //get instance details
@@ -67,7 +71,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
       deviceInfo.numVolumes = fieldValue.numVolumes;
     }
 
-    setValue(DEVICE_INFO_FIELD, deviceInfo ?? null);
+    setValue(DEVICE_INFO_MASTER_FIELD, deviceInfo ?? null);
   }, [instanceType]);
 
   //mark instance changed once only in edit mode
@@ -81,7 +85,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     if ([StorageType.IO1, StorageType.GP3, StorageType.UltraSSD_LRS].includes(storageType)) {
       //resetting throughput
       const throughputVal = getThroughputByIops(Number(throughput), diskIops, storageType);
-      setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput: throughputVal });
+      setValue(DEVICE_INFO_MASTER_FIELD, { ...fieldValue, throughput: throughputVal });
     }
   };
 
@@ -89,12 +93,12 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   const onStorageTypeChanged = (storageType: StorageType) => {
     const throughput = getThroughputByStorageType(storageType);
     const diskIops = getIopsByStorageType(storageType);
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput, diskIops, storageType });
+    setValue(DEVICE_INFO_MASTER_FIELD, { ...fieldValue, throughput, diskIops, storageType });
   };
 
   const onVolumeSizeChanged = (value: any) => {
     const { storageType, diskIops } = fieldValue;
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, volumeSize: Number(value) });
+    setValue(DEVICE_INFO_MASTER_FIELD, { ...fieldValue, volumeSize: Number(value) });
     if (storageType === StorageType.UltraSSD_LRS) {
       onDiskIopsChanged(diskIops);
     }
@@ -105,17 +109,17 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     const maxDiskIops = getMaxDiskIops(storageType, volumeSize);
     const minDiskIops = getMinDiskIops(storageType, volumeSize);
     const diskIops = Math.max(minDiskIops, Math.min(maxDiskIops, Number(value)));
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, diskIops });
+    setValue(DEVICE_INFO_MASTER_FIELD, { ...fieldValue, diskIops });
   };
 
   const onThroughputChange = (value: any) => {
     const { storageType, diskIops } = fieldValue;
     const throughput = getThroughputByIops(Number(value), diskIops, storageType);
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput });
+    setValue(DEVICE_INFO_MASTER_FIELD, { ...fieldValue, throughput });
   };
 
   const onNumVolumesChanged = (numVolumes: any) => {
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, numVolumes });
+    setValue(DEVICE_INFO_MASTER_FIELD, { ...fieldValue, numVolumes });
   };
 
   //render
@@ -223,58 +227,10 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     return null;
   };
 
-  const renderDiskIops = () => {
-    if (
-      ![StorageType.IO1, StorageType.GP3, StorageType.UltraSSD_LRS].includes(fieldValue.storageType)
-    )
-      return null;
-
-    return (
-      <Box display="flex">
-        <YBLabel dataTestId="VolumeInfoField-DiskIopsLabel">
-          {t('universeForm.instanceConfig.provisionedIops')}
-        </YBLabel>
-        <Box flex={1}>
-          <YBInput
-            type="number"
-            fullWidth
-            disabled={disableIops}
-            inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-DiskIopsInput' }}
-            value={fieldValue.diskIops}
-            onChange={(event) => onDiskIopsChanged(event.target.value)}
-            onBlur={resetThroughput}
-          />
-        </Box>
-      </Box>
-    );
-  };
-
-  const renderThroughput = () => {
-    if (![StorageType.GP3, StorageType.UltraSSD_LRS].includes(fieldValue.storageType)) return null;
-    return (
-      <Box display="flex">
-        <YBLabel dataTestId="VolumeInfoField-ThroughputLabel">
-          {' '}
-          {t('universeForm.instanceConfig.provisionedThroughput')}
-        </YBLabel>
-        <Box flex={1}>
-          <YBInput
-            type="number"
-            fullWidth
-            disabled={disableThroughput}
-            inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-ThroughputInput' }}
-            value={fieldValue.throughput}
-            onChange={(event) => onThroughputChange(event.target.value)}
-          />
-        </Box>
-      </Box>
-    );
-  };
-
   return (
     <Controller
       control={control}
-      name={DEVICE_INFO_FIELD}
+      name={DEVICE_INFO_MASTER_FIELD}
       render={() => (
         <>
           {fieldValue && (
@@ -291,21 +247,6 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                   </Grid>
                 </Grid>
               </Box>
-
-              {fieldValue.storageType && (
-                <Box>
-                  <Grid container spacing={2}>
-                    <Grid item lg={6} sm={12}>
-                      <Box mt={2}> {renderDiskIops()}</Box>
-                    </Grid>
-                  </Grid>
-                  <Grid container spacing={2}>
-                    <Grid item lg={6} sm={12}>
-                      <Box mt={1}> {renderThroughput()}</Box>
-                    </Grid>
-                  </Grid>
-                </Box>
-              )}
             </Box>
           )}
         </>

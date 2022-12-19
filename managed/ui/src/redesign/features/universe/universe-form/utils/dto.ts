@@ -24,6 +24,11 @@ export enum CloudType {
   other = 'other'
 }
 
+export enum MasterPlacementType {
+  COLOCATED = 'COLOCATED',
+  DEDICATED = 'DEDICATED'
+}
+
 export interface CommunicationPorts {
   masterHttpPort: number;
   masterRpcPort: number;
@@ -95,9 +100,11 @@ export interface UserIntent {
   replicationFactor: number;
   regionList: string[];
   instanceType: string | null;
+  instanceTypeMaster?: string | null;
   numNodes: number;
   ybSoftwareVersion: string | null;
   deviceInfo: DeviceInfo | null;
+  deviceInfoMaster?: DeviceInfo | null;
   enableYSQL: boolean;
   enableYSQLAuth: boolean;
   enableYCQL: boolean;
@@ -180,6 +187,7 @@ export interface UniverseDetails {
   communicationPorts: CommunicationPorts;
   cmkArn: string;
   deviceInfo: DeviceInfo | null;
+  deviceInfoMaster: DeviceInfo | null;
   encryptionAtRestConfig: EncryptionAtRestConfig;
   errorString: string | null;
   expectedUniverseVersion: number;
@@ -256,7 +264,9 @@ export interface CloudConfigFormValue {
 
 export interface InstanceConfigFormValue {
   instanceType: string | null;
+  instanceTypeMaster?: string | null;
   deviceInfo: DeviceInfo | null;
+  deviceInfoMaster?: DeviceInfo | null;
   assignPublicIP: boolean;
   useTimeSync: boolean;
   enableClientToNodeEncrypt: boolean;
@@ -336,12 +346,14 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   placements: [],
   defaultRegion: null,
   mastersInDefaultRegion: false,
-  masterPlacement: 'ColocatedMasterMode'
+  masterPlacement: MasterPlacementType.COLOCATED
 };
 
 export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   instanceType: null,
+  instanceTypeMaster: null,
   deviceInfo: null,
+  deviceInfoMaster: null,
   assignPublicIP: true,
   useTimeSync: true,
   enableClientToNodeEncrypt: true,

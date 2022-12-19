@@ -19,7 +19,9 @@ import {
 } from './utils/dto';
 import {
   DEVICE_INFO_FIELD,
+  DEVICE_INFO_MASTER_FIELD,
   INSTANCE_TYPE_FIELD,
+  INSTANCE_TYPE_MASTER_FIELD,
   REGIONS_FIELD,
   REPLICATION_FACTOR_FIELD,
   TOTAL_NODES_FIELD,
@@ -98,7 +100,9 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       userIntent.numNodes = _.get(formData, TOTAL_NODES_FIELD);
       userIntent.replicationFactor = _.get(formData, REPLICATION_FACTOR_FIELD);
       userIntent.instanceType = _.get(formData, INSTANCE_TYPE_FIELD);
+      //  userIntent.instanceTypeMaster = _.get(formData, INSTANCE_TYPE_MASTER_FIELD);
       userIntent.deviceInfo = _.get(formData, DEVICE_INFO_FIELD);
+      //  userIntent.deviceInfoMaster = _.get(formData, DEVICE_INFO_MASTER_FIELD);
       userIntent.instanceTags = transformTagsArrayToObject(_.get(formData, USER_TAGS_FIELD, []));
       payload.clusters[primaryIndex].placementInfo.cloudList[0].regionList = getPlacements(
         formData

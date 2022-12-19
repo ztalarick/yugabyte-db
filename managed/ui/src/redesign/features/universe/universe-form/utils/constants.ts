@@ -14,7 +14,9 @@ export const MASTERS_PLACEMENT_FIELD = 'cloudConfig.masterPlacement';
 
 //Instance config
 export const INSTANCE_TYPE_FIELD = 'instanceConfig.instanceType';
+export const INSTANCE_TYPE_MASTER_FIELD = 'instanceConfig.instanceTypeMaster';
 export const DEVICE_INFO_FIELD = 'instanceConfig.deviceInfo';
+export const DEVICE_INFO_MASTER_FIELD = 'instanceConfig.deviceInfoMaster';
 export const ASSIGN_PUBLIC_IP_FIELD = 'instanceConfig.assignPublicIP';
 export const YSQL_FIELD = 'instanceConfig.enableYSQL';
 export const YSQL_AUTH_FIELD = 'instanceConfig.enableYSQLAuth';
@@ -70,10 +72,12 @@ export const PRIMARY_FIELDS = [
   DEFAULT_REGION_FIELD,
   MASTERS_IN_DEFAULT_REGION_FIELD,
   INSTANCE_TYPE_FIELD,
+  INSTANCE_TYPE_MASTER_FIELD,
   GFLAGS_FIELD,
   USER_TAGS_FIELD,
   SOFTWARE_VERSION_FIELD,
   DEVICE_INFO_FIELD,
+  DEVICE_INFO_MASTER_FIELD,
   ASSIGN_PUBLIC_IP_FIELD,
   SYSTEMD_FIELD,
   TIME_SYNC_FIELD,
@@ -112,8 +116,10 @@ export const ASYNC_FIELDS = [
   TOTAL_NODES_FIELD,
   PLACEMENTS_FIELD,
   INSTANCE_TYPE_FIELD,
+  INSTANCE_TYPE_MASTER_FIELD,
   SOFTWARE_VERSION_FIELD,
   DEVICE_INFO_FIELD,
+  DEVICE_INFO_MASTER_FIELD,
   ASSIGN_PUBLIC_IP_FIELD,
   SYSTEMD_FIELD,
   TIME_SYNC_FIELD,
@@ -135,6 +141,7 @@ export const ASYNC_FIELDS = [
 export const ASYNC_COPY_FIELDS = [
   SOFTWARE_VERSION_FIELD,
   DEVICE_INFO_FIELD,
+  DEVICE_INFO_MASTER_FIELD,
   ASSIGN_PUBLIC_IP_FIELD,
   SYSTEMD_FIELD,
   TIME_SYNC_FIELD,

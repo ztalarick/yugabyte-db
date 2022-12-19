@@ -3,11 +3,17 @@ import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
-import { InstanceTypeField, VolumeInfoField, DedicatedNodesField } from '../../fields';
+import {
+  InstanceTypeField,
+  InstanceTypeMasterField,
+  VolumeInfoField,
+  VolumeInfoMasterField,
+  DedicatedNodesField
+} from '../../fields';
 import { YBLabel } from '../../../../../../components';
 import { UniverseFormContext } from '../../../UniverseFormContainer';
-import { CloudType, ClusterModes, ClusterType } from '../../../utils/dto';
-import { PROVIDER_FIELD } from '../../../utils/constants';
+import { CloudType, ClusterModes, ClusterType, MasterPlacementType } from '../../../utils/dto';
+import { PROVIDER_FIELD, MASTERS_PLACEMENT_FIELD } from '../../../utils/constants';
 import { useSectionStyles } from '../../../universeMainStyle';
 
 export const InstanceConfiguration: FC = () => {
@@ -28,6 +34,7 @@ export const InstanceConfiguration: FC = () => {
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
+  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
 
   return (
     <Box className={classes.sectionContainer} data-testid="instance-config-section">
@@ -38,14 +45,51 @@ export const InstanceConfiguration: FC = () => {
         <Box mt={4}>
           <Grid container spacing={3}>
             <Grid lg={6} item container>
-              <InstanceTypeField />
+              <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" width="100%">
+                <Box m={2}>
+                  <YBLabel dataTestId="UniverseNameField-Label">
+                    {t('universeForm.cloudConfig.universeName')}
+                  </YBLabel>
+                  <InstanceTypeField />
+                  <VolumeInfoField
+                    isEditMode={!isCreateMode}
+                    isPrimary={isPrimary}
+                    disableIops={!isCreatePrimary && !isCreateRR}
+                    disableThroughput={!isCreatePrimary && !isCreateRR}
+                    disableStorageType={!isCreatePrimary && !isCreateRR}
+                    disableVolumeSize={false}
+                    disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
+                  />
+                </Box>
+              </Box>
             </Grid>
+            {masterPlacement === MasterPlacementType.DEDICATED && (
+              <Grid lg={6} item container>
+                <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" width="100%">
+                  <Box m={2}>
+                    <YBLabel dataTestId="UniverseNameField-Label">
+                      {t('universeForm.cloudConfig.universeName')}
+                    </YBLabel>
+                    <InstanceTypeMasterField />
+                    <VolumeInfoMasterField
+                      isEditMode={!isCreateMode}
+                      isPrimary={isPrimary}
+                      disableIops={!isCreatePrimary && !isCreateRR}
+                      disableThroughput={!isCreatePrimary && !isCreateRR}
+                      disableStorageType={!isCreatePrimary && !isCreateRR}
+                      disableVolumeSize={false}
+                      disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
+                    />
+                  </Box>
+                </Box>
+              </Grid>
+            )}
           </Grid>
         </Box>
 
         <Box mt={2}>
           <Grid container spacing={3}>
-            <Grid lg={6} item container>
+            {/* <Grid lg={6} item container>
               <VolumeInfoField
                 isEditMode={!isCreateMode}
                 isPrimary={isPrimary}
@@ -55,7 +99,20 @@ export const InstanceConfiguration: FC = () => {
                 disableVolumeSize={false}
                 disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
               />
-            </Grid>
+            </Grid> */}
+            {/* {masterPlacement === MasterPlacementType.DEDICATED && (
+              <Grid lg={6} item container>
+                <VolumeInfoMasterField
+                  isEditMode={!isCreateMode}
+                  isPrimary={isPrimary}
+                  disableIops={!isCreatePrimary && !isCreateRR}
+                  disableThroughput={!isCreatePrimary && !isCreateRR}
+                  disableStorageType={!isCreatePrimary && !isCreateRR}
+                  disableVolumeSize={false}
+                  disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
+                />
+              </Grid>
+            )} */}
           </Grid>
         </Box>
 

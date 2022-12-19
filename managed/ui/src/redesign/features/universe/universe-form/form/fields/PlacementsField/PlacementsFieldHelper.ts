@@ -147,6 +147,7 @@ export const useNodePlacements = () => {
   const totalNodes = useWatch({ name: TOTAL_NODES_FIELD });
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
+  // Placement is based on T-Server Device Info in case of dedicated mode
   const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
   const dedicatedNodes = useWatch({ name: DEDICATED_NODES_FIELD });
   const defaultRegion = useWatch({ name: DEFAULT_REGION_FIELD });
