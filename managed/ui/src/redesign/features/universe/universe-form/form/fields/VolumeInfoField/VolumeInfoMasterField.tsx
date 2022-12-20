@@ -19,6 +19,7 @@ import { isEphemeralAwsStorageInstance } from '../InstanceTypeField/InstanceType
 import { CloudType, StorageType, UniverseFormData, VolumeType } from '../../../utils/dto';
 import {
   PROVIDER_FIELD,
+  DEVICE_INFO_FIELD,
   DEVICE_INFO_MASTER_FIELD,
   INSTANCE_TYPE_MASTER_FIELD
 } from '../../../utils/constants';
@@ -47,6 +48,8 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
   const instanceTypeChanged = useRef(false);
 
   //watchers
+  const chumma = useWatch({ name: DEVICE_INFO_FIELD });
+  console.log('chumma', chumma);
   const fieldValue = useWatch({ name: DEVICE_INFO_MASTER_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_MASTER_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -154,8 +157,8 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
           </YBLabel>
         </Box>
 
-        <Box display="flex" flex={1}>
-          <Box flex={1}>
+        <Box display="flex">
+          <Box flex={1} width="max-content">
             <YBInput
               type="number"
               fullWidth
@@ -170,7 +173,7 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
             x
           </Box>
 
-          <Box flex={1}>
+          <Box flex={1} width="max-content">
             <YBInput
               type="number"
               fullWidth
@@ -227,6 +230,54 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
     return null;
   };
 
+  const renderDiskIops = () => {
+    if (
+      ![StorageType.IO1, StorageType.GP3, StorageType.UltraSSD_LRS].includes(fieldValue.storageType)
+    )
+      return null;
+
+    return (
+      <Box display="flex">
+        <YBLabel dataTestId="VolumeInfoField-DiskIopsLabel">
+          {t('universeForm.instanceConfig.provisionedIops')}
+        </YBLabel>
+        <Box flex={1}>
+          <YBInput
+            type="number"
+            fullWidth
+            disabled={disableIops}
+            inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-DiskIopsInput' }}
+            value={fieldValue.diskIops}
+            onChange={(event) => onDiskIopsChanged(event.target.value)}
+            onBlur={resetThroughput}
+          />
+        </Box>
+      </Box>
+    );
+  };
+
+  const renderThroughput = () => {
+    if (![StorageType.GP3, StorageType.UltraSSD_LRS].includes(fieldValue.storageType)) return null;
+    return (
+      <Box display="flex">
+        <YBLabel dataTestId="VolumeInfoField-ThroughputLabel">
+          {' '}
+          {t('universeForm.instanceConfig.provisionedThroughput')}
+        </YBLabel>
+        <Box flex={1}>
+          <YBInput
+            type="number"
+            fullWidth
+            disabled={disableThroughput}
+            inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-ThroughputInput' }}
+            value={fieldValue.throughput}
+            onChange={(event) => onThroughputChange(event.target.value)}
+          />
+        </Box>
+      </Box>
+    );
+  };
+
   return (
     <Controller
       control={control}
@@ -241,12 +292,29 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
                     <Box mt={2}> {renderVolumeInfo()}</Box>
                   </Grid>
                 </Grid>
-                <Grid container spacing={2}>
-                  <Grid item lg={6} xs={12}>
-                    <Box mt={1}> {renderStorageType()}</Box>
+                {provider?.code === CloudType.aws && (
+                  <Grid container spacing={2}>
+                    <Grid item lg={6} xs={12}>
+                      <Box mt={1}> {renderStorageType()}</Box>
+                    </Grid>
                   </Grid>
-                </Grid>
+                )}
               </Box>
+
+              {fieldValue.storageType && (
+                <Box>
+                  <Grid container spacing={2}>
+                    <Grid item lg={6} sm={12}>
+                      <Box mt={2}> {renderDiskIops()}</Box>
+                    </Grid>
+                  </Grid>
+                  <Grid container spacing={2}>
+                    <Grid item lg={6} sm={12}>
+                      <Box mt={1}> {renderThroughput()}</Box>
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
             </Box>
           )}
         </>

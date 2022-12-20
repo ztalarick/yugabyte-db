@@ -25,6 +25,7 @@ import {
   REGIONS_FIELD,
   REPLICATION_FACTOR_FIELD,
   TOTAL_NODES_FIELD,
+  TOTAL_NODES_MASTER_FIELD,
   USER_TAGS_FIELD
 } from './utils/constants';
 
@@ -98,6 +99,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       const userIntent = payload.clusters[primaryIndex].userIntent;
       userIntent.regionList = _.get(formData, REGIONS_FIELD);
       userIntent.numNodes = _.get(formData, TOTAL_NODES_FIELD);
+      // userIntent.numNodesMaster = _.get(formData, TOTAL_NODES_MASTER_FIELD);
       userIntent.replicationFactor = _.get(formData, REPLICATION_FACTOR_FIELD);
       userIntent.instanceType = _.get(formData, INSTANCE_TYPE_FIELD);
       //  userIntent.instanceTypeMaster = _.get(formData, INSTANCE_TYPE_MASTER_FIELD);

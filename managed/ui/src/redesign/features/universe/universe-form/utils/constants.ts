@@ -7,6 +7,7 @@ export const REGIONS_FIELD = 'cloudConfig.regionList';
 export const REPLICATION_FACTOR_FIELD = 'cloudConfig.replicationFactor';
 export const AUTO_PLACEMENT_FIELD = 'cloudConfig.autoPlacement';
 export const TOTAL_NODES_FIELD = 'cloudConfig.numNodes';
+export const TOTAL_NODES_MASTER_FIELD = 'cloudConfig.numNodesMaster';
 export const PLACEMENTS_FIELD = 'cloudConfig.placements';
 export const DEFAULT_REGION_FIELD = 'cloudConfig.defaultRegion';
 export const MASTERS_IN_DEFAULT_REGION_FIELD = 'cloudConfig.mastersInDefaultRegion';
@@ -68,6 +69,7 @@ export const PRIMARY_FIELDS = [
   REPLICATION_FACTOR_FIELD,
   AUTO_PLACEMENT_FIELD,
   TOTAL_NODES_FIELD,
+  TOTAL_NODES_MASTER_FIELD,
   PLACEMENTS_FIELD,
   DEFAULT_REGION_FIELD,
   MASTERS_IN_DEFAULT_REGION_FIELD,
@@ -114,6 +116,7 @@ export const ASYNC_FIELDS = [
   REPLICATION_FACTOR_FIELD,
   AUTO_PLACEMENT_FIELD,
   TOTAL_NODES_FIELD,
+  TOTAL_NODES_MASTER_FIELD,
   PLACEMENTS_FIELD,
   INSTANCE_TYPE_FIELD,
   INSTANCE_TYPE_MASTER_FIELD,

@@ -16,8 +16,19 @@ import {
   getThroughputByIops
 } from './VolumeInfoFieldHelper';
 import { isEphemeralAwsStorageInstance } from '../InstanceTypeField/InstanceTypeFieldHelper';
-import { CloudType, StorageType, UniverseFormData, VolumeType } from '../../../utils/dto';
-import { PROVIDER_FIELD, DEVICE_INFO_FIELD, INSTANCE_TYPE_FIELD } from '../../../utils/constants';
+import {
+  CloudType,
+  MasterPlacementType,
+  StorageType,
+  UniverseFormData,
+  VolumeType
+} from '../../../utils/dto';
+import {
+  PROVIDER_FIELD,
+  DEVICE_INFO_FIELD,
+  INSTANCE_TYPE_FIELD,
+  MASTERS_PLACEMENT_FIELD
+} from '../../../utils/constants';
 
 interface VolumeInfoFieldProps {
   isEditMode: boolean;
@@ -45,6 +56,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   //watchers
   const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
+  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
 
   //get instance details
@@ -150,8 +162,8 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
           </YBLabel>
         </Box>
 
-        <Box display="flex" flex={1}>
-          <Box flex={1}>
+        <Box display="flex">
+          <Box flex={1} width="max-content">
             <YBInput
               type="number"
               fullWidth
@@ -166,7 +178,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
             x
           </Box>
 
-          <Box flex={1}>
+          <Box flex={1} width="max-content">
             <YBInput
               type="number"
               fullWidth
@@ -200,7 +212,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
               ? t('universeForm.instanceConfig.ebs')
               : t('universeForm.instanceConfig.ssd')}
           </YBLabel>
-          <Box flex={1}>
+          <Box flex={1} width="max-content">
             <YBSelect
               fullWidth
               disabled={disableStorageType}
@@ -254,7 +266,6 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     return (
       <Box display="flex">
         <YBLabel dataTestId="VolumeInfoField-ThroughputLabel">
-          {' '}
           {t('universeForm.instanceConfig.provisionedThroughput')}
         </YBLabel>
         <Box flex={1}>
@@ -285,11 +296,16 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                     <Box mt={2}> {renderVolumeInfo()}</Box>
                   </Grid>
                 </Grid>
-                <Grid container spacing={2}>
-                  <Grid item lg={6} xs={12}>
-                    <Box mt={1}> {renderStorageType()}</Box>
+                {!(
+                  provider?.code === CloudType.gcp &&
+                  masterPlacement === MasterPlacementType.DEDICATED
+                ) && (
+                  <Grid container spacing={2}>
+                    <Grid item lg={6} xs={12}>
+                      <Box mt={1}> {renderStorageType()}</Box>
+                    </Grid>
                   </Grid>
-                </Grid>
+                )}
               </Box>
 
               {fieldValue.storageType && (

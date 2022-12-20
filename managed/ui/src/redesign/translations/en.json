@@ -13,6 +13,8 @@
       "yes": "Yes"
     },
     "universeForm": {
+      "tserver": "T-Server",
+      "master": "Master",
       "configReadReplica": "Configure read replica",
       "createUniverse": "Create universe",
       "current": "Current :",

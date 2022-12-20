@@ -2,27 +2,43 @@ import React, { ReactElement } from 'react';
 import { useUpdateEffect } from 'react-use';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { Box } from '@material-ui/core';
-import { YBInputField, YBLabel } from '../../../../../../components';
-import { UniverseFormData, CloudType } from '../../../utils/dto';
+import { Box, Grid, Typography, makeStyles } from '@material-ui/core';
+import { YBInputField, YBLabel, YBTooltip } from '../../../../../../components';
+import { UniverseFormData, CloudType, MasterPlacementType } from '../../../utils/dto';
 import {
   TOTAL_NODES_FIELD,
+  TOTAL_NODES_MASTER_FIELD,
   REPLICATION_FACTOR_FIELD,
   PLACEMENTS_FIELD,
-  PROVIDER_FIELD
+  PROVIDER_FIELD,
+  MASTERS_PLACEMENT_FIELD
 } from '../../../utils/constants';
 
 interface TotalNodesFieldProps {
   disabled?: boolean;
 }
 
+const useStyles = makeStyles(() => ({
+  tooltipText: {
+    cursor: 'default',
+    pointerEvents: 'auto'
+  }
+}));
+
+const TOOLTIP_TITLE =
+  'Select this option if you plan to use this universe for \
+  multi-tenancy use cases -or- you expect to create Databases \
+  with a very large number of tables';
+
 export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+  const classes = useStyles();
 
   //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
+  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
   const placements = useWatch({ name: PLACEMENTS_FIELD });
   const currentTotalNodes = getValues(TOTAL_NODES_FIELD);
 
@@ -42,6 +58,74 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
     }
   }, [placements]);
 
+  const dedicatedNodesElement = (
+    <Box>
+      <Box display="flex" flexDirection="row" justifyContent="center">
+        <Box mt={1.6}>
+          <YBLabel width="75px" dataTestId="TotalNodesField-Label">
+            {t('universeForm.tserver')}
+          </YBLabel>
+        </Box>
+        <Box width="80px">
+          <YBInputField
+            control={control}
+            name={TOTAL_NODES_FIELD}
+            // fullWidth
+            type="number"
+            disabled={disabled}
+            inputProps={{
+              'data-testid': 'TotalNodesField-Input',
+              min: replicationFactor
+            }}
+          />
+        </Box>
+
+        <Box mt={1.6} ml={2}>
+          <YBLabel width="75px" dataTestId="TotalNodesFieldMaster-Label">
+            {t('universeForm.master')}
+          </YBLabel>
+        </Box>
+        <Box width="80px">
+          <YBTooltip title={TOOLTIP_TITLE} className={classes.tooltipText}>
+            <span>
+              <YBInputField
+                control={control}
+                name={TOTAL_NODES_MASTER_FIELD}
+                // fullWidth
+                type="number"
+                disabled={true}
+                value={replicationFactor}
+                inputProps={{
+                  'data-testid': 'TotalNodesFieldMaster-Input'
+                }}
+              ></YBInputField>
+            </span>
+          </YBTooltip>
+        </Box>
+      </Box>
+    </Box>
+  );
+
+  const colocatedNodesElement = (
+    <Box>
+      <Box display="flex" flexDirection="row" justifyContent="center">
+        <Box width="80px">
+          <YBInputField
+            control={control}
+            name={TOTAL_NODES_FIELD}
+            // fullWidth
+            type="number"
+            disabled={disabled}
+            inputProps={{
+              'data-testid': 'TotalNodesField-Input',
+              min: replicationFactor
+            }}
+          />
+        </Box>
+      </Box>
+    </Box>
+  );
+
   return (
     <Box display="flex" width="100%" data-testid="TotalNodesField-Container">
       <YBLabel dataTestId="TotalNodesField-Label">
@@ -49,19 +133,9 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
           ? t('universeForm.cloudConfig.totalPodsField')
           : t('universeForm.cloudConfig.totalNodesField')}
       </YBLabel>
-      <Box flex={1}>
-        <YBInputField
-          control={control}
-          name={TOTAL_NODES_FIELD}
-          // fullWidth
-          type="number"
-          disabled={disabled}
-          inputProps={{
-            'data-testid': 'TotalNodesField-Input',
-            min: replicationFactor
-          }}
-        />
-      </Box>
+      {masterPlacement === MasterPlacementType.COLOCATED
+        ? colocatedNodesElement
+        : dedicatedNodesElement}
     </Box>
   );
 };

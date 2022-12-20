@@ -102,6 +102,7 @@ export interface UserIntent {
   instanceType: string | null;
   instanceTypeMaster?: string | null;
   numNodes: number;
+  numNodesMaster?: number;
   ybSoftwareVersion: string | null;
   deviceInfo: DeviceInfo | null;
   deviceInfoMaster?: DeviceInfo | null;
@@ -214,6 +215,7 @@ export interface Resources {
   memSizeGB: number;
   numCores: number;
   numNodes: number;
+  numNodesMaster?: number;
   pricePerHour: number;
   volumeCount: number;
   volumeSizeGB: number;
@@ -254,6 +256,7 @@ export interface CloudConfigFormValue {
   provider: ProviderMin | null;
   regionList: string[]; // array of region IDs
   numNodes: number;
+  numNodesMaster?: number;
   replicationFactor: number;
   autoPlacement?: boolean;
   placements: Placement[];
@@ -341,6 +344,7 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   provider: null,
   regionList: [],
   numNodes: 3,
+  numNodesMaster: 3,
   replicationFactor: 3,
   autoPlacement: true, // "AUTO" is the default value when creating new universe
   placements: [],
@@ -544,6 +548,7 @@ export interface UniverseResource {
   memSizeGB: number;
   numCores: number;
   numNodes: number;
+  numNodesMaster?: number;
   pricePerHour: number;
   pricingKnown: boolean;
   volumeCount: number;

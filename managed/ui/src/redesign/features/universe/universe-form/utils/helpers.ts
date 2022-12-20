@@ -105,6 +105,7 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
       },
       regionList: userIntent.regionList,
       numNodes: userIntent.numNodes,
+      // numNodesMaster: userIntent.numNodesMaster
       replicationFactor: userIntent.replicationFactor,
       placements: getPlacementsFromCluster(cluster),
       autoPlacement: true //** */
@@ -158,6 +159,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     providerType: cloudConfig.provider?.code as CloudType,
     regionList: cloudConfig.regionList,
     numNodes: Number(cloudConfig.numNodes),
+    // numNodesMaster: Number(cloudConfig.numNodesMaster)
     replicationFactor: cloudConfig.replicationFactor,
     dedicatedNodes: !!instanceConfig?.dedicatedNodes,
     instanceType: instanceConfig.instanceType,
