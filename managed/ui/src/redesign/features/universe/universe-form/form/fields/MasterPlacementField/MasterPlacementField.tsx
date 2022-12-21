@@ -43,12 +43,14 @@ export const MasterPlacementField = ({ disabled }: MasterPlacementFieldProps): R
 
   return (
     <Box display="flex" width="100%" data-testid="MasterPlacement-Container">
-      <YBLabel dataTestId="MasterPlacement-Label">
-        {'Master Placement'}
-        &nbsp;
-        <span className="fa fa-info-circle" />
-      </YBLabel>
-      <Box flex={1} mt={4}>
+      <Box>
+        <YBLabel dataTestId="MasterPlacement-Label">
+          {'Master Placement'}
+          &nbsp;
+          <span className="fa fa-info-circle" />
+        </YBLabel>
+      </Box>
+      <Box flex={1} mt={0}>
         <YBRadioGroupField
           name={MASTERS_PLACEMENT_FIELD}
           control={control}

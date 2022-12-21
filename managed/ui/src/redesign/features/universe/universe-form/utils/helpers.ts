@@ -106,6 +106,7 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
       regionList: userIntent.regionList,
       numNodes: userIntent.numNodes,
       // numNodesMaster: userIntent.numNodesMaster
+      // masterPlacement: userIntent.masterPlacement
       replicationFactor: userIntent.replicationFactor,
       placements: getPlacementsFromCluster(cluster),
       autoPlacement: true //** */

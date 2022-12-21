@@ -46,31 +46,34 @@ export const InstanceConfiguration: FC = () => {
   );
   const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
 
-  const instanceAndVolumeElement = (
-    <Box width="100%">
-      <InstanceTypeField />
-      <VolumeInfoField
-        isEditMode={!isCreateMode}
-        isPrimary={isPrimary}
-        disableVolumeSize={false}
-        disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
-        disableStorageType={!isCreatePrimary && !isCreateRR}
-        disableIops={!isCreatePrimary && !isCreateRR}
-        disableThroughput={!isCreatePrimary && !isCreateRR}
-      />
-    </Box>
-  );
-  const dedicatedInstanceElement = (
-    <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" width="100%">
-      <Box m={2}>
-        <Typography className={classes.subsectionHeaderFont}>
-          {t('universeForm.tserver')}
-        </Typography>
-        {instanceAndVolumeElement}
+  const instanceAndVolumeElement = () => {
+    return (
+      <Box width="100%">
+        <InstanceTypeField />
+        <VolumeInfoField
+          isEditMode={!isCreateMode}
+          isPrimary={isPrimary}
+          disableVolumeSize={false}
+          disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
+          disableStorageType={!isCreatePrimary && !isCreateRR}
+          disableIops={!isCreatePrimary && !isCreateRR}
+          disableThroughput={!isCreatePrimary && !isCreateRR}
+        />
       </Box>
-    </Box>
-  );
-
+    );
+  };
+  const dedicatedInstanceElement = () => {
+    return (
+      <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" width="100%">
+        <Box m={2}>
+          <Typography className={classes.subsectionHeaderFont}>
+            {t('universeForm.tserver')}
+          </Typography>
+          {instanceAndVolumeElement()}
+        </Box>
+      </Box>
+    );
+  };
   return (
     <Box className={classes.sectionContainer} data-testid="instance-config-section">
       <Typography className={classes.sectionHeaderFont}>
@@ -81,8 +84,8 @@ export const InstanceConfiguration: FC = () => {
           <Grid container spacing={3}>
             <Grid lg={6} item container>
               {masterPlacement === MasterPlacementType.COLOCATED
-                ? instanceAndVolumeElement
-                : dedicatedInstanceElement}
+                ? instanceAndVolumeElement()
+                : dedicatedInstanceElement()}
             </Grid>
             {masterPlacement === MasterPlacementType.DEDICATED && (
               <Grid lg={6} item container>

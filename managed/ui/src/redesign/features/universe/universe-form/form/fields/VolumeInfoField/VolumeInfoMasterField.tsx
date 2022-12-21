@@ -16,12 +16,18 @@ import {
   getThroughputByIops
 } from './VolumeInfoFieldHelper';
 import { isEphemeralAwsStorageInstance } from '../InstanceTypeField/InstanceTypeFieldHelper';
-import { CloudType, StorageType, UniverseFormData, VolumeType } from '../../../utils/dto';
+import {
+  CloudType,
+  MasterPlacementType,
+  StorageType,
+  UniverseFormData,
+  VolumeType
+} from '../../../utils/dto';
 import {
   PROVIDER_FIELD,
-  DEVICE_INFO_FIELD,
   DEVICE_INFO_MASTER_FIELD,
-  INSTANCE_TYPE_MASTER_FIELD
+  INSTANCE_TYPE_MASTER_FIELD,
+  MASTERS_PLACEMENT_FIELD
 } from '../../../utils/constants';
 
 interface VolumeInfoFieldProps {
@@ -48,11 +54,10 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
   const instanceTypeChanged = useRef(false);
 
   //watchers
-  const chumma = useWatch({ name: DEVICE_INFO_FIELD });
-  console.log('chumma', chumma);
   const fieldValue = useWatch({ name: DEVICE_INFO_MASTER_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_MASTER_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
+  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
 
   //get instance details
   const { data: instanceTypes } = useQuery(
@@ -237,44 +242,51 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
       return null;
 
     return (
-      <Box display="flex">
-        <YBLabel dataTestId="VolumeInfoField-DiskIopsLabel">
-          {t('universeForm.instanceConfig.provisionedIops')}
-        </YBLabel>
-        <Box flex={1}>
-          <YBInput
-            type="number"
-            fullWidth
-            disabled={disableIops}
-            inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-DiskIopsInput' }}
-            value={fieldValue.diskIops}
-            onChange={(event) => onDiskIopsChanged(event.target.value)}
-            onBlur={resetThroughput}
-          />
-        </Box>
-      </Box>
+      <Grid container spacing={2}>
+        <Grid item lg={6} sm={12}>
+          <Box display="flex" mt={2}>
+            <YBLabel dataTestId="VolumeInfoField-DiskIopsLabel">
+              {t('universeForm.instanceConfig.provisionedIops')}
+            </YBLabel>
+            <Box flex={1}>
+              <YBInput
+                type="number"
+                fullWidth
+                disabled={disableIops}
+                inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-DiskIopsInput' }}
+                value={fieldValue.diskIops}
+                onChange={(event) => onDiskIopsChanged(event.target.value)}
+                onBlur={resetThroughput}
+              />
+            </Box>
+          </Box>
+        </Grid>
+      </Grid>
     );
   };
 
   const renderThroughput = () => {
     if (![StorageType.GP3, StorageType.UltraSSD_LRS].includes(fieldValue.storageType)) return null;
     return (
-      <Box display="flex">
-        <YBLabel dataTestId="VolumeInfoField-ThroughputLabel">
-          {' '}
-          {t('universeForm.instanceConfig.provisionedThroughput')}
-        </YBLabel>
-        <Box flex={1}>
-          <YBInput
-            type="number"
-            fullWidth
-            disabled={disableThroughput}
-            inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-ThroughputInput' }}
-            value={fieldValue.throughput}
-            onChange={(event) => onThroughputChange(event.target.value)}
-          />
-        </Box>
-      </Box>
+      <Grid container spacing={2}>
+        <Grid item lg={6} sm={12}>
+          <Box display="flex" mt={1}>
+            <YBLabel dataTestId="VolumeInfoField-ThroughputLabel">
+              {t('universeForm.instanceConfig.provisionedThroughput')}
+            </YBLabel>
+            <Box flex={1}>
+              <YBInput
+                type="number"
+                fullWidth
+                disabled={disableThroughput}
+                inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-ThroughputInput' }}
+                value={fieldValue.throughput}
+                onChange={(event) => onThroughputChange(event.target.value)}
+              />
+            </Box>
+          </Box>
+        </Grid>
+      </Grid>
     );
   };
 
@@ -292,7 +304,10 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
                     <Box mt={2}> {renderVolumeInfo()}</Box>
                   </Grid>
                 </Grid>
-                {provider?.code === CloudType.aws && (
+                {!(
+                  provider?.code === CloudType.gcp &&
+                  masterPlacement === MasterPlacementType.DEDICATED
+                ) && (
                   <Grid container spacing={2}>
                     <Grid item lg={6} xs={12}>
                       <Box mt={1}> {renderStorageType()}</Box>
@@ -303,16 +318,8 @@ export const VolumeInfoMasterField: FC<VolumeInfoFieldProps> = ({
 
               {fieldValue.storageType && (
                 <Box>
-                  <Grid container spacing={2}>
-                    <Grid item lg={6} sm={12}>
-                      <Box mt={2}> {renderDiskIops()}</Box>
-                    </Grid>
-                  </Grid>
-                  <Grid container spacing={2}>
-                    <Grid item lg={6} sm={12}>
-                      <Box mt={1}> {renderThroughput()}</Box>
-                    </Grid>
-                  </Grid>
+                  {renderDiskIops()}
+                  {renderThroughput()}
                 </Box>
               )}
             </Box>

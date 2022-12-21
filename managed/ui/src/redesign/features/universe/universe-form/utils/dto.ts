@@ -103,6 +103,7 @@ export interface UserIntent {
   instanceTypeMaster?: string | null;
   numNodes: number;
   numNodesMaster?: number;
+  masterPlacement?: string;
   ybSoftwareVersion: string | null;
   deviceInfo: DeviceInfo | null;
   deviceInfoMaster?: DeviceInfo | null;

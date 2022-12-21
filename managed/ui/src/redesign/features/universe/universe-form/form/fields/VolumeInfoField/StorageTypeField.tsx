@@ -2,6 +2,7 @@ import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useQuery } from 'react-query';
+import { useUpdateEffect } from 'react-use';
 import { Box, Grid, MenuItem } from '@material-ui/core';
 import { YBLabel, YBSelect } from '../../../../../../components';
 import { api, QUERY_KEY } from '../../../utils/api';
@@ -10,20 +11,13 @@ import {
   getStorageTypeOptions,
   getIopsByStorageType
 } from './VolumeInfoFieldHelper';
-import {
-  StorageType,
-  UniverseFormData,
-  CloudType,
-  VolumeType,
-  MasterPlacementType
-} from '../../../utils/dto';
+import { StorageType, UniverseFormData, CloudType, VolumeType } from '../../../utils/dto';
 import {
   DEVICE_INFO_FIELD,
   INSTANCE_TYPE_MASTER_FIELD,
   DEVICE_INFO_MASTER_FIELD,
   PROVIDER_FIELD,
-  INSTANCE_TYPE_FIELD,
-  MASTERS_PLACEMENT_FIELD
+  INSTANCE_TYPE_FIELD
 } from '../../../utils/constants';
 
 interface StorageTypeFieldProps {
@@ -34,7 +28,6 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
   const { t } = useTranslation();
   const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
   const masterFieldValue = useWatch({ name: DEVICE_INFO_MASTER_FIELD });
-  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
   const masterInstanceType = useWatch({ name: INSTANCE_TYPE_MASTER_FIELD });
@@ -45,7 +38,22 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
     const throughput = getThroughputByStorageType(storageType);
     const diskIops = getIopsByStorageType(storageType);
     setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput, diskIops, storageType });
-    if (masterPlacement === MasterPlacementType.DEDICATED) {
+    setValue(DEVICE_INFO_MASTER_FIELD, {
+      ...masterFieldValue,
+      throughput,
+      diskIops,
+      storageType
+    });
+  };
+
+  useUpdateEffect(() => {
+    const storageType: StorageType = StorageType.Persistent;
+    const throughput = getThroughputByStorageType(storageType);
+    const diskIops = getIopsByStorageType(storageType);
+    if (
+      fieldValue.storageType === StorageType.Persistent &&
+      masterFieldValue.storageType === StorageType.Scratch
+    ) {
       setValue(DEVICE_INFO_MASTER_FIELD, {
         ...masterFieldValue,
         throughput,
@@ -53,7 +61,18 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
         storageType
       });
     }
-  };
+    if (
+      fieldValue.storageType === StorageType.Scratch &&
+      masterFieldValue.storageType === StorageType.Persistent
+    ) {
+      setValue(DEVICE_INFO_FIELD, {
+        ...masterFieldValue,
+        throughput,
+        diskIops,
+        storageType
+      });
+    }
+  }, [fieldValue.storageType, masterFieldValue?.storageType]);
 
   //get instance details
   const { data: instanceTypes } = useQuery(
@@ -119,9 +138,7 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
     <Box>
       <Grid container spacing={2}>
         <Grid item lg={6} sm={12}>
-          <Box mt={masterPlacement === MasterPlacementType.DEDICATED ? 2 : 0}>
-            {renderStorageType()}
-          </Box>
+          <Box mt={2}>{renderStorageType()}</Box>
         </Grid>
       </Grid>
     </Box>

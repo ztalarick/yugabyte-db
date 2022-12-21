@@ -13,17 +13,11 @@ import {
   PROVIDER_FIELD,
   MASTERS_PLACEMENT_FIELD
 } from '../../../utils/constants';
+import { useSectionStyles } from '../../../universeMainStyle';
 
 interface TotalNodesFieldProps {
   disabled?: boolean;
 }
-
-const useStyles = makeStyles(() => ({
-  tooltipText: {
-    cursor: 'default',
-    pointerEvents: 'auto'
-  }
-}));
 
 const TOOLTIP_TITLE =
   'Select this option if you plan to use this universe for \
@@ -33,7 +27,7 @@ const TOOLTIP_TITLE =
 export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
-  const classes = useStyles();
+  const classes = useSectionStyles();
 
   //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -61,12 +55,13 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
   const dedicatedNodesElement = (
     <Box>
       <Box display="flex" flexDirection="row" justifyContent="center">
-        <Box mt={1.6}>
-          <YBLabel width="75px" dataTestId="TotalNodesField-Label">
+        <Box mt={2}>
+          <Typography className={classes.labelFont}>
+            {/* className={classes.subsectionHeaderFont} */}
             {t('universeForm.tserver')}
-          </YBLabel>
+          </Typography>
         </Box>
-        <Box width="80px">
+        <Box width="80px" ml={2}>
           <YBInputField
             control={control}
             name={TOTAL_NODES_FIELD}
@@ -80,13 +75,11 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
           />
         </Box>
 
-        <Box mt={1.6} ml={2}>
-          <YBLabel width="75px" dataTestId="TotalNodesFieldMaster-Label">
-            {t('universeForm.master')}
-          </YBLabel>
+        <Box mt={2} ml={2}>
+          <Typography className={classes.labelFont}>{t('universeForm.master')}</Typography>
         </Box>
-        <Box width="80px">
-          <YBTooltip title={TOOLTIP_TITLE} className={classes.tooltipText}>
+        <Box width="80px" ml={2}>
+          <YBTooltip title={TOOLTIP_TITLE}>
             <span>
               <YBInputField
                 control={control}

@@ -107,6 +107,11 @@ export const useSectionStyles = makeStyles((theme) => ({
     fontFamily: 'Inter',
     fontWeight: 600,
     fontSize: "15px"
+  },
+  labelFont: {
+    fontFamily: 'Inter',
+     fontSize: "13px",
+    fontWeight: 500
   }
 }));
 
