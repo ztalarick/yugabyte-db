@@ -14,8 +14,8 @@ import {
 import { StorageType, UniverseFormData, CloudType, VolumeType } from '../../../utils/dto';
 import {
   DEVICE_INFO_FIELD,
-  INSTANCE_TYPE_MASTER_FIELD,
-  DEVICE_INFO_MASTER_FIELD,
+  MASTER_INSTANCE_TYPE_FIELD,
+  MASTER_DEVICE_INFO_FIELD,
   PROVIDER_FIELD,
   INSTANCE_TYPE_FIELD
 } from '../../../utils/constants';
@@ -27,10 +27,10 @@ interface StorageTypeFieldProps {
 export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType }) => {
   const { t } = useTranslation();
   const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
-  const masterFieldValue = useWatch({ name: DEVICE_INFO_MASTER_FIELD });
+  const masterFieldValue = useWatch({ name: MASTER_DEVICE_INFO_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
   const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
-  const masterInstanceType = useWatch({ name: INSTANCE_TYPE_MASTER_FIELD });
+  const masterInstanceType = useWatch({ name: MASTER_INSTANCE_TYPE_FIELD });
   const { setValue } = useFormContext<UniverseFormData>();
 
   //field actions
@@ -38,7 +38,7 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
     const throughput = getThroughputByStorageType(storageType);
     const diskIops = getIopsByStorageType(storageType);
     setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput, diskIops, storageType });
-    setValue(DEVICE_INFO_MASTER_FIELD, {
+    setValue(MASTER_DEVICE_INFO_FIELD, {
       ...masterFieldValue,
       throughput,
       diskIops,
@@ -46,6 +46,7 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
     });
   };
 
+  // Update storage type to persistent when instance is changed in either TServer or Master
   useUpdateEffect(() => {
     const storageType: StorageType = StorageType.Persistent;
     const throughput = getThroughputByStorageType(storageType);
@@ -54,7 +55,7 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
       fieldValue.storageType === StorageType.Persistent &&
       masterFieldValue.storageType === StorageType.Scratch
     ) {
-      setValue(DEVICE_INFO_MASTER_FIELD, {
+      setValue(MASTER_DEVICE_INFO_FIELD, {
         ...masterFieldValue,
         throughput,
         diskIops,
@@ -103,7 +104,7 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
     )
       return (
         <Box display="flex">
-          <YBLabel dataTestId="VolumeInfoFieldDedicated-StorageTypeLabel">
+          <YBLabel dataTestId="VolumeInfoFieldDedicated-Common-StorageTypeLabel">
             {provider?.code === CloudType.aws
               ? t('universeForm.instanceConfig.ebs')
               : t('universeForm.instanceConfig.ssd')}
@@ -115,7 +116,7 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
               value={storageType}
               inputProps={{
                 min: 1,
-                'data-testid': 'VolumeInfoFieldDedicated-StorageTypeSelect'
+                'data-testid': 'VolumeInfoFieldDedicated-Common-StorageTypeSelect'
               }}
               onChange={(event) =>
                 onStorageTypeChanged((event?.target.value as unknown) as StorageType)

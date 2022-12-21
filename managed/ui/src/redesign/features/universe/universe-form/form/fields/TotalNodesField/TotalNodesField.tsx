@@ -7,7 +7,7 @@ import { YBInputField, YBLabel, YBTooltip } from '../../../../../../components';
 import { UniverseFormData, CloudType, MasterPlacementType } from '../../../utils/dto';
 import {
   TOTAL_NODES_FIELD,
-  TOTAL_NODES_MASTER_FIELD,
+  MASTER_TOTAL_NODES_FIELD,
   REPLICATION_FACTOR_FIELD,
   PLACEMENTS_FIELD,
   PROVIDER_FIELD,
@@ -83,7 +83,7 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
             <span>
               <YBInputField
                 control={control}
-                name={TOTAL_NODES_MASTER_FIELD}
+                name={MASTER_TOTAL_NODES_FIELD}
                 // fullWidth
                 type="number"
                 disabled={true}

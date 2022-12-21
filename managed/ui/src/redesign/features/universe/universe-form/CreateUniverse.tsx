@@ -145,6 +145,7 @@ export const CreateUniverse: FC = () => {
 
   if (isLoading) return <YBLoading />;
 
+  console.log('primaryFormData', primaryFormData);
   if (isPrimary)
     return (
       <UniverseForm

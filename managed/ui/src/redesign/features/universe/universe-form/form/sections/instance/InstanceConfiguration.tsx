@@ -5,9 +5,7 @@ import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
 import {
   InstanceTypeField,
-  InstanceTypeMasterField,
   VolumeInfoField,
-  VolumeInfoMasterField,
   StorageTypeField,
   DedicatedNodesField
 } from '../../fields';
@@ -40,10 +38,6 @@ export const InstanceConfiguration: FC = () => {
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
   const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
-  console.log(
-    'fieldValue && provider?.code !== CloudType.aws',
-    fieldValue && provider?.code !== CloudType.aws
-  );
   const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
 
   const instanceAndVolumeElement = () => {
@@ -96,8 +90,8 @@ export const InstanceConfiguration: FC = () => {
                       &nbsp;
                       <span className="fa fa-info-circle" />
                     </Typography>
-                    <InstanceTypeMasterField />
-                    <VolumeInfoMasterField
+                    <InstanceTypeField isDedicatedMaster={true} />
+                    <VolumeInfoField
                       isEditMode={!isCreateMode}
                       isPrimary={isPrimary}
                       disableVolumeSize={false}
@@ -105,6 +99,7 @@ export const InstanceConfiguration: FC = () => {
                       disableStorageType={!isCreatePrimary && !isCreateRR}
                       disableIops={!isCreatePrimary && !isCreateRR}
                       disableThroughput={!isCreatePrimary && !isCreateRR}
+                      isDedicatedMaster={true}
                     />
                   </Box>
                 </Box>

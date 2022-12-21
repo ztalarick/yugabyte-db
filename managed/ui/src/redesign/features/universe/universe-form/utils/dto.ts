@@ -100,13 +100,12 @@ export interface UserIntent {
   replicationFactor: number;
   regionList: string[];
   instanceType: string | null;
-  instanceTypeMaster?: string | null;
+  masterInstanceType?: string | null;
   numNodes: number;
-  numNodesMaster?: number;
-  masterPlacement?: string;
+  masterNumNodes?: number;
   ybSoftwareVersion: string | null;
   deviceInfo: DeviceInfo | null;
-  deviceInfoMaster?: DeviceInfo | null;
+  masterDeviceInfo?: DeviceInfo | null;
   enableYSQL: boolean;
   enableYSQLAuth: boolean;
   enableYCQL: boolean;
@@ -189,7 +188,7 @@ export interface UniverseDetails {
   communicationPorts: CommunicationPorts;
   cmkArn: string;
   deviceInfo: DeviceInfo | null;
-  deviceInfoMaster: DeviceInfo | null;
+  masterDeviceInfo: DeviceInfo | null;
   encryptionAtRestConfig: EncryptionAtRestConfig;
   errorString: string | null;
   expectedUniverseVersion: number;
@@ -216,7 +215,7 @@ export interface Resources {
   memSizeGB: number;
   numCores: number;
   numNodes: number;
-  numNodesMaster?: number;
+  masterNumNodes?: number;
   pricePerHour: number;
   volumeCount: number;
   volumeSizeGB: number;
@@ -257,7 +256,7 @@ export interface CloudConfigFormValue {
   provider: ProviderMin | null;
   regionList: string[]; // array of region IDs
   numNodes: number;
-  numNodesMaster?: number;
+  masterNumNodes?: number;
   replicationFactor: number;
   autoPlacement?: boolean;
   placements: Placement[];
@@ -268,9 +267,9 @@ export interface CloudConfigFormValue {
 
 export interface InstanceConfigFormValue {
   instanceType: string | null;
-  instanceTypeMaster?: string | null;
+  masterInstanceType?: string | null;
   deviceInfo: DeviceInfo | null;
-  deviceInfoMaster?: DeviceInfo | null;
+  masterDeviceInfo?: DeviceInfo | null;
   assignPublicIP: boolean;
   useTimeSync: boolean;
   enableClientToNodeEncrypt: boolean;
@@ -345,7 +344,7 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   provider: null,
   regionList: [],
   numNodes: 3,
-  numNodesMaster: 3,
+  masterNumNodes: 3,
   replicationFactor: 3,
   autoPlacement: true, // "AUTO" is the default value when creating new universe
   placements: [],
@@ -356,9 +355,9 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
 
 export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   instanceType: null,
-  instanceTypeMaster: null,
+  masterInstanceType: null,
   deviceInfo: null,
-  deviceInfoMaster: null,
+  masterDeviceInfo: null,
   assignPublicIP: true,
   useTimeSync: true,
   enableClientToNodeEncrypt: true,
@@ -549,7 +548,7 @@ export interface UniverseResource {
   memSizeGB: number;
   numCores: number;
   numNodes: number;
-  numNodesMaster?: number;
+  masterNumNodes?: number;
   pricePerHour: number;
   pricingKnown: boolean;
   volumeCount: number;

@@ -26,7 +26,9 @@ import {
 import {
   PROVIDER_FIELD,
   DEVICE_INFO_FIELD,
+  MASTER_DEVICE_INFO_FIELD,
   INSTANCE_TYPE_FIELD,
+  MASTER_INSTANCE_TYPE_FIELD,
   MASTERS_PLACEMENT_FIELD
 } from '../../../utils/constants';
 
@@ -38,6 +40,7 @@ interface VolumeInfoFieldProps {
   disableStorageType: boolean;
   disableVolumeSize: boolean;
   disableNumVolumes: boolean;
+  isDedicatedMaster?: boolean;
 }
 
 export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
@@ -47,17 +50,26 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   disableThroughput,
   disableStorageType,
   disableVolumeSize,
-  disableNumVolumes
+  disableNumVolumes,
+  isDedicatedMaster
 }) => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const instanceTypeChanged = useRef(false);
+  const dataTag = isDedicatedMaster ? 'Master' : 'TServer';
 
   //watchers
-  const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
-  const instanceType = useWatch({ name: INSTANCE_TYPE_FIELD });
+  const fieldValue = isDedicatedMaster
+    ? useWatch({ name: MASTER_DEVICE_INFO_FIELD })
+    : useWatch({ name: DEVICE_INFO_FIELD });
+  const instanceType = isDedicatedMaster
+    ? useWatch({ name: MASTER_INSTANCE_TYPE_FIELD })
+    : useWatch({ name: INSTANCE_TYPE_FIELD });
   const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
+
+  // To set value based on master or tserver field in dedicated mode
+  const UPDATE_FIELD = isDedicatedMaster ? MASTER_DEVICE_INFO_FIELD : DEVICE_INFO_FIELD;
 
   //get instance details
   const { data: instanceTypes } = useQuery(
@@ -79,7 +91,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
       deviceInfo.numVolumes = fieldValue.numVolumes;
     }
 
-    setValue(DEVICE_INFO_FIELD, deviceInfo ?? null);
+    setValue(UPDATE_FIELD, deviceInfo ?? null);
   }, [instanceType]);
 
   //mark instance changed once only in edit mode
@@ -93,7 +105,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     if ([StorageType.IO1, StorageType.GP3, StorageType.UltraSSD_LRS].includes(storageType)) {
       //resetting throughput
       const throughputVal = getThroughputByIops(Number(throughput), diskIops, storageType);
-      setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput: throughputVal });
+      setValue(UPDATE_FIELD, { ...fieldValue, throughput: throughputVal });
     }
   };
 
@@ -101,12 +113,12 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   const onStorageTypeChanged = (storageType: StorageType) => {
     const throughput = getThroughputByStorageType(storageType);
     const diskIops = getIopsByStorageType(storageType);
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput, diskIops, storageType });
+    setValue(UPDATE_FIELD, { ...fieldValue, throughput, diskIops, storageType });
   };
 
   const onVolumeSizeChanged = (value: any) => {
     const { storageType, diskIops } = fieldValue;
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, volumeSize: Number(value) });
+    setValue(UPDATE_FIELD, { ...fieldValue, volumeSize: Number(value) });
     if (storageType === StorageType.UltraSSD_LRS) {
       onDiskIopsChanged(diskIops);
     }
@@ -117,17 +129,17 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     const maxDiskIops = getMaxDiskIops(storageType, volumeSize);
     const minDiskIops = getMinDiskIops(storageType, volumeSize);
     const diskIops = Math.max(minDiskIops, Math.min(maxDiskIops, Number(value)));
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, diskIops });
+    setValue(UPDATE_FIELD, { ...fieldValue, diskIops });
   };
 
   const onThroughputChange = (value: any) => {
     const { storageType, diskIops } = fieldValue;
     const throughput = getThroughputByIops(Number(value), diskIops, storageType);
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, throughput });
+    setValue(UPDATE_FIELD, { ...fieldValue, throughput });
   };
 
   const onNumVolumesChanged = (numVolumes: any) => {
-    setValue(DEVICE_INFO_FIELD, { ...fieldValue, numVolumes });
+    setValue(UPDATE_FIELD, { ...fieldValue, numVolumes });
   };
 
   //render
@@ -168,7 +180,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
               type="number"
               fullWidth
               disabled={fixedNumVolumes || !instanceTypeChanged.current || disableNumVolumes}
-              inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-VolumeInput' }}
+              inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-VolumeInput` }}
               value={fieldValue.numVolumes}
               onChange={(event) => onNumVolumesChanged(event.target.value)}
             />
@@ -189,7 +201,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                   !instanceTypeChanged.current) ||
                 disableVolumeSize
               }
-              inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-VolumeSizeInput' }}
+              inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-VolumeSizeInput` }}
               value={fieldValue.volumeSize}
               onChange={(event) => onVolumeSizeChanged(event.target.value)}
               onBlur={resetThroughput}
@@ -217,7 +229,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
               fullWidth
               disabled={disableStorageType}
               value={fieldValue.storageType}
-              inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-StorageTypeSelect' }}
+              inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-StorageTypeSelect` }}
               onChange={(event) =>
                 onStorageTypeChanged((event?.target.value as unknown) as StorageType)
               }
@@ -253,7 +265,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                 type="number"
                 fullWidth
                 disabled={disableIops}
-                inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-DiskIopsInput' }}
+                inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-DiskIopsInput` }}
                 value={fieldValue.diskIops}
                 onChange={(event) => onDiskIopsChanged(event.target.value)}
                 onBlur={resetThroughput}
@@ -279,7 +291,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                 type="number"
                 fullWidth
                 disabled={disableThroughput}
-                inputProps={{ min: 1, 'data-testid': 'VolumeInfoField-ThroughputInput' }}
+                inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-ThroughputInput` }}
                 value={fieldValue.throughput}
                 onChange={(event) => onThroughputChange(event.target.value)}
               />
@@ -293,7 +305,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   return (
     <Controller
       control={control}
-      name={DEVICE_INFO_FIELD}
+      name={UPDATE_FIELD}
       render={() => (
         <>
           {fieldValue && (

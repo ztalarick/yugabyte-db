@@ -11,7 +11,8 @@ import {
   Gflag,
   DEFAULT_FORM_DATA,
   InstanceTag,
-  InstanceTags
+  InstanceTags,
+  MasterPlacementType
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
 import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
@@ -105,17 +106,13 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
       },
       regionList: userIntent.regionList,
       numNodes: userIntent.numNodes,
-      // numNodesMaster: userIntent.numNodesMaster
-      // masterPlacement: userIntent.masterPlacement
       replicationFactor: userIntent.replicationFactor,
       placements: getPlacementsFromCluster(cluster),
-      autoPlacement: true //** */
+      autoPlacement: true, //** */,
     },
     instanceConfig: {
       instanceType: userIntent.instanceType,
-      // instanceTypeMaster: userIntent.instanceTypeMaster,
       deviceInfo: userIntent.deviceInfo,
-      // deviceInfoMaster: userIntent.deviceInfoMaster,
       assignPublicIP: !!userIntent.assignPublicIP,
       useTimeSync: !!userIntent.useTimeSync,
       enableClientToNodeEncrypt: !!userIntent.enableClientToNodeEncrypt,
@@ -153,6 +150,7 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
 //Transform form data to intent
 export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
   const { cloudConfig, instanceConfig, advancedConfig, instanceTags, gFlags } = formData;
+  console.log(cloudConfig.masterPlacement === MasterPlacementType.DEDICATED)
   const { masterGFlags, tserverGFlags } = transformFlagArrayToObject(gFlags);
   let intent: UserIntent = {
     universeName: cloudConfig.universeName,
@@ -160,13 +158,10 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     providerType: cloudConfig.provider?.code as CloudType,
     regionList: cloudConfig.regionList,
     numNodes: Number(cloudConfig.numNodes),
-    // numNodesMaster: Number(cloudConfig.numNodesMaster)
     replicationFactor: cloudConfig.replicationFactor,
-    dedicatedNodes: !!instanceConfig?.dedicatedNodes,
+    dedicatedNodes: cloudConfig.masterPlacement === MasterPlacementType.DEDICATED,
     instanceType: instanceConfig.instanceType,
-    // instanceTypeMaster: instanceConfig.instanceTypeMaster,
     deviceInfo: instanceConfig.deviceInfo,
-    // deviceInfoMaster: instanceConfig.deviceInfoMaster,
     assignPublicIP: instanceConfig.assignPublicIP,
     enableNodeToNodeEncrypt: instanceConfig.enableNodeToNodeEncrypt,
     enableClientToNodeEncrypt: instanceConfig.enableClientToNodeEncrypt,
@@ -187,6 +182,11 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
   if (!_.isEmpty(tserverGFlags)) intent.tserverGFlags = tserverGFlags;
   if (!_.isEmpty(advancedConfig.awsArnString)) intent.awsArnString = advancedConfig.awsArnString;
   if (!_.isEmpty(instanceTags)) intent.instanceTags = transformTagsArrayToObject(instanceTags);
+
+  if (cloudConfig.masterPlacement === MasterPlacementType.DEDICATED) {
+    intent.masterInstanceType = instanceConfig.masterInstanceType;
+    intent.masterDeviceInfo = instanceConfig.masterDeviceInfo;
+  }
 
   if (instanceConfig.enableYSQLAuth && instanceConfig.ysqlPassword)
     intent.ysqlPassword = instanceConfig.ysqlPassword;

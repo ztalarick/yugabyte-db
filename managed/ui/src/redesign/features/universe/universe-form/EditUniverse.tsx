@@ -19,15 +19,18 @@ import {
 } from './utils/dto';
 import {
   DEVICE_INFO_FIELD,
-  DEVICE_INFO_MASTER_FIELD,
+  MASTER_DEVICE_INFO_FIELD,
   INSTANCE_TYPE_FIELD,
-  INSTANCE_TYPE_MASTER_FIELD,
+  MASTER_INSTANCE_TYPE_FIELD,
   REGIONS_FIELD,
   REPLICATION_FACTOR_FIELD,
   TOTAL_NODES_FIELD,
-  TOTAL_NODES_MASTER_FIELD,
+  MASTER_TOTAL_NODES_FIELD,
   USER_TAGS_FIELD
 } from './utils/constants';
+import { MasterPlacementField } from './form/fields';
+import { MasterPlacementType } from './utils/dto';
+import { MASTERS_PLACEMENT_FIELD } from './utils/constants';
 
 export enum UPDATE_ACTIONS {
   FULL_MOVE = 'FULL_MOVE',
@@ -95,17 +98,24 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       const primaryIndex = payload.clusters.findIndex(
         (c: Cluster) => c.clusterType === ClusterType.PRIMARY
       );
+      const masterPlacement = _.get(formData, MASTERS_PLACEMENT_FIELD);
       //update fields which are allowed to edit
       const userIntent = payload.clusters[primaryIndex].userIntent;
       userIntent.regionList = _.get(formData, REGIONS_FIELD);
       userIntent.numNodes = _.get(formData, TOTAL_NODES_FIELD);
-      // userIntent.numNodesMaster = _.get(formData, TOTAL_NODES_MASTER_FIELD);
+      // userIntent.masterNumNodes = _.get(formData, MASTER_TOTAL_NODES_FIELD);
       userIntent.replicationFactor = _.get(formData, REPLICATION_FACTOR_FIELD);
       userIntent.instanceType = _.get(formData, INSTANCE_TYPE_FIELD);
-      //  userIntent.instanceTypeMaster = _.get(formData, INSTANCE_TYPE_MASTER_FIELD);
+      //  userIntent.masterInstanceType = _.get(formData, MASTER_INSTANCE_TYPE_FIELD);
       userIntent.deviceInfo = _.get(formData, DEVICE_INFO_FIELD);
-      //  userIntent.deviceInfoMaster = _.get(formData, DEVICE_INFO_MASTER_FIELD);
+      //  userIntent.masterDeviceInfo = _.get(formData, MASTER_DEVICE_INFO_FIELD);
       userIntent.instanceTags = transformTagsArrayToObject(_.get(formData, USER_TAGS_FIELD, []));
+      userIntent.dedicatedNodes = masterPlacement === MasterPlacementType.DEDICATED;
+      // Update master instance and disk information in case of dedicated mode
+      if (userIntent.dedicatedNodes === MasterPlacementType.DEDICATED) {
+        userIntent.masterInstanceType = _.get(formData, MASTER_INSTANCE_TYPE_FIELD);
+        userIntent.masterDeviceInfo = _.get(formData, MASTER_DEVICE_INFO_FIELD);
+      }
       payload.clusters[primaryIndex].placementInfo.cloudList[0].regionList = getPlacements(
         formData
       );

@@ -60,7 +60,7 @@ export const CloudConfiguration: FC = () => {
             <RegionsField disabled={false} />
           </Box>
           <Box mt={2}>
-            <MasterPlacementField disabled={false} />
+            <MasterPlacementField disabled={isEditMode} />
           </Box>
           <Box mt={2}>
             <TotalNodesField disabled={false} />
