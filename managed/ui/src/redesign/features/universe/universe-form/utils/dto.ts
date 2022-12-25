@@ -262,7 +262,7 @@ export interface CloudConfigFormValue {
   placements: Placement[];
   defaultRegion?: string | null;
   mastersInDefaultRegion?: boolean;
-  masterPlacement?: string;
+  masterPlacement?: MasterPlacementType;
 }
 
 export interface InstanceConfigFormValue {
@@ -286,7 +286,6 @@ export interface InstanceConfigFormValue {
   ycqlConfirmPassword?: string;
   enableYEDIS: boolean;
   kmsConfig: string | null;
-  dedicatedNodes?: boolean;
 }
 
 export interface AdvancedConfigFormValue {
@@ -374,7 +373,6 @@ export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
   ycqlConfirmPassword: '',
   enableYEDIS: false,
   kmsConfig: null,
-  dedicatedNodes: false
 };
 
 export const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {

@@ -143,7 +143,6 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
       ...transformGFlagToFlagsArray(userIntent.tserverGFlags, 'TSERVER')
     ]
   };
-
   return data;
 };
 
@@ -152,6 +151,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
   const { cloudConfig, instanceConfig, advancedConfig, instanceTags, gFlags } = formData;
   console.log(cloudConfig.masterPlacement === MasterPlacementType.DEDICATED)
   const { masterGFlags, tserverGFlags } = transformFlagArrayToObject(gFlags);
+
   let intent: UserIntent = {
     universeName: cloudConfig.universeName,
     provider: cloudConfig.provider?.uuid as string,

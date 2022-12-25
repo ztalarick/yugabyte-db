@@ -4,6 +4,9 @@ import React, { Component, Fragment } from 'react';
 import { BootstrapTable, TableHeaderColumn } from 'react-bootstrap-table';
 import moment from 'moment';
 import pluralize from 'pluralize';
+import { Box, MenuItem } from '@material-ui/core';
+import { YBLabel, YBSelectField } from '../../../redesign/components';
+import { UniverseFormData } from '../../../redesign/features/universe/universe-form/utils/dto';
 
 import { isDefinedNotNull, isNonEmptyString } from '../../../utils/ObjectUtils';
 import {
@@ -18,7 +21,22 @@ import { setCookiesFromLocalStorage } from '../../../routes';
 import { getUniverseStatus, universeState } from '../helpers/universeHelpers';
 
 import 'react-bootstrap-table/css/react-bootstrap-table.css';
+import { useFormContext } from 'react-hook-form';
 
+const NODE_TYPE = [
+  {
+    label: 'All Nodes',
+    value: 'All Nodes'
+  },
+  {
+    label: 'TServer',
+    value: 'TServer'
+  },
+  {
+    label: 'Master',
+    value: 'Master'
+  }
+];
 export default class NodeDetailsTable extends Component {
   render() {
     const {
@@ -252,68 +270,86 @@ export default class NodeDetailsTable extends Component {
       isNotHidden(customer.currentCustomer.data.features, 'universes.tableActions');
 
     return (
-      <YBPanelItem
-        className={`${clusterType}-node-details`}
-        header={<h2 className="content-title">{panelTitle}</h2>}
-        body={
-          <BootstrapTable ref="nodeDetailTable" data={sortedNodeDetails}>
-            <TableHeaderColumn
-              dataField="name"
-              isKey={true}
-              className={'node-name-field'}
-              columnClassName={'node-name-field'}
-              dataFormat={getNodeNameLink}
-            >
-              Name
-            </TableHeaderColumn>
-            <TableHeaderColumn
-              dataField="nodeStatus"
-              dataFormat={getStatusUptime}
-              className={'yb-node-status-cell'}
-              columnClassName={'yb-node-status-cell'}
-            >
-              Status
-            </TableHeaderColumn>
-            <TableHeaderColumn
-              dataField="cloudItem"
-              dataFormat={getCloudInfo}
-              className="cloud-info-cell"
-              columnClassName="cloud-info-cell"
-            >
-              Cloud Info
-            </TableHeaderColumn>
-            <TableHeaderColumn dataFormat={getReadableSize} dataField="ram_used">
-              RAM Used
-            </TableHeaderColumn>
-            <TableHeaderColumn dataFormat={getReadableSize} dataField="total_sst_file_size">
-              SST Size
-            </TableHeaderColumn>
-            <TableHeaderColumn dataFormat={getReadableSize} dataField="uncompressed_sst_file_size">
-              Uncompressed SST Size
-            </TableHeaderColumn>
-            <TableHeaderColumn dataFormat={getOpsSec} dataField="read_ops_per_sec">
-              Read | Write ops/sec
-            </TableHeaderColumn>
-            <TableHeaderColumn
-              dataField="isMaster"
-              dataFormat={getIpPortLinks}
-              formatExtraData="master"
-            >
-              Processes
-            </TableHeaderColumn>
-            {displayNodeActions && (
+      <Box>
+        <Box>
+          {/* <YBSelectField
+            inputProps={{
+              'data-testid': 'NodeDetailsProcess-Select'
+            }}
+          >
+            {NODE_TYPE.map((item) => (
+              <MenuItem key={item.label} value={item.value}>
+                {item.value}
+              </MenuItem>
+            ))}
+          </YBSelectField> */}
+        </Box>
+        <YBPanelItem
+          className={`${clusterType}-node-details`}
+          header={<h2 className="content-title">{panelTitle}</h2>}
+          body={
+            <BootstrapTable ref="nodeDetailTable" data={sortedNodeDetails}>
               <TableHeaderColumn
-                dataField="nodeAction"
-                className={'yb-actions-cell'}
-                columnClassName={'yb-actions-cell'}
-                dataFormat={getNodeAction}
+                dataField="name"
+                isKey={true}
+                className={'node-name-field'}
+                columnClassName={'node-name-field'}
+                dataFormat={getNodeNameLink}
               >
-                Action
+                Name
               </TableHeaderColumn>
-            )}
-          </BootstrapTable>
-        }
-      />
+              <TableHeaderColumn
+                dataField="nodeStatus"
+                dataFormat={getStatusUptime}
+                className={'yb-node-status-cell'}
+                columnClassName={'yb-node-status-cell'}
+              >
+                Status
+              </TableHeaderColumn>
+              <TableHeaderColumn
+                dataField="cloudItem"
+                dataFormat={getCloudInfo}
+                className="cloud-info-cell"
+                columnClassName="cloud-info-cell"
+              >
+                Cloud Info
+              </TableHeaderColumn>
+              <TableHeaderColumn dataFormat={getReadableSize} dataField="ram_used">
+                RAM Used
+              </TableHeaderColumn>
+              <TableHeaderColumn dataFormat={getReadableSize} dataField="total_sst_file_size">
+                SST Size
+              </TableHeaderColumn>
+              <TableHeaderColumn
+                dataFormat={getReadableSize}
+                dataField="uncompressed_sst_file_size"
+              >
+                Uncompressed SST Size
+              </TableHeaderColumn>
+              <TableHeaderColumn dataFormat={getOpsSec} dataField="read_ops_per_sec">
+                Read | Write ops/sec
+              </TableHeaderColumn>
+              <TableHeaderColumn
+                dataField="isMaster"
+                dataFormat={getIpPortLinks}
+                formatExtraData="master"
+              >
+                Processes
+              </TableHeaderColumn>
+              {displayNodeActions && (
+                <TableHeaderColumn
+                  dataField="nodeAction"
+                  className={'yb-actions-cell'}
+                  columnClassName={'yb-actions-cell'}
+                  dataFormat={getNodeAction}
+                >
+                  Action
+                </TableHeaderColumn>
+              )}
+            </BootstrapTable>
+          }
+        />
+      </Box>
     );
   }
 }

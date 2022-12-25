@@ -33,7 +33,6 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = ({ uuid }) => {
   const { t } = useTranslation();
   const [contextState, contextMethods] = useContext(UniverseFormContext);
   const { initializeForm, setUniverseResourceTemplate } = contextMethods;
-
   const { isLoading, data: universe } = useQuery(
     [QUERY_KEY.fetchUniverse, uuid],
     () => api.fetchUniverse(uuid),
@@ -110,6 +109,7 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = ({ uuid }) => {
   //get primary form data, filter only async form fields and intitalize the form
   const primaryFormData = getPrimaryFormData(universe.universeDetails);
   const initialFormData = filterFormDataByClusterType(primaryFormData, ClusterType.ASYNC);
+  console.log('initialFormData', initialFormData);
 
   return (
     <UniverseForm

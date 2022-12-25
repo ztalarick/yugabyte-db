@@ -34,7 +34,6 @@ export const ROOT_CERT_FIELD = 'instanceConfig.rootCA';
 export const NODE_TO_NODE_ENCRYPT_FIELD = 'instanceConfig.enableNodeToNodeEncrypt';
 export const EAR_FIELD = 'instanceConfig.enableEncryptionAtRest';
 export const KMS_CONFIG_FIELD = 'instanceConfig.kmsConfig';
-export const DEDICATED_NODES_FIELD = 'instanceConfig.dedicatedNodes';
 
 //Advanced config
 export const SYSTEMD_FIELD = 'advancedConfig.useSystemd';
@@ -103,7 +102,6 @@ export const PRIMARY_FIELDS = [
   COMMUNICATION_PORTS_FIELD,
   ACCESS_KEY_FIELD,
   CUSTOMIZE_PORT_FIELD,
-  DEDICATED_NODES_FIELD,
   UNIVERSE_OVERRIDES_FIELD,
   AZ_OVERRIDES_FIELD,
   MASTERS_PLACEMENT_FIELD
@@ -116,13 +114,15 @@ export const ASYNC_FIELDS = [
   REPLICATION_FACTOR_FIELD,
   AUTO_PLACEMENT_FIELD,
   TOTAL_NODES_FIELD,
-  // MASTER_TOTAL_NODES_FIELD,
   PLACEMENTS_FIELD,
+  // Do not copy these fields from primary to async fields
   INSTANCE_TYPE_FIELD,
   // MASTER_INSTANCE_TYPE_FIELD,
+  // MASTER_DEVICE_INFO_FIELD,
+  // MASTER_TOTAL_NODES_FIELD,
+
   SOFTWARE_VERSION_FIELD,
   DEVICE_INFO_FIELD,
-  // MASTER_DEVICE_INFO_FIELD,
   ASSIGN_PUBLIC_IP_FIELD,
   SYSTEMD_FIELD,
   TIME_SYNC_FIELD,

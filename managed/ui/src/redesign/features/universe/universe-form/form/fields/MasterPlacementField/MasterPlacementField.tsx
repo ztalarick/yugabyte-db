@@ -1,6 +1,7 @@
-import React, { ReactElement } from 'react';
+import React, { ReactElement, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
+import { useUpdateEffect } from 'react-use';
 import { Box, Typography, makeStyles } from '@material-ui/core';
 import {
   RadioOrientation,
@@ -10,6 +11,7 @@ import {
 } from '../../../../../../components';
 import { UniverseFormData, MasterPlacementType } from '../../../utils/dto';
 import { MASTERS_PLACEMENT_FIELD } from '../../../utils/constants';
+import { BooleanSelector } from 'redux-form';
 
 const TOOLTIP_TITLE =
   'Select this option if you plan to use this universe for \
@@ -18,6 +20,7 @@ const TOOLTIP_TITLE =
 
 interface MasterPlacementFieldProps {
   disabled?: boolean;
+  isAsync: boolean;
 }
 
 const useStyles = makeStyles(() => ({
@@ -33,58 +36,70 @@ const useStyles = makeStyles(() => ({
   }
 }));
 
-export const MasterPlacementField = ({ disabled }: MasterPlacementFieldProps): ReactElement => {
-  const { control, setValue } = useFormContext<UniverseFormData>();
+export const MasterPlacementField = ({
+  disabled,
+  isAsync
+}: MasterPlacementFieldProps): ReactElement => {
+  const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
   const classes = useStyles();
 
-  return (
-    <Box display="flex" width="100%" data-testid="MasterPlacement-Container">
-      <Box>
-        <YBLabel dataTestId="MasterPlacement-Label">
-          {'Master Placement'}
-          &nbsp;
-          <span className="fa fa-info-circle" />
-        </YBLabel>
+  useEffect(() => {
+    if (isAsync) {
+      setValue(MASTERS_PLACEMENT_FIELD, MasterPlacementType.COLOCATED);
+    }
+  }, [isAsync]);
+
+  if (!isAsync) {
+    return (
+      <Box display="flex" width="100%" data-testid="MasterPlacement-Container">
+        <Box>
+          <YBLabel dataTestId="MasterPlacement-Label">
+            {'Master Placement'}
+            &nbsp;
+            <span className="fa fa-info-circle" />
+          </YBLabel>
+        </Box>
+        <Box flex={1} mt={0}>
+          <YBRadioGroupField
+            name={MASTERS_PLACEMENT_FIELD}
+            control={control}
+            value={masterPlacement}
+            orientation={RadioOrientation.Vertical}
+            onChange={(e) => {
+              setValue(MASTERS_PLACEMENT_FIELD, e.target.value as MasterPlacementType);
+            }}
+            options={[
+              {
+                disabled: disabled,
+                value: MasterPlacementType.COLOCATED,
+                label: (
+                  <Box display="flex">
+                    {t('universeForm.cloudConfig.colocatedMasterMode')}
+                    {/* <YBTooltip title={t('network.vpc.autoRegionsTooltip')} /> */}
+                  </Box>
+                )
+              },
+              {
+                disabled: disabled,
+                value: MasterPlacementType.DEDICATED,
+                label: (
+                  <Box display="flex">
+                    {t('universeForm.cloudConfig.dedicatedMasterMode')}
+                    <YBTooltip title={TOOLTIP_TITLE} className={classes.tooltipText}>
+                      <Typography display="inline">
+                        {t('universeForm.cloudConfig.tooltipMasterPlacement')}
+                      </Typography>
+                    </YBTooltip>
+                  </Box>
+                )
+              }
+            ]}
+          />
+        </Box>
       </Box>
-      <Box flex={1} mt={0}>
-        <YBRadioGroupField
-          name={MASTERS_PLACEMENT_FIELD}
-          control={control}
-          value={masterPlacement}
-          orientation={RadioOrientation.Vertical}
-          onChange={(e) => {
-            setValue(MASTERS_PLACEMENT_FIELD, e.target.value);
-          }}
-          options={[
-            {
-              disabled: disabled,
-              value: MasterPlacementType.COLOCATED,
-              label: (
-                <Box display="flex">
-                  {t('universeForm.cloudConfig.colocatedMasterMode')}
-                  {/* <YBTooltip title={t('network.vpc.autoRegionsTooltip')} /> */}
-                </Box>
-              )
-            },
-            {
-              disabled: disabled,
-              value: MasterPlacementType.DEDICATED,
-              label: (
-                <Box display="flex">
-                  {t('universeForm.cloudConfig.dedicatedMasterMode')}
-                  <YBTooltip title={TOOLTIP_TITLE} className={classes.tooltipText}>
-                    <Typography display="inline">
-                      {t('universeForm.cloudConfig.tooltipMasterPlacement')}
-                    </Typography>
-                  </YBTooltip>
-                </Box>
-              )
-            }
-          ]}
-        />
-      </Box>
-    </Box>
-  );
+    );
+  }
+  return <Box mb={2}></Box>;
 };

@@ -17,6 +17,7 @@ import { useSectionStyles } from '../../../universeMainStyle';
 
 interface TotalNodesFieldProps {
   disabled?: boolean;
+  isAsync: boolean;
 }
 
 const TOOLTIP_TITLE =
@@ -24,7 +25,7 @@ const TOOLTIP_TITLE =
   multi-tenancy use cases -or- you expect to create Databases \
   with a very large number of tables';
 
-export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElement => {
+export const TotalNodesField = ({ disabled, isAsync }: TotalNodesFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const classes = useSectionStyles();
@@ -32,10 +33,12 @@ export const TotalNodesField = ({ disabled }: TotalNodesFieldProps): ReactElemen
   //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
-  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
+  // const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
+  const masterPlacement = getValues(MASTERS_PLACEMENT_FIELD);
   const placements = useWatch({ name: PLACEMENTS_FIELD });
   const currentTotalNodes = getValues(TOTAL_NODES_FIELD);
 
+  console.log('masterPlacement123', masterPlacement);
   //set TotalNodes to RF Value when totalNodes < RF
   useUpdateEffect(() => {
     if (replicationFactor > currentTotalNodes) setValue(TOTAL_NODES_FIELD, replicationFactor);

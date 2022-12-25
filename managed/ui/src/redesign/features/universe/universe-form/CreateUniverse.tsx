@@ -145,7 +145,7 @@ export const CreateUniverse: FC = () => {
 
   if (isLoading) return <YBLoading />;
 
-  console.log('primaryFormData', primaryFormData);
+  console.log('ENNA DA', filterFormDataByClusterType(primaryFormData, ClusterType.ASYNC));
   if (isPrimary)
     return (
       <UniverseForm
