@@ -35,7 +35,7 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
         setUniverseResourceTemplate(resourceResponse);
       },
       onError: (err) => {
-        console.log(err);
+        console.error(err);
       }
     }
   );

@@ -24,7 +24,10 @@ import {
   INSTANCE_TYPE_FIELD,
   DEVICE_INFO_FIELD,
   MASTERS_IN_DEFAULT_REGION_FIELD,
-  DEFAULT_REGION_FIELD
+  DEFAULT_REGION_FIELD,
+  MASTERS_PLACEMENT_FIELD,
+  MASTER_DEVICE_INFO_FIELD,
+  MASTER_INSTANCE_TYPE_FIELD
 } from '../../../utils/constants';
 
 export const getPlacementsFromCluster = (
@@ -150,6 +153,9 @@ export const useNodePlacements = () => {
   const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
   const defaultRegion = useWatch({ name: DEFAULT_REGION_FIELD });
   const defaultMasterRegion = useWatch({ name: MASTERS_IN_DEFAULT_REGION_FIELD });
+  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
+  const masterDeviceInfo =  useWatch({ name: MASTER_DEVICE_INFO_FIELD });
+   const masterInstanceType =  useWatch({ name: MASTER_INSTANCE_TYPE_FIELD });
 
   const prevPropsCombination = useRef({
     instanceType,
@@ -158,7 +164,10 @@ export const useNodePlacements = () => {
     replicationFactor,
     deviceInfo,
     defaultRegion,
-    defaultMasterRegion
+    defaultMasterRegion,
+    masterPlacement,
+    masterDeviceInfo,
+    masterInstanceType
   });
 
   let payload: any = {};
@@ -238,7 +247,10 @@ export const useNodePlacements = () => {
       replicationFactor,
       deviceInfo,
       defaultRegion,
-      defaultMasterRegion
+      defaultMasterRegion,
+      masterPlacement,
+      masterDeviceInfo,
+      masterInstanceType
     };
     if (_.isEmpty(regionList)) {
       setValue(PLACEMENTS_FIELD, [], { shouldValidate: true });
@@ -254,7 +266,7 @@ export const useNodePlacements = () => {
     }
 
     prevPropsCombination.current = propsCombination;
-  }, [instanceType, regionList, totalNodes, replicationFactor, deviceInfo]);
+  }, [instanceType, regionList, totalNodes, replicationFactor, deviceInfo, masterPlacement, masterDeviceInfo, masterInstanceType]);
 
   return { isLoading: isFetching };
 };

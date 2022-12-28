@@ -38,7 +38,6 @@ export const TotalNodesField = ({ disabled, isAsync }: TotalNodesFieldProps): Re
   const placements = useWatch({ name: PLACEMENTS_FIELD });
   const currentTotalNodes = getValues(TOTAL_NODES_FIELD);
 
-  console.log('masterPlacement123', masterPlacement);
   //set TotalNodes to RF Value when totalNodes < RF
   useUpdateEffect(() => {
     if (replicationFactor > currentTotalNodes) setValue(TOTAL_NODES_FIELD, replicationFactor);

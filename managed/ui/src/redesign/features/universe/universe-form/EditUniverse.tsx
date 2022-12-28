@@ -69,7 +69,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
         setUniverseResourceTemplate(resourceResponse);
       },
       onError: (err) => {
-        console.log(err);
+        console.error(err);
       }
     }
   );
@@ -80,7 +80,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
     try {
       await api.editUniverse(finalPayload, uuid);
     } catch (e) {
-      console.log(e);
+      console.error(e);
     } finally {
       transitToUniverse(uuid);
     }
@@ -130,7 +130,7 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       else if (updateOptions.includes(UPDATE_ACTIONS.SMART_RESIZE_NON_RESTART)) setRNModal(true);
       else if (updateOptions.includes(UPDATE_ACTIONS.FULL_MOVE)) setFMModal(true);
       else submitEditUniverse(finalPayload);
-    } else console.log("'Nothing to update - no fields changed'");
+    } else console.warn("'Nothing to update - no fields changed'");
   };
 
   return (

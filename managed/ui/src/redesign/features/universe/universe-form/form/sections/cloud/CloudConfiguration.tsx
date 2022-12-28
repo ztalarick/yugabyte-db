@@ -17,8 +17,6 @@ import { UniverseFormContext } from '../../../UniverseFormContainer';
 import { getPrimaryCluster } from '../../../utils/helpers';
 import { ClusterModes, ClusterType } from '../../../utils/dto';
 import { useSectionStyles } from '../../../universeMainStyle';
-import { MASTERS_PLACEMENT_FIELD } from '../../../utils/constants';
-import { useWatch } from 'react-hook-form';
 
 export const CloudConfiguration: FC = () => {
   const classes = useSectionStyles();
@@ -36,7 +34,6 @@ export const CloudConfiguration: FC = () => {
   const isEditMode = mode === ClusterModes.EDIT; //Form is in edit mode
   const isCreatePrimary = !isEditMode && isPrimary; //Creating Primary Cluster
   const isEditPrimary = isEditMode && isPrimary; //Editing Primary Cluster
-  console.log('SHHHHH', useWatch({ name: MASTERS_PLACEMENT_FIELD }));
 
   //For async cluster creation show providers based on primary clusters provider type
   const primaryProviderCode = !isPrimary

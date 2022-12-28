@@ -39,7 +39,6 @@ export const InstanceConfiguration: FC = () => {
   const masterPlacement = isAsync
     ? getValues(MASTERS_PLACEMENT_FIELD)
     : useWatch({ name: MASTERS_PLACEMENT_FIELD });
-  console.log('Instance Configuration', masterPlacement);
 
   const instanceAndVolumeElement = () => {
     return (

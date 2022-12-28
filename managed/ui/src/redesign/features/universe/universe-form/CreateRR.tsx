@@ -109,7 +109,6 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = ({ uuid }) => {
   //get primary form data, filter only async form fields and intitalize the form
   const primaryFormData = getPrimaryFormData(universe.universeDetails);
   const initialFormData = filterFormDataByClusterType(primaryFormData, ClusterType.ASYNC);
-  console.log('initialFormData', initialFormData);
 
   return (
     <UniverseForm

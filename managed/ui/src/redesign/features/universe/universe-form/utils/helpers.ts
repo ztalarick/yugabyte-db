@@ -149,7 +149,6 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
 //Transform form data to intent
 export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
   const { cloudConfig, instanceConfig, advancedConfig, instanceTags, gFlags } = formData;
-  console.log(cloudConfig.masterPlacement === MasterPlacementType.DEDICATED)
   const { masterGFlags, tserverGFlags } = transformFlagArrayToObject(gFlags);
 
   let intent: UserIntent = {
