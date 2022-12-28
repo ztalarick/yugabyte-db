@@ -38,6 +38,19 @@ const NODE_TYPE = [
   }
 ];
 export default class NodeDetailsTable extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      nodeTypeDropdownValue: NODE_TYPE[0].value
+    };
+  }
+
+  onNodeTypeChanged = (selectedNodeType) => {
+    this.setState({
+      nodeTypeDropdownValue: selectedNodeType
+    });
+  };
+
   render() {
     const {
       nodeDetails,
@@ -272,6 +285,25 @@ export default class NodeDetailsTable extends Component {
     return (
       <Box>
         <Box>
+          <Dropdown id="nodeTypeDropdown" className="node-type-dropdown">
+            <Dropdown.Toggle>
+              <span className="node-type-dropdown-value">{nodeTypeDropdownValue}</span>
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              {NODE_TYPE.map((nodeType, nodeTypeIdx) => {
+                return (
+                  <MenuItem
+                    eventKey={`nodetype-${nodeTypeIdx}`}
+                    key={`${nodeType.label}`}
+                    active={nodeTypeDropdownValue === nodeType.value}
+                    onSelect={() => onNodeTypeChanged(nodeType.value)}
+                  >
+                    {nodeType.value}
+                  </MenuItem>
+                );
+              })}
+            </Dropdown.Menu>
+          </Dropdown>
           {/* <YBSelectField
             inputProps={{
               'data-testid': 'NodeDetailsProcess-Select'
