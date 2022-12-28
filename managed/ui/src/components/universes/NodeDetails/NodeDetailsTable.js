@@ -2,11 +2,9 @@
 
 import React, { Component, Fragment } from 'react';
 import { BootstrapTable, TableHeaderColumn } from 'react-bootstrap-table';
+import { MenuItem, Dropdown } from 'react-bootstrap';
 import moment from 'moment';
 import pluralize from 'pluralize';
-import { Box, MenuItem } from '@material-ui/core';
-import { YBLabel, YBSelectField } from '../../../redesign/components';
-import { UniverseFormData } from '../../../redesign/features/universe/universe-form/utils/dto';
 
 import { isDefinedNotNull, isNonEmptyString } from '../../../utils/ObjectUtils';
 import {
@@ -20,8 +18,8 @@ import { NodeAction } from '../../universes';
 import { setCookiesFromLocalStorage } from '../../../routes';
 import { getUniverseStatus, universeState } from '../helpers/universeHelpers';
 
+import './NodeDetailsTable.scss';
 import 'react-bootstrap-table/css/react-bootstrap-table.css';
-import { useFormContext } from 'react-hook-form';
 
 const NODE_TYPE = [
   {
@@ -58,15 +56,27 @@ export default class NodeDetailsTable extends Component {
       clusterType,
       customer,
       currentUniverse,
-      providers
+      providers,
+      dedicatedNodes
     } = this.props;
     const successIcon = <i className="fa fa-check-circle yb-success-color" />;
     const warningIcon = <i className="fa fa-warning yb-fail-color" />;
-    const sortedNodeDetails = nodeDetails.sort((a, b) => a.nodeIdx - b.nodeIdx);
+    let sortedNodeDetails = nodeDetails.sort((a, b) => a.nodeIdx - b.nodeIdx);
     const universeUUID = currentUniverse.data.universeUUID;
     const providerConfig = providers.data.find((provider) => provider.uuid === providerUUID)
       ?.config;
-
+    console.log('sortedNodeDetails', clusterType, sortedNodeDetails);
+    if (dedicatedNodes && clusterType === 'primary') {
+      if (this.state.nodeTypeDropdownValue === 'Master') {
+        sortedNodeDetails = sortedNodeDetails.filter(
+          (nodeDetails) => nodeDetails.dedicatedTo === 'MASTER'
+        );
+      } else if (this.state.nodeTypeDropdownValue === 'TServer') {
+        sortedNodeDetails = sortedNodeDetails.filter(
+          (nodeDetails) => nodeDetails.dedicatedTo !== 'MASTER'
+        );
+      }
+    }
     const formatIpPort = function (cell, row, type) {
       if (cell === '-') {
         return <span>{cell}</span>;
@@ -283,42 +293,40 @@ export default class NodeDetailsTable extends Component {
       isNotHidden(customer.currentCustomer.data.features, 'universes.tableActions');
 
     return (
-      <Box>
-        <Box>
-          <Dropdown id="nodeTypeDropdown" className="node-type-dropdown">
-            <Dropdown.Toggle>
-              <span className="node-type-dropdown-value">{nodeTypeDropdownValue}</span>
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              {NODE_TYPE.map((nodeType, nodeTypeIdx) => {
-                return (
-                  <MenuItem
-                    eventKey={`nodetype-${nodeTypeIdx}`}
-                    key={`${nodeType.label}`}
-                    active={nodeTypeDropdownValue === nodeType.value}
-                    onSelect={() => onNodeTypeChanged(nodeType.value)}
-                  >
-                    {nodeType.value}
-                  </MenuItem>
-                );
-              })}
-            </Dropdown.Menu>
-          </Dropdown>
-          {/* <YBSelectField
-            inputProps={{
-              'data-testid': 'NodeDetailsProcess-Select'
-            }}
-          >
-            {NODE_TYPE.map((item) => (
-              <MenuItem key={item.label} value={item.value}>
-                {item.value}
-              </MenuItem>
-            ))}
-          </YBSelectField> */}
-        </Box>
+      <div className="node-details-table-container">
         <YBPanelItem
           className={`${clusterType}-node-details`}
-          header={<h2 className="content-title">{panelTitle}</h2>}
+          header={
+            <>
+              <h2 className="content-title">{panelTitle}</h2>
+              {dedicatedNodes && (
+                <Dropdown id="nodeTypeDropdown" className="node-type-dropdown">
+                  <Dropdown.Toggle>
+                    <>
+                      <span className="node-type-dropdown-label">{'Type'}</span>
+                      <span className="node-type-dropdown-value">
+                        {this.state.nodeTypeDropdownValue}
+                      </span>
+                    </>
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    {NODE_TYPE.map((nodeType, nodeTypeIdx) => {
+                      return (
+                        <MenuItem
+                          eventKey={`nodetype-${nodeTypeIdx}`}
+                          key={`${nodeType.label}`}
+                          active={this.state.nodeTypeDropdownValue === nodeType.value}
+                          onSelect={() => this.onNodeTypeChanged(nodeType.value)}
+                        >
+                          {nodeType.value}
+                        </MenuItem>
+                      );
+                    })}
+                  </Dropdown.Menu>
+                </Dropdown>
+              )}
+            </>
+          }
           body={
             <BootstrapTable ref="nodeDetailTable" data={sortedNodeDetails}>
               <TableHeaderColumn
@@ -381,7 +389,7 @@ export default class NodeDetailsTable extends Component {
             </BootstrapTable>
           }
         />
-      </Box>
+      </div>
     );
   }
 }

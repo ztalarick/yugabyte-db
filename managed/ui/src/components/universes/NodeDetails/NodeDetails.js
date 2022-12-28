@@ -204,6 +204,7 @@ export default class NodeDetails extends Component {
           nodeDetails={primaryNodeDetails}
           providerUUID={primaryCluster.userIntent.provider}
           clusterType="primary"
+          dedicatedNodes={primaryCluster.userIntent.dedicatedNodes}
           customer={customer}
           currentUniverse={currentUniverse}
           providers={providers}
