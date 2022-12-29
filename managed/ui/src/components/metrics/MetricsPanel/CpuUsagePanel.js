@@ -39,13 +39,13 @@ export default class CpuUsagePanel extends Component {
       <div className="metrics-padded-panel cpu-usage-panel">
         {isNaN(usage.system) ? (
           <Fragment>
-            <Graph type={'semicircle'} value={0} />
             <div className="centered text-light text-lightgray">No Data</div>
+            <Graph value={0} />
           </Fragment>
         ) : (
           <Fragment>
-            <Graph type={'semicircle'} value={value} />
             <YBResourceCount size={Math.round(value * 1000) / 10} kind="% used" inline={true} />
+            <Graph value={value} />
           </Fragment>
         )}
       </div>

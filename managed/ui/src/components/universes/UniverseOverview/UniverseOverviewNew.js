@@ -63,7 +63,6 @@ class DatabasePanel extends PureComponent {
           <YBResourceCount
             className="hidden-costs"
             size={optimizeVersion(userIntent.ybSoftwareVersion.split('-')[0].split('.'))}
-            kind={'Version'}
           />
         </Col>
       </Row>
@@ -417,27 +416,34 @@ export default class UniverseOverviewNew extends Component {
     if (isNullOrEmpty(currentUniverse.resources)) return;
     const isPricingKnown = currentUniverse.resources.pricingKnown;
     const pricePerHour = currentUniverse.resources.pricePerHour;
-    const costPerDay = <YBCost value={pricePerHour} multiplier={'day'} isPricingKnown={isPricingKnown}/>;
+    const costPerDay = (
+      <YBCost value={pricePerHour} multiplier={'day'} isPricingKnown={isPricingKnown} />
+    );
     const costPerMonth = (
       <YBCost value={pricePerHour} multiplier={'month'} isPricingKnown={isPricingKnown} />
     );
     return (
-      <Col lg={2} md={4} sm={4} xs={6}>
+      <Col lg={4} md={4} sm={4} xs={6}>
+        {/* <i className="fa fa-trash"></i>
+        <FlexShrink></FlexShrink> */}
         <YBWidget
+          noHeader
           size={1}
           className={'overview-widget-cost'}
-          headerLeft={'Cost'}
           body={
-            <FlexContainer className={'centered'} direction={'column'}>
-              <FlexGrow>
-                <YBResourceCount
-                  className="hidden-costs"
-                  size={costPerDay}
-                  kind="/day"
-                  inline={true}
-                />
-              </FlexGrow>
-              <FlexShrink>{costPerMonth} /month</FlexShrink>
+            <FlexContainer className={'centered'} direction={'row'}>
+              <FlexShrink>
+                <i className="fa fa-money cost-widget-image"></i>
+                <span className="cost-widget-label">{'Cost'}</span>
+              </FlexShrink>
+              <FlexShrink>
+                <span className="cost-per-day">{costPerDay} </span>
+                <span className="cost-metric">/ day</span>
+              </FlexShrink>
+              <FlexShrink>
+                <span className="cost-per-month">{costPerMonth}</span>
+                <span>/ month</span>
+              </FlexShrink>
             </FlexContainer>
           }
         />
@@ -574,11 +580,11 @@ export default class UniverseOverviewNew extends Component {
     const metricKey = isKubernetes ? 'container_volume_stats' : 'disk_usage';
     const secondaryMetric = isKubernetes
       ? [
-        {
-          metric: 'container_volume_max_usage',
-          name: 'size'
-        }
-      ]
+          {
+            metric: 'container_volume_max_usage',
+            name: 'size'
+          }
+        ]
       : null;
     return (
       <StandaloneMetricsPanelContainer
@@ -592,7 +598,9 @@ export default class UniverseOverviewNew extends Component {
               noMargin
               headerRight={
                 isNonEmptyObject(universeInfo) ? (
-                  <Link to={`/universes/${universeInfo.universeUUID}/metrics?${metricTabPath}=${subTab}`}>
+                  <Link
+                    to={`/universes/${universeInfo.universeUUID}/metrics?${metricTabPath}=${subTab}`}
+                  >
                     Details
                   </Link>
                 ) : null
@@ -607,12 +615,12 @@ export default class UniverseOverviewNew extends Component {
   };
 
   getCPUWidget = (universeInfo) => {
-     // For kubernetes the CPU usage would be in container tab, rest it would be server tab.
+    // For kubernetes the CPU usage would be in container tab, rest it would be server tab.
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
     const subTab = isItKubernetesUniverse ? 'container' : 'server';
     const metricTabPath = this.props.enableTopKMetrics ? 'tab' : 'subtab';
     return (
-      <Col lg={2} md={4} sm={4} xs={6}>
+      <Col lg={4} md={4} sm={4} xs={6}>
         <StandaloneMetricsPanelContainer
           metricKey={isItKubernetesUniverse ? 'container_cpu_usage' : 'cpu_usage'}
           type="overview"
@@ -623,7 +631,9 @@ export default class UniverseOverviewNew extends Component {
                 noMargin
                 headerLeft={'CPU Usage'}
                 headerRight={
-                  <Link to={`/universes/${universeInfo.universeUUID}/metrics?${metricTabPath}=${subTab}`}>
+                  <Link
+                    to={`/universes/${universeInfo.universeUUID}/metrics?${metricTabPath}=${subTab}`}
+                  >
                     Details
                   </Link>
                 }
@@ -706,7 +716,7 @@ export default class UniverseOverviewNew extends Component {
     const lastUpdateDate = this.getLastUpdateDate();
     const {
       universe: { currentUniverse },
-      updateAvailable, 
+      updateAvailable,
       currentCustomer
     } = this.props;
     const showUpdate =
@@ -733,7 +743,7 @@ export default class UniverseOverviewNew extends Component {
     };
     const infoWidget = (
       <YBWidget
-        headerLeft={'Info'}
+        headerLeft={'Version'}
         headerRight={showUpdate && !universePaused ? upgradeLink() : null}
         body={
           <FlexContainer className={'centered'} direction={'column'}>
@@ -772,7 +782,7 @@ export default class UniverseOverviewNew extends Component {
       universe: { currentUniverse },
       alerts,
       tasks,
-      currentCustomer,
+      currentCustomer
     } = this.props;
 
     const universeInfo = currentUniverse.data;
@@ -782,10 +792,14 @@ export default class UniverseOverviewNew extends Component {
     return (
       <Fragment>
         <Row>
-          {this.getDatabaseWidget(universeInfo, tasks)}
-          {this.getPrimaryClusterWidget(universeInfo)}
           {isEnabled(currentCustomer.data.features, 'universes.details.overview.costs') &&
             this.getCostWidget(universeInfo)}
+        </Row>
+        <Row>
+          {this.getDatabaseWidget(universeInfo, tasks)}
+          {this.getPrimaryClusterWidget(universeInfo)}
+          {/* {isEnabled(currentCustomer.data.features, 'universes.details.overview.costs') &&
+            this.getCostWidget(universeInfo)} */}
           {isEnabled(
             currentCustomer.data.features,
             'universes.details.overview.demo',
@@ -813,13 +827,16 @@ export default class UniverseOverviewNew extends Component {
             {this.getTablesWidget(universeInfo)}
           </Col>
         </Row>
-        {isQueryMonitoringEnabled &&
+        {isQueryMonitoringEnabled && (
           <Row>
             <Col lg={12} md={12} sm={12} xs={12}>
-              <QueryDisplayPanel universeUUID={universeInfo.universeUUID} enabled={isQueryMonitoringEnabled} />
+              <QueryDisplayPanel
+                universeUUID={universeInfo.universeUUID}
+                enabled={isQueryMonitoringEnabled}
+              />
             </Col>
           </Row>
-        }
+        )}
       </Fragment>
     );
   }

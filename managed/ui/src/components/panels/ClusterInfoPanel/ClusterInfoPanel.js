@@ -2,16 +2,17 @@
 
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { DescriptionList, YBResourceCount } from '../../common/descriptors';
 import {
   getPrimaryCluster,
   getReadOnlyCluster,
   isKubernetesUniverse,
   getUniverseNodeCount
 } from '../../../utils/UniverseUtils';
-import { FlexContainer, FlexGrow, FlexShrink } from '../../common/flexbox/YBFlexBox';
 import { YBWidget } from '../../panels';
 import pluralize from 'pluralize';
+import '../UniverseDisplayPanel/UniverseDisplayPanel.scss';
+import { Row, Col } from 'react-bootstrap';
+import { FlexGrow } from '../../common/flexbox/YBFlexBox';
 
 export default class ClusterInfoPanel extends Component {
   static propTypes = {
@@ -29,6 +30,9 @@ export default class ClusterInfoPanel extends Component {
       }
     } = this.props;
     let cluster = null;
+    const nodeCount = getUniverseNodeCount(universeDetails.nodeDetailsSet, cluster);
+    const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
+
     if (type === 'primary') {
       cluster = getPrimaryCluster(clusters);
     } else if (type === 'read-replica') {
@@ -36,13 +40,13 @@ export default class ClusterInfoPanel extends Component {
     }
     const userIntent = cluster && cluster.userIntent;
     const connectStringPanelItemsShrink = [
+      {
+        name: pluralize(isItKubernetesUniverse ? 'Pod' : 'Node', nodeCount),
+        data: nodeCount
+      },
       !insecure && { name: 'Instance Type', data: userIntent && userIntent.instanceType },
       { name: 'Replication Factor', data: userIntent.replicationFactor }
     ];
-
-    const nodeCount = getUniverseNodeCount(universeDetails.nodeDetailsSet, cluster);
-
-    const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
 
     return (
       <YBWidget
@@ -50,18 +54,36 @@ export default class ClusterInfoPanel extends Component {
         className={'overview-widget-cluster-primary'}
         headerLeft={'Primary Cluster'}
         body={
-          <FlexContainer className={'centered'} direction={'column'}>
-            <FlexGrow>
-              <YBResourceCount
-                className="hidden-costs"
-                size={nodeCount}
-                kind={pluralize(isItKubernetesUniverse ? 'Pod' : 'Node', nodeCount)}
-              />
-            </FlexGrow>
-            <FlexShrink>
-              <DescriptionList type={'inline'} listItems={connectStringPanelItemsShrink} />
-            </FlexShrink>
-          </FlexContainer>
+          <FlexGrow className={'cluster-metadata-container'}>
+            <Row className={'cluster-metadata'}>
+              <Col lg={8}>
+                <span className={'cluster-metadata__label'}>
+                  {pluralize(isItKubernetesUniverse ? 'Pod' : 'Node', nodeCount)}
+                </span>
+              </Col>
+              <Col lg={4}>
+                <span className={'cluster-metadata__count'}>{nodeCount}</span>
+              </Col>
+            </Row>
+            {!insecure && (
+              <Row className={'cluster-metadata'}>
+                <Col lg={6}>
+                  <span className={'cluster-metadata__label'}>{'Instance Type'}</span>
+                </Col>
+                <Col lg={6}>
+                  <span>{userIntent && userIntent.instanceType}</span>
+                </Col>
+              </Row>
+            )}
+            <Row className={'cluster-metadata'}>
+              <Col lg={8}>
+                <span className={'cluster-metadata__label'}>{'Replication Factor'}</span>
+              </Col>
+              <Col lg={4}>
+                <span>{userIntent.replicationFactor}</span>
+              </Col>
+            </Row>
+          </FlexGrow>
         }
       />
     );

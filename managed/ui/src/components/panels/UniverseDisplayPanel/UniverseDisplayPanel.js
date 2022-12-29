@@ -63,11 +63,9 @@ class UniverseDisplayItem extends Component {
     const numNodes = <span>{nodeCount}</span>;
     let costPerMonth = <span>n/a</span>;
     if (isFinite(pricePerHour)) {
-      costPerMonth = (<YBCost
-        value={pricePerHour}
-        multiplier={'month'}
-        isPricingKnown={isPricingKnown}
-      />);
+      costPerMonth = (
+        <YBCost value={pricePerHour} multiplier={'month'} isPricingKnown={isPricingKnown} />
+      );
     }
     const universeCreationDate = universe.creationDate ? (
       <TimestampWithTimezone timeFormat="MM/DD/YYYY" timestamp={universe.creationDate} />
