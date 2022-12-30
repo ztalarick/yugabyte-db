@@ -12,10 +12,9 @@ import static play.inject.Bindings.bind;
 import com.google.common.collect.ImmutableList;
 import com.typesafe.config.Config;
 import com.yugabyte.yw.commissioner.HealthChecker;
-import com.yugabyte.yw.common.CustomWsClientFactory;
-import com.yugabyte.yw.common.CustomWsClientFactoryProvider;
 import com.yugabyte.yw.common.config.DummyRuntimeConfigFactoryImpl;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
+import com.yugabyte.yw.forms.DatabaseUserDropFormData;
 import com.yugabyte.yw.forms.DatabaseUserFormData;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.Cluster;
@@ -24,13 +23,11 @@ import com.yugabyte.yw.models.helpers.NodeDetails;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 import kamon.instrumentation.play.GuiceModule;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import play.Application;
 import play.inject.guice.GuiceApplicationBuilder;
-import play.test.WithApplication;
 
 @RunWith(JUnitParamsRunner.class)
 public class YsqlQueryExecutorTest extends PlatformGuiceApplicationBaseTest {
@@ -141,26 +138,32 @@ public class YsqlQueryExecutorTest extends PlatformGuiceApplicationBaseTest {
   @Test
   @Parameters({"false, 200", "true, 500", "true, 400"})
   public void deleteUser(boolean failure, int errorCode) {
+    DatabaseUserDropFormData dropForm = new DatabaseUserDropFormData();
+    dropForm.username = "admin";
+    dropForm.dbName = "yugabyte";
+
     when(universe.getMasterLeaderNode()).thenReturn(errorCode == 500 ? null : node);
     when(mockNodeUniverseManager.runYsqlCommand(any(), any(), any(), any()))
         .thenReturn(errorCode == 400 ? failureResponse : new ShellResponse());
     if (failure) {
       PlatformServiceException exception =
           assertThrows(
-              PlatformServiceException.class, () -> ysqlQueryExecutor.dropUser(universe, dbForm));
+              PlatformServiceException.class, () -> ysqlQueryExecutor.dropUser(universe, dropForm));
       assertEquals(errorCode, exception.getHttpStatus());
     } else {
-      ysqlQueryExecutor.dropUser(universe, dbForm);
+      ysqlQueryExecutor.dropUser(universe, dropForm);
     }
   }
 
   @Test
   @Parameters({"yugabyte", "postgres", "yb_superuser"})
   public void dropSystemUser(String username) {
-    dbForm.username = username;
+    DatabaseUserDropFormData dropForm = new DatabaseUserDropFormData();
+    dropForm.username = username;
+    dropForm.dbName = "yugabyte";
     PlatformServiceException exception =
         assertThrows(
-            PlatformServiceException.class, () -> ysqlQueryExecutor.dropUser(universe, dbForm));
+            PlatformServiceException.class, () -> ysqlQueryExecutor.dropUser(universe, dropForm));
     assertEquals(400, exception.getHttpStatus());
   }
 }
