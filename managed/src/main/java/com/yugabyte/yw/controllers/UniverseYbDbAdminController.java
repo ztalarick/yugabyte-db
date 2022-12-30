@@ -18,6 +18,7 @@ import com.google.inject.Inject;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.controllers.handlers.UniverseYbDbAdminHandler;
 import com.yugabyte.yw.forms.DatabaseSecurityFormData;
+import com.yugabyte.yw.forms.DatabaseUserDropFormData;
 import com.yugabyte.yw.forms.DatabaseUserFormData;
 import com.yugabyte.yw.forms.PlatformResults;
 import com.yugabyte.yw.forms.PlatformResults.YBPError;
@@ -63,6 +64,52 @@ public class UniverseYbDbAdminController extends AuthenticatedController {
             Audit.ActionType.SetDBCredentials,
             request().body().asJson());
     return withMessage("Updated user in DB.");
+  }
+
+  @ApiOperation(
+      value = "Drop a database user for a universe",
+      nickname = "dropUserInDB",
+      response = YBPSuccess.class)
+  public Result dropUserInDB(UUID customerUUID, UUID universeUUID) {
+    Customer customer = Customer.getOrBadRequest(customerUUID);
+    Universe universe = Universe.getValidUniverseOrBadRequest(universeUUID, customer);
+
+    DatabaseUserDropFormData data =
+        formFactory.getFormDataOrBadRequest(DatabaseUserDropFormData.class).get();
+
+    universeYbDbAdminHandler.dropUser(customer, universe, data);
+
+    auditService()
+        .createAuditEntryWithReqBody(
+            ctx(),
+            Audit.TargetType.Universe,
+            universeUUID.toString(),
+            Audit.ActionType.DropUserInDB,
+            Json.toJson(data));
+    return withMessage("Deleted user in DB.");
+  }
+
+  @ApiOperation(
+      value = "Create a restricted user for a universe",
+      nickname = "createRestrictedUserInDB",
+      response = YBPSuccess.class)
+  public Result createRestrictedUserInDB(UUID customerUUID, UUID universeUUID) {
+    Customer customer = Customer.getOrBadRequest(customerUUID);
+    Universe universe = Universe.getValidUniverseOrBadRequest(universeUUID, customer);
+
+    DatabaseUserFormData data =
+        formFactory.getFormDataOrBadRequest(DatabaseUserFormData.class).get();
+
+    universeYbDbAdminHandler.createRestrictedUser(customer, universe, data);
+
+    auditService()
+        .createAuditEntryWithReqBody(
+            ctx(),
+            Audit.TargetType.Universe,
+            universeUUID.toString(),
+            Audit.ActionType.CreateRestrictedUserInDB,
+            Json.toJson(data));
+    return withMessage("Created restricted user in DB.");
   }
 
   @ApiOperation(

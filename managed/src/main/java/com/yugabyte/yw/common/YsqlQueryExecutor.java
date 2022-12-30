@@ -12,6 +12,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
 import com.yugabyte.yw.forms.DatabaseSecurityFormData;
+import com.yugabyte.yw.forms.DatabaseUserDropFormData;
 import com.yugabyte.yw.forms.DatabaseUserFormData;
 import com.yugabyte.yw.forms.RunQueryFormData;
 import com.yugabyte.yw.models.Universe;
@@ -24,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,25 @@ public class YsqlQueryExecutor {
   private static final String DEFAULT_DB_PASSWORD = Util.DEFAULT_YSQL_PASSWORD;
   private static final String DB_ADMIN_ROLE_NAME = Util.DEFAULT_YSQL_ADMIN_ROLE_NAME;
   private static final String PRECREATED_DB_ADMIN = "yb_db_admin";
+
+  // This is the list of users that are created by default by the database.
+  // Therefore, we don't want to allow YBA to delete them.
+  private List<String> nonDeletableUsers =
+      Arrays.asList(
+          "postgres",
+          "pg_monitor",
+          "pg_read_all_settings",
+          "pg_read_all_stats",
+          "pg_stat_scan_tables",
+          "pg_signal_backend",
+          "pg_read_server_files",
+          "pg_write_server_files",
+          "pg_execute_server_program",
+          "yb_extension",
+          "yb_fdw",
+          "yb_db_admin",
+          "yugabyte",
+          "yb_superuser");
 
   private static final String DEL_PG_ROLES_CMD_1 =
       "SET YB_NON_DDL_TXN_FOR_SYS_TABLES_ALLOWED=ON; "
@@ -192,6 +213,92 @@ public class YsqlQueryExecutor {
       response.put("error", "Failed to parse response: " + e.getMessage());
     }
     return response;
+  }
+
+  public void dropUser(Universe universe, DatabaseUserDropFormData data) {
+    boolean isCloudEnabled =
+        runtimeConfigFactory.forUniverse(universe).getBoolean("yb.cloud.enabled");
+
+    if (!isCloudEnabled) {
+      throw new PlatformServiceException(Http.Status.METHOD_NOT_ALLOWED, "Invalid Customer type.");
+    }
+
+    LOG.info("Removing user='{}' for universe='{}'", data.username, universe.name);
+    if (nonDeletableUsers.contains(data.username)) {
+      throw new PlatformServiceException(
+          Http.Status.BAD_REQUEST,
+          "Cannot delete user: " + data.username + ". This is a system user.");
+    }
+
+    StringBuilder allQueries = new StringBuilder();
+    String query;
+
+    query = String.format("DROP USER \"%s\"", data.username);
+    allQueries.append(String.format("%s; ", query));
+
+    try {
+      runUserDbCommands(allQueries.toString(), data.dbName, universe);
+      LOG.info("Dropped user '{}' for universe '{}'", data.username, universe.name);
+    } catch (Exception e) {
+      if (e.getMessage().contains("does not exist")) {
+        LOG.warn("User '{}' does not exist for universe '{}'", data.username, universe.name);
+      } else {
+        LOG.error("Error dropping user '{}' for universe '{}'", data.username, universe.name, e);
+        throw e;
+      }
+    }
+  }
+
+  public void createRestrictedUser(Universe universe, DatabaseUserFormData data) {
+    boolean isCloudEnabled =
+        runtimeConfigFactory.forUniverse(universe).getBoolean("yb.cloud.enabled");
+
+    if (!isCloudEnabled) {
+      throw new PlatformServiceException(Http.Status.METHOD_NOT_ALLOWED, "Invalid Customer type.");
+    }
+
+    LOG.info("Creating restricted user='{}' for universe='{}'", data.username, universe.name);
+
+    StringBuilder allQueries = new StringBuilder();
+    String query;
+
+    query =
+        String.format(
+            "CREATE USER \"%s\" PASSWORD '%s'",
+            data.username, Util.escapeSingleQuotesOnly(data.password));
+    allQueries.append(String.format("%s; ", query));
+
+    query =
+        String.format(
+            "GRANT EXECUTE ON FUNCTION pg_stat_statements_reset TO \"%1$s\"; ", data.username);
+
+    // TODO: what does this do? Do we need it?
+    allQueries.append(String.format("%s ", DEL_PG_ROLES_CMD_1));
+
+    try {
+      runUserDbCommands(allQueries.toString(), data.dbName, universe);
+      LOG.info("Created restricted user and deleted dependencies");
+    } catch (Exception e) {
+      if (e.getMessage().contains("already exists")) {
+        // User exists, we should still try and run the rest of the tasks
+        // since they are idempotent.
+        LOG.warn(String.format("Restricted user already exists, skipping...\n%s", e.getMessage()));
+      } else {
+        throw e;
+      }
+    }
+
+    allQueries.setLength(0);
+
+    // TODO: what does this do? Do we need it?
+    allQueries.append(String.format("%s ", DEL_PG_ROLES_CMD_2));
+    allQueries.append("SELECT pg_stat_statements_reset();");
+    runUserDbCommands(allQueries.toString(), data.dbName, universe);
+    LOG.info(
+        "Dropped unrequired roles and assigned permissions to the restricted user='{}' for"
+            + " universe='{}'",
+        data.username,
+        universe.name);
   }
 
   public void createUser(Universe universe, DatabaseUserFormData data) {
