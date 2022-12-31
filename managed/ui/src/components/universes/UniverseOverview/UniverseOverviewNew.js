@@ -423,7 +423,7 @@ export default class UniverseOverviewNew extends Component {
       <YBCost value={pricePerHour} multiplier={'month'} isPricingKnown={isPricingKnown} />
     );
     return (
-      <Col lg={4} md={4} sm={4} xs={6}>
+      <Col lg={4} md={6} sm={6} xs={8}>
         {/* <i className="fa fa-trash"></i>
         <FlexShrink></FlexShrink> */}
         <YBWidget
@@ -504,7 +504,7 @@ export default class UniverseOverviewNew extends Component {
   getPrimaryClusterWidget = (currentUniverse) => {
     if (isNullOrEmpty(currentUniverse)) return;
     return (
-      <Col lg={2} sm={4} xs={6}>
+      <Col lg={2} sm={6} md={4} xs={8}>
         <ClusterInfoPanelContainer type={'primary'} universeInfo={currentUniverse} />
       </Col>
     );
@@ -615,6 +615,9 @@ export default class UniverseOverviewNew extends Component {
   };
 
   getCPUWidget = (universeInfo) => {
+    const primaryCluster = getPrimaryCluster(universeInfo?.universeDetails?.clusters);
+    const userIntent = primaryCluster && primaryCluster.userIntent;
+    console.log('userIntent', userIntent);
     // For kubernetes the CPU usage would be in container tab, rest it would be server tab.
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
     const subTab = isItKubernetesUniverse ? 'container' : 'server';
@@ -626,6 +629,7 @@ export default class UniverseOverviewNew extends Component {
           type="overview"
         >
           {(props) => {
+            console.log('Hello props', props);
             return (
               <YBWidget
                 noMargin

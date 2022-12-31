@@ -12,7 +12,7 @@ import { YBWidget } from '../../panels';
 import pluralize from 'pluralize';
 import '../UniverseDisplayPanel/UniverseDisplayPanel.scss';
 import { Row, Col } from 'react-bootstrap';
-import { FlexGrow } from '../../common/flexbox/YBFlexBox';
+import { FlexGrow, FlexContainer, FlexShrink } from '../../common/flexbox/YBFlexBox';
 
 export default class ClusterInfoPanel extends Component {
   static propTypes = {
@@ -50,40 +50,39 @@ export default class ClusterInfoPanel extends Component {
 
     return (
       <YBWidget
-        size={1}
         className={'overview-widget-cluster-primary'}
         headerLeft={'Primary Cluster'}
         body={
-          <FlexGrow className={'cluster-metadata-container'}>
+          <FlexShrink className={'cluster-metadata-container'}>
             <Row className={'cluster-metadata'}>
-              <Col lg={8}>
+              <Col lg={8} md={6} sm={6} xs={6}>
                 <span className={'cluster-metadata__label'}>
                   {pluralize(isItKubernetesUniverse ? 'Pod' : 'Node', nodeCount)}
                 </span>
               </Col>
-              <Col lg={4}>
+              <Col lg={4} md={6} sm={6} xs={6}>
                 <span className={'cluster-metadata__count'}>{nodeCount}</span>
               </Col>
             </Row>
             {!insecure && (
               <Row className={'cluster-metadata'}>
-                <Col lg={6}>
+                <Col lg={8} md={6} sm={6} xs={6}>
                   <span className={'cluster-metadata__label'}>{'Instance Type'}</span>
                 </Col>
-                <Col lg={6}>
+                <Col lg={4} md={6} sm={6} xs={6}>
                   <span>{userIntent && userIntent.instanceType}</span>
                 </Col>
               </Row>
             )}
             <Row className={'cluster-metadata'}>
-              <Col lg={8}>
+              <Col lg={8} md={6} sm={6} xs={6}>
                 <span className={'cluster-metadata__label'}>{'Replication Factor'}</span>
               </Col>
-              <Col lg={4}>
+              <Col lg={4} md={6} sm={6} xs={6}>
                 <span>{userIntent.replicationFactor}</span>
               </Col>
             </Row>
-          </FlexGrow>
+          </FlexShrink>
         }
       />
     );
