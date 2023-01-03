@@ -4,7 +4,7 @@ import pluralize from 'pluralize';
 import { Box, Theme, Typography, makeStyles } from '@material-ui/core';
 import { YBModal } from '../../../../components';
 import { getPrimaryCluster } from '../utils/helpers';
-import { Cluster, UniverseDetails } from '../utils/dto';
+import { Cluster, MasterPlacementType, UniverseDetails } from '../utils/dto';
 
 const useStyles = makeStyles((theme: Theme) => ({
   greyText: {
@@ -57,6 +57,14 @@ export const FullMoveModal: FC<FMModalProps> = ({
           {pluralize('volume', userIntent?.deviceInfo?.numVolumes)} of &nbsp;
           {t('universeForm.perInstance')}
           <b>{userIntent?.deviceInfo?.volumeSize}Gb</b> {t('universeForm.perInstance')}
+        </Box>
+        <Box mt={2} display="inline-block" width="100%">
+          <b>
+            {userIntent?.dedicatedNodes
+              ? `${MasterPlacementType.DEDICATED}`
+              : `${MasterPlacementType.COLOCATED}`}
+          </b>
+          &nbsp;mode
         </Box>
         <Box mt={1} display="flex" flexDirection="column">
           {placementInfo?.cloudList[0].regionList?.map((region) => (

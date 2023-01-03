@@ -108,6 +108,7 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
       numNodes: userIntent.numNodes,
       replicationFactor: userIntent.replicationFactor,
       placements: getPlacementsFromCluster(cluster),
+      masterPlacement: userIntent.dedicatedNodes ? MasterPlacementType.DEDICATED : MasterPlacementType.COLOCATED,
       autoPlacement: true, //** */,
     },
     instanceConfig: {

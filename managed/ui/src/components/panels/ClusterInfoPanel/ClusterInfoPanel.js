@@ -79,7 +79,7 @@ export default class ClusterInfoPanel extends Component {
               {!insecure && (
                 <Row className={'cluster-metadata'}>
                   <Col lg={8} md={6} sm={6} xs={6}>
-                    <span className={'cluster-metadata__label'}>{'Instance Type'}</span>
+                    <span className={'cluster-metadata__label'}>{'Instance Type:'}</span>
                   </Col>
                   <Col lg={4} md={6} sm={6} xs={6}>
                     <span>{userIntent && userIntent.instanceType}</span>
@@ -88,10 +88,10 @@ export default class ClusterInfoPanel extends Component {
               )}
               <Row className={'cluster-metadata'}>
                 <Col lg={10} md={6} sm={6} xs={6}>
-                  <span className={'cluster-metadata__label'}>{'Replication Factor'}</span>
+                  <span className={'cluster-metadata__label'}>{'Replication Factor:'}</span>
                 </Col>
                 <Col lg={2} md={6} sm={6} xs={6}>
-                  <span>{userIntent.replicationFactor}</span>
+                  <span>&nbsp;{userIntent.replicationFactor}</span>
                 </Col>
               </Row>
               {/* </span> */}
@@ -121,7 +121,7 @@ export default class ClusterInfoPanel extends Component {
                   {!insecure && (
                     <Row className={'cluster-metadata'}>
                       <Col lg={8} md={6} sm={6} xs={6}>
-                        <span className={'cluster-metadata__label'}>{'Instance Type'}</span>
+                        <span className={'cluster-metadata__label'}>{'Instance Type:'}</span>
                       </Col>
                       <Col lg={4} md={6} sm={6} xs={6}>
                         <span>{userIntent && userIntent.masterInstanceType}</span>

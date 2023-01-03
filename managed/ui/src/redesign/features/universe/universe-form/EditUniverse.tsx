@@ -103,16 +103,14 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       const userIntent = payload.clusters[primaryIndex].userIntent;
       userIntent.regionList = _.get(formData, REGIONS_FIELD);
       userIntent.numNodes = _.get(formData, TOTAL_NODES_FIELD);
-      // userIntent.masterNumNodes = _.get(formData, MASTER_TOTAL_NODES_FIELD);
+      // userIntent.masterPlacement = _.get(formData, MASTERS_PLACEMENT_FIELD);
       userIntent.replicationFactor = _.get(formData, REPLICATION_FACTOR_FIELD);
       userIntent.instanceType = _.get(formData, INSTANCE_TYPE_FIELD);
-      //  userIntent.masterInstanceType = _.get(formData, MASTER_INSTANCE_TYPE_FIELD);
       userIntent.deviceInfo = _.get(formData, DEVICE_INFO_FIELD);
-      //  userIntent.masterDeviceInfo = _.get(formData, MASTER_DEVICE_INFO_FIELD);
       userIntent.instanceTags = transformTagsArrayToObject(_.get(formData, USER_TAGS_FIELD, []));
       userIntent.dedicatedNodes = masterPlacement === MasterPlacementType.DEDICATED;
       // Update master instance and disk information in case of dedicated mode
-      if (userIntent.dedicatedNodes === MasterPlacementType.DEDICATED) {
+      if (userIntent.dedicatedNodes) {
         userIntent.masterInstanceType = _.get(formData, MASTER_INSTANCE_TYPE_FIELD);
         userIntent.masterDeviceInfo = _.get(formData, MASTER_DEVICE_INFO_FIELD);
       }

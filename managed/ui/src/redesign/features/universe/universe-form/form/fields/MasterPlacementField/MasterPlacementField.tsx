@@ -40,7 +40,7 @@ export const MasterPlacementField = ({
   disabled,
   isAsync
 }: MasterPlacementFieldProps): ReactElement => {
-  const { control, setValue, getValues } = useFormContext<UniverseFormData>();
+  const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
   const classes = useStyles();
@@ -72,7 +72,7 @@ export const MasterPlacementField = ({
             }}
             options={[
               {
-                disabled: disabled,
+                // disabled: disabled,
                 value: MasterPlacementType.COLOCATED,
                 label: (
                   <Box display="flex">
@@ -82,7 +82,7 @@ export const MasterPlacementField = ({
                 )
               },
               {
-                disabled: disabled,
+                // disabled: disabled,
                 value: MasterPlacementType.DEDICATED,
                 label: (
                   <Box display="flex">
