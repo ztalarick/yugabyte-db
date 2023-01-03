@@ -27,7 +27,11 @@ import {
   isNonEmptyArray,
   isNonEmptyString
 } from '../../../utils/ObjectUtils';
-import { isKubernetesUniverse, getPrimaryCluster } from '../../../utils/UniverseUtils';
+import {
+  isKubernetesUniverse,
+  getPrimaryCluster,
+  isDedicatedPlacement
+} from '../../../utils/UniverseUtils';
 import { FlexContainer, FlexGrow, FlexShrink } from '../../common/flexbox/YBFlexBox';
 import { isDefinedNotNull } from '../../../utils/ObjectUtils';
 import { getPromiseState } from '../../../utils/PromiseUtils';
@@ -502,10 +506,7 @@ export default class UniverseOverviewNew extends Component {
   };
 
   getPrimaryClusterWidget = (currentUniverse) => {
-    const clusters = currentUniverse.universeDetails.clusters;
-    const primaryCluster = clusters && getPrimaryCluster(clusters);
-    const isDedicatedNodes = primaryCluster?.userIntent?.dedicatedNodes;
-    console.log('currentUniverse', currentUniverse);
+    const isDedicatedNodes = isDedicatedPlacement(currentUniverse);
 
     if (isNullOrEmpty(currentUniverse)) return;
     return isDedicatedNodes ? (
@@ -634,10 +635,11 @@ export default class UniverseOverviewNew extends Component {
   getCPUWidget = (universeInfo) => {
     // For kubernetes the CPU usage would be in container tab, rest it would be server tab.
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
+    const isDedicatedNodes = isDedicatedPlacement(universeInfo);
     const subTab = isItKubernetesUniverse ? 'container' : 'server';
     const metricTabPath = this.props.enableTopKMetrics ? 'tab' : 'subtab';
     return (
-      <Col lg={2} md={4} sm={4} xs={6}>
+      <Col lg={isDedicatedNodes ? 2 : 4} md={4} sm={4} xs={6}>
         <StandaloneMetricsPanelContainer
           metricKey={isItKubernetesUniverse ? 'container_cpu_usage' : 'cpu_usage'}
           type="overview"

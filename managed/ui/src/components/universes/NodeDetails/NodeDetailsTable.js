@@ -65,7 +65,7 @@ export default class NodeDetailsTable extends Component {
     const universeUUID = currentUniverse.data.universeUUID;
     const providerConfig = providers.data.find((provider) => provider.uuid === providerUUID)
       ?.config;
-    console.log('sortedNodeDetails', clusterType, sortedNodeDetails);
+
     if (dedicatedNodes && clusterType === 'primary') {
       if (this.state.nodeTypeDropdownValue === 'Master') {
         sortedNodeDetails = sortedNodeDetails.filter(
@@ -73,7 +73,7 @@ export default class NodeDetailsTable extends Component {
         );
       } else if (this.state.nodeTypeDropdownValue === 'TServer') {
         sortedNodeDetails = sortedNodeDetails.filter(
-          (nodeDetails) => nodeDetails.dedicatedTo !== 'MASTER'
+          (nodeDetails) => nodeDetails.dedicatedTo === 'TSERVER'
         );
       }
     }
@@ -109,10 +109,13 @@ export default class NodeDetailsTable extends Component {
     };
 
     const getIpPortLinks = (cell, row) => {
+      console.log('row', row);
       return (
         <Fragment>
-          {formatIpPort(row.isMaster, row, 'master')}
-          {formatIpPort(row.isTServer, row, 'tserver')}
+          {row.dedicatedTo === 'MASTER' && formatIpPort(row.isMaster, row, 'master')}
+          {row.dedicatedTo === 'TSERVER' && formatIpPort(row.isTServer, row, 'tserver')}
+          {!row.dedicatedTo && formatIpPort(row.isMaster, row, 'master')}
+          {!row.dedicatedTo && formatIpPort(row.isTServer, row, 'tserver')}
         </Fragment>
       );
     };

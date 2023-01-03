@@ -59,11 +59,13 @@ export default class ClusterInfoPanel extends Component {
           <FlexContainer direction={'row'}>
             <FlexShrink className={'cluster-metadata-container'}>
               {/* <span className={'cluster-metadata-container'}> */}
-              <Row className={'cluster-metadata-header'}>
-                <Col lg={10} md={6} sm={6} xs={6}>
-                  <span>{'TServer'}</span>
-                </Col>
-              </Row>
+              {isDedicatedNodes && (
+                <Row className={'cluster-metadata-header'}>
+                  <Col lg={10} md={6} sm={6} xs={6}>
+                    <span>{'TServer'}</span>
+                  </Col>
+                </Row>
+              )}
               <Row className={'cluster-metadata'}>
                 <Col lg={10} md={6} sm={6} xs={6}>
                   <span className={'cluster-metadata__label'}>

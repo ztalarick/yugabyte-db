@@ -120,6 +120,16 @@ export const getUniverseDedicatedNodeCount = (nodeDetailsSet, cluster = null) =>
   };
 };
 
+export const isDedicatedPlacement = (currentUniverse) => {
+  let isDedicatedNodes = false;
+  if (!currentUniverse?.universeDetails) return isDedicatedNodes;
+
+  const clusters = currentUniverse.universeDetails.clusters;
+  const primaryCluster = clusters && getPrimaryCluster(clusters);
+  isDedicatedNodes = primaryCluster.userIntent.dedicatedNodes;
+  return isDedicatedNodes;
+};
+
 export function getProviderMetadata(provider) {
   return PROVIDER_TYPES.find((providerType) => providerType.code === provider.code);
 }
