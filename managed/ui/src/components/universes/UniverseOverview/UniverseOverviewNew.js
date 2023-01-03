@@ -502,10 +502,27 @@ export default class UniverseOverviewNew extends Component {
   };
 
   getPrimaryClusterWidget = (currentUniverse) => {
+    const clusters = currentUniverse.universeDetails.clusters;
+    const primaryCluster = clusters && getPrimaryCluster(clusters);
+    const isDedicatedNodes = primaryCluster?.userIntent?.dedicatedNodes;
+    console.log('currentUniverse', currentUniverse);
+
     if (isNullOrEmpty(currentUniverse)) return;
-    return (
+    return isDedicatedNodes ? (
+      <Col lg={4} sm={8} md={6} xs={10}>
+        <ClusterInfoPanelContainer
+          type={'primary'}
+          universeInfo={currentUniverse}
+          isDedicatedNodes={isDedicatedNodes}
+        />
+      </Col>
+    ) : (
       <Col lg={2} sm={6} md={4} xs={8}>
-        <ClusterInfoPanelContainer type={'primary'} universeInfo={currentUniverse} />
+        <ClusterInfoPanelContainer
+          type={'primary'}
+          universeInfo={currentUniverse}
+          isDedicatedNodes={isDedicatedNodes}
+        />
       </Col>
     );
   };
@@ -615,21 +632,17 @@ export default class UniverseOverviewNew extends Component {
   };
 
   getCPUWidget = (universeInfo) => {
-    const primaryCluster = getPrimaryCluster(universeInfo?.universeDetails?.clusters);
-    const userIntent = primaryCluster && primaryCluster.userIntent;
-    console.log('userIntent', userIntent);
     // For kubernetes the CPU usage would be in container tab, rest it would be server tab.
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
     const subTab = isItKubernetesUniverse ? 'container' : 'server';
     const metricTabPath = this.props.enableTopKMetrics ? 'tab' : 'subtab';
     return (
-      <Col lg={4} md={4} sm={4} xs={6}>
+      <Col lg={2} md={4} sm={4} xs={6}>
         <StandaloneMetricsPanelContainer
           metricKey={isItKubernetesUniverse ? 'container_cpu_usage' : 'cpu_usage'}
           type="overview"
         >
           {(props) => {
-            console.log('Hello props', props);
             return (
               <YBWidget
                 noMargin

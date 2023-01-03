@@ -564,6 +564,7 @@ h2 {
   }
 
   &.overview-widget-cluster-primary {
+
     .body .flex-cnt {
       height: 120px;
     }
@@ -594,9 +595,12 @@ h2 {
     }
     .cluster-metadata-container {
       font-family: "Inter";
-      
+      margin-right: 30px;
+      .cluster-metadata-header {
+        font-weight: 600;
+      }
       .cluster-metadata {
-        margin-top: 16px;
+        margin-top: 12px;
         &__count {
           font-weight: 600;
           font-size: 24px;
@@ -609,6 +613,11 @@ h2 {
           color: #8D8F9A;
         }
       }
+    }
+    .cluster-metadat-divider {
+      border: 1px solid #E5E5E9;
+      height: 119px;
+      width: 0px;
     }
   }
 
