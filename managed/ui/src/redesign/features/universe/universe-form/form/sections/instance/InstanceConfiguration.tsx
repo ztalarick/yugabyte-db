@@ -35,15 +35,18 @@ export const InstanceConfiguration: FC = () => {
 
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
-  const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
+  const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
   const masterPlacement = isAsync
     ? getValues(MASTERS_PLACEMENT_FIELD)
     : useWatch({ name: MASTERS_PLACEMENT_FIELD });
 
-  const instanceAndVolumeElement = () => {
+  const instanceAndVolumeElement = (isDedicatedMaster: boolean) => {
     return (
-      <Box width="100%">
-        <InstanceTypeField />
+      <Box
+        width={masterPlacement === MasterPlacementType.DEDICATED ? '100%' : '40%'}
+        ml={masterPlacement === MasterPlacementType.DEDICATED ? 0 : 2}
+      >
+        <InstanceTypeField isDedicatedMaster={isDedicatedMaster} />
         <VolumeInfoField
           isEditMode={!isCreateMode}
           isPrimary={isPrimary}
@@ -52,22 +55,22 @@ export const InstanceConfiguration: FC = () => {
           disableStorageType={!isCreatePrimary && !isCreateRR}
           disableIops={!isCreatePrimary && !isCreateRR}
           disableThroughput={!isCreatePrimary && !isCreateRR}
+          isDedicatedMaster={isDedicatedMaster}
         />
       </Box>
     );
   };
-  const dedicatedInstanceElement = () => {
+  const instanceElementWrapper = (instanceLabel: string, isDedicatedMaster: boolean) => {
     return (
-      <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" width="100%">
+      <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" width="605px" mr={2}>
         <Box m={2}>
-          <Typography className={classes.subsectionHeaderFont}>
-            {t('universeForm.tserver')}
-          </Typography>
-          {instanceAndVolumeElement()}
+          <Typography className={classes.subsectionHeaderFont}>{t(instanceLabel)}</Typography>
+          {instanceAndVolumeElement(isDedicatedMaster)}
         </Box>
       </Box>
     );
   };
+
   return (
     <Box className={classes.sectionContainer} data-testid="instance-config-section">
       <Typography className={classes.sectionHeaderFont}>
@@ -76,37 +79,13 @@ export const InstanceConfiguration: FC = () => {
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         <Box mt={4}>
           <Grid container spacing={3}>
-            <Grid lg={6} item container>
-              {masterPlacement === MasterPlacementType.COLOCATED
-                ? instanceAndVolumeElement()
-                : dedicatedInstanceElement()}
-            </Grid>
-            {masterPlacement === MasterPlacementType.DEDICATED && (
-              <Grid lg={6} item container>
-                <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" width="100%">
-                  <Box m={2}>
-                    <Typography className={classes.subsectionHeaderFont}>
-                      {t('universeForm.master')}
-                      &nbsp;
-                      <span className="fa fa-info-circle" />
-                    </Typography>
-                    <InstanceTypeField isDedicatedMaster={true} />
-                    <VolumeInfoField
-                      isEditMode={!isCreateMode}
-                      isPrimary={isPrimary}
-                      disableVolumeSize={false}
-                      disableNumVolumes={!isCreateMode && provider?.code === CloudType.kubernetes}
-                      disableStorageType={!isCreatePrimary && !isCreateRR}
-                      disableIops={!isCreatePrimary && !isCreateRR}
-                      disableThroughput={!isCreatePrimary && !isCreateRR}
-                      isDedicatedMaster={true}
-                    />
-                  </Box>
-                </Box>
-              </Grid>
-            )}
+            {masterPlacement === MasterPlacementType.COLOCATED
+              ? instanceAndVolumeElement(false)
+              : instanceElementWrapper('universeForm.tserver', false)}
+            {masterPlacement === MasterPlacementType.DEDICATED &&
+              instanceElementWrapper('universeForm.master', true)}
           </Grid>
-          {fieldValue &&
+          {deviceInfo &&
             provider?.code === CloudType.gcp &&
             masterPlacement === MasterPlacementType.DEDICATED && (
               <Box width="50%">
