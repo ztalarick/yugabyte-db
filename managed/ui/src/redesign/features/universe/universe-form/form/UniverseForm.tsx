@@ -17,14 +17,18 @@ import { UniverseFormData, ClusterType, ClusterModes } from '../utils/dto';
 import { UNIVERSE_NAME_FIELD } from '../utils/constants';
 import { useFormMainStyles } from '../universeMainStyle';
 
-//How to add new form field ?
+// ! How to add new form field ?
 // - add field to it's corresponding config type (CloudConfigFormValue/InstanceConfigFormValue/AdvancedConfigFormValue/..) present in UniverseFormData type at dto.ts
 // - set default value in corresponding const (DEFAULT_CLOUD_CONFIG/DEFAULT_INSTANCE_CONFIGDEFAULT_ADVANCED_CONFIG/..) presnt in DEFAULT_FORM_DATA at dto.ts
 // - populate form value from universe object in getFormData() at utils/helpers
 // - Map form value to universe payload in getUserIntent() at utils/helper before submitting
 // - Submit logic/flags needed for each cluster operation is written in it's own file(CreateUniverse/CreateRR/EditUniverse/EditRR)
-// - Add individual field component in
 // - Import actual form field ui component in corresponding section(cloud/instance/advanced/..)
+
+// ! Field component rules and requirements
+// - should update itself only and don't modify other form fields
+// - should have custom field logic and field validation logic, if needed
+// - could watch other form field values
 
 interface UniverseFormProps {
   defaultFormData: UniverseFormData;
@@ -126,6 +130,7 @@ export const UniverseForm: FC<UniverseFormProps> = ({
                 component={Link}
                 variant="ghost"
                 size="small"
+                data-testid="UniverseForm-ClearRR"
                 onClick={onDeleteRR}
               >
                 {t('universeForm.clearReadReplica')}
@@ -154,13 +159,23 @@ export const UniverseForm: FC<UniverseFormProps> = ({
           </Grid>
           <Grid item lg={4}>
             <Box width="100%" display="flex" justifyContent="flex-end">
-              <YBButton variant="secondary" size="large" onClick={onCancel}>
+              <YBButton
+                variant="secondary"
+                size="large"
+                onClick={onCancel}
+                data-testid="UniverseForm-Cancel"
+              >
                 {t('common.cancel')}
               </YBButton>
               &nbsp;
               {/* shown only during create primary + RR flow ( fresh universe ) */}
               {onClusterTypeChange && (
-                <YBButton variant="secondary" size="large" onClick={handleClusterChange}>
+                <YBButton
+                  variant="secondary"
+                  size="large"
+                  onClick={handleClusterChange}
+                  data-testid="UniverseForm-ClusterChange"
+                >
                   {isPrimary
                     ? t('universeForm.actions.configureRR')
                     : t('universeForm.actions.backPrimary')}
@@ -168,12 +183,22 @@ export const UniverseForm: FC<UniverseFormProps> = ({
               )}
               {/* shown only during edit RR flow */}
               {onDeleteRR && isEditRR && (
-                <YBButton variant="secondary" size="large" onClick={onDeleteRR}>
+                <YBButton
+                  variant="secondary"
+                  size="large"
+                  onClick={onDeleteRR}
+                  data-testid="UniverseForm-DeleteRR"
+                >
                   {t('universeForm.actions.deleteRR')}
                 </YBButton>
               )}
               &nbsp;
-              <YBButton variant="primary" size="large" type="submit">
+              <YBButton
+                variant="primary"
+                size="large"
+                type="submit"
+                data-testid="UniverseForm-Submit"
+              >
                 {submitLabel ? submitLabel : t('common.save')}
               </YBButton>
             </Box>

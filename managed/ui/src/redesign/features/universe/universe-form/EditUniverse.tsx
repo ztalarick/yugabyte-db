@@ -2,22 +2,24 @@ import React, { FC, useContext, useState } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { browserHistory } from 'react-router';
-import { UniverseFormContext } from './UniverseFormContainer';
 import { UniverseForm } from './form/UniverseForm';
 import { FullMoveModal, ResizeNodeModal, SmartResizeModal } from './action-modals';
 import { YBLoading } from '../../../../components/common/indicators';
-import { getPlacements } from './form/fields/PlacementsField/PlacementsFieldHelper';
 import { api, QUERY_KEY } from './utils/api';
+import { UniverseFormContext } from './UniverseFormContainer';
+import { getPlacements } from './form/fields/PlacementsField/PlacementsFieldHelper';
 import { getPrimaryFormData, transformTagsArrayToObject, transitToUniverse } from './utils/helpers';
 import {
   Cluster,
   ClusterModes,
   ClusterType,
+  CloudType,
   UniverseConfigure,
   UniverseFormData,
   UniverseDetails
 } from './utils/dto';
 import {
+  PROVIDER_FIELD,
   DEVICE_INFO_FIELD,
   INSTANCE_TYPE_FIELD,
   REGIONS_FIELD,
@@ -32,7 +34,6 @@ export enum UPDATE_ACTIONS {
   SMART_RESIZE_NON_RESTART = 'SMART_RESIZE_NON_RESTART',
   UPDATE = 'UPDATE'
 }
-
 interface EditUniverseProps {
   uuid: string;
 }
@@ -106,14 +107,17 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
       const finalPayload = await api.universeConfigure(payload);
       const { updateOptions } = finalPayload;
       setUniversePayload(finalPayload);
-      if (
-        _.intersection(updateOptions, [UPDATE_ACTIONS.SMART_RESIZE, UPDATE_ACTIONS.FULL_MOVE])
-          .length > 1
-      )
-        setSRModal(true);
-      else if (updateOptions.includes(UPDATE_ACTIONS.SMART_RESIZE_NON_RESTART)) setRNModal(true);
-      else if (updateOptions.includes(UPDATE_ACTIONS.FULL_MOVE)) setFMModal(true);
-      else submitEditUniverse(finalPayload);
+      const isK8sUniverse = _.get(formData, PROVIDER_FIELD).code === CloudType.kubernetes;
+      if (!isK8sUniverse) {
+        if (
+          _.intersection(updateOptions, [UPDATE_ACTIONS.SMART_RESIZE, UPDATE_ACTIONS.FULL_MOVE])
+            .length > 1
+        )
+          setSRModal(true);
+        else if (updateOptions.includes(UPDATE_ACTIONS.SMART_RESIZE_NON_RESTART)) setRNModal(true);
+        else if (updateOptions.includes(UPDATE_ACTIONS.FULL_MOVE)) setFMModal(true);
+        else submitEditUniverse(finalPayload);
+      } else submitEditUniverse(finalPayload);
     } else console.log("'Nothing to update - no fields changed'");
   };
 
