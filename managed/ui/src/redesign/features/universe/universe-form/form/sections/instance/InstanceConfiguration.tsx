@@ -166,11 +166,11 @@ export const InstanceConfiguration: FC = () => {
             )}
 
             <Box mt={2}>
-              <YSQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
+              <YSQLField disabled={!isCreatePrimary} enforceAuth={isAuthEnforced} />
             </Box>
 
             <Box mt={2}>
-              <YCQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
+              <YCQLField disabled={!isCreatePrimary} enforceAuth={isAuthEnforced} />
             </Box>
 
             <Box mt={2}>

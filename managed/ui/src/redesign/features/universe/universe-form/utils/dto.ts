@@ -362,11 +362,11 @@ export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {
 export const DEFAULT_ADVANCED_CONFIG: AdvancedConfigFormValue = {
   useSystemd: true,
   ybcPackagePath: null,
-  awsArnString: null,
+  awsArnString: '',
   enableIPV6: false,
   enableExposingService: null,
   customizePort: false,
-  accessKeyCode: null,
+  accessKeyCode: '',
   ybSoftwareVersion: null,
   communicationPorts: DEFAULT_COMMUNICATION_PORTS
 };
