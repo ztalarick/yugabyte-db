@@ -31,6 +31,7 @@ import {
   MASTER_INSTANCE_TYPE_FIELD,
   MASTERS_PLACEMENT_FIELD
 } from '../../../utils/constants';
+import { useFormFieldStyles } from '../../../universeMainStyle';
 
 interface VolumeInfoFieldProps {
   isEditMode: boolean;
@@ -57,7 +58,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   const { t } = useTranslation();
   const instanceTypeChanged = useRef(false);
   const dataTag = isDedicatedMaster ? 'Master' : 'TServer';
-
+  const classes = useFormFieldStyles();
   //watchers
   const fieldValue = isDedicatedMaster
     ? useWatch({ name: MASTER_DEVICE_INFO_FIELD })
@@ -175,7 +176,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
         </Box>
 
         <Box display="flex">
-          <Box flex={1} width="max-content">
+          <Box flex={1} width="124px">
             <YBInput
               type="number"
               fullWidth
@@ -190,7 +191,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
             x
           </Box>
 
-          <Box flex={1} width="max-content">
+          <Box flex={1} width="124px">
             <YBInput
               type="number"
               fullWidth

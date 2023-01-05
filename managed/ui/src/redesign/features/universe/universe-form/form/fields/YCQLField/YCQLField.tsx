@@ -19,6 +19,9 @@ import {
   PASSWORD_REGEX,
   YSQL_FIELD
 } from '../../../utils/constants';
+import { useFormFieldStyles } from '../../../universeMainStyle';
+import InfoMessage from '../../../../../../assets/info-message.svg';
+
 interface YCQLFieldProps {
   disabled: boolean;
   isAuthEnforced?: boolean;
@@ -31,6 +34,9 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
     formState: { errors }
   } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+  const classes = useFormFieldStyles();
+  const YCQLTooltipTitle = t('universeForm.securityConfig.authSettings.enableYCQLHelper');
+  const YCQLAuthTooltipTitle = t('universeForm.securityConfig.authSettings.enableYCQLAuthHelper');
 
   //watchers
   const ycqlEnabled = useWatch({ name: YCQL_FIELD });
@@ -69,9 +75,15 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
             </YBHelper> */}
           </div>
         </YBTooltip>
-        <YBLabel dataTestId="YCQLField-EnableLabel">
-          {t('universeForm.securityConfig.authSettings.enableYCQL')}
-        </YBLabel>
+        <Box flex={1}>
+          <YBLabel dataTestId="YCQLField-EnableLabel">
+            {t('universeForm.securityConfig.authSettings.enableYCQL')}
+            &nbsp;
+            <YBTooltip title={YCQLTooltipTitle} className={classes.tooltipText}>
+              <img alt="Info" src={InfoMessage} />
+            </YBTooltip>
+          </YBLabel>
+        </Box>
         {/* </Box> */}
       </Box>
 
@@ -88,13 +100,18 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                 control={control}
                 disabled={disabled}
               />
-              <YBLabel dataTestId="YCQLField-AuthLabel">
-                {t('universeForm.securityConfig.authSettings.enableYCQLAuth')}
-              </YBLabel>
-              {/* <YBHelper dataTestId="YCQLField-AuthHelper">
+              <Box flex={1}>
+                <YBLabel dataTestId="YCQLField-AuthLabel">
+                  {t('universeForm.securityConfig.authSettings.enableYCQLAuth')}
+                  &nbsp;
+                  <YBTooltip title={YCQLAuthTooltipTitle} className={classes.tooltipText}>
+                    <img alt="Info" src={InfoMessage} />
+                  </YBTooltip>
+                </YBLabel>
+                {/* <YBHelper dataTestId="YCQLField-AuthHelper">
                   {t('universeForm.instanceConfig.enableYCQLAuthHelper')}
                 </YBHelper> */}
-              {/* </Box> */}
+              </Box>
             </Box>
           )}
 

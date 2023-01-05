@@ -2,9 +2,11 @@ import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext } from 'react-hook-form';
 import { Box } from '@material-ui/core';
-import { YBLabel, YBHelper, YBToggleField } from '../../../../../../components';
+import { YBLabel, YBHelper, YBToggleField, YBTooltip } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import { CLIENT_TO_NODE_ENCRYPT_FIELD } from '../../../utils/constants';
+import { useFormFieldStyles } from '../../../universeMainStyle';
+import InfoMessage from '../../../../../../assets/info-message.svg';
 
 interface ClientToNodeTLSFieldProps {
   disabled: boolean;
@@ -13,6 +15,10 @@ interface ClientToNodeTLSFieldProps {
 export const ClientToNodeTLSField = ({ disabled }: ClientToNodeTLSFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+  const classes = useFormFieldStyles();
+  const clientToNodeTooltipTitle = t(
+    'universeForm.securityConfig.encryptionSettings.enableClientToNodeTLSHelper'
+  );
 
   return (
     <Box display="flex" width="100%" data-testid="ClientToNodeTLSField-Container">
@@ -25,13 +31,15 @@ export const ClientToNodeTLSField = ({ disabled }: ClientToNodeTLSFieldProps): R
         control={control}
         disabled={disabled}
       />
-      <YBLabel dataTestId="ClientToNodeTLSField-Label">
-        {t('universeForm.securityConfig.encryptionSettings.enableClientToNodeTLS')}
-      </YBLabel>
-      {/* <YBHelper dataTestId="ClientToNodeTLSField-Helper">
-          {t('universeForm.instanceConfig.enableClientToNodeTLSHelper')}
-        </YBHelper> */}
-      {/* </Box> */}
+      <Box flex={1}>
+        <YBLabel dataTestId="ClientToNodeTLSField-Label" width="185px">
+          {t('universeForm.securityConfig.encryptionSettings.enableClientToNodeTLS')}
+          &nbsp;
+          <YBTooltip title={clientToNodeTooltipTitle} className={classes.tooltipText}>
+            <img alt="Info" src={InfoMessage} />
+          </YBTooltip>
+        </YBLabel>
+      </Box>
     </Box>
   );
 };

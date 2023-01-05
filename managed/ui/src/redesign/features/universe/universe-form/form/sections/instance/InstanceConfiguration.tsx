@@ -42,10 +42,7 @@ export const InstanceConfiguration: FC = () => {
 
   const instanceAndVolumeElement = (isDedicatedMaster: boolean) => {
     return (
-      <Box
-        width={masterPlacement === MasterPlacementType.DEDICATED ? '100%' : '40%'}
-        ml={masterPlacement === MasterPlacementType.DEDICATED ? 0 : 2}
-      >
+      <Box width={masterPlacement === MasterPlacementType.DEDICATED ? '100%' : '605px'}>
         <InstanceTypeField isDedicatedMaster={isDedicatedMaster} />
         <VolumeInfoField
           isEditMode={!isCreateMode}
@@ -62,7 +59,14 @@ export const InstanceConfiguration: FC = () => {
   };
   const instanceElementWrapper = (instanceLabel: string, isDedicatedMaster: boolean) => {
     return (
-      <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" width="605px" mr={2}>
+      <Box
+        bgcolor="#FFFFFF"
+        border="1px solid #E5E5E6"
+        width="605px"
+        borderRadius="8px"
+        mr={2}
+        flexShrink={1}
+      >
         <Box m={2}>
           <Typography className={classes.subsectionHeaderFont}>{t(instanceLabel)}</Typography>
           {instanceAndVolumeElement(isDedicatedMaster)}
@@ -76,23 +80,21 @@ export const InstanceConfiguration: FC = () => {
       <Typography className={classes.sectionHeaderFont}>
         {t('universeForm.instanceConfig.title')}
       </Typography>
-      <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
-        <Box mt={4}>
-          <Grid container spacing={3}>
-            {masterPlacement === MasterPlacementType.COLOCATED
-              ? instanceAndVolumeElement(false)
-              : instanceElementWrapper('universeForm.tserver', false)}
-            {masterPlacement === MasterPlacementType.DEDICATED &&
-              instanceElementWrapper('universeForm.master', true)}
-          </Grid>
-          {deviceInfo &&
-            provider?.code === CloudType.gcp &&
-            masterPlacement === MasterPlacementType.DEDICATED && (
-              <Box width="50%">
-                <StorageTypeField disableStorageType={!isCreatePrimary && !isCreateRR} />
-              </Box>
-            )}
+      <Box width="100%" display="flex" flexDirection="column" justifyContent="center" mt={4}>
+        <Box flex={1} display="flex" flexDirection="row">
+          {masterPlacement === MasterPlacementType.COLOCATED
+            ? instanceAndVolumeElement(false)
+            : instanceElementWrapper('universeForm.tserver', false)}
+          {masterPlacement === MasterPlacementType.DEDICATED &&
+            instanceElementWrapper('universeForm.master', true)}
         </Box>
+        {deviceInfo &&
+          provider?.code === CloudType.gcp &&
+          masterPlacement === MasterPlacementType.DEDICATED && (
+            <Box width="50%">
+              <StorageTypeField disableStorageType={!isCreatePrimary && !isCreateRR} />
+            </Box>
+          )}
       </Box>
     </Box>
   );

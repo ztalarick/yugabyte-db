@@ -1,10 +1,12 @@
 import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext } from 'react-hook-form';
-import { Box } from '@material-ui/core';
-import { YBHelper, YBLabel, YBToggleField } from '../../../../../../components';
+import { Box, Typography, makeStyles } from '@material-ui/core';
+import { YBHelper, YBLabel, YBToggleField, YBTooltip } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import { ASSIGN_PUBLIC_IP_FIELD } from '../../../utils/constants';
+import { useFormFieldStyles } from '../../../universeMainStyle';
+import InfoMessage from '../../../../../../assets/info-message.svg';
 
 interface AssignPublicIPFieldProps {
   disabled: boolean;
@@ -13,6 +15,8 @@ interface AssignPublicIPFieldProps {
 export const AssignPublicIPField = ({ disabled }: AssignPublicIPFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+  const classes = useFormFieldStyles();
+  const tooltipTitle = t('universeForm.instanceConfig.assignPublicIPHelper');
 
   return (
     <Box width="100%" data-testid="AssignPublicIPField-Container" mt={2} justifyContent="center">
@@ -31,16 +35,13 @@ export const AssignPublicIPField = ({ disabled }: AssignPublicIPFieldProps): Rea
 
           <YBLabel dataTestId="AssignPublicIPField-Label">
             {t('universeForm.instanceConfig.assignPublicIP')}
+            &nbsp;
+            <YBTooltip title={tooltipTitle} className={classes.tooltipText}>
+              <img alt="Info" src={InfoMessage} />
+            </YBTooltip>
           </YBLabel>
         </Box>
       </Box>
-
-      {/* <Box flex={1}> */}
-
-      {/* <YBHelper dataTestId="AssignPublicIPField-Helper">
-          {t('universeForm.instanceConfig.assignPublicIPHelper')}
-        </YBHelper> */}
-      {/* </Box> */}
     </Box>
   );
 };

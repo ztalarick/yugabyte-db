@@ -110,11 +110,10 @@ export const SecurityConfiguration: FC = () => {
           <>
             <Box
               display="flex"
-              width="100%"
               flexDirection="column"
               data-testid="AuthenticationSettings-Container"
               mt={6}
-              maxWidth="708px"
+              width="708px"
             >
               <Typography className={classes.subsectionHeaderFont}>
                 {t('universeForm.securityConfig.authSettings.title')}
@@ -143,11 +142,10 @@ export const SecurityConfiguration: FC = () => {
 
             <Box
               display="flex"
-              width="100%"
               flexDirection="column"
               data-testid="AuthenticationSettings-Container"
               mt={6}
-              maxWidth="708px"
+              width="708px"
             >
               <Typography className={classes.subsectionHeaderFont}>
                 {t('universeForm.securityConfig.encryptionSettings.title')}

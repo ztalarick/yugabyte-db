@@ -11,7 +11,7 @@ import {
 } from '../../../../../../components';
 import { UniverseFormData, MasterPlacementType } from '../../../utils/dto';
 import { MASTERS_PLACEMENT_FIELD } from '../../../utils/constants';
-import { BooleanSelector } from 'redux-form';
+import InfoMessage from '../../../../../../assets/info-message.svg';
 
 const TOOLTIP_TITLE =
   'Select this option if you plan to use this universe for \
@@ -58,10 +58,11 @@ export const MasterPlacementField = ({
           <YBLabel dataTestId="MasterPlacement-Label">
             {'Master Placement'}
             &nbsp;
-            <span className="fa fa-info-circle" />
+            <img alt="More" src={InfoMessage} />
+            {/* <span className="fa fa-info-circle info" style={{ color:  }} /> */}
           </YBLabel>
         </Box>
-        <Box flex={1} mt={0}>
+        <Box flex={1} maxWidth="410px">
           <YBRadioGroupField
             name={MASTERS_PLACEMENT_FIELD}
             control={control}

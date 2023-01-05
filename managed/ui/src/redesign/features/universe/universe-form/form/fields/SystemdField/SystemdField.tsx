@@ -19,7 +19,7 @@ export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
       <YBLabel dataTestId="SystemDField-Label">
         {t('universeForm.advancedConfig.enableSystemD')}
       </YBLabel>
-      <Box flex={1} paddingLeft="95px">
+      <Box flex={1} ml={3}>
         <YBToggleField
           name={SYSTEMD_FIELD}
           inputProps={{

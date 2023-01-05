@@ -81,6 +81,7 @@
         "providerField": "Provider",
         "regionsField": "Regions",
         "replicationField": "Replication Factor",
+        "numReadReplicas": "Number of Read Replicas",
         "title": "Cloud Configurations",
         "totalNodesField": "Number of Nodes",
         "totalPodsField": "Number of Pods",

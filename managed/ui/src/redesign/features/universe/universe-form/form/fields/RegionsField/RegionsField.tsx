@@ -69,7 +69,7 @@ export const RegionsField = ({ disabled }: RegionsFieldProps): ReactElement => {
               <YBLabel dataTestId="RegionsField-Label">
                 {t('universeForm.cloudConfig.regionsField')}
               </YBLabel>
-              <Box flex={1}>
+              <Box flex={1} maxWidth="400px">
                 <YBAutoComplete
                   multiple={true}
                   loading={isFetching}

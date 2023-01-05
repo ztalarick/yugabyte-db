@@ -35,7 +35,7 @@ export const UniverseNameField = ({ disabled }: UniverseNameFieldProps): ReactEl
       <YBLabel dataTestId="UniverseNameField-Label">
         {t('universeForm.cloudConfig.universeName')}
       </YBLabel>
-      <Box flex={1}>
+      <Box flex={1} maxWidth="400px">
         <YBInputField
           control={control}
           name={UNIVERSE_NAME_FIELD}

@@ -42,8 +42,8 @@ export const CloudConfiguration: FC = () => {
 
   return (
     <Box className={classes.sectionContainer} data-testid="cloud-config-section">
-      <Grid container spacing={3}>
-        <Grid item lg={6}>
+      <Box flex={1} display="flex" flexDirection="row">
+        <Box>
           <Box mb={4}>
             <Typography className={classes.sectionHeaderFont}>
               {t('universeForm.cloudConfig.title')}
@@ -76,11 +76,11 @@ export const CloudConfiguration: FC = () => {
               <DefaultRegionField />
             </Box>
           )}
-        </Grid>
-        <Grid item lg={6}>
+        </Box>
+        <Box ml={5}>
           <PlacementsField disabled={false} />
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 };

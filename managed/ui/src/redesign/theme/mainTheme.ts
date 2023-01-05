@@ -255,15 +255,14 @@ export const mainTheme = createTheme({
     },
     MuiCheckbox: {
       root: {
-        // color: colors.primary[600],
-        '& .MuiSvgIcon-root': {
-          width: 20,
-          height: 20
+      '& .MuiSvgIcon-root': {
+          width: 16,
+          height: 16,
+          color: colors.primary[600]
         }
       },
       colorPrimary: {
-        // color: colors.primary[600],
-        '&&.Mui-checked': {
+        '&.Mui-checked': {
           color: colors.orange[500]
         }
       }

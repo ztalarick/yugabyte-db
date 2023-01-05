@@ -63,7 +63,7 @@ export const TotalNodesField = ({ disabled, isAsync }: TotalNodesFieldProps): Re
             {t('universeForm.tserver')}
           </Typography>
         </Box>
-        <Box width="80px" ml={2}>
+        <Box maxWidth="80px" ml={2}>
           <YBInputField
             control={control}
             name={TOTAL_NODES_FIELD}
@@ -80,7 +80,7 @@ export const TotalNodesField = ({ disabled, isAsync }: TotalNodesFieldProps): Re
         <Box mt={2} ml={2}>
           <Typography className={classes.labelFont}>{t('universeForm.master')}</Typography>
         </Box>
-        <Box width="80px" ml={2}>
+        <Box maxWidth="80px" ml={2}>
           <YBTooltip title={TOOLTIP_TITLE}>
             <span>
               <YBInputField
@@ -104,7 +104,7 @@ export const TotalNodesField = ({ disabled, isAsync }: TotalNodesFieldProps): Re
   const colocatedNodesElement = (
     <Box>
       <Box display="flex" flexDirection="row" justifyContent="center">
-        <Box width="80px">
+        <Box maxWidth="80px">
           <YBInputField
             control={control}
             name={TOTAL_NODES_FIELD}

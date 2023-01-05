@@ -43,7 +43,9 @@ export const ReplicationFactor = ({
   return (
     <Box width="100%" display="flex" data-testid="ReplicationFactor-Container">
       <YBLabel dataTestId="ReplicationFactor-Label">
-        {t('universeForm.cloudConfig.replicationField')}
+        {isPrimary
+          ? t('universeForm.cloudConfig.replicationField')
+          : t('universeForm.cloudConfig.numReadReplicas')}
       </YBLabel>
       <Box flex={1}>
         <ButtonGroup variant="contained" color="default">

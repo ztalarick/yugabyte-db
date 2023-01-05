@@ -19,6 +19,8 @@ import {
   PASSWORD_REGEX,
   YCQL_FIELD
 } from '../../../utils/constants';
+import { useFormFieldStyles } from '../../../universeMainStyle';
+import InfoMessage from '../../../../../../assets/info-message.svg';
 
 interface YSQLFieldProps {
   disabled: boolean;
@@ -32,6 +34,9 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
     formState: { errors }
   } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+  const classes = useFormFieldStyles();
+  const YSQLTooltipTitle = t('universeForm.securityConfig.authSettings.enableYSQLHelper');
+  const YSQLAuthTooltipTitle = t('universeForm.securityConfig.authSettings.enableYSQLAuthHelper');
 
   //watchers
   const ysqlEnabled = useWatch({ name: YSQL_FIELD });
@@ -69,10 +74,15 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
               </YBHelper> */}
           </div>
         </YBTooltip>
-
-        <YBLabel dataTestId="YSQLField-EnableLabel">
-          {t('universeForm.securityConfig.authSettings.enableYSQL')}
-        </YBLabel>
+        <Box flex={1}>
+          <YBLabel dataTestId="YSQLField-EnableLabel">
+            {t('universeForm.securityConfig.authSettings.enableYSQL')}
+            &nbsp;
+            <YBTooltip title={YSQLTooltipTitle} className={classes.tooltipText}>
+              <img alt="Info" src={InfoMessage} />
+            </YBTooltip>
+          </YBLabel>
+        </Box>
       </Box>
 
       {ysqlEnabled && (
@@ -88,9 +98,15 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
                 control={control}
                 disabled={disabled}
               />
-              <YBLabel dataTestId="YSQLField-AuthLabel">
-                {t('universeForm.securityConfig.authSettings.enableYSQLAuth')}
-              </YBLabel>
+              <Box flex={1}>
+                <YBLabel dataTestId="YSQLField-AuthLabel">
+                  {t('universeForm.securityConfig.authSettings.enableYSQLAuth')}
+                  &nbsp;
+                  <YBTooltip title={YSQLAuthTooltipTitle} className={classes.tooltipText}>
+                    <img alt="Info" src={InfoMessage} />
+                  </YBTooltip>
+                </YBLabel>
+              </Box>
               {/* <YBHelper dataTestId="YSQLField-AuthHelper">
                   {t('universeForm.instanceConfig.enableYSQLAuthHelper')}
                 </YBHelper> */}

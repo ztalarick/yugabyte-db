@@ -59,7 +59,7 @@ export const ProvidersField = ({
               <YBLabel dataTestId="ProvidersField-Label">
                 {t('universeForm.cloudConfig.providerField')}
               </YBLabel>
-              <Box flex={1}>
+              <Box flex={1} maxWidth="400px">
                 <YBAutoComplete
                   loading={isLoading}
                   value={(value as unknown) as Record<string, string>}

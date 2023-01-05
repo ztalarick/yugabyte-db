@@ -1,4 +1,5 @@
 import { makeStyles } from '@material-ui/core';
+import { minWidth } from '@material-ui/system';
 
 export const useFormMainStyles = makeStyles((theme) => ({
   mainConatiner: {
@@ -112,12 +113,31 @@ export const useSectionStyles = makeStyles((theme) => ({
     fontFamily: 'Inter',
      fontSize: "13px",
     fontWeight: 500
-  }
+  },
 }));
 
 export const useFormFieldStyles = makeStyles(() => ({
   itemDisabled: {
     cursor: 'not-allowed',
     opacity: 0.5
+  },
+  defaultTextBox: {
+    maxWidth: "400px",
+    minWidth: "400px"
+  },
+  advancedConfigTextBox: {
+    maxWidth: "460px"
+  },
+  dedicatedModeTextBox: {
+    maxWidth: "382px"
+  },
+  tooltipText: {
+    textDecoration: 'underline',
+    fontSize: '11.5px',
+    fontWeight: 400,
+    fontFamily: 'Inter',
+    color: '#67666C',
+    marginTop: '2px',
+    cursor: 'default'
   }
 }));

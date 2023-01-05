@@ -16,6 +16,7 @@ import {
   CloudType,
   InstanceType,
   InstanceTypeWithGroup,
+  MasterPlacementType,
   StorageType,
   UniverseFormData
 } from '../../../utils/dto';
@@ -24,8 +25,10 @@ import {
   PROVIDER_FIELD,
   DEVICE_INFO_FIELD,
   MASTER_INSTANCE_TYPE_FIELD,
-  MASTER_DEVICE_INFO_FIELD
+  MASTER_DEVICE_INFO_FIELD,
+  MASTERS_PLACEMENT_FIELD
 } from '../../../utils/constants';
+import { useFormFieldStyles } from '../../../universeMainStyle';
 
 const getOptionLabel = (op: Record<string, string>): string => {
   if (!op) return '';
@@ -50,12 +53,14 @@ interface InstanceTypeFieldProps {
 export const InstanceTypeField = ({ isDedicatedMaster }: InstanceTypeFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
+  const classes = useFormFieldStyles();
   const dataTag = isDedicatedMaster ? 'Master' : 'TServer';
   //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
   const deviceInfo = isDedicatedMaster
     ? useWatch({ name: MASTER_DEVICE_INFO_FIELD })
     : useWatch({ name: DEVICE_INFO_FIELD });
+  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
 
   // To set value based on master or tserver field in dedicated mode
   const UPDATE_FIELD = isDedicatedMaster ? MASTER_INSTANCE_TYPE_FIELD : INSTANCE_TYPE_FIELD;
@@ -121,7 +126,14 @@ export const InstanceTypeField = ({ isDedicatedMaster }: InstanceTypeFieldProps)
             <YBLabel dataTestId={`InstanceTypeField-${dataTag}-Label`}>
               {t('universeForm.instanceConfig.instanceType')}
             </YBLabel>
-            <Box flex={1}>
+            <Box
+              flex={1}
+              className={
+                masterPlacement === MasterPlacementType.COLOCATED
+                  ? classes.defaultTextBox
+                  : classes.dedicatedModeTextBox
+              }
+            >
               <YBAutoComplete
                 loading={isLoading}
                 value={(value as unknown) as Record<string, string>}
