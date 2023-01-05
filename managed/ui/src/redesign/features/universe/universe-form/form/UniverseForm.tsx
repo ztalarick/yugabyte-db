@@ -185,11 +185,15 @@ export const UniverseForm: FC<UniverseFormProps> = ({
       <>
         <CloudConfiguration />
         <InstanceConfiguration />
-        <SecurityConfiguration />
-        <AdvancedConfiguration />
-        <GFlags />
-        <UserTags />
-        <HelmOverrides />
+        {isPrimary && (
+          <>
+            <SecurityConfiguration />
+            <AdvancedConfiguration />
+            <GFlags />
+            <UserTags />
+            <HelmOverrides />
+          </>
+        )}
       </>
     );
   };

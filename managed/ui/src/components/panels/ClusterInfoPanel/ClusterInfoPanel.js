@@ -13,7 +13,7 @@ import {
 } from '../../../utils/UniverseUtils';
 import { YBWidget } from '../../panels';
 import '../UniverseDisplayPanel/UniverseDisplayPanel.scss';
-import { FlexContainer, FlexShrink } from '../../common/flexbox/YBFlexBox';
+import { FlexContainer, FlexGrow, FlexShrink } from '../../common/flexbox/YBFlexBox';
 
 export default class ClusterInfoPanel extends Component {
   static propTypes = {
@@ -57,7 +57,7 @@ export default class ClusterInfoPanel extends Component {
         headerLeft={'Primary Cluster'}
         body={
           <FlexContainer direction={'row'}>
-            <FlexShrink className={'cluster-metadata-container'}>
+            <FlexGrow className={'cluster-metadata-container'}>
               {/* <span className={'cluster-metadata-container'}> */}
               {isDedicatedNodes && (
                 <Row className={'cluster-metadata-header'}>
@@ -67,46 +67,52 @@ export default class ClusterInfoPanel extends Component {
                 </Row>
               )}
               <Row className={'cluster-metadata'}>
-                <Col lg={10} md={6} sm={6} xs={6}>
+                <Col lg={6} md={6} sm={6} xs={6}>
                   <span className={'cluster-metadata__label'}>
                     {pluralize(isItKubernetesUniverse ? 'Pod' : 'Node', nodeCount.numTserverNodes)}
                   </span>
                 </Col>
-                <Col lg={2} md={6} sm={6} xs={6}>
-                  <span className={'cluster-metadata__count'}>{nodeCount.numTserverNodes}</span>
+                <Col lg={6} md={6} sm={6} xs={6}>
+                  <span className={'cluster-metadata__count cluster-metadata__align'}>
+                    {nodeCount.numTserverNodes}
+                  </span>
                 </Col>
               </Row>
               {!insecure && (
                 <Row className={'cluster-metadata'}>
-                  <Col lg={8} md={6} sm={6} xs={6}>
+                  <Col lg={6} md={6} sm={6} xs={6}>
                     <span className={'cluster-metadata__label'}>{'Instance Type:'}</span>
                   </Col>
-                  <Col lg={4} md={6} sm={6} xs={6}>
-                    <span>{userIntent && userIntent.instanceType}</span>
+                  <Col lg={6} md={6} sm={6} xs={6}>
+                    <span className="cluster-metadata__align">
+                      {userIntent && userIntent.instanceType}
+                    </span>
                   </Col>
                 </Row>
               )}
               <Row className={'cluster-metadata'}>
-                <Col lg={10} md={6} sm={6} xs={6}>
+                <Col lg={8} md={6} sm={6} xs={6}>
                   <span className={'cluster-metadata__label'}>{'Replication Factor:'}</span>
                 </Col>
-                <Col lg={2} md={6} sm={6} xs={6}>
-                  <span>&nbsp;{userIntent.replicationFactor}</span>
+                <Col lg={4} md={6} sm={6} xs={6} className="order-last order-sm-first">
+                  <span className="cluster-metadata__align">
+                    &nbsp;{userIntent.replicationFactor}
+                  </span>
                 </Col>
               </Row>
               {/* </span> */}
-            </FlexShrink>
+            </FlexGrow>
             {isDedicatedNodes && (
               <>
                 <FlexShrink className={'cluster-metadat-divider'}></FlexShrink>
-                <FlexShrink className={'cluster-metadata-container'}>
+                <FlexGrow className={'cluster-metadata-container'}>
                   <Row className={'cluster-metadata-header'}>
                     <Col lg={10} md={6} sm={6} xs={6}>
                       <span>{'Master'}</span>
                     </Col>
                   </Row>
                   <Row className={'cluster-metadata'}>
-                    <Col lg={10} md={6} sm={6} xs={6}>
+                    <Col lg={6} md={6} sm={6} xs={6}>
                       <span className={'cluster-metadata__label'}>
                         {pluralize(
                           isItKubernetesUniverse ? 'Pod' : 'Node',
@@ -114,22 +120,26 @@ export default class ClusterInfoPanel extends Component {
                         )}
                       </span>
                     </Col>
-                    <Col lg={2} md={6} sm={6} xs={6}>
-                      <span className={'cluster-metadata__count'}>{nodeCount.numMasterNodes}</span>
+                    <Col lg={6} md={6} sm={6} xs={6}>
+                      <span className={'cluster-metadata__count cluster-metadata__align'}>
+                        {nodeCount.numMasterNodes}
+                      </span>
                     </Col>
                   </Row>
                   {!insecure && (
                     <Row className={'cluster-metadata'}>
-                      <Col lg={8} md={6} sm={6} xs={6}>
+                      <Col lg={6} md={6} sm={6} xs={6}>
                         <span className={'cluster-metadata__label'}>{'Instance Type:'}</span>
                       </Col>
-                      <Col lg={4} md={6} sm={6} xs={6}>
-                        <span>{userIntent && userIntent.masterInstanceType}</span>
+                      <Col lg={6} md={6} sm={6} xs={6}>
+                        <span className="cluster-metadata__align">
+                          {userIntent && userIntent.masterInstanceType}
+                        </span>
                       </Col>
                     </Row>
                   )}
                   {/* </span> */}
-                </FlexShrink>
+                </FlexGrow>
               </>
             )}
           </FlexContainer>

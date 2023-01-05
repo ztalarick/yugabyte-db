@@ -807,6 +807,10 @@ export default class UniverseOverviewNew extends Component {
     const universeInfo = currentUniverse.data;
     const nodePrefixes = [universeInfo.universeDetails.nodePrefix];
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
+    const nodeNames = universeInfo.universeDetails?.nodeDetailsSet?.map((node) => {
+      return node.nodeName;
+    });
+
     const isQueryMonitoringEnabled = localStorage.getItem('__yb_query_monitoring__') === 'true';
     return (
       <Fragment>
@@ -839,6 +843,7 @@ export default class UniverseOverviewNew extends Component {
               origin={'universe'}
               nodePrefixes={nodePrefixes}
               isKubernetesUniverse={isItKubernetesUniverse}
+              nodeNames={nodeNames}
             />
           </Col>
           <Col lg={4} md={6} sm={6} xs={12}>

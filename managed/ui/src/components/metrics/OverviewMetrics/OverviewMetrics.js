@@ -37,7 +37,7 @@ const kubernetesMetrics = [
 
 class OverviewMetrics extends Component {
   static propTypes = {
-    type: PropTypes.oneOf(Object.keys(panelTypes)).isRequired,
+    type: PropTypes.oneOf(Object.keys({})).isRequired,
     nodePrefixes: PropTypes.array
   };
   static defaultProps = {
@@ -46,6 +46,7 @@ class OverviewMetrics extends Component {
 
   constructor(props) {
     super(props);
+    console.log('Overview Metrics details', props);
     const refreshMetrics =
       localStorage.getItem('__yb_refresh_metrics__') != null &&
       localStorage.getItem('__yb_refresh_metrics__') !== 'false';
@@ -62,10 +63,10 @@ class OverviewMetrics extends Component {
     const self = this;
     const pollingInterval = getPromiseState(currentCustomer).isSuccess()
       ? getFeatureState(
-        currentCustomer.data.features,
-        'universes.details.overview.metricsInterval',
-        OVERVIEW_METRICS_INTERVAL_MS
-      )
+          currentCustomer.data.features,
+          'universes.details.overview.metricsInterval',
+          OVERVIEW_METRICS_INTERVAL_MS
+        )
       : OVERVIEW_METRICS_INTERVAL_MS;
 
     // set the polling for metrics but update start and end time interval boundaries
@@ -90,10 +91,10 @@ class OverviewMetrics extends Component {
     const { autoRefresh } = this.state;
     const pollingInterval = getPromiseState(currentCustomer).isSuccess()
       ? getFeatureState(
-        currentCustomer.data.features,
-        'universes.details.overview.metricsInterval',
-        OVERVIEW_METRICS_INTERVAL_MS
-      )
+          currentCustomer.data.features,
+          'universes.details.overview.metricsInterval',
+          OVERVIEW_METRICS_INTERVAL_MS
+        )
       : OVERVIEW_METRICS_INTERVAL_MS;
 
     // eslint-disable-next-line eqeqeq
