@@ -39,7 +39,7 @@ export default class CpuUsagePanel extends Component {
       <div className="metrics-padded-panel cpu-usage-panel">
         {isNaN(usage.system) ? (
           <Fragment>
-            <div className="centered text-light text-lightgray">No Data</div>
+            <div className="centered text-light text-lightgray empty-state">No Data</div>
             <Graph value={0} />
           </Fragment>
         ) : (

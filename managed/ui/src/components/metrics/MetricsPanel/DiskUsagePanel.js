@@ -46,9 +46,8 @@ export default class DiskUsagePanel extends Component {
       <div className="metrics-padded-panel disk-usage-panel">
         {isNaN(space.size) ? (
           <Fragment>
-            <YBResourceCount size={'No Data'} />
-            <span className="gray-text metric-subtitle">{'Data is unavailable'} </span>
-            <Graph value={0} unit={'percent'} />
+            <div className="centered text-light text-lightgray empty-state">No Data</div>
+            <Graph value={0} />
           </Fragment>
         ) : (
           <Fragment>

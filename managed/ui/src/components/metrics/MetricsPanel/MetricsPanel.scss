@@ -92,6 +92,9 @@
 
   .metrics-padded-panel {
     padding: 15px 20px;
+    .empty-state {
+        margin-top: 20px;
+      }
   }
 
   .disk-usage-panel {
