@@ -70,16 +70,9 @@ export const CloudConfiguration: FC = () => {
           <Box mt={1}>
             <RegionsField disabled={false} />
           </Box>
-          <Box
-            mt={1}
-            flexDirection={isPrimary ? 'row' : 'column'}
-            display="flex"
-            alignItems="flex-start"
-          >
+          <Box mt={1} flexDirection="row" display="flex" alignItems="flex-start">
             <TotalNodesField disabled={false} />
-            <Box mt={isPrimary ? 0 : 1}>
-              <ReplicationFactor disabled={isEditMode} isPrimary={isPrimary} />
-            </Box>
+            <ReplicationFactor disabled={isEditMode} isPrimary={isPrimary} />
           </Box>
           {isCreatePrimary && isGeoPartitionEnabled && (
             <Box mt={2} display="flex" flexDirection="column">

@@ -22,10 +22,10 @@ import {
 
 interface YSQLFieldProps {
   disabled: boolean;
-  isAuthEnforced?: boolean;
+  enforceAuth?: boolean;
 }
 
-export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactElement => {
+export const YSQLField = ({ disabled, enforceAuth }: YSQLFieldProps): ReactElement => {
   const {
     control,
     setValue,
@@ -76,7 +76,7 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
 
       {ysqlEnabled && (
         <Box mt={1}>
-          {!isAuthEnforced && (
+          {!enforceAuth && (
             <Box display="flex">
               <YBLabel dataTestId="YSQLField-AuthLabel">
                 {t('universeForm.instanceConfig.enableYSQLAuth')}
