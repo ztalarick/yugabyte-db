@@ -37,7 +37,7 @@ const kubernetesMetrics = [
 
 class OverviewMetrics extends Component {
   static propTypes = {
-    type: PropTypes.oneOf(Object.keys({})).isRequired,
+    type: PropTypes.oneOf(Object.keys(panelTypes)).isRequired,
     nodePrefixes: PropTypes.array
   };
   static defaultProps = {
@@ -46,7 +46,6 @@ class OverviewMetrics extends Component {
 
   constructor(props) {
     super(props);
-    console.log('Overview Metrics details', props);
     const refreshMetrics =
       localStorage.getItem('__yb_refresh_metrics__') != null &&
       localStorage.getItem('__yb_refresh_metrics__') !== 'false';

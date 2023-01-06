@@ -12,7 +12,7 @@ import {
   DEFAULT_FORM_DATA,
   InstanceTag,
   InstanceTags,
-  MasterPlacementType
+  MasterPlacementMode
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
 import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
@@ -108,7 +108,7 @@ export const getFormData = (universeData: UniverseDetails, clusterType: ClusterT
       numNodes: userIntent.numNodes,
       replicationFactor: userIntent.replicationFactor,
       placements: getPlacementsFromCluster(cluster),
-      masterPlacement: userIntent.dedicatedNodes ? MasterPlacementType.DEDICATED : MasterPlacementType.COLOCATED,
+      masterPlacement: userIntent.dedicatedNodes ? MasterPlacementMode.DEDICATED : MasterPlacementMode.COLOCATED,
       autoPlacement: true, //** */,
     },
     instanceConfig: {
@@ -159,7 +159,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
     regionList: cloudConfig.regionList,
     numNodes: Number(cloudConfig.numNodes),
     replicationFactor: cloudConfig.replicationFactor,
-    dedicatedNodes: cloudConfig.masterPlacement === MasterPlacementType.DEDICATED,
+    dedicatedNodes: cloudConfig.masterPlacement === MasterPlacementMode.DEDICATED,
     instanceType: instanceConfig.instanceType,
     deviceInfo: instanceConfig.deviceInfo,
     assignPublicIP: instanceConfig.assignPublicIP,
@@ -183,7 +183,7 @@ export const getUserIntent = ({ formData }: { formData: UniverseFormData }) => {
   if (!_.isEmpty(advancedConfig.awsArnString)) intent.awsArnString = advancedConfig.awsArnString;
   if (!_.isEmpty(instanceTags)) intent.instanceTags = transformTagsArrayToObject(instanceTags);
 
-  if (cloudConfig.masterPlacement === MasterPlacementType.DEDICATED) {
+  if (cloudConfig.masterPlacement === MasterPlacementMode.DEDICATED) {
     intent.masterInstanceType = instanceConfig.masterInstanceType;
     intent.masterDeviceInfo = instanceConfig.masterDeviceInfo;
   }

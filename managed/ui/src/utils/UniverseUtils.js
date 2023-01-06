@@ -120,7 +120,7 @@ export const getUniverseDedicatedNodeCount = (nodeDetailsSet, cluster = null) =>
   };
 };
 
-export const isDedicatedPlacement = (currentUniverse) => {
+export const isDedicatedNodePlacement = (currentUniverse) => {
   let isDedicatedNodes = false;
   if (!currentUniverse?.universeDetails) return isDedicatedNodes;
 

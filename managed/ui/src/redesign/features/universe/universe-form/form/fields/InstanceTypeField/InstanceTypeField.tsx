@@ -16,7 +16,7 @@ import {
   CloudType,
   InstanceType,
   InstanceTypeWithGroup,
-  MasterPlacementType,
+  MasterPlacementMode,
   StorageType,
   UniverseFormData
 } from '../../../utils/dto';
@@ -26,7 +26,7 @@ import {
   DEVICE_INFO_FIELD,
   MASTER_INSTANCE_TYPE_FIELD,
   MASTER_DEVICE_INFO_FIELD,
-  MASTERS_PLACEMENT_FIELD
+  MASTER_PLACEMENT_FIELD
 } from '../../../utils/constants';
 import { useFormFieldStyles } from '../../../universeMainStyle';
 
@@ -60,7 +60,7 @@ export const InstanceTypeField = ({ isDedicatedMaster }: InstanceTypeFieldProps)
   const deviceInfo = isDedicatedMaster
     ? useWatch({ name: MASTER_DEVICE_INFO_FIELD })
     : useWatch({ name: DEVICE_INFO_FIELD });
-  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
+  const masterPlacement = useWatch({ name: MASTER_PLACEMENT_FIELD });
 
   // To set value based on master or tserver field in dedicated mode
   const UPDATE_FIELD = isDedicatedMaster ? MASTER_INSTANCE_TYPE_FIELD : INSTANCE_TYPE_FIELD;
@@ -129,7 +129,7 @@ export const InstanceTypeField = ({ isDedicatedMaster }: InstanceTypeFieldProps)
             <Box
               flex={1}
               className={
-                masterPlacement === MasterPlacementType.COLOCATED
+                masterPlacement === MasterPlacementMode.COLOCATED
                   ? classes.defaultTextBox
                   : classes.dedicatedModeTextBox
               }

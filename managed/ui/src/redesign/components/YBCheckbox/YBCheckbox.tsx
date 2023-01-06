@@ -15,7 +15,7 @@ export interface YBCheckboxProps extends CheckboxProps {
 export const YBCheckbox: FC<YBCheckboxProps> = ({ label, ...checkboxProps }: YBCheckboxProps) => {
   return (
     <FormControlLabel
-      control={<Checkbox color="secondary" {...checkboxProps} />}
+      control={<Checkbox color="primary" {...checkboxProps} />}
       label={
         <Typography component="span" variant="body2">
           {label}

@@ -24,7 +24,7 @@ export enum CloudType {
   other = 'other'
 }
 
-export enum MasterPlacementType {
+export enum MasterPlacementMode {
   COLOCATED = 'COLOCATED',
   DEDICATED = 'DEDICATED'
 }
@@ -262,7 +262,7 @@ export interface CloudConfigFormValue {
   placements: Placement[];
   defaultRegion?: string | null;
   mastersInDefaultRegion?: boolean;
-  masterPlacement?: MasterPlacementType;
+  masterPlacement?: MasterPlacementMode;
 }
 
 export interface InstanceConfigFormValue {
@@ -349,7 +349,7 @@ export const DEFAULT_CLOUD_CONFIG: CloudConfigFormValue = {
   placements: [],
   defaultRegion: null,
   mastersInDefaultRegion: false,
-  masterPlacement: MasterPlacementType.COLOCATED
+  masterPlacement: MasterPlacementMode.COLOCATED
 };
 
 export const DEFAULT_INSTANCE_CONFIG: InstanceConfigFormValue = {

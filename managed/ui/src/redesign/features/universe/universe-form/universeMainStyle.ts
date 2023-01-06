@@ -1,5 +1,6 @@
 import { makeStyles } from '@material-ui/core';
 import { minWidth } from '@material-ui/system';
+import { themeVariables } from '../../../theme/variables';
 
 export const useFormMainStyles = makeStyles((theme) => ({
   mainConatiner: {
@@ -116,7 +117,7 @@ export const useSectionStyles = makeStyles((theme) => ({
   },
 }));
 
-export const useFormFieldStyles = makeStyles(() => ({
+export const useFormFieldStyles = makeStyles((theme) => ({
   itemDisabled: {
     cursor: 'not-allowed',
     opacity: 0.5
@@ -126,7 +127,8 @@ export const useFormFieldStyles = makeStyles(() => ({
     minWidth: "400px"
   },
   advancedConfigTextBox: {
-    maxWidth: "460px"
+    maxWidth: "440px",
+    marginLeft: theme.spacing(3)
   },
   dedicatedModeTextBox: {
     maxWidth: "382px"

@@ -4,14 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Box, Grid, Typography, makeStyles } from '@material-ui/core';
 import { YBInputField, YBLabel, YBTooltip } from '../../../../../../components';
-import { UniverseFormData, CloudType, MasterPlacementType } from '../../../utils/dto';
+import { UniverseFormData, CloudType, MasterPlacementMode } from '../../../utils/dto';
 import {
   TOTAL_NODES_FIELD,
   MASTER_TOTAL_NODES_FIELD,
   REPLICATION_FACTOR_FIELD,
   PLACEMENTS_FIELD,
   PROVIDER_FIELD,
-  MASTERS_PLACEMENT_FIELD
+  MASTER_PLACEMENT_FIELD
 } from '../../../utils/constants';
 import { useSectionStyles } from '../../../universeMainStyle';
 
@@ -33,8 +33,8 @@ export const TotalNodesField = ({ disabled, isAsync }: TotalNodesFieldProps): Re
   //watchers
   const provider = useWatch({ name: PROVIDER_FIELD });
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
-  // const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
-  const masterPlacement = getValues(MASTERS_PLACEMENT_FIELD);
+  // const masterPlacement = useWatch({ name: MASTER_PLACEMENT_FIELD });
+  const masterPlacement = getValues(MASTER_PLACEMENT_FIELD);
   const placements = useWatch({ name: PLACEMENTS_FIELD });
   const currentTotalNodes = getValues(TOTAL_NODES_FIELD);
 
@@ -128,7 +128,7 @@ export const TotalNodesField = ({ disabled, isAsync }: TotalNodesFieldProps): Re
           ? t('universeForm.cloudConfig.totalPodsField')
           : t('universeForm.cloudConfig.totalNodesField')}
       </YBLabel>
-      {masterPlacement === MasterPlacementType.COLOCATED
+      {masterPlacement === MasterPlacementMode.COLOCATED
         ? colocatedNodesElement
         : dedicatedNodesElement}
     </Box>

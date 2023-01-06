@@ -9,9 +9,9 @@ import {
   GFlags,
   HelmOverrides,
   InstanceConfiguration,
+  SecurityConfiguration,
   UserTags,
-  UniverseResourceContainer,
-  SecurityConfiguration
+  UniverseResourceContainer
 } from './sections';
 import { UniverseFormContext } from '../UniverseFormContainer';
 import { UniverseFormData, ClusterType, ClusterModes } from '../utils/dto';

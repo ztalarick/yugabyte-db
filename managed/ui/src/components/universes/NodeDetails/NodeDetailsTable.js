@@ -1,11 +1,14 @@
 // Copyright (c) YugaByte, Inc.
 
 import React, { Component, Fragment } from 'react';
-import { BootstrapTable, TableHeaderColumn } from 'react-bootstrap-table';
 import { MenuItem, Dropdown } from 'react-bootstrap';
+import { BootstrapTable, TableHeaderColumn } from 'react-bootstrap-table';
 import moment from 'moment';
 import pluralize from 'pluralize';
-
+import { YBPanelItem } from '../../panels';
+import { NodeAction } from '../../universes';
+import { setCookiesFromLocalStorage } from '../../../routes';
+import { NodeType } from '../../../redesign/helpers/dtos';
 import { isDefinedNotNull, isNonEmptyString } from '../../../utils/ObjectUtils';
 import {
   getPrimaryCluster,
@@ -13,9 +16,6 @@ import {
   getReadOnlyCluster
 } from '../../../utils/UniverseUtils';
 import { isNotHidden, isDisabled, isHidden } from '../../../utils/LayoutUtils';
-import { YBPanelItem } from '../../panels';
-import { NodeAction } from '../../universes';
-import { setCookiesFromLocalStorage } from '../../../routes';
 import { getUniverseStatus, universeState } from '../helpers/universeHelpers';
 
 import './NodeDetailsTable.scss';
@@ -27,12 +27,12 @@ const NODE_TYPE = [
     value: 'All Nodes'
   },
   {
-    label: 'TServer',
-    value: 'TServer'
+    label: NodeType.TServer,
+    value: NodeType.TServer
   },
   {
-    label: 'Master',
-    value: 'Master'
+    label: NodeType.Master,
+    value: NodeType.Master
   }
 ];
 export default class NodeDetailsTable extends Component {
@@ -57,7 +57,7 @@ export default class NodeDetailsTable extends Component {
       customer,
       currentUniverse,
       providers,
-      dedicatedNodes
+      isDedicatedNodes
     } = this.props;
     const successIcon = <i className="fa fa-check-circle yb-success-color" />;
     const warningIcon = <i className="fa fa-warning yb-fail-color" />;
@@ -66,14 +66,14 @@ export default class NodeDetailsTable extends Component {
     const providerConfig = providers.data.find((provider) => provider.uuid === providerUUID)
       ?.config;
 
-    if (dedicatedNodes && clusterType === 'primary') {
-      if (this.state.nodeTypeDropdownValue === 'Master') {
+    if (isDedicatedNodes && clusterType === 'primary') {
+      if (this.state.nodeTypeDropdownValue === NodeType.Master) {
         sortedNodeDetails = sortedNodeDetails.filter(
-          (nodeDetails) => nodeDetails.dedicatedTo === 'MASTER'
+          (nodeDetails) => nodeDetails.dedicatedTo === NodeType.Master.toUpperCase()
         );
-      } else if (this.state.nodeTypeDropdownValue === 'TServer') {
+      } else if (this.state.nodeTypeDropdownValue === NodeType.TServer) {
         sortedNodeDetails = sortedNodeDetails.filter(
-          (nodeDetails) => nodeDetails.dedicatedTo === 'TSERVER'
+          (nodeDetails) => nodeDetails.dedicatedTo === NodeType.TServer.toUpperCase()
         );
       }
     }
@@ -81,7 +81,7 @@ export default class NodeDetailsTable extends Component {
       if (cell === '-') {
         return <span>{cell}</span>;
       }
-      const isMaster = type === 'master';
+      const isMaster = type === NodeType.Master.toLowerCase();
       const href = getProxyNodeAddress(
         universeUUID,
         row.privateIP,
@@ -98,10 +98,10 @@ export default class NodeDetailsTable extends Component {
               target="_blank"
               rel="noopener noreferrer"
             >
-              {isMaster ? 'Master' : 'TServer'}
+              {isMaster ? NodeType.Master : NodeType.TServer}
             </a>
           ) : (
-            <span>{isMaster ? 'Master' : 'TServer'}</span>
+            <span>{isMaster ? NodeType.Master : NodeType.TServer}</span>
           )}
           {isMaster && row.isMasterLeader ? ' (Leader)' : ''}
         </div>
@@ -109,13 +109,14 @@ export default class NodeDetailsTable extends Component {
     };
 
     const getIpPortLinks = (cell, row) => {
-      console.log('row', row);
       return (
         <Fragment>
-          {row.dedicatedTo === 'MASTER' && formatIpPort(row.isMaster, row, 'master')}
-          {row.dedicatedTo === 'TSERVER' && formatIpPort(row.isTServer, row, 'tserver')}
-          {!row.dedicatedTo && formatIpPort(row.isMaster, row, 'master')}
-          {!row.dedicatedTo && formatIpPort(row.isTServer, row, 'tserver')}
+          {row.dedicatedTo === NodeType.Master.toUpperCase() &&
+            formatIpPort(row.isMaster, row, NodeType.Master.toLowerCase())}
+          {row.dedicatedTo === NodeType.TServer.toUpperCase() &&
+            formatIpPort(row.isTServer, row, NodeType.TServer.toLowerCase())}
+          {!row.dedicatedTo && formatIpPort(row.isMaster, row, NodeType.Master.toLowerCase())}
+          {!row.dedicatedTo && formatIpPort(row.isTServer, row, NodeType.TServer.toLowerCase())}
         </Fragment>
       );
     };
@@ -302,12 +303,12 @@ export default class NodeDetailsTable extends Component {
           header={
             <>
               <h2 className="content-title">{panelTitle}</h2>
-              {dedicatedNodes && (
+              {isDedicatedNodes && (
                 <Dropdown id="nodeTypeDropdown" className="node-type-dropdown">
                   <Dropdown.Toggle>
                     <>
-                      <span className="node-type-dropdown-label">{'Type'}</span>
-                      <span className="node-type-dropdown-value">
+                      <span className="node-type-dropdown__label">{'Type'}</span>
+                      <span className="node-type-dropdown__value">
                         {this.state.nodeTypeDropdownValue}
                       </span>
                     </>
@@ -316,7 +317,7 @@ export default class NodeDetailsTable extends Component {
                     {NODE_TYPE.map((nodeType, nodeTypeIdx) => {
                       return (
                         <MenuItem
-                          eventKey={`nodetype-${nodeTypeIdx}`}
+                          eventKey={`nodeId-${nodeTypeIdx}`}
                           key={`${nodeType.label}`}
                           active={this.state.nodeTypeDropdownValue === nodeType.value}
                           onSelect={() => this.onNodeTypeChanged(nodeType.value)}

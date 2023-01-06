@@ -144,6 +144,7 @@ export const CreateUniverse: FC = () => {
   };
 
   if (isLoading) return <YBLoading />;
+
   if (isPrimary)
     return (
       <UniverseForm

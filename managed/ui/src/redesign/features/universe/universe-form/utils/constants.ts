@@ -11,7 +11,7 @@ export const MASTER_TOTAL_NODES_FIELD = 'cloudConfig.masterNumNodes';
 export const PLACEMENTS_FIELD = 'cloudConfig.placements';
 export const DEFAULT_REGION_FIELD = 'cloudConfig.defaultRegion';
 export const MASTERS_IN_DEFAULT_REGION_FIELD = 'cloudConfig.mastersInDefaultRegion';
-export const MASTERS_PLACEMENT_FIELD = 'cloudConfig.masterPlacement';
+export const MASTER_PLACEMENT_FIELD = 'cloudConfig.masterPlacement';
 
 //Instance config
 export const INSTANCE_TYPE_FIELD = 'instanceConfig.instanceType';
@@ -104,7 +104,7 @@ export const PRIMARY_FIELDS = [
   CUSTOMIZE_PORT_FIELD,
   UNIVERSE_OVERRIDES_FIELD,
   AZ_OVERRIDES_FIELD,
-  MASTERS_PLACEMENT_FIELD
+  MASTER_PLACEMENT_FIELD
 ];
 
 export const ASYNC_FIELDS = [
@@ -115,12 +115,7 @@ export const ASYNC_FIELDS = [
   AUTO_PLACEMENT_FIELD,
   TOTAL_NODES_FIELD,
   PLACEMENTS_FIELD,
-  // Do not copy these fields from primary to async fields
   INSTANCE_TYPE_FIELD,
-  // MASTER_INSTANCE_TYPE_FIELD,
-  // MASTER_DEVICE_INFO_FIELD,
-  // MASTER_TOTAL_NODES_FIELD,
-
   SOFTWARE_VERSION_FIELD,
   DEVICE_INFO_FIELD,
   ASSIGN_PUBLIC_IP_FIELD,
@@ -138,7 +133,7 @@ export const ASYNC_FIELDS = [
   ACCESS_KEY_FIELD,
   ROOT_CERT_FIELD,
   EAR_FIELD,
-  MASTERS_PLACEMENT_FIELD
+  MASTER_PLACEMENT_FIELD
 ];
 
 export const ASYNC_COPY_FIELDS = [

@@ -6,10 +6,10 @@ import { Box, Grid, Typography } from '@material-ui/core';
 import { InstanceTypeField, VolumeInfoField, StorageTypeField } from '../../fields';
 import { YBLabel } from '../../../../../../components';
 import { UniverseFormContext } from '../../../UniverseFormContainer';
-import { CloudType, ClusterModes, ClusterType, MasterPlacementType } from '../../../utils/dto';
+import { CloudType, ClusterModes, ClusterType, MasterPlacementMode } from '../../../utils/dto';
 import {
   PROVIDER_FIELD,
-  MASTERS_PLACEMENT_FIELD,
+  MASTER_PLACEMENT_FIELD,
   DEVICE_INFO_FIELD
 } from '../../../utils/constants';
 import { useSectionStyles } from '../../../universeMainStyle';
@@ -37,12 +37,12 @@ export const InstanceConfiguration: FC = () => {
   const provider = useWatch({ name: PROVIDER_FIELD });
   const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
   const masterPlacement = isAsync
-    ? getValues(MASTERS_PLACEMENT_FIELD)
-    : useWatch({ name: MASTERS_PLACEMENT_FIELD });
+    ? getValues(MASTER_PLACEMENT_FIELD)
+    : useWatch({ name: MASTER_PLACEMENT_FIELD });
 
   const instanceAndVolumeElement = (isDedicatedMaster: boolean) => {
     return (
-      <Box width={masterPlacement === MasterPlacementType.DEDICATED ? '100%' : '605px'}>
+      <Box width={masterPlacement === MasterPlacementMode.DEDICATED ? '100%' : '605px'}>
         <InstanceTypeField isDedicatedMaster={isDedicatedMaster} />
         <VolumeInfoField
           isEditMode={!isCreateMode}
@@ -82,15 +82,15 @@ export const InstanceConfiguration: FC = () => {
       </Typography>
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center" mt={4}>
         <Box flex={1} display="flex" flexDirection="row">
-          {masterPlacement === MasterPlacementType.COLOCATED
+          {masterPlacement === MasterPlacementMode.COLOCATED
             ? instanceAndVolumeElement(false)
             : instanceElementWrapper('universeForm.tserver', false)}
-          {masterPlacement === MasterPlacementType.DEDICATED &&
+          {masterPlacement === MasterPlacementMode.DEDICATED &&
             instanceElementWrapper('universeForm.master', true)}
         </Box>
         {deviceInfo &&
           provider?.code === CloudType.gcp &&
-          masterPlacement === MasterPlacementType.DEDICATED && (
+          masterPlacement === MasterPlacementMode.DEDICATED && (
             <Box width="50%">
               <StorageTypeField disableStorageType={!isCreatePrimary && !isCreateRR} />
             </Box>

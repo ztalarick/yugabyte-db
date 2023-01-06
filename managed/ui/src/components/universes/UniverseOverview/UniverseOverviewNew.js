@@ -30,7 +30,7 @@ import {
 import {
   isKubernetesUniverse,
   getPrimaryCluster,
-  isDedicatedPlacement
+  isDedicatedNodePlacement
 } from '../../../utils/UniverseUtils';
 import { FlexContainer, FlexGrow, FlexShrink } from '../../common/flexbox/YBFlexBox';
 import { isDefinedNotNull } from '../../../utils/ObjectUtils';
@@ -427,25 +427,23 @@ export default class UniverseOverviewNew extends Component {
       <YBCost value={pricePerHour} multiplier={'month'} isPricingKnown={isPricingKnown} />
     );
     return (
-      <Col lg={4} md={6} sm={6} xs={8}>
-        {/* <i className="fa fa-trash"></i>
-        <FlexShrink></FlexShrink> */}
+      <Col lg={4} md={6} sm={8} xs={12}>
         <YBWidget
           noHeader
           size={1}
           className={'overview-widget-cost'}
           body={
-            <FlexContainer className={'centered'} direction={'row'}>
+            <FlexContainer className={'cost-widget centered'} direction={'row'}>
               <FlexShrink>
-                <i className="fa fa-money cost-widget-image"></i>
-                <span className="cost-widget-label">{'Cost'}</span>
+                <i className="fa fa-money cost-widget__image"></i>
+                <span className="cost-widget__label">{'Cost'}</span>
               </FlexShrink>
               <FlexShrink>
-                <span className="cost-per-day">{costPerDay} </span>
-                <span className="cost-metric">/ day</span>
+                <span className="cost-widget__day">{costPerDay} </span>
+                <span className="cost-widget__day-label">/ day</span>
               </FlexShrink>
               <FlexShrink>
-                <span className="cost-per-month">{costPerMonth}</span>
+                <span className="cost-widget__month">{costPerMonth}</span>
                 <span>/ month</span>
               </FlexShrink>
             </FlexContainer>
@@ -506,7 +504,7 @@ export default class UniverseOverviewNew extends Component {
   };
 
   getPrimaryClusterWidget = (currentUniverse) => {
-    const isDedicatedNodes = isDedicatedPlacement(currentUniverse);
+    const isDedicatedNodes = isDedicatedNodePlacement(currentUniverse);
 
     if (isNullOrEmpty(currentUniverse)) return;
     return isDedicatedNodes ? (
@@ -635,7 +633,7 @@ export default class UniverseOverviewNew extends Component {
   getCPUWidget = (universeInfo) => {
     // For kubernetes the CPU usage would be in container tab, rest it would be server tab.
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
-    const isDedicatedNodes = isDedicatedPlacement(universeInfo);
+    const isDedicatedNodes = isDedicatedNodePlacement(universeInfo);
     const subTab = isItKubernetesUniverse ? 'container' : 'server';
     const metricTabPath = this.props.enableTopKMetrics ? 'tab' : 'subtab';
     return (
@@ -807,9 +805,6 @@ export default class UniverseOverviewNew extends Component {
     const universeInfo = currentUniverse.data;
     const nodePrefixes = [universeInfo.universeDetails.nodePrefix];
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
-    const nodeNames = universeInfo.universeDetails?.nodeDetailsSet?.map((node) => {
-      return node.nodeName;
-    });
 
     const isQueryMonitoringEnabled = localStorage.getItem('__yb_query_monitoring__') === 'true';
     return (
@@ -821,8 +816,6 @@ export default class UniverseOverviewNew extends Component {
         <Row>
           {this.getDatabaseWidget(universeInfo, tasks)}
           {this.getPrimaryClusterWidget(universeInfo)}
-          {/* {isEnabled(currentCustomer.data.features, 'universes.details.overview.costs') &&
-            this.getCostWidget(universeInfo)} */}
           {isEnabled(
             currentCustomer.data.features,
             'universes.details.overview.demo',
@@ -843,7 +836,6 @@ export default class UniverseOverviewNew extends Component {
               origin={'universe'}
               nodePrefixes={nodePrefixes}
               isKubernetesUniverse={isItKubernetesUniverse}
-              nodeNames={nodeNames}
             />
           </Col>
           <Col lg={4} md={6} sm={6} xs={12}>

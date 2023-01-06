@@ -470,3 +470,8 @@ export enum RunTimeConfigScope {
   PROVIDER = 'PROVIDER',
   CUSTOMER = 'CUSTOMER'
 }
+
+export enum NodeType {
+  Master = 'Master',
+  TServer = 'TServer'
+}

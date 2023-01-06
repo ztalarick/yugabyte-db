@@ -4,6 +4,8 @@ import React, { Component } from 'react';
 import { Row, Col } from 'react-bootstrap';
 import PropTypes from 'prop-types';
 import pluralize from 'pluralize';
+import { YBWidget } from '../../panels';
+import { FlexContainer, FlexGrow, FlexShrink } from '../../common/flexbox/YBFlexBox';
 import {
   getPrimaryCluster,
   getReadOnlyCluster,
@@ -11,9 +13,8 @@ import {
   getUniverseNodeCount,
   getUniverseDedicatedNodeCount
 } from '../../../utils/UniverseUtils';
-import { YBWidget } from '../../panels';
+
 import '../UniverseDisplayPanel/UniverseDisplayPanel.scss';
-import { FlexContainer, FlexGrow, FlexShrink } from '../../common/flexbox/YBFlexBox';
 
 export default class ClusterInfoPanel extends Component {
   static propTypes = {
@@ -32,7 +33,6 @@ export default class ClusterInfoPanel extends Component {
       }
     } = this.props;
     let cluster = null;
-    // const nodeCount = getUniverseNodeCount(universeDetails.nodeDetailsSet, cluster);
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
 
     const colocatedNodesCount = getUniverseNodeCount(universeDetails.nodeDetailsSet, cluster);
@@ -56,11 +56,10 @@ export default class ClusterInfoPanel extends Component {
         className={'overview-widget-cluster-primary'}
         headerLeft={'Primary Cluster'}
         body={
-          <FlexContainer direction={'row'}>
-            <FlexGrow className={'cluster-metadata-container'}>
-              {/* <span className={'cluster-metadata-container'}> */}
+          <FlexContainer className={'cluster-metadata-container'} direction={'row'}>
+            <FlexGrow className={'cluster-metadata-tserver'}>
               {isDedicatedNodes && (
-                <Row className={'cluster-metadata-header'}>
+                <Row className={'cluster-metadata-tserver__header'}>
                   <Col lg={10} md={6} sm={6} xs={6}>
                     <span>{'TServer'}</span>
                   </Col>
@@ -84,7 +83,7 @@ export default class ClusterInfoPanel extends Component {
                     <span className={'cluster-metadata__label'}>{'Instance Type:'}</span>
                   </Col>
                   <Col lg={6} md={6} sm={6} xs={6}>
-                    <span className="cluster-metadata__align">
+                    <span className={'cluster-metadata__align'}>
                       {userIntent && userIntent.instanceType}
                     </span>
                   </Col>
@@ -94,19 +93,18 @@ export default class ClusterInfoPanel extends Component {
                 <Col lg={8} md={6} sm={6} xs={6}>
                   <span className={'cluster-metadata__label'}>{'Replication Factor:'}</span>
                 </Col>
-                <Col lg={4} md={6} sm={6} xs={6} className="order-last order-sm-first">
-                  <span className="cluster-metadata__align">
+                <Col lg={4} md={6} sm={6} xs={6}>
+                  <span className={'cluster-metadata__align'}>
                     &nbsp;{userIntent.replicationFactor}
                   </span>
                 </Col>
               </Row>
-              {/* </span> */}
             </FlexGrow>
             {isDedicatedNodes && (
               <>
-                <FlexShrink className={'cluster-metadat-divider'}></FlexShrink>
-                <FlexGrow className={'cluster-metadata-container'}>
-                  <Row className={'cluster-metadata-header'}>
+                <FlexShrink className={'cluster-metadata-container__divider'}></FlexShrink>
+                <FlexGrow className={'cluster-metadata-master'}>
+                  <Row className={'cluster-metadata-master__header'}>
                     <Col lg={10} md={6} sm={6} xs={6}>
                       <span>{'Master'}</span>
                     </Col>
@@ -132,13 +130,12 @@ export default class ClusterInfoPanel extends Component {
                         <span className={'cluster-metadata__label'}>{'Instance Type:'}</span>
                       </Col>
                       <Col lg={6} md={6} sm={6} xs={6}>
-                        <span className="cluster-metadata__align">
+                        <span className={'cluster-metadata__align'}>
                           {userIntent && userIntent.masterInstanceType}
                         </span>
                       </Col>
                     </Row>
                   )}
-                  {/* </span> */}
                 </FlexGrow>
               </>
             )}

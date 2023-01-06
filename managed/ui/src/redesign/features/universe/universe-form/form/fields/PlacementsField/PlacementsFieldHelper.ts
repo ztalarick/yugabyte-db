@@ -25,7 +25,7 @@ import {
   DEVICE_INFO_FIELD,
   MASTERS_IN_DEFAULT_REGION_FIELD,
   DEFAULT_REGION_FIELD,
-  MASTERS_PLACEMENT_FIELD,
+  MASTER_PLACEMENT_FIELD,
   MASTER_DEVICE_INFO_FIELD,
   MASTER_INSTANCE_TYPE_FIELD
 } from '../../../utils/constants';
@@ -153,9 +153,9 @@ export const useNodePlacements = () => {
   const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
   const defaultRegion = useWatch({ name: DEFAULT_REGION_FIELD });
   const defaultMasterRegion = useWatch({ name: MASTERS_IN_DEFAULT_REGION_FIELD });
-  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
+  const masterPlacement = useWatch({ name: MASTER_PLACEMENT_FIELD });
   const masterDeviceInfo =  useWatch({ name: MASTER_DEVICE_INFO_FIELD });
-   const masterInstanceType =  useWatch({ name: MASTER_INSTANCE_TYPE_FIELD });
+  const masterInstanceType =  useWatch({ name: MASTER_INSTANCE_TYPE_FIELD });
 
   const prevPropsCombination = useRef({
     instanceType,

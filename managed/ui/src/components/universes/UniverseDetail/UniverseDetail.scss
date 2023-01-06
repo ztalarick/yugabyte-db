@@ -537,34 +537,36 @@ h2 {
 
   &.overview-widget-cost {
     height: 48px;
-    font-size: 13px;
-    font-family: "Inter";
     .body .flex-cnt {
       height: 93px;
     }
-    .cost-widget-image {
-      width: 20px;
-      height: 12px;
-      margin-right: 5px;
-    }
-    .cost-per-day {
-      font-size: 18px;
-      font-weight: 700;
-    }
-    .cost-widget-label {
-      font-weight: 700;
-      line-height: 2.25;
-    }
-    .cost-per-month {
-      line-height: 2.25;
-    }
-    .cost-metric {
-      margin-right: 30px;
+    .cost-widget {
+      font-size: 13px;
+      font-family: "Inter";
+
+      &__image {
+        width: 20px;
+        height: 12px;
+        margin-right: 5px;
+      }
+      &__day {
+        font-size: 18px;
+        font-weight: 700;
+      }
+      &__label {
+        font-weight: 700;
+        line-height: 2.25;
+      }
+      &__month {
+        line-height: 2.25;
+      } 
+      &__day-label {
+        margin-right: 30px;
+      }
     }
   }
 
   &.overview-widget-cluster-primary {
-
     .body .flex-cnt {
       height: 120px;
     }
@@ -593,12 +595,25 @@ h2 {
         }
       }
     }
+
     .cluster-metadata-container {
+      &__divider {
+        border: 1px solid #E5E5E9;
+        height: 119px;
+        width: 0px;
+        margin-right: 24px;
+        margin-left: 24px;
+      }
+    }
+  
+    .cluster-metadata-master,
+    .cluster-metadata-tserver {
       font-family: "Inter";
-      // margin-right: 30px;
-      .cluster-metadata-header {
+
+      &__header {
         font-weight: 600;
       }
+   
       .cluster-metadata {
         margin-top: 12px;
         &__count {
@@ -625,8 +640,8 @@ h2 {
       border: 1px solid #E5E5E9;
       height: 119px;
       width: 0px;
-      margin-right: 10px;
-      margin-left: 10px;
+      margin-right: 24px;
+      margin-left: 24px;
     }
   }
 

@@ -9,8 +9,8 @@ import {
   YBLabel,
   YBTooltip
 } from '../../../../../../components';
-import { UniverseFormData, MasterPlacementType } from '../../../utils/dto';
-import { MASTERS_PLACEMENT_FIELD } from '../../../utils/constants';
+import { UniverseFormData, MasterPlacementMode } from '../../../utils/dto';
+import { MASTER_PLACEMENT_FIELD } from '../../../utils/constants';
 import InfoMessage from '../../../../../../assets/info-message.svg';
 
 const TOOLTIP_TITLE =
@@ -42,12 +42,12 @@ export const MasterPlacementField = ({
 }: MasterPlacementFieldProps): ReactElement => {
   const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
-  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
+  const masterPlacement = useWatch({ name: MASTER_PLACEMENT_FIELD });
   const classes = useStyles();
 
   useEffect(() => {
     if (isAsync) {
-      setValue(MASTERS_PLACEMENT_FIELD, MasterPlacementType.COLOCATED);
+      setValue(MASTER_PLACEMENT_FIELD, MasterPlacementMode.COLOCATED);
     }
   }, [isAsync]);
 
@@ -64,17 +64,17 @@ export const MasterPlacementField = ({
         </Box>
         <Box flex={1} maxWidth="410px">
           <YBRadioGroupField
-            name={MASTERS_PLACEMENT_FIELD}
+            name={MASTER_PLACEMENT_FIELD}
             control={control}
             value={masterPlacement}
             orientation={RadioOrientation.Vertical}
             onChange={(e) => {
-              setValue(MASTERS_PLACEMENT_FIELD, e.target.value as MasterPlacementType);
+              setValue(MASTER_PLACEMENT_FIELD, e.target.value as MasterPlacementMode);
             }}
             options={[
               {
                 // disabled: disabled,
-                value: MasterPlacementType.COLOCATED,
+                value: MasterPlacementMode.COLOCATED,
                 label: (
                   <Box display="flex">
                     {t('universeForm.cloudConfig.colocatedMasterMode')}
@@ -84,7 +84,7 @@ export const MasterPlacementField = ({
               },
               {
                 // disabled: disabled,
-                value: MasterPlacementType.DEDICATED,
+                value: MasterPlacementMode.DEDICATED,
                 label: (
                   <Box display="flex">
                     {t('universeForm.cloudConfig.dedicatedMasterMode')}

@@ -18,7 +18,7 @@ import {
 import { isEphemeralAwsStorageInstance } from '../InstanceTypeField/InstanceTypeFieldHelper';
 import {
   CloudType,
-  MasterPlacementType,
+  MasterPlacementMode,
   StorageType,
   UniverseFormData,
   VolumeType
@@ -29,7 +29,7 @@ import {
   MASTER_DEVICE_INFO_FIELD,
   INSTANCE_TYPE_FIELD,
   MASTER_INSTANCE_TYPE_FIELD,
-  MASTERS_PLACEMENT_FIELD
+  MASTER_PLACEMENT_FIELD
 } from '../../../utils/constants';
 import { useFormFieldStyles } from '../../../universeMainStyle';
 
@@ -66,7 +66,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   const instanceType = isDedicatedMaster
     ? useWatch({ name: MASTER_INSTANCE_TYPE_FIELD })
     : useWatch({ name: INSTANCE_TYPE_FIELD });
-  const masterPlacement = useWatch({ name: MASTERS_PLACEMENT_FIELD });
+  const masterPlacement = useWatch({ name: MASTER_PLACEMENT_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
 
   // To set value based on master or tserver field in dedicated mode
@@ -319,7 +319,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                 </Grid>
                 {!(
                   provider?.code === CloudType.gcp &&
-                  masterPlacement === MasterPlacementType.DEDICATED
+                  masterPlacement === MasterPlacementMode.DEDICATED
                 ) && (
                   <Grid container spacing={2}>
                     <Grid item lg={6} xs={12}>
