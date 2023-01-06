@@ -5,8 +5,7 @@ import { Box } from '@material-ui/core';
 import { YBLabel, YBTooltip, YBToggleField } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import { NODE_TO_NODE_ENCRYPT_FIELD } from '../../../utils/constants';
-import { useFormFieldStyles } from '../../../universeMainStyle';
-import InfoMessage from '../../../../../../assets/info-message.svg';
+import InfoMessageIcon from '../../../../../../assets/info-message.svg';
 
 interface NodeToNodeTLSFieldProps {
   disabled: boolean;
@@ -15,7 +14,6 @@ interface NodeToNodeTLSFieldProps {
 export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
-  const classes = useFormFieldStyles();
   const nodeToNodeTooltipTitle = t(
     'universeForm.securityConfig.encryptionSettings.enableNodeToNodeTLSHelper'
   );
@@ -30,12 +28,12 @@ export const NodeToNodeTLSField = ({ disabled }: NodeToNodeTLSFieldProps): React
         control={control}
         disabled={disabled}
       />
-      <Box flex={1}>
+      <Box flex={1} alignSelf="center">
         <YBLabel dataTestId="NodeToNodeTLSField-Label" width="185px">
           {t('universeForm.securityConfig.encryptionSettings.enableNodeToNodeTLS')}
           &nbsp;
-          <YBTooltip title={nodeToNodeTooltipTitle} className={classes.tooltipText}>
-            <img alt="Info" src={InfoMessage} />
+          <YBTooltip title={nodeToNodeTooltipTitle}>
+            <img alt="Info" src={InfoMessageIcon} />
           </YBTooltip>
         </YBLabel>
       </Box>

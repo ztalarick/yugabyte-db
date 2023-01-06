@@ -47,7 +47,7 @@ export const AccessKeysField = ({ disabled }: AccessKeysFieldProps): ReactElemen
 
   return (
     <Box display="flex" width="100%" data-testid="AccessKeysField-Container">
-      <YBLabel dataTestId={'AccessKeysField-Label'}>
+      <YBLabel dataTestId={'AccessKeysField-Label'} width="200px">
         {t('universeForm.advancedConfig.accessKey')}
       </YBLabel>
       <Box flex={1} className={classes.advancedConfigTextBox}>

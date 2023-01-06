@@ -87,9 +87,11 @@
         "totalPodsField": "Number of Pods",
         "universeName": "Name",
         "universeNameInUse": "Name already in use",
-        "dedicatedMasterMode": "Place Masters on dedicated nodes",
-        "colocatedMasterMode": "Place Masters on the same nodes as T-Servers",
-        "tooltipMasterPlacement": "When to use this setting?"
+        "dedicatedModeHelper": "Place Masters on dedicated nodes",
+        "colocatedModeHelper": "Place Masters on the same nodes as T-Servers",
+        "masterNumNodesHelper": "Number of nodes dedicated to Masters is equal to the Universe’s replication factor and can not be modified.",
+        "whenToUseDedicatedHelper": "When to use this setting?",
+        "masterPlacementHelper": "Select this option if you plan to use this universe for multi-tenancy use cases -or- you expect to create Databases with a very large number of tables"
       },
       "deleteClusterModal": {
         "deleteRRMessage": "Are you sure you want to delete this read replica cluster ?",

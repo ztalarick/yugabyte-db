@@ -51,10 +51,10 @@ export const DeploymentPortsField: FC<DeploymentPortsFieldids> = ({ disabled }) 
       render={({ field: { value, onChange } }) => {
         return (
           <Box display="flex" alignItems="flex-start" data-testid="DeploymentPortsField-Container">
-            <YBLabel dataTestId="DeploymentPortsField-Label">
+            <YBLabel dataTestId="DeploymentPortsField-Label" width="224px">
               {t('universeForm.advancedConfig.overridePorts')}
             </YBLabel>
-            <Box flex={1} display="flex" flexDirection="column" ml={3}>
+            <Box flex={1} display="flex" flexDirection="column">
               <YBToggleField
                 name={CUSTOMIZE_PORT_FIELD}
                 inputProps={{

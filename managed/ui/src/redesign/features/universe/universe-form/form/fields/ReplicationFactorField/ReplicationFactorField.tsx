@@ -12,7 +12,7 @@ interface ReplicationFactorProps {
   isPrimary: boolean;
 }
 
-const useStyles = makeStyles((theme: Theme) => ({
+const useStyles = makeStyles(() => ({
   rfButton: {
     height: themeVariables.inputHeight,
     borderWidth: '0.5px !important'

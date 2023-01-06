@@ -26,6 +26,8 @@ interface StorageTypeFieldProps {
 
 export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType }) => {
   const { t } = useTranslation();
+
+  // watchers
   const fieldValue = useWatch({ name: DEVICE_INFO_FIELD });
   const masterFieldValue = useWatch({ name: MASTER_DEVICE_INFO_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
@@ -99,8 +101,8 @@ export const StorageTypeField: FC<StorageTypeFieldProps> = ({ disableStorageType
   const renderStorageType = () => {
     if (
       [CloudType.gcp, CloudType.azu].includes(provider?.code) ||
-      ((volumeType === VolumeType.EBS || masterVolumeType === VolumeType.EBS) &&
-        provider?.code === CloudType.aws)
+      volumeType === VolumeType.EBS ||
+      masterVolumeType === VolumeType.EBS
     )
       return (
         <Box display="flex">

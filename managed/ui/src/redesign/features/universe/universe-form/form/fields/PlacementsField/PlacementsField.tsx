@@ -82,7 +82,7 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
       const prefferedAZField = `${PLACEMENTS_FIELD}.${index}.isAffinitized` as any;
 
       return (
-        <Box flex={1} display="flex" mb={2} flexDirection="row" key={field.id} mt={0.1}>
+        <Box flex={1} display="flex" mb={2} flexDirection="row" key={field.id}>
           <Box flex={2} mr={1} flexShrink={1} className={classes.defaultTextBox}>
             <YBSelect
               fullWidth

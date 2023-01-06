@@ -1,7 +1,6 @@
 import React, { ReactElement, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { useUpdateEffect } from 'react-use';
 import { Box, Typography, makeStyles } from '@material-ui/core';
 import {
   RadioOrientation,
@@ -11,58 +10,56 @@ import {
 } from '../../../../../../components';
 import { UniverseFormData, MasterPlacementMode } from '../../../utils/dto';
 import { MASTER_PLACEMENT_FIELD } from '../../../utils/constants';
-import InfoMessage from '../../../../../../assets/info-message.svg';
-
-const TOOLTIP_TITLE =
-  'Select this option if you plan to use this universe for \
-  multi-tenancy use cases -or- you expect to create Databases \
-  with a very large number of tables';
+import InfoMessageIcon from '../../../../../../assets/info-message.svg';
 
 interface MasterPlacementFieldProps {
-  disabled?: boolean;
-  isAsync: boolean;
+  isPrimary: boolean;
 }
 
-const useStyles = makeStyles(() => ({
-  tooltipText: {
+const useStyles = makeStyles((theme) => ({
+  tooltipLabel: {
     textDecoration: 'underline',
-    marginLeft: '15px',
+    marginLeft: theme.spacing(2),
     fontSize: '11.5px',
     fontWeight: 400,
     fontFamily: 'Inter',
     color: '#67666C',
     marginTop: '2px',
     cursor: 'default'
+  },
+  checkBoxField: {
+    maxWidth: theme.spacing(52)
   }
 }));
 
-export const MasterPlacementField = ({
-  disabled,
-  isAsync
-}: MasterPlacementFieldProps): ReactElement => {
+export const MasterPlacementField = ({ isPrimary }: MasterPlacementFieldProps): ReactElement => {
   const { control, setValue } = useFormContext<UniverseFormData>();
-  const { t } = useTranslation();
-  const masterPlacement = useWatch({ name: MASTER_PLACEMENT_FIELD });
   const classes = useStyles();
+  const { t } = useTranslation();
+
+  // Tooltip message
+  const masterPlacementTooltipText = t('universeForm.cloudConfig.masterPlacementHelper');
+
+  // watcher
+  const masterPlacement = useWatch({ name: MASTER_PLACEMENT_FIELD });
 
   useEffect(() => {
-    if (isAsync) {
+    if (!isPrimary) {
       setValue(MASTER_PLACEMENT_FIELD, MasterPlacementMode.COLOCATED);
     }
-  }, [isAsync]);
+  }, [isPrimary]);
 
-  if (!isAsync) {
+  if (isPrimary) {
     return (
       <Box display="flex" width="100%" data-testid="MasterPlacement-Container">
         <Box>
           <YBLabel dataTestId="MasterPlacement-Label">
-            {'Master Placement'}
+            {t('universeForm.cloudConfig.masterPlacement')}
             &nbsp;
-            <img alt="More" src={InfoMessage} />
-            {/* <span className="fa fa-info-circle info" style={{ color:  }} /> */}
+            <img alt="More" src={InfoMessageIcon} />
           </YBLabel>
         </Box>
-        <Box flex={1} maxWidth="410px">
+        <Box flex={1} className={classes.checkBoxField}>
           <YBRadioGroupField
             name={MASTER_PLACEMENT_FIELD}
             control={control}
@@ -73,24 +70,17 @@ export const MasterPlacementField = ({
             }}
             options={[
               {
-                // disabled: disabled,
                 value: MasterPlacementMode.COLOCATED,
-                label: (
-                  <Box display="flex">
-                    {t('universeForm.cloudConfig.colocatedMasterMode')}
-                    {/* <YBTooltip title={t('network.vpc.autoRegionsTooltip')} /> */}
-                  </Box>
-                )
+                label: <Box display="flex">{t('universeForm.cloudConfig.colocatedModeHelper')}</Box>
               },
               {
-                // disabled: disabled,
                 value: MasterPlacementMode.DEDICATED,
                 label: (
                   <Box display="flex">
-                    {t('universeForm.cloudConfig.dedicatedMasterMode')}
-                    <YBTooltip title={TOOLTIP_TITLE} className={classes.tooltipText}>
+                    {t('universeForm.cloudConfig.dedicatedModeHelper')}
+                    <YBTooltip title={masterPlacementTooltipText} className={classes.tooltipLabel}>
                       <Typography display="inline">
-                        {t('universeForm.cloudConfig.tooltipMasterPlacement')}
+                        {t('universeForm.cloudConfig.whenToUseDedicatedHelper')}
                       </Typography>
                     </YBTooltip>
                   </Box>

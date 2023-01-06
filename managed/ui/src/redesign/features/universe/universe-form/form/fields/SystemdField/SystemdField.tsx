@@ -16,10 +16,10 @@ export const SystemDField = ({ disabled }: SystemDFieldProps): ReactElement => {
 
   return (
     <Box display="flex" width="100%" data-testid="SystemDField-Container">
-      <YBLabel dataTestId="SystemDField-Label">
+      <YBLabel dataTestId="SystemDField-Label" width="224px">
         {t('universeForm.advancedConfig.enableSystemD')}
       </YBLabel>
-      <Box flex={1} ml={3}>
+      <Box flex={1}>
         <YBToggleField
           name={SYSTEMD_FIELD}
           inputProps={{

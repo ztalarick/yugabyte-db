@@ -1,17 +1,9 @@
-// //shown only for aws, gcp, azu, on-pre, k8s
-// //disabled for non primary cluster
 import React, { ReactElement } from 'react';
 import { useUpdateEffect } from 'react-use';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Box, Grid } from '@material-ui/core';
-import {
-  YBLabel,
-  YBHelper,
-  YBPasswordField,
-  YBToggleField,
-  YBTooltip
-} from '../../../../../../components';
+import { YBLabel, YBPasswordField, YBToggleField, YBTooltip } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import {
   YCQL_AUTH_FIELD,
@@ -22,7 +14,7 @@ import {
   YSQL_FIELD
 } from '../../../utils/constants';
 import { useFormFieldStyles } from '../../../universeMainStyle';
-import InfoMessage from '../../../../../../assets/info-message.svg';
+import InfoMessageIcon from '../../../../../../assets/info-message.svg';
 
 interface YCQLFieldProps {
   disabled: boolean;
@@ -35,10 +27,12 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
     setValue,
     formState: { errors }
   } = useFormContext<UniverseFormData>();
-  const { t } = useTranslation();
   const classes = useFormFieldStyles();
-  const YCQLTooltipTitle = t('universeForm.securityConfig.authSettings.enableYCQLHelper');
-  const YCQLAuthTooltipTitle = t('universeForm.securityConfig.authSettings.enableYCQLAuthHelper');
+  const { t } = useTranslation();
+
+  // Tooltip messages
+  const YCQLTooltipText = t('universeForm.securityConfig.authSettings.enableYCQLHelper');
+  const YCQLAuthTooltipText = t('universeForm.securityConfig.authSettings.enableYCQLAuthHelper');
 
   //watchers
   const ycqlEnabled = useWatch({ name: YCQL_FIELD });
@@ -69,12 +63,12 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
             />
           </div>
         </YBTooltip>
-        <Box flex={1}>
+        <Box flex={1} alignSelf="center">
           <YBLabel dataTestId="YCQLField-EnableLabel">
             {t('universeForm.securityConfig.authSettings.enableYCQL')}
             &nbsp;
-            <YBTooltip title={YCQLTooltipTitle} className={classes.tooltipText}>
-              <img alt="Info" src={InfoMessage} />
+            <YBTooltip title={YCQLTooltipText}>
+              <img alt="Info" src={InfoMessageIcon} />
             </YBTooltip>
           </YBLabel>
         </Box>
@@ -92,12 +86,12 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                 control={control}
                 disabled={disabled}
               />
-              <Box flex={1}>
+              <Box flex={1} alignSelf="center">
                 <YBLabel dataTestId="YCQLField-AuthLabel">
                   {t('universeForm.securityConfig.authSettings.enableYCQLAuth')}
                   &nbsp;
-                  <YBTooltip title={YCQLAuthTooltipTitle} className={classes.tooltipText}>
-                    <img alt="Info" src={InfoMessage} />
+                  <YBTooltip title={YCQLAuthTooltipText}>
+                    <img alt="Info" src={InfoMessageIcon} />
                   </YBTooltip>
                 </YBLabel>
               </Box>
@@ -114,7 +108,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                         {t('universeForm.securityConfig.authSettings.ycqlAuthPassword')}
                       </YBLabel>
                     </Box>
-                    <Box flex={1} maxWidth="400px">
+                    <Box flex={1} className={classes.defaultTextBox}>
                       <YBPasswordField
                         name={YCQL_PASSWORD_FIELD}
                         control={control}
@@ -150,7 +144,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
                         {t('universeForm.securityConfig.authSettings.confirmPassword')}
                       </YBLabel>
                     </Box>
-                    <Box flex={1} maxWidth="400px">
+                    <Box flex={1} className={classes.defaultTextBox}>
                       <YBPasswordField
                         name={YCQL_CONFIRM_PASSWORD_FIELD}
                         control={control}

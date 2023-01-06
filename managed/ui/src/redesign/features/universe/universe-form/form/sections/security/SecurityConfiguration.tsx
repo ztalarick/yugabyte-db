@@ -3,7 +3,7 @@ import { useQuery } from 'react-query';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
-import { Box, Grid, Typography } from '@material-ui/core';
+import { Box, Grid, Typography, makeStyles } from '@material-ui/core';
 import {
   AssignPublicIPField,
   ClientToNodeTLSField,
@@ -35,8 +35,29 @@ import {
 } from '../../../utils/constants';
 import { useSectionStyles } from '../../../universeMainStyle';
 
+const useStyles = makeStyles((theme) => ({
+  settingsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    marginTop: theme.spacing(5),
+    width: '708px'
+  },
+  settingsContainerBorder: {
+    border: '1px solid #E5E5E6',
+    backgroundColor: theme.palette.common.white,
+    borderRadius: theme.spacing(1),
+    marginTop: theme.spacing(2)
+  },
+  settingsContainerDivider: {
+    height: theme.spacing(0),
+    border: '0.5px solid #E5E5E6',
+    marginTop: theme.spacing(2)
+  }
+}));
+
 export const SecurityConfiguration: FC = () => {
   const classes = useSectionStyles();
+  const helperClasses = useStyles();
   const { t } = useTranslation();
 
   //fetch run time configs
@@ -77,19 +98,22 @@ export const SecurityConfiguration: FC = () => {
       <Box width="100%" display="flex" flexDirection="column" justifyContent="center">
         {[CloudType.aws, CloudType.gcp, CloudType.azu].includes(provider?.code) && (
           <>
-            <Box mt={5}>
+            <Box data-testid="IPSettings-Container" className={helperClasses.settingsContainer}>
               <Typography className={classes.subsectionHeaderFont}>
                 {t('universeForm.securityConfig.IPSettings.title')}
               </Typography>
-              <Grid container>
-                <Grid lg={6} item container>
-                  <AssignPublicIPField disabled={!isCreatePrimary} />
+
+              <Box className={helperClasses.settingsContainerBorder}>
+                <Grid container>
+                  <Grid lg={6} item container>
+                    <AssignPublicIPField disabled={!isCreatePrimary} />
+                  </Grid>
                 </Grid>
-              </Grid>
+              </Box>
             </Box>
 
             {currentAccessKeyInfo?.keyInfo?.showSetUpChrony === false && (
-              <Box mt={2}>
+              <Box mt={2} ml={2}>
                 <Grid container>
                   <Grid lg={6} item container>
                     <TimeSyncField disabled={!isCreateMode} />
@@ -109,26 +133,23 @@ export const SecurityConfiguration: FC = () => {
         ].includes(provider?.code) && (
           <>
             <Box
-              display="flex"
-              flexDirection="column"
               data-testid="AuthenticationSettings-Container"
-              mt={6}
-              width="708px"
+              className={helperClasses.settingsContainer}
             >
               <Typography className={classes.subsectionHeaderFont}>
                 {t('universeForm.securityConfig.authSettings.title')}
               </Typography>
 
-              <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" mt={2}>
+              <Box className={helperClasses.settingsContainerBorder}>
                 <Box mt={3} ml={2}>
                   <YSQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
                 </Box>
-                <Box mt={2} border="0.5px solid #E5E5E6" height="0px"></Box>
+                <Box className={helperClasses.settingsContainerDivider}></Box>
 
                 <Box mt={3} ml={2}>
                   <YCQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
                 </Box>
-                <Box mt={2} border="0.5px solid #E5E5E6" height="0px"></Box>
+                <Box className={helperClasses.settingsContainerDivider}></Box>
 
                 <Box mt={3} ml={2} mb={2}>
                   <Grid container>
@@ -141,17 +162,14 @@ export const SecurityConfiguration: FC = () => {
             </Box>
 
             <Box
-              display="flex"
-              flexDirection="column"
-              data-testid="AuthenticationSettings-Container"
-              mt={6}
-              width="708px"
+              data-testid="EncryptionSettings-Container"
+              className={helperClasses.settingsContainer}
             >
               <Typography className={classes.subsectionHeaderFont}>
                 {t('universeForm.securityConfig.encryptionSettings.title')}
               </Typography>
 
-              <Box bgcolor="#FFFFFF" border="1px solid #E5E5E6" borderRadius="8px" mt={2}>
+              <Box className={helperClasses.settingsContainerBorder}>
                 <Box mt={3} ml={2}>
                   <YBLabel dataTestId="YEDISField-Label">
                     {t('universeForm.securityConfig.encryptionSettings.encryptionInTransit')}
@@ -180,7 +198,7 @@ export const SecurityConfiguration: FC = () => {
                     />
                   </Box>
                 )}
-                <Box mt={2} border="0.5px solid #E5E5E6" height="0px"></Box>
+                <Box className={helperClasses.settingsContainerDivider}></Box>
 
                 <Box mt={3} ml={2} mb={2}>
                   <YBLabel dataTestId="YEDISField-Label">
@@ -196,7 +214,7 @@ export const SecurityConfiguration: FC = () => {
                 {encryptionEnabled && isPrimary && (
                   <Box mt={2} ml={2} mb={2}>
                     <Grid container spacing={3}>
-                      <Grid lg={6} item container>
+                      <Grid lg={10} item container>
                         <KMSConfigField disabled={!isCreatePrimary} />
                       </Grid>
                     </Grid>

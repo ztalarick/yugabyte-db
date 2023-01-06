@@ -73,7 +73,7 @@ export const DBVersionField = ({ disabled }: DBVersionFieldProps): ReactElement 
         const value = dbVersions.find((item) => item.value === field.value) ?? '';
         return (
           <Box display="flex" width="100%" data-testid="DBVersionField-Container">
-            <YBLabel dataTestId="DBVersionField-Label">
+            <YBLabel dataTestId="DBVersionField-Label" width="200px">
               {t('universeForm.advancedConfig.dbVersion')}
             </YBLabel>
             <Box flex={1} className={classes.advancedConfigTextBox}>

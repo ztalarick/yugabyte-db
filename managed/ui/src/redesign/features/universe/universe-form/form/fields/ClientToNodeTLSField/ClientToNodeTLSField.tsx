@@ -2,11 +2,10 @@ import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext } from 'react-hook-form';
 import { Box } from '@material-ui/core';
-import { YBLabel, YBHelper, YBToggleField, YBTooltip } from '../../../../../../components';
+import { YBLabel, YBToggleField, YBTooltip } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import { CLIENT_TO_NODE_ENCRYPT_FIELD } from '../../../utils/constants';
-import { useFormFieldStyles } from '../../../universeMainStyle';
-import InfoMessage from '../../../../../../assets/info-message.svg';
+import InfoMessageIcon from '../../../../../../assets/info-message.svg';
 
 interface ClientToNodeTLSFieldProps {
   disabled: boolean;
@@ -15,14 +14,12 @@ interface ClientToNodeTLSFieldProps {
 export const ClientToNodeTLSField = ({ disabled }: ClientToNodeTLSFieldProps): ReactElement => {
   const { control } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
-  const classes = useFormFieldStyles();
-  const clientToNodeTooltipTitle = t(
+  const clientToNodeTooltipText = t(
     'universeForm.securityConfig.encryptionSettings.enableClientToNodeTLSHelper'
   );
 
   return (
     <Box display="flex" width="100%" data-testid="ClientToNodeTLSField-Container">
-      {/* <Box flex={1}> */}
       <YBToggleField
         name={CLIENT_TO_NODE_ENCRYPT_FIELD}
         inputProps={{
@@ -31,12 +28,12 @@ export const ClientToNodeTLSField = ({ disabled }: ClientToNodeTLSFieldProps): R
         control={control}
         disabled={disabled}
       />
-      <Box flex={1}>
+      <Box flex={1} alignSelf="center">
         <YBLabel dataTestId="ClientToNodeTLSField-Label" width="185px">
           {t('universeForm.securityConfig.encryptionSettings.enableClientToNodeTLS')}
           &nbsp;
-          <YBTooltip title={clientToNodeTooltipTitle} className={classes.tooltipText}>
-            <img alt="Info" src={InfoMessage} />
+          <YBTooltip title={clientToNodeTooltipText}>
+            <img alt="Info" src={InfoMessageIcon} />
           </YBTooltip>
         </YBLabel>
       </Box>

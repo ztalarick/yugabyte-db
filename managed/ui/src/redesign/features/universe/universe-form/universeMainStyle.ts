@@ -1,6 +1,4 @@
 import { makeStyles } from '@material-ui/core';
-import { minWidth } from '@material-ui/system';
-import { themeVariables } from '../../../theme/variables';
 
 export const useFormMainStyles = makeStyles((theme) => ({
   mainConatiner: {
@@ -109,12 +107,7 @@ export const useSectionStyles = makeStyles((theme) => ({
     fontFamily: 'Inter',
     fontWeight: 600,
     fontSize: "15px"
-  },
-  labelFont: {
-    fontFamily: 'Inter',
-     fontSize: "13px",
-    fontWeight: 500
-  },
+  }
 }));
 
 export const useFormFieldStyles = makeStyles((theme) => ({
@@ -122,24 +115,21 @@ export const useFormFieldStyles = makeStyles((theme) => ({
     cursor: 'not-allowed',
     opacity: 0.5
   },
+  labelFont: {
+    fontFamily: 'Inter',
+    fontSize: "13px",
+    fontWeight: theme.typography.fontWeightMedium as number
+  },
   defaultTextBox: {
-    maxWidth: "400px",
-    minWidth: "400px"
+    maxWidth: theme.spacing(50),
+    minWidth: theme.spacing(45)
   },
   advancedConfigTextBox: {
-    maxWidth: "440px",
+    maxWidth: theme.spacing(55),
+    minWidth: theme.spacing(50),
     marginLeft: theme.spacing(3)
   },
-  dedicatedModeTextBox: {
-    maxWidth: "382px"
-  },
-  tooltipText: {
-    textDecoration: 'underline',
-    fontSize: '11.5px',
-    fontWeight: 400,
-    fontFamily: 'Inter',
-    color: '#67666C',
-    marginTop: '2px',
-    cursor: 'default'
+  instanceConfigTextBox: {
+    maxWidth: theme.spacing(47.75)
   }
 }));

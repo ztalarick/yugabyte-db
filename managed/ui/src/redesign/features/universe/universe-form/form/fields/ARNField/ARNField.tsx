@@ -18,7 +18,7 @@ export const ARNField = ({ disabled }: ARNFieldProps): ReactElement => {
 
   return (
     <Box display="flex" width="100%" data-testid="ARNField-Container">
-      <YBLabel dataTestId="ARNField-Label">
+      <YBLabel dataTestId="ARNField-Label" width="200px">
         {t('universeForm.advancedConfig.instanceProfileARN')}
       </YBLabel>
       <Box flex={1} className={classes.advancedConfigTextBox}>

@@ -1,34 +1,45 @@
 import React, { FC, useContext } from 'react';
-import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { Box, Grid, Typography } from '@material-ui/core';
+import { Box, Grid, Typography, makeStyles } from '@material-ui/core';
 import { InstanceTypeField, VolumeInfoField, StorageTypeField } from '../../fields';
-import { YBLabel } from '../../../../../../components';
 import { UniverseFormContext } from '../../../UniverseFormContainer';
-import { CloudType, ClusterModes, ClusterType, MasterPlacementMode } from '../../../utils/dto';
+import {
+  CloudType,
+  ClusterModes,
+  ClusterType,
+  MasterPlacementMode,
+  UniverseFormData
+} from '../../../utils/dto';
 import {
   PROVIDER_FIELD,
   MASTER_PLACEMENT_FIELD,
   DEVICE_INFO_FIELD
 } from '../../../utils/constants';
 import { useSectionStyles } from '../../../universeMainStyle';
-import { UniverseFormData } from '../../../utils/dto';
+
+const CONTAINER_WIDTH = '605px';
+
+const useStyles = makeStyles((theme) => ({
+  settingsContainer: {
+    backgroundColor: theme.palette.common.white,
+    border: '1px solid #E5E5E6',
+    width: CONTAINER_WIDTH,
+    borderRadius: theme.spacing(1),
+    marginRight: theme.spacing(2),
+    flexShrink: 1
+  }
+}));
 
 export const InstanceConfiguration: FC = () => {
   const classes = useSectionStyles();
+  const helperClasses = useStyles();
   const { t } = useTranslation();
 
-  //Feature flags
-  const featureFlags = useSelector((state: any) => state.featureFlags);
-  const isDedicatedNodesEnabled =
-    featureFlags.test.enableDedicatedNodes || featureFlags.released.enableDedicatedNodes;
-  const { getValues } = useFormContext<UniverseFormData>();
-
   //form context
+  const { getValues } = useFormContext<UniverseFormData>();
   const { mode, clusterType, newUniverse } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
-  const isAsync = clusterType === ClusterType.ASYNC;
   const isCreateMode = mode === ClusterModes.CREATE; //Form is in edit mode
   const isCreatePrimary = isCreateMode && isPrimary; //Creating Primary Cluster
   const isCreateRR = !newUniverse && isCreateMode && !isPrimary; //Adding Async Cluster to an existing Universe
@@ -36,14 +47,15 @@ export const InstanceConfiguration: FC = () => {
   //field data
   const provider = useWatch({ name: PROVIDER_FIELD });
   const deviceInfo = useWatch({ name: DEVICE_INFO_FIELD });
-  const masterPlacement = isAsync
-    ? getValues(MASTER_PLACEMENT_FIELD)
-    : useWatch({ name: MASTER_PLACEMENT_FIELD });
+  const masterPlacement = isPrimary
+    ? useWatch({ name: MASTER_PLACEMENT_FIELD })
+    : getValues(MASTER_PLACEMENT_FIELD);
 
-  const instanceAndVolumeElement = (isDedicatedMaster: boolean) => {
+  // Wrapper elements to get instance metadata and dedicated container element
+  const getInstanceMetadataElement = (isDedicatedMasterField: boolean) => {
     return (
-      <Box width={masterPlacement === MasterPlacementMode.DEDICATED ? '100%' : '605px'}>
-        <InstanceTypeField isDedicatedMaster={isDedicatedMaster} />
+      <Box width={masterPlacement === MasterPlacementMode.DEDICATED ? '100%' : CONTAINER_WIDTH}>
+        <InstanceTypeField isDedicatedMasterField={isDedicatedMasterField} />
         <VolumeInfoField
           isEditMode={!isCreateMode}
           isPrimary={isPrimary}
@@ -52,24 +64,17 @@ export const InstanceConfiguration: FC = () => {
           disableStorageType={!isCreatePrimary && !isCreateRR}
           disableIops={!isCreatePrimary && !isCreateRR}
           disableThroughput={!isCreatePrimary && !isCreateRR}
-          isDedicatedMaster={isDedicatedMaster}
+          isDedicatedMasterField={isDedicatedMasterField}
         />
       </Box>
     );
   };
-  const instanceElementWrapper = (instanceLabel: string, isDedicatedMaster: boolean) => {
+  const getDedicatedContainerElement = (instanceLabel: string, isDedicatedMasterField: boolean) => {
     return (
-      <Box
-        bgcolor="#FFFFFF"
-        border="1px solid #E5E5E6"
-        width="605px"
-        borderRadius="8px"
-        mr={2}
-        flexShrink={1}
-      >
+      <Box className={helperClasses.settingsContainer}>
         <Box m={2}>
           <Typography className={classes.subsectionHeaderFont}>{t(instanceLabel)}</Typography>
-          {instanceAndVolumeElement(isDedicatedMaster)}
+          {getInstanceMetadataElement(isDedicatedMasterField)}
         </Box>
       </Box>
     );
@@ -80,14 +85,21 @@ export const InstanceConfiguration: FC = () => {
       <Typography className={classes.sectionHeaderFont}>
         {t('universeForm.instanceConfig.title')}
       </Typography>
-      <Box width="100%" display="flex" flexDirection="column" justifyContent="center" mt={4}>
-        <Box flex={1} display="flex" flexDirection="row">
-          {masterPlacement === MasterPlacementMode.COLOCATED
-            ? instanceAndVolumeElement(false)
-            : instanceElementWrapper('universeForm.tserver', false)}
-          {masterPlacement === MasterPlacementMode.DEDICATED &&
-            instanceElementWrapper('universeForm.master', true)}
-        </Box>
+      <Box width="100%" display="flex" flexDirection="column" mt={4}>
+        <Grid container spacing={3}>
+          <Grid lg={6} item container>
+            {/* Display separate section for Master and TServer in dedicated mode*/}
+            <Box flex={1} display="flex" flexDirection="row">
+              {masterPlacement === MasterPlacementMode.COLOCATED
+                ? getInstanceMetadataElement(false)
+                : getDedicatedContainerElement('universeForm.tserver', false)}
+              {masterPlacement === MasterPlacementMode.DEDICATED &&
+                getDedicatedContainerElement('universeForm.master', true)}
+            </Box>
+          </Grid>
+        </Grid>
+
+        {/* Display storage type separately in case of GCP outside the Instance config container */}
         {deviceInfo &&
           provider?.code === CloudType.gcp &&
           masterPlacement === MasterPlacementMode.DEDICATED && (

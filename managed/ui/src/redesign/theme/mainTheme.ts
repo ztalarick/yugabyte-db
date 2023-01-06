@@ -537,6 +537,7 @@ export const mainTheme = createTheme({
     MuiFormControlLabel: {
       root: {
         marginLeft: 0,
+        marginBottom: 0,
 
         '&$disabled': {
           cursor: 'not-allowed',

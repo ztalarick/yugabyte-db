@@ -30,7 +30,6 @@ export const CloudConfiguration: FC = () => {
   //form context
   const { clusterType, mode, universeConfigureTemplate } = useContext(UniverseFormContext)[0];
   const isPrimary = clusterType === ClusterType.PRIMARY;
-  const isAsync = clusterType === ClusterType.ASYNC && mode === ClusterModes.CREATE;
   const isEditMode = mode === ClusterModes.EDIT; //Form is in edit mode
   const isCreatePrimary = !isEditMode && isPrimary; //Creating Primary Cluster
   const isEditPrimary = isEditMode && isPrimary; //Editing Primary Cluster
@@ -44,41 +43,47 @@ export const CloudConfiguration: FC = () => {
     <Box className={classes.sectionContainer} data-testid="cloud-config-section">
       <Box flex={1} display="flex" flexDirection="row">
         <Box>
-          <Box mb={4}>
-            <Typography className={classes.sectionHeaderFont}>
-              {t('universeForm.cloudConfig.title')}
-            </Typography>
-          </Box>
-          {isPrimary && (
-            <Box mt={2}>
-              <UniverseNameField disabled={isEditPrimary} />
-            </Box>
-          )}
-          <Box mt={2}>
-            <ProvidersField disabled={isEditMode} filterByProvider={primaryProviderCode} />
-          </Box>
-          <Box mt={2}>
-            <RegionsField disabled={false} />
-          </Box>
-          {/* {isPrimary && ( */}
-          <Box mt={2}>
-            <MasterPlacementField disabled={isEditMode} isAsync={isAsync} />
-          </Box>
-          {/* )} */}
-          <Box mt={2}>
-            <TotalNodesField disabled={false} isAsync={isAsync} />
-          </Box>
-          <Box mt={2}>
-            <ReplicationFactor disabled={isEditMode} isPrimary={isPrimary} />
-          </Box>
-          {isCreatePrimary && isGeoPartitionEnabled && (
-            <Box mt={2} display="flex" flexDirection="column">
-              <DefaultRegionField />
-            </Box>
-          )}
+          <Grid container spacing={3}>
+            <Grid item lg={12}>
+              <Box mb={4}>
+                <Typography className={classes.sectionHeaderFont}>
+                  {t('universeForm.cloudConfig.title')}
+                </Typography>
+              </Box>
+              {isPrimary && (
+                <Box mt={2}>
+                  <UniverseNameField disabled={isEditPrimary} />
+                </Box>
+              )}
+              <Box mt={2}>
+                <ProvidersField disabled={isEditMode} filterByProvider={primaryProviderCode} />
+              </Box>
+              <Box mt={2}>
+                <RegionsField disabled={false} />
+              </Box>
+              <Box mt={2}>
+                <MasterPlacementField isPrimary={isPrimary} />
+              </Box>
+              <Box mt={2}>
+                <TotalNodesField disabled={false} />
+              </Box>
+              <Box mt={2}>
+                <ReplicationFactor disabled={isEditMode} isPrimary={isPrimary} />
+              </Box>
+              {isCreatePrimary && isGeoPartitionEnabled && (
+                <Box mt={2} display="flex" flexDirection="column">
+                  <DefaultRegionField />
+                </Box>
+              )}
+            </Grid>
+          </Grid>
         </Box>
         <Box ml={5}>
-          <PlacementsField disabled={false} />
+          <Grid container spacing={3}>
+            <Grid item lg={12}>
+              <PlacementsField disabled={false} />
+            </Grid>
+          </Grid>
         </Box>
       </Box>
     </Box>

@@ -1,17 +1,9 @@
-// //shown only for aws, gcp, azu, on-pre, k8s
-// //disabled for non primary cluster
 import React, { ReactElement } from 'react';
 import { useUpdateEffect } from 'react-use';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { Box, Grid } from '@material-ui/core';
-import {
-  YBLabel,
-  YBHelper,
-  YBPasswordField,
-  YBToggleField,
-  YBTooltip
-} from '../../../../../../components';
+import { YBLabel, YBPasswordField, YBToggleField, YBTooltip } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import {
   YSQL_FIELD,
@@ -22,7 +14,7 @@ import {
   YCQL_FIELD
 } from '../../../utils/constants';
 import { useFormFieldStyles } from '../../../universeMainStyle';
-import InfoMessage from '../../../../../../assets/info-message.svg';
+import InfoMessageIcon from '../../../../../../assets/info-message.svg';
 
 interface YSQLFieldProps {
   disabled: boolean;
@@ -35,10 +27,12 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
     setValue,
     formState: { errors }
   } = useFormContext<UniverseFormData>();
-  const { t } = useTranslation();
   const classes = useFormFieldStyles();
-  const YSQLTooltipTitle = t('universeForm.securityConfig.authSettings.enableYSQLHelper');
-  const YSQLAuthTooltipTitle = t('universeForm.securityConfig.authSettings.enableYSQLAuthHelper');
+  const { t } = useTranslation();
+
+  // Tooltip messages
+  const YSQLTooltipText = t('universeForm.securityConfig.authSettings.enableYSQLHelper');
+  const YSQLAuthTooltipText = t('universeForm.securityConfig.authSettings.enableYSQLAuthHelper');
 
   //watchers
   const ysqlEnabled = useWatch({ name: YSQL_FIELD });
@@ -67,17 +61,14 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
               control={control}
               disabled={disabled || !ycqlEnabled}
             />
-            {/* <YBHelper dataTestId="YSQLField-EnableHelper">
-                {t('universeForm.instanceConfig.enableYSQLHelper')}
-              </YBHelper> */}
           </div>
         </YBTooltip>
-        <Box flex={1}>
+        <Box flex={1} alignSelf="center">
           <YBLabel dataTestId="YSQLField-EnableLabel">
             {t('universeForm.securityConfig.authSettings.enableYSQL')}
             &nbsp;
-            <YBTooltip title={YSQLTooltipTitle} className={classes.tooltipText}>
-              <img alt="Info" src={InfoMessage} />
+            <YBTooltip title={YSQLTooltipText}>
+              <img alt="Info" src={InfoMessageIcon} />
             </YBTooltip>
           </YBLabel>
         </Box>
@@ -95,15 +86,12 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
                 control={control}
                 disabled={disabled}
               />
-              {/* <YBHelper dataTestId="YSQLField-AuthHelper">
-                  {t('universeForm.instanceConfig.enableYSQLAuthHelper')}
-                </YBHelper> */}
-              <Box flex={1}>
+              <Box flex={1} alignSelf="center">
                 <YBLabel dataTestId="YSQLField-AuthLabel">
                   {t('universeForm.securityConfig.authSettings.enableYSQLAuth')}
                   &nbsp;
-                  <YBTooltip title={YSQLAuthTooltipTitle} className={classes.tooltipText}>
-                    <img alt="Info" src={InfoMessage} />
+                  <YBTooltip title={YSQLAuthTooltipText}>
+                    <img alt="Info" src={InfoMessageIcon} />
                   </YBTooltip>
                 </YBLabel>
               </Box>
@@ -120,7 +108,7 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
                         {t('universeForm.securityConfig.authSettings.ysqlAuthPassword')}
                       </YBLabel>
                     </Box>
-                    <Box flex={1} maxWidth="400px">
+                    <Box flex={1} className={classes.defaultTextBox}>
                       <YBPasswordField
                         rules={{
                           required:
@@ -156,7 +144,7 @@ export const YSQLField = ({ disabled, isAuthEnforced }: YSQLFieldProps): ReactEl
                         {t('universeForm.securityConfig.authSettings.confirmPassword')}
                       </YBLabel>
                     </Box>
-                    <Box flex={1} maxWidth="400px">
+                    <Box flex={1} className={classes.defaultTextBox}>
                       <YBPasswordField
                         name={YSQL_CONFIRM_PASSWORD_FIELD}
                         control={control}

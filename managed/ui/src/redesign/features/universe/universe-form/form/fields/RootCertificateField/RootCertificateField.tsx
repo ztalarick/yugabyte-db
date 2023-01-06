@@ -22,8 +22,8 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({
   isCreateMode
 }) => {
   const { control, setValue } = useFormContext<UniverseFormData>();
-  const { t } = useTranslation();
   const classes = useFormFieldStyles();
+  const { t } = useTranslation();
 
   //watchers
   const provider = useWatch({ name: PROVIDER_FIELD }); //provider data
@@ -75,7 +75,7 @@ export const RootCertificateField: FC<RootCertificateFieldProps> = ({
             <YBLabel dataTestId="RootCertificateField-Label">
               {t('universeForm.securityConfig.encryptionSettings.rootCertificate')}
             </YBLabel>
-            <Box flex={1} paddingRight="120px">
+            <Box flex={1} className={classes.defaultTextBox}>
               <YBAutoComplete
                 disabled={disabled}
                 loading={isLoading}

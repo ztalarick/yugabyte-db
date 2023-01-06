@@ -3,7 +3,7 @@ import { useQuery } from 'react-query';
 import { useUpdateEffect } from 'react-use';
 import { useTranslation } from 'react-i18next';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
-import { Box, Grid, MenuItem } from '@material-ui/core';
+import { Box, Grid, MenuItem, makeStyles } from '@material-ui/core';
 import { YBInput, YBLabel, YBSelect } from '../../../../../../components';
 import { api, QUERY_KEY } from '../../../utils/api';
 import {
@@ -31,7 +31,6 @@ import {
   MASTER_INSTANCE_TYPE_FIELD,
   MASTER_PLACEMENT_FIELD
 } from '../../../utils/constants';
-import { useFormFieldStyles } from '../../../universeMainStyle';
 
 interface VolumeInfoFieldProps {
   isEditMode: boolean;
@@ -41,8 +40,14 @@ interface VolumeInfoFieldProps {
   disableStorageType: boolean;
   disableVolumeSize: boolean;
   disableNumVolumes: boolean;
-  isDedicatedMaster?: boolean;
+  isDedicatedMasterField?: boolean;
 }
+
+const useStyles = makeStyles((theme) => ({
+  volumeInfoTextField: {
+    width: theme.spacing(15.5)
+  }
+}));
 
 export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   isEditMode,
@@ -52,25 +57,26 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   disableStorageType,
   disableVolumeSize,
   disableNumVolumes,
-  isDedicatedMaster
+  isDedicatedMasterField
 }) => {
   const { control, setValue } = useFormContext<UniverseFormData>();
+  const classes = useStyles();
   const { t } = useTranslation();
   const instanceTypeChanged = useRef(false);
-  const dataTag = isDedicatedMaster ? 'Master' : 'TServer';
-  const classes = useFormFieldStyles();
+  const dataTag = isDedicatedMasterField ? 'Master' : 'TServer';
+
   //watchers
-  const fieldValue = isDedicatedMaster
+  const fieldValue = isDedicatedMasterField
     ? useWatch({ name: MASTER_DEVICE_INFO_FIELD })
     : useWatch({ name: DEVICE_INFO_FIELD });
-  const instanceType = isDedicatedMaster
+  const instanceType = isDedicatedMasterField
     ? useWatch({ name: MASTER_INSTANCE_TYPE_FIELD })
     : useWatch({ name: INSTANCE_TYPE_FIELD });
   const masterPlacement = useWatch({ name: MASTER_PLACEMENT_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });
 
-  // To set value based on master or tserver field in dedicated mode
-  const UPDATE_FIELD = isDedicatedMaster ? MASTER_DEVICE_INFO_FIELD : DEVICE_INFO_FIELD;
+  // Update field is based on master or tserver field in dedicated mode
+  const UPDATE_FIELD = isDedicatedMasterField ? MASTER_DEVICE_INFO_FIELD : DEVICE_INFO_FIELD;
 
   //get instance details
   const { data: instanceTypes } = useQuery(
@@ -168,48 +174,57 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
       isPrimary;
 
     return (
-      <Box display="flex">
-        <Box display="flex">
-          <YBLabel dataTestId="VolumeInfoField-Label">
-            {t('universeForm.instanceConfig.volumeInfo')}
-          </YBLabel>
-        </Box>
+      <Grid container spacing={2}>
+        <Grid item lg={6}>
+          <Box mt={2}>
+            <Box display="flex">
+              <Box display="flex">
+                <YBLabel dataTestId="VolumeInfoField-Label">
+                  {t('universeForm.instanceConfig.volumeInfo')}
+                </YBLabel>
+              </Box>
 
-        <Box display="flex">
-          <Box flex={1} width="124px">
-            <YBInput
-              type="number"
-              fullWidth
-              disabled={fixedNumVolumes || !instanceTypeChanged.current || disableNumVolumes}
-              inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-VolumeInput` }}
-              value={fieldValue.numVolumes}
-              onChange={(event) => onNumVolumesChanged(event.target.value)}
-            />
-          </Box>
+              <Box display="flex">
+                <Box flex={1} className={classes.volumeInfoTextField}>
+                  <YBInput
+                    type="number"
+                    fullWidth
+                    disabled={fixedNumVolumes || !instanceTypeChanged.current || disableNumVolumes}
+                    inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-VolumeInput` }}
+                    value={fieldValue.numVolumes}
+                    onChange={(event) => onNumVolumesChanged(event.target.value)}
+                  />
+                </Box>
 
-          <Box display="flex" alignItems="center" px={1} flexShrink={1}>
-            x
-          </Box>
+                <Box display="flex" alignItems="center" px={1} flexShrink={1}>
+                  x
+                </Box>
 
-          <Box flex={1} width="124px">
-            <YBInput
-              type="number"
-              fullWidth
-              disabled={
-                fixedVolumeSize ||
-                (provider?.code !== CloudType.kubernetes &&
-                  !smartResizePossible &&
-                  !instanceTypeChanged.current) ||
-                disableVolumeSize
-              }
-              inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-VolumeSizeInput` }}
-              value={fieldValue.volumeSize}
-              onChange={(event) => onVolumeSizeChanged(event.target.value)}
-              onBlur={resetThroughput}
-            />
+                <Box flex={1} className={classes.volumeInfoTextField}>
+                  <YBInput
+                    type="number"
+                    fullWidth
+                    disabled={
+                      fixedVolumeSize ||
+                      (provider?.code !== CloudType.kubernetes &&
+                        !smartResizePossible &&
+                        !instanceTypeChanged.current) ||
+                      disableVolumeSize
+                    }
+                    inputProps={{
+                      min: 1,
+                      'data-testid': `VolumeInfoField-${dataTag}-VolumeSizeInput`
+                    }}
+                    value={fieldValue.volumeSize}
+                    onChange={(event) => onVolumeSizeChanged(event.target.value)}
+                    onBlur={resetThroughput}
+                  />
+                </Box>
+              </Box>
+            </Box>
           </Box>
-        </Box>
-      </Box>
+        </Grid>
+      </Grid>
     );
   };
 
@@ -219,30 +234,39 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
       (volumeType === VolumeType.EBS && provider?.code === CloudType.aws)
     )
       return (
-        <Box display="flex">
-          <YBLabel dataTestId="VolumeInfoField-StorageTypeLabel">
-            {provider?.code === CloudType.aws
-              ? t('universeForm.instanceConfig.ebs')
-              : t('universeForm.instanceConfig.ssd')}
-          </YBLabel>
-          <Box flex={1} width="max-content">
-            <YBSelect
-              fullWidth
-              disabled={disableStorageType}
-              value={fieldValue.storageType}
-              inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-StorageTypeSelect` }}
-              onChange={(event) =>
-                onStorageTypeChanged((event?.target.value as unknown) as StorageType)
-              }
-            >
-              {getStorageTypeOptions(provider?.code).map((item) => (
-                <MenuItem key={item.value} value={item.value}>
-                  {item.label}
-                </MenuItem>
-              ))}
-            </YBSelect>
-          </Box>
-        </Box>
+        <Grid container spacing={2}>
+          <Grid item lg={6} xs={12}>
+            <Box mt={1}>
+              <Box display="flex">
+                <YBLabel dataTestId="VolumeInfoField-StorageTypeLabel">
+                  {provider?.code === CloudType.aws
+                    ? t('universeForm.instanceConfig.ebs')
+                    : t('universeForm.instanceConfig.ssd')}
+                </YBLabel>
+                <Box flex={1} width="max-content">
+                  <YBSelect
+                    fullWidth
+                    disabled={disableStorageType}
+                    value={fieldValue.storageType}
+                    inputProps={{
+                      min: 1,
+                      'data-testid': `VolumeInfoField-${dataTag}-StorageTypeSelect`
+                    }}
+                    onChange={(event) =>
+                      onStorageTypeChanged((event?.target.value as unknown) as StorageType)
+                    }
+                  >
+                    {getStorageTypeOptions(provider?.code).map((item) => (
+                      <MenuItem key={item.value} value={item.value}>
+                        {item.label}
+                      </MenuItem>
+                    ))}
+                  </YBSelect>
+                </Box>
+              </Box>
+            </Box>
+          </Grid>
+        </Grid>
       );
 
     return null;
@@ -312,21 +336,11 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
           {fieldValue && (
             <Box display="flex" width="100%" flexDirection="column">
               <Box>
-                <Grid container spacing={2}>
-                  <Grid item lg={6} xs={12}>
-                    <Box mt={2}> {renderVolumeInfo()}</Box>
-                  </Grid>
-                </Grid>
+                {renderVolumeInfo()}
                 {!(
                   provider?.code === CloudType.gcp &&
                   masterPlacement === MasterPlacementMode.DEDICATED
-                ) && (
-                  <Grid container spacing={2}>
-                    <Grid item lg={6} xs={12}>
-                      <Box mt={1}> {renderStorageType()}</Box>
-                    </Grid>
-                  </Grid>
-                )}
+                ) && <>{renderStorageType()}</>}
               </Box>
 
               {fieldValue.storageType && (
