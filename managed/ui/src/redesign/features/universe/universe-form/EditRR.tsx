@@ -2,14 +2,23 @@ import React, { FC, useContext, useState } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { browserHistory } from 'react-router';
+import { toast } from 'react-toastify';
+import { UniverseFormContext } from './UniverseFormContainer';
 import { UniverseForm } from './form/UniverseForm';
 import { DeleteClusterModal } from './action-modals';
 import { YBLoading } from '../../../../components/common/indicators';
 import { api, QUERY_KEY } from './utils/api';
-import { UniverseFormContext } from './UniverseFormContainer';
 import { getPlacements } from './form/fields/PlacementsField/PlacementsFieldHelper';
-import { editReadReplica, getAsyncCluster, getAsyncFormData, getUserIntent } from './utils/helpers';
+import {
+  editReadReplica,
+  getAsyncCluster,
+  getAsyncFormData,
+  getUserIntent,
+  createErrorMessage,
+  transitToUniverse
+} from './utils/helpers';
 import { CloudType, ClusterModes, ClusterType, UniverseFormData } from './utils/dto';
+import { TOAST_AUTO_DISMISS_INTERVAL } from './utils/constants';
 
 interface EditReadReplicaProps {
   uuid: string;
@@ -30,12 +39,17 @@ export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
           mode: ClusterModes.EDIT,
           universeConfigureTemplate: _.cloneDeep(resp.universeDetails)
         });
-        //set Universe Resource Template
-        const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
-        setUniverseResourceTemplate(resourceResponse);
+        try {
+          //set Universe Resource Template
+          const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
+          setUniverseResourceTemplate(resourceResponse);
+        } catch (error) {
+          toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
+        }
       },
-      onError: (err) => {
-        console.log(err);
+      onError: (error) => {
+        console.log(error);
+        transitToUniverse(); //redirect to /universes if universe with uuid doesnot exists
       }
     }
   );

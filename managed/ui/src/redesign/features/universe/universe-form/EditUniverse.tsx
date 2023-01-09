@@ -2,13 +2,19 @@ import React, { FC, useContext, useState } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
 import { browserHistory } from 'react-router';
+import { toast } from 'react-toastify';
+import { UniverseFormContext } from './UniverseFormContainer';
 import { UniverseForm } from './form/UniverseForm';
 import { FullMoveModal, ResizeNodeModal, SmartResizeModal } from './action-modals';
 import { YBLoading } from '../../../../components/common/indicators';
 import { api, QUERY_KEY } from './utils/api';
-import { UniverseFormContext } from './UniverseFormContainer';
 import { getPlacements } from './form/fields/PlacementsField/PlacementsFieldHelper';
-import { getPrimaryFormData, transformTagsArrayToObject, transitToUniverse } from './utils/helpers';
+import {
+  createErrorMessage,
+  getPrimaryFormData,
+  transformTagsArrayToObject,
+  transitToUniverse
+} from './utils/helpers';
 import {
   Cluster,
   ClusterModes,
@@ -24,6 +30,7 @@ import {
   INSTANCE_TYPE_FIELD,
   REGIONS_FIELD,
   REPLICATION_FACTOR_FIELD,
+  TOAST_AUTO_DISMISS_INTERVAL,
   TOTAL_NODES_FIELD,
   USER_TAGS_FIELD
 } from './utils/constants';
@@ -59,12 +66,17 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
           mode: ClusterModes.EDIT,
           universeConfigureTemplate: _.cloneDeep(resp.universeDetails)
         });
-        //set Universe Resource Template
-        const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
-        setUniverseResourceTemplate(resourceResponse);
+        try {
+          //set Universe Resource Template
+          const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
+          setUniverseResourceTemplate(resourceResponse);
+        } catch (error) {
+          toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
+        }
       },
-      onError: (err) => {
-        console.log(err);
+      onError: (error) => {
+        console.log(error);
+        transitToUniverse(); //redirect to /universes if universe with uuid doesnot exists
       }
     }
   );
@@ -73,11 +85,11 @@ export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
 
   const submitEditUniverse = async (finalPayload: UniverseConfigure) => {
     try {
-      await api.editUniverse(finalPayload, uuid);
-    } catch (e) {
-      console.log(e);
-    } finally {
-      transitToUniverse(uuid);
+      let response = await api.editUniverse(finalPayload, uuid);
+      response && transitToUniverse(uuid);
+    } catch (error) {
+      toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
+      console.log(error);
     }
   };
 

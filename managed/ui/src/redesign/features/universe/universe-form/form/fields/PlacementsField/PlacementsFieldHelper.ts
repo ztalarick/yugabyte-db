@@ -3,9 +3,10 @@ import _ from 'lodash';
 import { useUpdateEffect } from 'react-use';
 import { useQuery } from 'react-query';
 import { useWatch, useFormContext } from 'react-hook-form';
+import { toast } from 'react-toastify';
 import { api, QUERY_KEY } from '../../../utils/api';
 import { UniverseFormContext } from '../../../UniverseFormContainer';
-import { getUserIntent } from '../../../utils/helpers';
+import { createErrorMessage, getUserIntent } from '../../../utils/helpers';
 import {
   Placement,
   Cluster,
@@ -25,7 +26,8 @@ import {
   DEVICE_INFO_FIELD,
   DEDICATED_NODES_FIELD,
   MASTERS_IN_DEFAULT_REGION_FIELD,
-  DEFAULT_REGION_FIELD
+  DEFAULT_REGION_FIELD,
+  TOAST_AUTO_DISMISS_INTERVAL
 } from '../../../utils/constants';
 
 export const getPlacementsFromCluster = (
@@ -226,8 +228,15 @@ export const useNodePlacements = () => {
         setUniverseConfigureTemplate(data);
         setRegionsChanged(false);
         setNeedPlacement(false);
-        let resource = await api.universeResource(data); // set Universe resource template whenever configure is called
-        setUniverseResourceTemplate(resource);
+        try {
+          let resource = await api.universeResource(data); // set Universe resource template whenever configure is called
+          setUniverseResourceTemplate(resource);
+        } catch (error) {
+          toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
+        }
+      },
+      onError: (error) => {
+        toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
       }
     }
   );
