@@ -18,6 +18,7 @@ import { getPromiseState } from '../../../utils/PromiseUtils';
 import { getFeatureState } from '../../../utils/LayoutUtils';
 import _ from 'lodash';
 import moment from 'moment';
+import { NodeType } from '../../../redesign/helpers/dtos';
 
 // TODO set predefined defaults another way not to share defaults this way
 const OVERVIEW_METRICS_INTERVAL_MS = 15000;
@@ -56,6 +57,8 @@ class OverviewMetrics extends Component {
 
   componentDidMount() {
     const {
+      universeDetails,
+      dedicatedNodes,
       customer: { currentCustomer }
     } = this.props;
     const { autoRefresh } = this.state;
@@ -115,7 +118,8 @@ class OverviewMetrics extends Component {
 
   queryMetricsType = (graphFilter) => {
     const { startMoment, endMoment, nodeName, nodePrefix } = graphFilter;
-    const { type, isKubernetesUniverse } = this.props;
+    const { type, isKubernetesUniverse, dedicatedNodes, universeDetails } = this.props;
+
     const params = {
       metrics: panelTypes[type].metrics,
       start: startMoment.format('X'),
@@ -134,7 +138,26 @@ class OverviewMetrics extends Component {
     if (isNonEmptyString(this.props.tableName)) {
       params.tableName = this.props.tableName;
     }
-    this.props.queryMetrics(params, type);
+
+    // Query the API for master and tserver nodes separately in case of dedicated nodes case
+    if (!isKubernetesUniverse && dedicatedNodes) {
+      const nodeDetailsSet = universeDetails?.nodeDetailsSet;
+      const masterNodes = nodeDetailsSet
+        ?.filter((masterNode) => masterNode.dedicatedTo === NodeType.Master.toUpperCase())
+        ?.map((masterNode) => masterNode.nodeName);
+      const tserverNodes = nodeDetailsSet
+        ?.filter((tserverNode) => tserverNode.dedicatedTo === NodeType.TServer.toUpperCase())
+        ?.map((tserverNode) => tserverNode.nodeName);
+      // Call to query metrics API for master nodes
+      params.nodeName = masterNodes;
+      this.props.queryMetrics(params, type, true);
+
+      // Call to query metrics API for tserver nodes
+      params.nodeName = tserverNodes;
+      this.props.queryMetrics(params, type);
+    } else if (!isKubernetesUniverse) {
+      this.props.queryMetrics(params, type);
+    }
     if (isKubernetesUniverse) {
       this.props.queryMetrics(
         {
@@ -158,7 +181,7 @@ class OverviewMetrics extends Component {
   render() {
     const {
       type,
-      graph: { metrics },
+      graph: { metrics, masterMetrics },
       customer
     } = this.props;
     const { autoRefresh } = this.state;

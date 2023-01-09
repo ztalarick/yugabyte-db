@@ -4,18 +4,26 @@
 
 .yb-resource-count {
   min-width: 70px;
+  margin-top: 10px;
   white-space: nowrap;
   position: relative;
   padding: 0;
 
   .yb-resource-count-size {
-    font-size: 32px;
     line-height: 30px;
     font-weight: 500;
     color: $YB_VIOLET_TEXT_NEW;
     overflow: hidden;
     text-overflow: ellipsis;
     display: inline-block;
+  }
+
+  .yb-resource-count-label {
+    float: left;
+    margin-top: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    color: $YB_DARKER_GRAY;
   }
 
   .yb-resource-count-unit {

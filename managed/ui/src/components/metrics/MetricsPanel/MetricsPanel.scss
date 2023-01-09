@@ -91,20 +91,47 @@
   }
 
   .metrics-padded-panel {
+    margin-top: 10px;
     padding: 15px 20px;
     .empty-state {
         margin-top: 20px;
       }
   }
 
+  .dedicated-mode-panel {
+    margin-top: -15px !important;
+    .dedicated-mode {
+      font-size: 24px !important;
+      font-weight: 700 !important;
+    }
+  }
+
   .disk-usage-panel {
-    span.metric-subtitle {
+
+    span.metric-left-subtitle {
       display: block;
-      margin: 10px 0;
+      float: left;
+      font-size: 32px;
+      font-weight: 600;
+      color: #303A78;
+      font-weight: 600;
+
+      &__label {
+        font-weight: 600;
+        font-size: 12px;
+        color: #8D8F9A;
+        margin-right: 5px;
+      }
+    }
+    span.metric-right-subtitle {
+      display: block;
+      float: right;
+      margin-top: 20px;
     }
   }
 
   .cpu-usage-panel {
+
     .graph-body {
       margin-top: 15px !important;
       margin-bottom: 5px !important;

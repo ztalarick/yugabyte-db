@@ -591,6 +591,7 @@ export default class UniverseOverviewNew extends Component {
   getDiskUsageWidget = (universeInfo) => {
     // For kubernetes the disk usage would be in container tab, rest it would be server tab.
     const isKubernetes = isKubernetesUniverse(universeInfo);
+    const isDedicatedNodes = isDedicatedNodePlacement(universeInfo);
     const metricTabPath = this.props.enableTopKMetrics ? 'tab' : 'subtab';
     const subTab = isKubernetes ? 'container' : 'server';
     const metricKey = isKubernetes ? 'container_volume_stats' : 'disk_usage';
@@ -606,6 +607,7 @@ export default class UniverseOverviewNew extends Component {
       <StandaloneMetricsPanelContainer
         metricKey={metricKey}
         additionalMetricKeys={secondaryMetric}
+        isDedicatedNodes={isDedicatedNodes}
         type="overview"
       >
         {(props) => {
@@ -622,7 +624,14 @@ export default class UniverseOverviewNew extends Component {
                 ) : null
               }
               headerLeft={props.metric.layout.title}
-              body={<DiskUsagePanel metric={props.metric} className={'disk-usage-container'} />}
+              body={
+                <DiskUsagePanel
+                  metric={props.metric}
+                  masterMetric={props.masterMetric}
+                  isDedicatedNodes={isDedicatedNodes}
+                  className={'disk-usage-container'}
+                />
+              }
             />
           );
         }}
@@ -636,10 +645,12 @@ export default class UniverseOverviewNew extends Component {
     const isDedicatedNodes = isDedicatedNodePlacement(universeInfo);
     const subTab = isItKubernetesUniverse ? 'container' : 'server';
     const metricTabPath = this.props.enableTopKMetrics ? 'tab' : 'subtab';
+
     return (
       <Col lg={isDedicatedNodes ? 2 : 4} md={4} sm={4} xs={6}>
         <StandaloneMetricsPanelContainer
           metricKey={isItKubernetesUniverse ? 'container_cpu_usage' : 'cpu_usage'}
+          isDedicatedNodes={isDedicatedNodes}
           type="overview"
         >
           {(props) => {
@@ -657,8 +668,10 @@ export default class UniverseOverviewNew extends Component {
                 body={
                   <CpuUsagePanel
                     metric={props.metric}
+                    masterMetric={props.masterMetric}
                     className={'disk-usage-container'}
                     isKubernetes={isItKubernetesUniverse}
+                    isDedicatedNodes={isDedicatedNodes}
                   />
                 }
               />
@@ -805,6 +818,11 @@ export default class UniverseOverviewNew extends Component {
     const universeInfo = currentUniverse.data;
     const nodePrefixes = [universeInfo.universeDetails.nodePrefix];
     const isItKubernetesUniverse = isKubernetesUniverse(universeInfo);
+    const universeDetails = universeInfo.universeDetails;
+    const clusters = universeDetails?.clusters;
+    const primaryCluster = getPrimaryCluster(clusters);
+    const userIntent = primaryCluster && primaryCluster?.userIntent;
+    const dedicatedNodes = userIntent?.dedicatedNodes;
 
     const isQueryMonitoringEnabled = localStorage.getItem('__yb_query_monitoring__') === 'true';
     return (
@@ -836,6 +854,8 @@ export default class UniverseOverviewNew extends Component {
               origin={'universe'}
               nodePrefixes={nodePrefixes}
               isKubernetesUniverse={isItKubernetesUniverse}
+              universeDetails={universeDetails}
+              dedicatedNodes={dedicatedNodes}
             />
           </Col>
           <Col lg={4} md={6} sm={6} xs={12}>
