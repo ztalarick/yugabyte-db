@@ -1,6 +1,6 @@
 // Copyright (c) YugaByte, Inc.
 
-@import '../../../_style/colors.scss';
+@use '../../../_style/colors.scss';
 
 .prometheus-link-tooltip {
   font-size: 14px;
@@ -10,7 +10,7 @@
 
 .metrics-panel {
   padding: 1px;
-  background-color: $YB_GRAY;
+  background-color: colors.$YB_GRAY;
   margin: 5px 7.5px;
   position: relative;
   overflow: hidden;
@@ -34,7 +34,7 @@
     flex-direction: row;
 
     .btn-default.active {
-      color: #2B59C3;
+      color: colors.$YB_LABEL_IN_PROGRESS_ICON;
       background: rgba(43, 89, 195, 0.1);
     }
 
@@ -91,7 +91,7 @@
   }
 
   .metrics-padded-panel {
-    margin-top: 10px;
+    margin-top: 25px;
     padding: 15px 20px;
     .empty-state {
         margin-top: 20px;
@@ -115,13 +115,13 @@
       float: left;
       font-size: 32px;
       font-weight: 600;
-      color: #303A78;
+      color: colors.$YB_VIOLET_TEXT_NEW;
       font-weight: 600;
 
       &__label {
         font-weight: 600;
         font-size: 12px;
-        color: #8D8F9A;
+        color: colors.$YB_SUBTITLE_COLOR;
         margin-right: 5px;
       }
     }
@@ -157,7 +157,7 @@
     margin-top: 15px;
 
     thead {
-      border-bottom: 1px solid $YB_GRAY;
+      border-bottom: 1px solid colors.$YB_GRAY;
     }
 
     td {
@@ -179,11 +179,11 @@
 
     .whiskers-plot {
       position: absolute;
-      border-right: 1px solid $YB_BRAND_ORANGE;
-      border-left: 1px solid $YB_BRAND_ORANGE;
+      border-right: 1px solid colors.$YB_BRAND_ORANGE;
+      border-left: 1px solid colors.$YB_BRAND_ORANGE;
       background: linear-gradient(180deg,
           rgba(0, 0, 0, 0) calc(50% - 1px),
-          $YB_BRAND_ORANGE calc(50%),
+          colors.$YB_BRAND_ORANGE calc(50%),
           rgba(0, 0, 0, 0) calc(50% + 1px));
       height: 8px;
       width: 200px;

@@ -2,8 +2,9 @@
 
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import _ from 'lodash';
+import moment from 'moment';
 import { MetricsPanelOverview } from '../';
-import './OverviewMetrics.scss';
 import { YBLoading } from '../../common/indicators';
 import {
   isNonEmptyObject,
@@ -14,11 +15,11 @@ import {
 import { YBPanelLegend } from '../../common/descriptors';
 import { YBWidget } from '../../panels';
 import { METRIC_COLORS } from '../MetricsConfig';
+import { NodeType } from '../../../redesign/helpers/dtos';
 import { getPromiseState } from '../../../utils/PromiseUtils';
 import { getFeatureState } from '../../../utils/LayoutUtils';
-import _ from 'lodash';
-import moment from 'moment';
-import { NodeType } from '../../../redesign/helpers/dtos';
+
+import './OverviewMetrics.scss';
 
 // TODO set predefined defaults another way not to share defaults this way
 const OVERVIEW_METRICS_INTERVAL_MS = 15000;

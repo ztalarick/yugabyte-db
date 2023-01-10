@@ -2,9 +2,10 @@
 
 import React, { Component, Fragment } from 'react';
 import { Graph } from '../';
-import { isNonEmptyArray } from '../../../utils/ObjectUtils';
-import './MetricsPanel.scss';
 import { NodeType } from '../../../redesign/helpers/dtos';
+import { isNonEmptyArray } from '../../../utils/ObjectUtils';
+
+import './MetricsPanel.scss';
 
 export default class DiskUsagePanel extends Component {
   static propTypes = {};

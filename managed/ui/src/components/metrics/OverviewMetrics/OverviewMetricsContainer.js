@@ -1,7 +1,6 @@
 // Copyright (c) YugaByte, Inc.
 
 import { connect } from 'react-redux';
-
 import { OverviewMetrics } from '../../metrics';
 import {
   queryMetrics,

@@ -3,9 +3,9 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { YBLoading } from '../../common/indicators';
-import { isNonEmptyObject } from '../../../utils/ObjectUtils';
 import { METRIC_COLORS } from '../MetricsConfig';
 import { YBWidget } from '../../panels';
+import { isNonEmptyObject } from '../../../utils/ObjectUtils';
 
 class StandaloneMetricsPanel extends Component {
   static propTypes = {
@@ -39,7 +39,7 @@ class StandaloneMetricsPanel extends Component {
     const props = {};
     props.metricKey = metricKey;
     props.width = width;
-    console.log('masterMetrics', masterMetrics);
+
     if (
       Object.keys(metrics).length > 0 &&
       isNonEmptyObject(metrics[type]) &&

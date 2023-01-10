@@ -5,6 +5,7 @@ import { Graph } from '../';
 import { NodeType } from '../../../redesign/helpers/dtos';
 import { isNonEmptyArray } from '../../../utils/ObjectUtils';
 import { YBResourceCount } from '../../../components/common/descriptors';
+
 import './MetricsPanel.scss';
 
 export default class CpuUsagePanel extends Component {

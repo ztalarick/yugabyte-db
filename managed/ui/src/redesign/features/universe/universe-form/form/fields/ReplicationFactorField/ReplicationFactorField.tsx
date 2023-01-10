@@ -1,7 +1,7 @@
 import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useController } from 'react-hook-form';
-import { ButtonGroup, Box, makeStyles, Theme } from '@material-ui/core';
+import { ButtonGroup, Box, makeStyles } from '@material-ui/core';
 import { YBButton, YBLabel } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import { REPLICATION_FACTOR_FIELD } from '../../../utils/constants';

@@ -2,9 +2,9 @@
 
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import { isDefinedNotNull } from '../../../utils/ObjectUtils';
 
 import './Graph.scss';
-import { isDefinedNotNull } from '../../../utils/ObjectUtils';
 
 const ProgressBar = require('progressbar.js');
 const GraphPath = ProgressBar.Path;

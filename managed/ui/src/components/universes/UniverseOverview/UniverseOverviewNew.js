@@ -2,8 +2,9 @@
 
 import React, { Component, PureComponent, Fragment } from 'react';
 import { Link } from 'react-router';
-
 import { Row, Col } from 'react-bootstrap';
+import moment from 'moment';
+import pluralize from 'pluralize';
 import PropTypes from 'prop-types';
 import { FormattedDate, FormattedRelative } from 'react-intl';
 import { ClusterInfoPanelContainer, YBWidget } from '../../panels';
@@ -35,10 +36,8 @@ import {
 import { FlexContainer, FlexGrow, FlexShrink } from '../../common/flexbox/YBFlexBox';
 import { isDefinedNotNull } from '../../../utils/ObjectUtils';
 import { getPromiseState } from '../../../utils/PromiseUtils';
-import { YBButton, YBModal } from '../../common/forms/fields';
-import moment from 'moment';
-import pluralize from 'pluralize';
 import { isEnabled, isDisabled } from '../../../utils/LayoutUtils';
+import { YBButton, YBModal } from '../../common/forms/fields';
 
 class DatabasePanel extends PureComponent {
   static propTypes = {
