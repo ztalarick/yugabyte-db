@@ -1,20 +1,23 @@
 import React, { FC, useContext } from 'react';
 import _ from 'lodash';
 import { useQuery } from 'react-query';
-import { useTranslation } from 'react-i18next';
 import { browserHistory } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'react-toastify';
 import { UniverseFormContext } from './UniverseFormContainer';
 import { UniverseForm } from './form/UniverseForm';
 import { YBLoading } from '../../../../components/common/indicators';
 import { api, QUERY_KEY } from './utils/api';
 import { getPlacements } from './form/fields/PlacementsField/PlacementsFieldHelper';
 import {
+  createErrorMessage,
   createReadReplica,
   filterFormDataByClusterType,
   getAsyncCluster,
   getPrimaryCluster,
   getPrimaryFormData,
-  getUserIntent
+  getUserIntent,
+  transitToUniverse
 } from './utils/helpers';
 import {
   CloudType,
@@ -24,6 +27,7 @@ import {
   NodeState,
   UniverseFormData
 } from './utils/dto';
+import { TOAST_AUTO_DISMISS_INTERVAL } from './utils/constants';
 
 interface CreateReadReplicaProps {
   uuid: string;
@@ -46,8 +50,16 @@ export const CreateReadReplica: FC<CreateReadReplicaProps> = ({ uuid }) => {
           universeConfigureTemplate: _.cloneDeep(resp.universeDetails)
         });
         //set Universe Resource Template
-        const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
-        setUniverseResourceTemplate(resourceResponse);
+        try {
+          const resourceResponse = await api.universeResource(_.cloneDeep(resp.universeDetails));
+          setUniverseResourceTemplate(resourceResponse);
+        } catch (error) {
+          toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
+        }
+      },
+      onError: (error) => {
+        console.log(error);
+        transitToUniverse(); //redirect to /universes if universe with uuid doesnot exists
       }
     }
   );

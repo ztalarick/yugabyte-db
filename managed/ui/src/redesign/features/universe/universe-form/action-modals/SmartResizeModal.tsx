@@ -45,10 +45,10 @@ export const SmartResizeModal: FC<SRModalProps> = ({
       dialogContentProps={{ style: { paddingTop: 20 } }}
       onSubmit={handleFullMove}
       titleSeparator
-      submitTestId="submit-full-move"
-      cancelTestId="close-smart-resize"
+      submitTestId="SmartResizeModal-FM"
+      cancelTestId="SmartResizeModal-Cancel"
       actionsInfo={
-        <YBButton data-testid="open-smart-resize" variant="primary" onClick={handleSmartResize}>
+        <YBButton data-testid="SmartResizeModal-SR" variant="primary" onClick={handleSmartResize}>
           {t('universeForm.smartResizeModal.buttonLabel')}
         </YBButton>
       }

@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { browserHistory } from 'react-router';
+import { toast } from 'react-toastify';
 import {
   CloudType,
   ClusterType,
@@ -15,12 +16,19 @@ import {
   MasterPlacementMode
 } from './dto';
 import { UniverseFormContextState } from '../UniverseFormContainer';
-import { ASYNC_FIELDS, PRIMARY_FIELDS, ASYNC_COPY_FIELDS } from './constants';
+import {
+  ASYNC_FIELDS,
+  PRIMARY_FIELDS,
+  ASYNC_COPY_FIELDS,
+  TOAST_AUTO_DISMISS_INTERVAL
+} from './constants';
 import { api } from './api';
 import { getPlacementsFromCluster } from '../form/fields/PlacementsField/PlacementsFieldHelper';
 
-export const transitToUniverse = (universeUUID: string) =>
-  browserHistory.push(`/universes/${universeUUID}/tasks`);
+export const transitToUniverse = (universeUUID?: string) =>
+  universeUUID
+    ? browserHistory.push(`/universes/${universeUUID}/tasks`)
+    : browserHistory.push(`/universes`);
 
 export const getClusterByType = (universeData: UniverseDetails, clusterType: ClusterType) =>
   universeData.clusters.find((cluster) => cluster.clusterType === clusterType);
@@ -43,6 +51,24 @@ export const getAsyncFormData = (universeData: UniverseDetails) =>
 //returns fields needs to be copied from Primary to Async in Create+RR flow
 export const getAsyncCopyFields = (formData: UniverseFormData) =>
   _.pick(formData, ASYNC_COPY_FIELDS);
+
+//create error msg from reponse payload
+export const createErrorMessage = (payload: any) => {
+  const structuredError = payload?.response?.data?.error;
+  if (structuredError) {
+    if (typeof structuredError == 'string') {
+      return structuredError;
+    }
+    const message = Object.keys(structuredError)
+      .map((fieldName) => {
+        const messages = structuredError[fieldName];
+        return fieldName + ': ' + messages.join(', ');
+      })
+      .join('\n');
+    return message;
+  }
+  return payload.message;
+};
 
 //Filter form data by cluster type
 export const filterFormDataByClusterType = (
@@ -205,7 +231,6 @@ export const createUniverse = async ({
   configurePayload: UniverseConfigure;
   universeContextData: UniverseFormContextState;
 }) => {
-  let response;
   try {
     // in create mode no configure call is made with all form fields ( intent )
     const configPayload = configurePayload as UniverseDetails;
@@ -226,11 +251,15 @@ export const createUniverse = async ({
     //patch - end
 
     // now everything is ready to create universe
-    response = await api.createUniverse(finalPayload);
+    let response = await api.createUniverse(finalPayload);
+
+    //redirect to task page
+    response?.universeUUID && transitToUniverse(response.universeUUID);
+    return response;
   } catch (error) {
     console.error(error);
-  } finally {
-    response?.universeUUID && transitToUniverse(response.universeUUID);
+    toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
+    return error;
   }
 };
 
@@ -239,12 +268,13 @@ export const createReadReplica = async (configurePayload: UniverseConfigure) => 
   if (!universeUUID) return false;
   try {
     // now everything is ready to create async cluster
-    return await api.createCluster(configurePayload, universeUUID);
+    let response = await api.createCluster(configurePayload, universeUUID);
+    response && transitToUniverse(universeUUID);
+    return response;
   } catch (error) {
     console.error(error);
+    toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
     return error;
-  } finally {
-    transitToUniverse(universeUUID);
   }
 };
 
@@ -253,11 +283,12 @@ export const editReadReplica = async (configurePayload: UniverseConfigure) => {
   if (!universeUUID) return false;
   try {
     // now everything is ready to edit universe
-    return await api.editUniverse(configurePayload, universeUUID);
+    let response = await api.editUniverse(configurePayload, universeUUID);
+    response && transitToUniverse(universeUUID);
+    return response;
   } catch (error) {
     console.error(error);
+    toast.error(createErrorMessage(error), { autoClose: TOAST_AUTO_DISMISS_INTERVAL });
     return error;
-  } finally {
-    transitToUniverse(universeUUID);
   }
 };

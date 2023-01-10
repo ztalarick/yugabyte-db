@@ -1,8 +1,8 @@
 import React, { FC, useContext } from 'react';
 import { useSelector } from 'react-redux';
+import { browserHistory } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useUpdateEffect, useEffectOnce } from 'react-use';
-import { browserHistory } from 'react-router';
 import { UniverseFormContext } from './UniverseFormContainer';
 import { UniverseForm } from './form/UniverseForm';
 import { YBLoading } from '../../../../components/common/indicators';
@@ -18,10 +18,10 @@ import {
   ClusterType,
   ClusterModes,
   NodeDetails,
-  DEFAULT_FORM_DATA,
   UniverseFormData,
   CloudType,
-  UniverseConfigure
+  UniverseConfigure,
+  DEFAULT_FORM_DATA
 } from './utils/dto';
 
 export const CreateUniverse: FC = () => {
@@ -52,14 +52,17 @@ export const CreateUniverse: FC = () => {
     });
   });
 
+  //Toggle ClusterType after Primary data is set to avoid bad effects
   useUpdateEffect(() => {
     toggleClusterType(ClusterType.ASYNC);
   }, [primaryFormData]);
 
+  //Toggle ClusterType after Async data is set to avoid bad effects
   useUpdateEffect(() => {
     toggleClusterType(ClusterType.PRIMARY);
   }, [asyncFormData]);
 
+  //Set Loader to false after all the updates are done
   useUpdateEffect(() => {
     setLoader(false);
   }, [clusterType]);

@@ -2,13 +2,13 @@ import React, { createContext, FC } from 'react';
 import { useQuery } from 'react-query';
 import { useMethods } from 'react-use';
 import { RouteComponentProps } from 'react-router-dom';
-import { api, QUERY_KEY } from './utils/api';
 import { Box } from '@material-ui/core';
 import { YBLoading } from '../../../../components/common/indicators';
 import { CreateReadReplica } from './CreateRR';
 import { CreateUniverse } from './CreateUniverse';
 import { EditReadReplica } from './EditRR';
 import { EditUniverse } from './EditUniverse';
+import { api, QUERY_KEY } from './utils/api';
 import {
   UniverseConfigure,
   ClusterType,
@@ -98,7 +98,7 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
   const mode = MODE?.toUpperCase();
   const clusterType = CLUSTER_TYPE?.toUpperCase();
 
-  //prefetch provider data for smooth painting
+  //prefetch provider data
   const { isLoading: isProviderLoading } = useQuery(
     QUERY_KEY.getProvidersList,
     api.getProvidersList

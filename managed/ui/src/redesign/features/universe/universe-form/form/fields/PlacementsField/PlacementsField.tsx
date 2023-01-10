@@ -21,6 +21,7 @@ interface PlacementsFieldProps {
 //Extended for useFieldArray
 export type PlacementWithId = Placement & { id: any };
 
+const DEFAULT_MIN_NUM_NODE = 1;
 export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
@@ -74,7 +75,8 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
     const totalNodesinAz = fields
       .map((e) => e.numNodesInAZ)
       .reduce((prev, cur) => prev + cur, initialCount);
-    return fields[index].numNodesInAZ - (totalNodesinAz - getValues(REPLICATION_FACTOR_FIELD)) || 1;
+    const min = fields[index].numNodesInAZ - (totalNodesinAz - getValues(REPLICATION_FACTOR_FIELD));
+    return min > 0 ? min : DEFAULT_MIN_NUM_NODE;
   };
 
   const renderPlacements = () => {

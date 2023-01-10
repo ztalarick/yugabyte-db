@@ -157,3 +157,5 @@ export const ASYNC_COPY_FIELDS = [
 ];
 
 export const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9!@#$%^&*]{8,256}$/;
+
+export const TOAST_AUTO_DISMISS_INTERVAL = 3000;
