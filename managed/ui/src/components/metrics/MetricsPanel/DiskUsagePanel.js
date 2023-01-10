@@ -84,11 +84,19 @@ export default class DiskUsagePanel extends Component {
       <div className={`metrics-padded-panel disk-usage-panel  ${customClassName}-mode-panel`}>
         {isNaN(space.size) ? (
           <Fragment>
-            <div className="centered text-light text-lightgray empty-state">No Data</div>
+            <div
+              className={`centered text-light text-lightgray empty-state ${customClassName}-mode-empty`}
+            >
+              No Data
+            </div>
             <Graph value={0} />
             {isDedicatedNodes && (
               <>
-                <div className="centered text-light text-lightgray empty-state">No Data</div>
+                <div
+                  className={`centered text-light text-lightgray empty-state ${customClassName}-mode-empty`}
+                >
+                  No Data
+                </div>
                 <Graph value={0} />
               </>
             )}

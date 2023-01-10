@@ -56,7 +56,10 @@ export const CloudConfiguration: FC = () => {
                 </Box>
               )}
               <Box mt={2}>
-                <ProvidersField disabled={isEditMode} filterByProvider={primaryProviderCode} />
+                <ProvidersField
+                  disabled={isEditMode || !isPrimary}
+                  filterByProvider={primaryProviderCode}
+                />
               </Box>
               <Box mt={2}>
                 <RegionsField disabled={false} />

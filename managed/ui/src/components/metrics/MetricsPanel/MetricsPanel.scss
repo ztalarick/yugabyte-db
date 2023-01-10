@@ -100,14 +100,16 @@
 
   .dedicated-mode-panel {
     margin-top: -15px !important;
-    .dedicated-mode {
+    .dedicated-mode-space {
       font-size: 24px !important;
       font-weight: 700 !important;
+    }
+    .dedicated-mode-empty {
+      float: left;
     }
   }
 
   .disk-usage-panel {
-
     span.metric-left-subtitle {
       display: block;
       float: left;

@@ -68,12 +68,20 @@ export default class CpuUsagePanel extends Component {
       <div className={`metrics-padded-panel cpu-usage-panel ${customClassName}-mode-panel`}>
         {isNaN(usage.system) ? (
           <Fragment>
-            <div className="centered text-light text-lightgray empty-state">No Data</div>
+            <div
+              className={`centered text-light text-lightgray empty-state ${customClassName}-mode-empty`}
+            >
+              No Data
+            </div>
             <Graph value={0} />
 
             {isDedicatedNodes && (
               <>
-                <div className="centered text-light text-lightgray empty-state">No Data</div>
+                <div
+                  className={`centered text-light text-lightgray empty-state ${customClassName}-mode-empty`}
+                >
+                  No Data
+                </div>
                 <Graph value={0} />
               </>
             )}
