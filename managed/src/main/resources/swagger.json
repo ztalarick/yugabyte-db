@@ -1117,7 +1117,7 @@
         },
         "target" : {
           "description" : "Target",
-          "enum" : [ "Session", "CloudProvider", "Region", "AvailabilityZone", "CustomerConfig", "KMSConfig", "Customer", "Release", "Certificate", "Alert", "AlertTemplateSettings", "AlertChannel", "AlertDestination", "MaintenanceWindow", "AccessKey", "Universe", "XClusterConfig", "Table", "Backup", "CustomerTask", "NodeInstance", "PlatformInstance", "Schedule", "User", "LoggingConfig", "RuntimeConfigKey", "HAConfig", "HABackup", "ScheduledScript", "SupportBundle", "GFlags", "Hook", "HookScope", "NodeAgent", "CustomerLicense", "PerformanceRecommendation" ],
+          "enum" : [ "Session", "CloudProvider", "Region", "AvailabilityZone", "CustomerConfig", "KMSConfig", "Customer", "Release", "Certificate", "Alert", "AlertTemplateSettings", "AlertChannel", "AlertDestination", "MaintenanceWindow", "AccessKey", "Universe", "XClusterConfig", "Table", "Backup", "CustomerTask", "NodeInstance", "PlatformInstance", "Schedule", "User", "LoggingConfig", "RuntimeConfigKey", "HAConfig", "HABackup", "ScheduledScript", "SupportBundle", "GFlags", "Hook", "HookScope", "NodeAgent", "CustomerLicense", "PerformanceRecommendation", "PerformanceAdvisorSettings" ],
           "example" : "User",
           "readOnly" : true,
           "type" : "string"
@@ -2703,7 +2703,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -2855,7 +2856,6 @@
           "items" : {
             "$ref" : "#/definitions/Region"
           },
-          "readOnly" : true,
           "type" : "array"
         },
         "userIntent" : {
@@ -4067,7 +4067,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -4690,7 +4691,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -5909,6 +5911,99 @@
       "required" : [ "buildNumber" ],
       "type" : "object"
     },
+    "PerfAdvisorSettingsFormData" : {
+      "properties" : {
+        "connectionSkewIntervalMins" : {
+          "description" : "Perf advisor connection skew check interval",
+          "format" : "int32",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "connectionSkewMinConnections" : {
+          "description" : "Perf advisor connection skew min connections",
+          "format" : "int32",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "connectionSkewThreshold" : {
+          "description" : "Perf advisor connection skew threshold",
+          "format" : "double",
+          "minimum" : 1,
+          "type" : "number"
+        },
+        "cpuSkewIntervalMins" : {
+          "description" : "Perf advisor cpu skew check interval",
+          "format" : "int32",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "cpuSkewMinUsage" : {
+          "description" : "Perf advisor cpu skew min cpu usage",
+          "format" : "double",
+          "minimum" : 1,
+          "type" : "number"
+        },
+        "cpuSkewThreshold" : {
+          "description" : "Perf advisor cpu skew threshold",
+          "format" : "double",
+          "minimum" : 1,
+          "type" : "number"
+        },
+        "cpuUsageIntervalMins" : {
+          "description" : "Perf advisor CPU usage check interval",
+          "format" : "int32",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "cpuUsageThreshold" : {
+          "description" : "Perf advisor CPU usage threshold",
+          "format" : "double",
+          "minimum" : 1,
+          "type" : "number"
+        },
+        "enabled" : {
+          "description" : "Enable/disable perf advisor runs for the universe",
+          "type" : "boolean"
+        },
+        "interval" : {
+          "description" : "Perf advisor runs period",
+          "format" : "int32",
+          "minimum" : 5,
+          "type" : "integer"
+        },
+        "querySkewIntervalMins" : {
+          "description" : "Perf advisor query skew check interval",
+          "format" : "int32",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "querySkewMinQueries" : {
+          "description" : "Perf advisor query skew min queries",
+          "format" : "int32",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "querySkewThreshold" : {
+          "description" : "Perf advisor query skew threshold",
+          "format" : "double",
+          "minimum" : 1,
+          "type" : "number"
+        },
+        "rejectedConnIntervalMins" : {
+          "description" : "Perf advisor rejected connections check interval",
+          "format" : "int32",
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "rejectedConnThreshold" : {
+          "description" : "Perf advisor rejected connections threshold",
+          "format" : "int32",
+          "minimum" : 1,
+          "type" : "integer"
+        }
+      },
+      "type" : "object"
+    },
     "PerformanceRecommendation" : {
       "properties" : {
         "customerId" : {
@@ -5925,6 +6020,9 @@
         "id" : {
           "format" : "uuid",
           "type" : "string"
+        },
+        "isStale" : {
+          "type" : "boolean"
         },
         "new" : {
           "type" : "boolean"
@@ -5954,7 +6052,7 @@
           "type" : "integer"
         },
         "recommendationType" : {
-          "enum" : [ "UNUSED_INDEX", "RANGE_SHARDING", "QUERY_LOAD_SKEW", "CONNECTION_SKEW", "CPU_SKEW", "CPU_USAGE" ],
+          "enum" : [ "UNUSED_INDEX", "RANGE_SHARDING", "QUERY_LOAD_SKEW", "CONNECTION_SKEW", "CPU_SKEW", "CPU_USAGE", "REJECTED_CONNECTIONS" ],
           "type" : "string"
         },
         "stateChangeAuditInfoList" : {
@@ -5968,7 +6066,7 @@
           "type" : "string"
         }
       },
-      "required" : [ "customerId", "entityNames", "entityType", "id", "new", "observation", "recommendation", "recommendationInfo", "recommendationPriority", "recommendationState", "recommendationTimestamp", "recommendationType", "stateChangeAuditInfoList", "universeId" ],
+      "required" : [ "customerId", "entityNames", "entityType", "id", "isStale", "new", "observation", "recommendation", "recommendationInfo", "recommendationPriority", "recommendationState", "recommendationTimestamp", "recommendationType", "stateChangeAuditInfoList", "universeId" ],
       "type" : "object"
     },
     "PerformanceRecommendationFilter" : {
@@ -5984,6 +6082,9 @@
           },
           "type" : "array",
           "uniqueItems" : true
+        },
+        "isStale" : {
+          "type" : "boolean"
         },
         "priorities" : {
           "items" : {
@@ -6003,7 +6104,7 @@
         },
         "types" : {
           "items" : {
-            "enum" : [ "UNUSED_INDEX", "RANGE_SHARDING", "QUERY_LOAD_SKEW", "CONNECTION_SKEW", "CPU_SKEW", "CPU_USAGE" ],
+            "enum" : [ "UNUSED_INDEX", "RANGE_SHARDING", "QUERY_LOAD_SKEW", "CONNECTION_SKEW", "CPU_SKEW", "CPU_USAGE", "REJECTED_CONNECTIONS" ],
             "type" : "string"
           },
           "type" : "array",
@@ -6014,7 +6115,7 @@
           "type" : "string"
         }
       },
-      "required" : [ "customerId", "ids", "priorities", "states", "types", "universeId" ],
+      "required" : [ "customerId", "ids", "isStale", "priorities", "states", "types", "universeId" ],
       "type" : "object"
     },
     "PerformanceRecommendationPagedQuery" : {
@@ -6844,7 +6945,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -7068,7 +7170,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -8093,7 +8196,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -8486,7 +8590,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -8946,7 +9051,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -9165,7 +9271,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -9392,7 +9499,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -9598,7 +9706,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -9804,7 +9913,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -10206,7 +10316,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -10765,7 +10876,8 @@
         },
         "xclusterInfo" : {
           "$ref" : "#/definitions/XClusterInfo",
-          "description" : "XCluster related states in this universe"
+          "description" : "XCluster related states in this universe",
+          "readOnly" : true
         },
         "ybPrevSoftwareVersion" : {
           "description" : "Previous software version",
@@ -11082,6 +11194,7 @@
       "properties" : {
         "backupUuid" : {
           "format" : "uuid",
+          "readOnly" : true,
           "type" : "string"
         },
         "bootstrapCreateTime" : {
@@ -11109,6 +11222,7 @@
         },
         "restoreUuid" : {
           "format" : "uuid",
+          "readOnly" : true,
           "type" : "string"
         },
         "status" : {
@@ -17123,6 +17237,75 @@
         } ],
         "summary" : "Pause a universe",
         "tags" : [ "Universe management" ]
+      }
+    },
+    "/api/v1/customers/{cUUID}/universes/{uniUUID}/perf_advisor_settings" : {
+      "get" : {
+        "description" : "",
+        "operationId" : "getSettings",
+        "parameters" : [ {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "cUUID",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "uniUUID",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/PerfAdvisorSettingsFormData"
+            }
+          }
+        },
+        "security" : [ {
+          "apiKeyAuth" : [ ]
+        } ],
+        "summary" : "Get universe performance advisor settings",
+        "tags" : [ "Performance Advisor" ]
+      },
+      "post" : {
+        "description" : "",
+        "operationId" : "updateSettings",
+        "parameters" : [ {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "cUUID",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "uniUUID",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "PerformanceAdvisorSettingsRequest",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/PerfAdvisorSettingsFormData"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/YBPSuccess"
+            }
+          }
+        },
+        "security" : [ {
+          "apiKeyAuth" : [ ]
+        } ],
+        "summary" : "Update universe performance advisor settings",
+        "tags" : [ "Performance Advisor" ]
       }
     },
     "/api/v1/customers/{cUUID}/universes/{uniUUID}/pitr" : {
