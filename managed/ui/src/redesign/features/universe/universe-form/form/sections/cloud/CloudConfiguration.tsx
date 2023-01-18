@@ -81,7 +81,7 @@ export const CloudConfiguration: FC = () => {
           )}
         </Grid>
         <Grid item lg={6}>
-          <PlacementsField disabled={false} />
+          <PlacementsField disabled={false} isPrimary={isPrimary} />
         </Grid>
       </Grid>
     </Box>
