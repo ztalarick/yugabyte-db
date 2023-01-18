@@ -5965,12 +5965,6 @@
           "description" : "Enable/disable perf advisor runs for the universe",
           "type" : "boolean"
         },
-        "interval" : {
-          "description" : "Perf advisor runs period",
-          "format" : "int32",
-          "minimum" : 5,
-          "type" : "integer"
-        },
         "querySkewIntervalMins" : {
           "description" : "Perf advisor query skew check interval",
           "format" : "int32",
@@ -5999,6 +5993,12 @@
           "description" : "Perf advisor rejected connections threshold",
           "format" : "int32",
           "minimum" : 1,
+          "type" : "integer"
+        },
+        "runFrequencyMins" : {
+          "description" : "Perf advisor runs frequency, in minutes",
+          "format" : "int32",
+          "minimum" : 5,
           "type" : "integer"
         }
       },

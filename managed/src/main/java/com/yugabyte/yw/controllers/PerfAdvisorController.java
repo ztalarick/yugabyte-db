@@ -69,7 +69,7 @@ public class PerfAdvisorController extends AuthenticatedController {
   private static final List<ConfKeyInfo<?>> PERF_ADVISOR_RUNTIME_CONFIG_KEYS =
       ImmutableList.<ConfKeyInfo<?>>builder()
           .add(UniverseConfKeys.perfAdvisorEnabled)
-          .add(UniverseConfKeys.perfAdvisorIntervalMins)
+          .add(UniverseConfKeys.perfAdvisorUniverseFrequencyMins)
           .add(UniverseConfKeys.perfAdvisorConnectionSkewThreshold)
           .add(UniverseConfKeys.perfAdvisorConnectionSkewMinConnections)
           .add(UniverseConfKeys.perfAdvisorConnectionSkewIntervalMins)
@@ -265,8 +265,8 @@ public class PerfAdvisorController extends AuthenticatedController {
             .collect(Collectors.toMap(RuntimeConfigEntry::getPath, Function.identity()));
     PerfAdvisorSettingsFormData response = new PerfAdvisorSettingsFormData();
     response.setEnabled(getRuntimeConfigValue(currentValues, UniverseConfKeys.perfAdvisorEnabled));
-    response.setInterval(
-        getRuntimeConfigValue(currentValues, UniverseConfKeys.perfAdvisorIntervalMins));
+    response.setRunFrequencyMins(
+        getRuntimeConfigValue(currentValues, UniverseConfKeys.perfAdvisorUniverseFrequencyMins));
 
     response.setConnectionSkewThreshold(
         getRuntimeConfigValue(currentValues, UniverseConfKeys.perfAdvisorConnectionSkewThreshold));
@@ -324,8 +324,8 @@ public class PerfAdvisorController extends AuthenticatedController {
     setRuntimeConfigValue(
         customerUUID,
         universeUUID,
-        UniverseConfKeys.perfAdvisorIntervalMins,
-        settings.getInterval());
+        UniverseConfKeys.perfAdvisorUniverseFrequencyMins,
+        settings.getRunFrequencyMins());
 
     setRuntimeConfigValue(
         customerUUID,

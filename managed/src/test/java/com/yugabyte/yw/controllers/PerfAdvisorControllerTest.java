@@ -289,7 +289,7 @@ public class PerfAdvisorControllerTest extends FakeDBApplication {
     PerfAdvisorSettingsFormData settings =
         new PerfAdvisorSettingsFormData()
             .setEnabled(true)
-            .setInterval(10)
+            .setRunFrequencyMins(10)
             .setConnectionSkewThreshold(60.0)
             .setConnectionSkewMinConnections(100)
             .setConnectionSkewIntervalMins(5)

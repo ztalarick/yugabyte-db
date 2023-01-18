@@ -325,12 +325,12 @@ public class UniverseConfKeys extends RuntimeConfigKeysModule {
           "Enable Performance Advisor",
           "Defines if performance advisor is enabled for the universe or not",
           ConfDataType.BooleanType);
-  public static final ConfKeyInfo<Integer> perfAdvisorIntervalMins =
+  public static final ConfKeyInfo<Integer> perfAdvisorUniverseFrequencyMins =
       new ConfKeyInfo<>(
-          "yb.perf_advisor.interval_mins",
+          "yb.perf_advisor.universe_frequency_mins",
           ScopeType.UNIVERSE,
-          "Performance Advisor Run Interval",
-          "Defines performance advisor run interval for universe",
+          "Performance Advisor Run Frequency",
+          "Defines performance advisor run frequency for universe",
           ConfDataType.IntegerType);
 
   public static final ConfKeyInfo<Double> perfAdvisorConnectionSkewThreshold =
@@ -434,5 +434,4 @@ public class UniverseConfKeys extends RuntimeConfigKeysModule {
           "Performance Advisor rejected connections interval mins",
           "Defines time interval for rejected connections recommendation check, in minutes",
           ConfDataType.IntegerType);
-
 }

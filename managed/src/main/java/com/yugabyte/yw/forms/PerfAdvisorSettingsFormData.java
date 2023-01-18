@@ -18,8 +18,8 @@ public class PerfAdvisorSettingsFormData {
   private Boolean enabled;
 
   @Min(5)
-  @ApiModelProperty(value = "Perf advisor runs period")
-  private Integer interval;
+  @ApiModelProperty(value = "Perf advisor runs frequency, in minutes")
+  private Integer runFrequencyMins;
 
   @ApiModelProperty(value = "Perf advisor connection skew threshold")
   @Min(1)

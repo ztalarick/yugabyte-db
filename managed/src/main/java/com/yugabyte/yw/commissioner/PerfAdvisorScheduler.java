@@ -113,10 +113,11 @@ public class PerfAdvisorScheduler {
         continue;
       }
       Long lastRun = universeLastRun.get(u.getUniverseUUID());
-      int runPeriodMin = universeConfig.getInt(UniverseConfKeys.perfAdvisorIntervalMins.getKey());
+      int runFrequencyMins =
+          universeConfig.getInt(UniverseConfKeys.perfAdvisorUniverseFrequencyMins.getKey());
       if (lastRun != null
           && Instant.now()
-              .isBefore(Instant.ofEpochMilli(lastRun).plus(runPeriodMin, ChronoUnit.MINUTES))) {
+              .isBefore(Instant.ofEpochMilli(lastRun).plus(runFrequencyMins, ChronoUnit.MINUTES))) {
         // Need to wait before subsequent run
         continue;
       }
