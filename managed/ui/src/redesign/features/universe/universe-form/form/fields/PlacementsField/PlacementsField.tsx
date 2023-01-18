@@ -15,13 +15,14 @@ import {
 
 interface PlacementsFieldProps {
   disabled: boolean;
+  isPrimary: boolean;
 }
 
 //Extended for useFieldArray
 export type PlacementWithId = Placement & { id: any };
 
 const DEFAULT_MIN_NUM_NODE = 1;
-export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElement => {
+export const PlacementsField = ({ disabled, isPrimary }: PlacementsFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
 
@@ -53,11 +54,13 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
             : t('universeForm.cloudConfig.azNodesLabel')}
         </YBLabel>
       </Box>
-      <Box flexShrink={1} width="100px">
-        <YBLabel dataTestId="PlacementsField-PreferredLabel">
-          {t('universeForm.cloudConfig.preferredAZLabel')}
-        </YBLabel>
-      </Box>
+      {isPrimary && (
+        <Box flexShrink={1} width="100px">
+          <YBLabel dataTestId="PlacementsField-PreferredLabel">
+            {t('universeForm.cloudConfig.preferredAZLabel')}
+          </YBLabel>
+        </Box>
+      )}
     </Box>
   );
 
@@ -125,22 +128,24 @@ export const PlacementsField = ({ disabled }: PlacementsFieldProps): ReactElemen
               )}
             />
           </Box>
-          <Box flexShrink={1} display="flex" alignItems="center" width="100px">
-            <YBCheckbox
-              size="medium"
-              name={prefferedAZField}
-              onChange={(e) => {
-                setValue(prefferedAZField, e.target.checked);
-              }}
-              defaultChecked={field.isAffinitized}
-              value={field.isAffinitized}
-              disabled={isLoading}
-              label=""
-              inputProps={{
-                'data-testid': `PlacementsField-PrefferedCheckbox${index}`
-              }}
-            />
-          </Box>
+          {isPrimary && (
+            <Box flexShrink={1} display="flex" alignItems="center" width="100px">
+              <YBCheckbox
+                size="medium"
+                name={prefferedAZField}
+                onChange={(e) => {
+                  setValue(prefferedAZField, e.target.checked);
+                }}
+                defaultChecked={field.isAffinitized}
+                value={field.isAffinitized}
+                disabled={isLoading}
+                label=""
+                inputProps={{
+                  'data-testid': `PlacementsField-PrefferedCheckbox${index}`
+                }}
+              />
+            </Box>
+          )}
         </Box>
       );
     });
