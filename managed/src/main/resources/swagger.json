@@ -1249,7 +1249,7 @@
           "type" : "string"
         },
         "secondarySubnet" : {
-          "description" : "AZ subnet",
+          "description" : "AZ secondary subnet",
           "type" : "string"
         },
         "subnet" : {
@@ -1264,6 +1264,20 @@
       "properties" : {
         "cloudInfo" : {
           "$ref" : "#/definitions/AZCloudInfo"
+        }
+      },
+      "type" : "object"
+    },
+    "AvailabilityZoneEditData" : {
+      "description" : "Model used to edit an availability zone",
+      "properties" : {
+        "secondarySubnet" : {
+          "description" : "AZ secondary subnet",
+          "type" : "string"
+        },
+        "subnet" : {
+          "description" : "AZ subnet",
+          "type" : "string"
         }
       },
       "type" : "object"
@@ -15156,7 +15170,7 @@
           "name" : "azFormData",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/definitions/AvailabilityZoneEditData"
           }
         } ],
         "responses" : {
