@@ -106,6 +106,8 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
     if (isEditMode) instanceTypeChanged.current = true;
   }, [instanceType]);
 
+  const convertToString = (str: string) => str?.toString() ?? '';
+
   //reset methods
   const resetThroughput = () => {
     const { storageType, throughput, diskIops } = fieldValue;
@@ -146,7 +148,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
   };
 
   const onNumVolumesChanged = (numVolumes: any) => {
-    setValue(UPDATE_FIELD, { ...fieldValue, numVolumes });
+    setValue(UPDATE_FIELD, { ...fieldValue, numVolumes: Number(numVolumes) });
   };
 
   //render
@@ -191,8 +193,9 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                     fullWidth
                     disabled={fixedNumVolumes || !instanceTypeChanged.current || disableNumVolumes}
                     inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-VolumeInput` }}
-                    value={fieldValue.numVolumes}
+                    value={convertToString(fieldValue.numVolumes)}
                     onChange={(event) => onNumVolumesChanged(event.target.value)}
+                    inputMode="numeric"
                   />
                 </Box>
 
@@ -215,9 +218,10 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                       min: 1,
                       'data-testid': `VolumeInfoField-${dataTag}-VolumeSizeInput`
                     }}
-                    value={fieldValue.volumeSize}
+                    value={convertToString(fieldValue.volumeSize)}
                     onChange={(event) => onVolumeSizeChanged(event.target.value)}
                     onBlur={resetThroughput}
+                    inputMode="numeric"
                   />
                 </Box>
               </Box>
@@ -249,7 +253,6 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                     disabled={disableStorageType}
                     value={fieldValue.storageType}
                     inputProps={{
-                      min: 1,
                       'data-testid': `VolumeInfoField-${dataTag}-StorageTypeSelect`
                     }}
                     onChange={(event) =>
@@ -291,9 +294,10 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                 fullWidth
                 disabled={disableIops}
                 inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-DiskIopsInput` }}
-                value={fieldValue.diskIops}
+                value={convertToString(fieldValue.diskIops)}
                 onChange={(event) => onDiskIopsChanged(event.target.value)}
                 onBlur={resetThroughput}
+                inputMode="numeric"
               />
             </Box>
           </Box>
@@ -317,8 +321,9 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
                 fullWidth
                 disabled={disableThroughput}
                 inputProps={{ min: 1, 'data-testid': `VolumeInfoField-${dataTag}-ThroughputInput` }}
-                value={fieldValue.throughput}
+                value={convertToString(fieldValue.throughput)}
                 onChange={(event) => onThroughputChange(event.target.value)}
+                inputMode="numeric"
               />
             </Box>
           </Box>
@@ -346,6 +351,7 @@ export const VolumeInfoField: FC<VolumeInfoFieldProps> = ({
               {fieldValue.storageType && (
                 <Box>
                   {renderDiskIops()}
+
                   {renderThroughput()}
                 </Box>
               )}

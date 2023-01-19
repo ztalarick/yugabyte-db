@@ -18,10 +18,10 @@ import InfoMessageIcon from '../../../../../../assets/info-message.svg';
 
 interface YCQLFieldProps {
   disabled: boolean;
-  isAuthEnforced?: boolean;
+  enforceAuth?: boolean;
 }
 
-export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactElement => {
+export const YCQLField = ({ disabled, enforceAuth }: YCQLFieldProps): ReactElement => {
   const {
     control,
     setValue,
@@ -76,7 +76,7 @@ export const YCQLField = ({ disabled, isAuthEnforced }: YCQLFieldProps): ReactEl
 
       {ycqlEnabled && (
         <Box mt={3}>
-          {!isAuthEnforced && (
+          {!enforceAuth && (
             <Box display="flex">
               <YBToggleField
                 name={YCQL_AUTH_FIELD}

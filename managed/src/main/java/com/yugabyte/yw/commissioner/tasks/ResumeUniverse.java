@@ -103,7 +103,7 @@ public class ResumeUniverse extends UniverseDefinitionTaskBase {
         createTServerTaskForNode(node, "start")
             .setSubTaskGroupType(SubTaskGroupType.StartingNodeProcesses);
       }
-      createWaitForServersTasks(masterNodeList, ServerType.TSERVER)
+      createWaitForServersTasks(tserverNodeList, ServerType.TSERVER)
           .setSubTaskGroupType(SubTaskGroupType.ConfigureUniverse);
 
       // Set the node state to live.

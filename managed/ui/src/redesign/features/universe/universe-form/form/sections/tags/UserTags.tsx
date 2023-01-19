@@ -28,7 +28,7 @@ export const UserTags: FC = () => {
           {t('universeForm.userTags.title')}
         </Typography>
         <Box display="flex" width="100%" mt={2}>
-          <Grid container lg={6}>
+          <Grid container item lg={6}>
             <UserTagsField />
           </Grid>
         </Box>

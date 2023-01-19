@@ -142,12 +142,12 @@ export const SecurityConfiguration: FC = () => {
 
               <Box className={helperClasses.settingsContainerBorder}>
                 <Box mt={3} ml={2}>
-                  <YSQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
+                  <YSQLField disabled={!isCreatePrimary} enforceAuth={isAuthEnforced} />
                 </Box>
                 <Box className={helperClasses.settingsContainerDivider}></Box>
 
                 <Box mt={3} ml={2}>
-                  <YCQLField disabled={!isCreatePrimary} isAuthEnforced={isAuthEnforced} />
+                  <YCQLField disabled={!isCreatePrimary} enforceAuth={isAuthEnforced} />
                 </Box>
                 <Box className={helperClasses.settingsContainerDivider}></Box>
 

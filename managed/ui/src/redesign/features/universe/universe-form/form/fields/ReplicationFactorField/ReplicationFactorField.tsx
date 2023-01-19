@@ -2,7 +2,7 @@ import React, { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormContext, useController } from 'react-hook-form';
 import { ButtonGroup, Box, makeStyles } from '@material-ui/core';
-import { YBButton, YBLabel } from '../../../../../../components';
+import { YBButton, YBInputField, YBLabel } from '../../../../../../components';
 import { UniverseFormData } from '../../../utils/dto';
 import { REPLICATION_FACTOR_FIELD } from '../../../utils/constants';
 import { themeVariables } from '../../../../../../theme/variables';
@@ -20,13 +20,12 @@ const useStyles = makeStyles(() => ({
 }));
 
 const PRIMARY_RF = [1, 3, 5, 7];
-const ASYNC_RF = [1, 2, 3, 4, 5, 6, 7];
 
 export const ReplicationFactor = ({
   disabled,
   isPrimary
 }: ReplicationFactorProps): ReactElement => {
-  const { setValue } = useFormContext<UniverseFormData>();
+  const { control, setValue } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
   const classes = useStyles();
 
@@ -48,25 +47,40 @@ export const ReplicationFactor = ({
           : t('universeForm.cloudConfig.numReadReplicas')}
       </YBLabel>
       <Box flex={1}>
-        <ButtonGroup variant="contained" color="default">
-          {(isPrimary ? PRIMARY_RF : ASYNC_RF).map((factor) => {
-            return (
-              <YBButton
-                key={factor}
-                className={classes.rfButton}
-                data-testid={`ReplicationFactor-option${factor}`}
-                disabled={factor !== value && disabled}
-                variant={factor === value ? 'primary' : 'secondary'}
-                onClick={(e: any) => {
-                  if (disabled) e.preventDefault();
-                  else handleSelect(factor);
-                }}
-              >
-                {factor}
-              </YBButton>
-            );
-          })}
-        </ButtonGroup>
+        {isPrimary ? (
+          <ButtonGroup variant="contained" color="default">
+            {PRIMARY_RF.map((factor) => {
+              return (
+                <YBButton
+                  key={factor}
+                  className={classes.rfButton}
+                  data-testid={`ReplicationFactor-option${factor}`}
+                  disabled={factor !== value && disabled}
+                  variant={factor === value ? 'primary' : 'secondary'}
+                  onClick={(e: any) => {
+                    if (disabled) e.preventDefault();
+                    else handleSelect(factor);
+                  }}
+                >
+                  {factor}
+                </YBButton>
+              );
+            })}
+          </ButtonGroup>
+        ) : (
+          <YBInputField
+            control={control}
+            name={REPLICATION_FACTOR_FIELD}
+            fullWidth
+            type="number"
+            disabled={disabled}
+            inputProps={{
+              'data-testid': 'ReplicationFactor-Input',
+              min: 1,
+              max: 15
+            }}
+          />
+        )}
       </Box>
     </Box>
   );
