@@ -1,6 +1,6 @@
 // Copyright YugaByte Inc.
-// eslint-disable-next-line import/named
-import { UniverseOverview } from '../../universes';
+
+import UniverseOverview from '../UniverseOverview';
 import { connect } from 'react-redux';
 
 function mapStateToProps(state) {
