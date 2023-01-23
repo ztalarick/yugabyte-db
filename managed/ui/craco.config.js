@@ -58,7 +58,23 @@ module.exports = {
           target: 'es2015'
         })
       ];
-
+      webpackConfig.module.rules.unshift({
+        test: /\.svg$/,
+        use: [
+          {
+            loader: '@svgr/webpack',
+            options: {
+              svgoConfig: {
+                plugins: [
+                  {
+                    removeViewBox: false
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      });
       return webpackConfig;
     }
   }

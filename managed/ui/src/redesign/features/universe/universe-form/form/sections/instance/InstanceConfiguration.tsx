@@ -35,40 +35,8 @@ import {
   CLIENT_TO_NODE_ENCRYPT_FIELD,
   NODE_TO_NODE_ENCRYPT_FIELD,
   ACCESS_KEY_FIELD
-} from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
-import {
-  AssignPublicIPField,
-  ClientToNodeTLSField,
-  EncryptionAtRestField,
-  InstanceTypeField,
-  KMSConfigField,
-  NodeToNodeTLSField,
-  RootCertificateField,
-  TimeSyncField,
-  VolumeInfoField,
-  YEDISField,
-  YCQLField,
-  YSQLField,
-  DedicatedNodesField
-} from '../../fields';
-import { YBLabel } from '../../../../../components';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import {
-  AccessKey,
-  CloudType,
-  ClusterModes,
-  ClusterType,
-  RunTimeConfigEntry
-} from '../../utils/dto';
-import {
-  PROVIDER_FIELD,
-  EAR_FIELD,
-  CLIENT_TO_NODE_ENCRYPT_FIELD,
-  NODE_TO_NODE_ENCRYPT_FIELD,
-  ACCESS_KEY_FIELD
-} from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
+} from '../../../utils/constants';
+import { useSectionStyles } from '../../../universeMainStyle';
 
 export const InstanceConfiguration: FC = () => {
   const classes = useSectionStyles();

@@ -11,29 +11,17 @@ import {
   NetworkAccessField,
   SystemDField
 } from '../../fields';
-import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
-import { PROVIDER_FIELD } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
-import {
-  AccessKeysField,
-  ARNField,
-  DBVersionField,
-  DeploymentPortsField,
-  IPV6Field,
-  NetworkAccessField,
-  SystemDField
-} from '../../fields';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import { CloudType, ClusterModes, ClusterType } from '../../utils/dto';
-import { PROVIDER_FIELD } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
+import { CloudType, ClusterModes, ClusterType } from '../../../utils/dto';
+import { PROVIDER_FIELD } from '../../../utils/constants';
+import { useSectionStyles } from '../../../universeMainStyle';
+import { UniverseFormContext } from '../../../UniverseFormContainer';
 
 export const AdvancedConfiguration: FC = () => {
   const classes = useSectionStyles();
   const { t } = useTranslation();
 
   //form context
-  const { clusterType, mode, newUniverse } = useContext(UniverseFormContext)[0];
+  const { clusterType, mode, newUniverse }: any = useContext(UniverseFormContext)[0];
 
   const isPrimary = clusterType === ClusterType.PRIMARY;
   const isCreateMode = mode === ClusterModes.CREATE; //Form is in edit mode

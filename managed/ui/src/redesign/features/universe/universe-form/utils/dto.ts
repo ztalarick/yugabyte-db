@@ -241,28 +241,6 @@ export interface Placement {
   parentRegionCode: string;
 }
 
-export enum ClusterModes {
-  CREATE = 'CREATE',
-  EDIT = 'EDIT'
-}
-
-export enum ClusterType {
-  PRIMARY = 'PRIMARY',
-  ASYNC = 'ASYNC'
-}
-
-export enum CloudType {
-  unknown = 'unknown',
-  aws = 'aws',
-  gcp = 'gcp',
-  azu = 'azu',
-  docker = 'docker',
-  onprem = 'onprem',
-  kubernetes = 'kubernetes',
-  cloud = 'cloud-1',
-  other = 'other'
-}
-
 export interface CommunicationPorts {
   masterHttpPort: number;
   masterRpcPort: number;
@@ -277,16 +255,6 @@ export interface CommunicationPorts {
   nodeExporterPort: number;
 }
 
-export enum StorageType {
-  IO1 = 'IO1',
-  GP2 = 'GP2',
-  GP3 = 'GP3',
-  Scratch = 'Scratch',
-  Persistent = 'Persistent',
-  StandardSSD_LRS = 'StandardSSD_LRS',
-  Premium_LRS = 'Premium_LRS',
-  UltraSSD_LRS = 'UltraSSD_LRS'
-}
 export interface DeviceInfo {
   volumeSize: number;
   numVolumes: number;
@@ -295,11 +263,6 @@ export interface DeviceInfo {
   storageClass: 'standard'; // hardcoded in DeviceInfo.java
   mountPoints: string | null;
   storageType: StorageType | null;
-}
-
-export enum ExposingServiceTypes {
-  EXPOSED = 'EXPOSED',
-  UNEXPOSED = 'UNEXPOSED'
 }
 
 //-------------------------------------------------------- Most Used OR Common Types - Ends --------------------------------------------------------
@@ -333,7 +296,7 @@ export interface UserIntent {
   providerType: CloudType;
   replicationFactor: number;
   regionList: string[];
-  instanceType: string;
+  instanceType: string | null;
   numNodes: number;
   ybSoftwareVersion: string | null;
   deviceInfo: DeviceInfo | null;
@@ -370,25 +333,6 @@ export interface Cluster {
   clusterType: ClusterType;
   userIntent: UserIntent;
   regions?: any;
-}
-
-export enum NodeState {
-  ToBeAdded = 'ToBeAdded',
-  Provisioned = 'Provisioned',
-  SoftwareInstalled = 'SoftwareInstalled',
-  UpgradeSoftware = 'UpgradeSoftware',
-  UpdateGFlags = 'UpdateGFlags',
-  Live = 'Live',
-  Stopping = 'Stopping',
-  Starting = 'Starting',
-  Stopped = 'Stopped',
-  Unreachable = 'Unreachable',
-  ToBeRemoved = 'ToBeRemoved',
-  Removing = 'Removing',
-  Removed = 'Removed',
-  Adding = 'Adding',
-  BeingDecommissioned = 'BeingDecommissioned',
-  Decommissioned = 'Decommissioned'
 }
 
 export interface NodeDetails {
@@ -435,8 +379,6 @@ export interface UniverseDetails {
   enableYbc: boolean;
   updateOptions: string[];
 }
-
-export type UniverseConfigure = Partial<UniverseDetails>;
 
 export interface Resources {
   azList: string[];

@@ -77,7 +77,7 @@ const createFormMethods = (contextState: UniverseFormContextState) => ({
   reset: (): UniverseFormContextState => initialState
 });
 
-export const UniverseFormContext = createContext<any>(initialState);
+export const UniverseFormContext = createContext<UniverseFormContextState>(initialState);
 export type FormContextMethods = ReturnType<typeof createFormMethods>;
 interface UniverseFormContainerProps {
   mode: string;
@@ -91,23 +91,12 @@ export const UniverseFormContainer: FC<RouteComponentProps<{}, UniverseFormConta
   params
 }) => {
   const classes = useFormMainStyles();
-  const universeContextData = useMethods(createFormMethods, initialState);
+  const universeContextData = useMethods(createFormMethods, initialState) as any;
   const { type: CLUSTER_TYPE, mode: MODE, uuid } = params;
 
   //route has it in lower case & enum has it in upper case
   const mode = MODE?.toUpperCase();
   const clusterType = CLUSTER_TYPE?.toUpperCase();
-
-  //prefetch provider data
-  const { isLoading: isProviderLoading } = useQuery(
-    QUERY_KEY.getProvidersList,
-    api.getProvidersList
-  );
-
-  //prefetch runtime configs
-  const { isLoading: isRuntimeConfigsLoading } = useQuery(QUERY_KEY.fetchRunTimeConfigs, () =>
-    api.fetchRunTimeConfigs(true)
-  );
 
   //prefetch provider data for smooth painting
   const { isLoading: isProviderLoading } = useQuery(

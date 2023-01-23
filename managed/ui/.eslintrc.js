@@ -28,6 +28,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2020,
     sourceType: 'module',
+    files: ['*.ts', '*.tsx'],
     ecmaFeatures: {
       jsx: true
     },
@@ -46,6 +47,7 @@ module.exports = {
     'plugin:react/recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
+    'plugin:import/typescript',
     // Disable rules that conflict with Prettier
     // Prettier must be last to override other configs
     'prettier'
@@ -55,14 +57,15 @@ module.exports = {
     'react-hooks/exhaustive-deps': 0,
     'react/react-in-jsx-scope': 0,
     'react/jsx-key': 0,
-    'import/named': 2,
+    'import/named': 0,
     'import/namespace': 2,
-    'import/export': 2,
+    'import/export': 0,
     semi: 2,
     'no-var': 2,
     'prefer-const': 2,
     'no-undef': 0,
     'one-var': [2, 'never'],
+    'import/no-unresolved': [0, { caseSensitive: false }],
     // TODO: Handle null check in a separate diff
     eqeqeq: 2,
     'no-useless-return': 2,

@@ -25,7 +25,6 @@ const DEFAULT_MIN_NUM_NODE = 1;
 export const PlacementsField = ({ disabled, isPrimary }: PlacementsFieldProps): ReactElement => {
   const { control, setValue, getValues } = useFormContext<UniverseFormData>();
   const { t } = useTranslation();
-
   //watchers
   const replicationFactor = useWatch({ name: REPLICATION_FACTOR_FIELD });
   const provider = useWatch({ name: PROVIDER_FIELD });

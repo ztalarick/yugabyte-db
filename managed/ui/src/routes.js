@@ -251,11 +251,6 @@ export default (store) => {
         <Route path="/universe/:uuid" component={UniverseDetail} />
         <Route path="/universe/:uuid/edit/primary" component={EditUniverse} />
         <Route path="/universe/:uuid/edit/async" component={EditUniverse} /> */}
-        <Route path="/universe/new" component={CreateUniverse} />
-        <Route path="/universe/:uuid/new/async" component={CreateUniverse}></Route>
-        <Route path="/universe/:uuid" component={UniverseDetail} />
-        <Route path="/universe/:uuid/edit/primary" component={EditUniverse} />
-        <Route path="/universe/:uuid/edit/async" component={EditUniverse} /> */}
         {/* ------------------------------------------------------------------------*/}
         <Route path="/tasks" component={Tasks}>
           <IndexRoute component={TasksList} />

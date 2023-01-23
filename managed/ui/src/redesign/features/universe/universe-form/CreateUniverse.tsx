@@ -26,7 +26,7 @@ import {
 
 export const CreateUniverse: FC = () => {
   const { t } = useTranslation();
-  const [contextState, contextMethods] = useContext(UniverseFormContext);
+  const [contextState, contextMethods]: any = useContext(UniverseFormContext);
   const {
     asyncFormData,
     clusterType,

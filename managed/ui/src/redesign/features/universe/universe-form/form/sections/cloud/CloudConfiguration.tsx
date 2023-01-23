@@ -12,22 +12,10 @@ import {
   TotalNodesField,
   UniverseNameField
 } from '../../fields';
-import { getPrimaryCluster } from '../../utils/helpers';
-import { ClusterModes, ClusterType } from '../../utils/dto';
-import { useSectionStyles } from '../../universeMainStyle';
-import {
-  UniverseNameField,
-  PlacementsField,
-  ProvidersField,
-  RegionsField,
-  ReplicationFactor,
-  TotalNodesField,
-  DefaultRegionField
-} from '../../fields';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import { getPrimaryCluster } from '../../utils/helpers';
-import { ClusterModes, ClusterType } from '../../utils/dto';
-import { useSectionStyles } from '../../universeMainStyle';
+import { getPrimaryCluster } from '../../../utils/helpers';
+import { ClusterModes, ClusterType } from '../../../utils/dto';
+import { useSectionStyles } from '../../../universeMainStyle';
+import { UniverseFormContext } from '../../../UniverseFormContainer';
 
 export const CloudConfiguration: FC = () => {
   const classes = useSectionStyles();

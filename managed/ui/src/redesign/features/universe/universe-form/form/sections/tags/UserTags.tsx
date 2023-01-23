@@ -3,15 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
 import { Box, Grid, Typography } from '@material-ui/core';
 import { UserTagsField } from '../../fields';
-import { CloudType, ClusterType } from '../../utils/dto';
-import { PROVIDER_FIELD } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
-import { CloudType, ClusterType } from '../../utils/dto';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import { UserTagsField } from '../../fields';
-import { CloudType, ClusterType } from '../../utils/dto';
-import { PROVIDER_FIELD } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
+import { CloudType, ClusterType } from '../../../utils/dto';
+import { PROVIDER_FIELD } from '../../../utils/constants';
+import { useSectionStyles } from '../../../universeMainStyle';
+import { UniverseFormContext } from '../../../UniverseFormContainer';
 
 export const UserTags: FC = () => {
   const classes = useSectionStyles();

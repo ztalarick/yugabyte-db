@@ -60,10 +60,6 @@ export const UniverseForm: FC<UniverseFormProps> = ({
   const isEditMode = mode === ClusterModes.EDIT;
   const isEditRR = isEditMode && !isPrimary;
 
-  //context state
-  const { clusterType } = useContext(UniverseFormContext)[0];
-  const isPrimary = clusterType === ClusterType.PRIMARY;
-
   //init form
   const formMethods = useForm<UniverseFormData>({
     mode: 'onChange',

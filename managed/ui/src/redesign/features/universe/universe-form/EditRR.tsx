@@ -25,7 +25,7 @@ interface EditReadReplicaProps {
 }
 
 export const EditReadReplica: FC<EditReadReplicaProps> = ({ uuid }) => {
-  const [contextState, contextMethods] = useContext(UniverseFormContext);
+  const [contextState, contextMethods]: any = useContext(UniverseFormContext);
   const { initializeForm, setUniverseResourceTemplate } = contextMethods;
   const [showDeleteRRModal, setShowDeleteRRModal] = useState(false);
 

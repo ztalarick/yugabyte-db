@@ -142,7 +142,7 @@ export const useNodePlacements = () => {
   const [
     { universeConfigureTemplate, clusterType, mode },
     { setUniverseConfigureTemplate, setUniverseResourceTemplate }
-  ] = useContext(UniverseFormContext);
+  ]: any = useContext(UniverseFormContext);
 
   //watchers
   const regionList = useWatch({ name: REGIONS_FIELD });

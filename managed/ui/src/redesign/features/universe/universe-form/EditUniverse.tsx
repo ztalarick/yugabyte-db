@@ -46,7 +46,7 @@ interface EditUniverseProps {
 }
 
 export const EditUniverse: FC<EditUniverseProps> = ({ uuid }) => {
-  const [contextState, contextMethods] = useContext(UniverseFormContext);
+  const [contextState, contextMethods]: any = useContext(UniverseFormContext);
   const { isLoading, universeConfigureTemplate } = contextState;
   const { initializeForm, setUniverseResourceTemplate } = contextMethods;
 

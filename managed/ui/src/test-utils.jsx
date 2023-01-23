@@ -20,9 +20,7 @@ const customRender = (ui, options) => {
 
   const Wrapper = ({ children }) => (
     <Provider store={store}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </Provider>
   );
 

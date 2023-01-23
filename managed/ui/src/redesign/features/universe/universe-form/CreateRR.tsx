@@ -35,7 +35,7 @@ interface CreateReadReplicaProps {
 
 export const CreateReadReplica: FC<CreateReadReplicaProps> = ({ uuid }) => {
   const { t } = useTranslation();
-  const [contextState, contextMethods] = useContext(UniverseFormContext);
+  const [contextState, contextMethods]: any = useContext(UniverseFormContext);
   const { initializeForm, setUniverseResourceTemplate } = contextMethods;
 
   const { isLoading, data: universe } = useQuery(

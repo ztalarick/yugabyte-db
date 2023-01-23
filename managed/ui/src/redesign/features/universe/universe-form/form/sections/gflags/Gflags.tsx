@@ -4,14 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { useWatch, useFormContext } from 'react-hook-form';
 import { Box, Typography } from '@material-ui/core';
 import { GFlagsField } from '../../fields';
-import { ClusterModes, ClusterType, UniverseFormData } from '../../utils/dto';
-import { SOFTWARE_VERSION_FIELD, GFLAGS_FIELD } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
-import { GFlagsField } from '../../fields';
-import { UniverseFormContext } from '../../UniverseFormContainer';
-import { ClusterModes, ClusterType, UniverseFormData } from '../../utils/dto';
-import { SOFTWARE_VERSION_FIELD, GFLAGS_FIELD } from '../../utils/constants';
-import { useSectionStyles } from '../../universeMainStyle';
+import { ClusterModes, ClusterType, UniverseFormData } from '../../../utils/dto';
+import { SOFTWARE_VERSION_FIELD, GFLAGS_FIELD } from '../../../utils/constants';
+import { useSectionStyles } from '../../../universeMainStyle';
+import { UniverseFormContext } from '../../../UniverseFormContainer';
 
 export const GFlags: FC = () => {
   const classes = useSectionStyles();

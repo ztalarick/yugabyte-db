@@ -25,8 +25,6 @@ const initialStateFeatureInTest = {
   enableDedicatedNodes: false,
   enableNotificationTemplates: false,
   enablePrefillKubeConfig: false,
-  topNodeMetrics: false,
-  enableYbc: false,
   enableNewUI: true
 };
 
@@ -54,9 +52,7 @@ const initialStateFeatureReleased = {
   enablePITR: true,
   enableDedicatedNodes: false,
   enableNotificationTemplates: false,
-  enablePrefillKubeConfig: false,
-  topNodeMetrics: false,
-  enableYbc: false
+  enablePrefillKubeConfig: false
 };
 
 export const FeatureFlag = (
