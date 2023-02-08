@@ -258,11 +258,15 @@ Status PgTxnManager::CalculateIsolation(bool read_only_op,
     return Status::OK();
   }
 
-  auto se = ScopeExit([this, in_txn_limit] {
+  auto se = ScopeExit([this, in_txn_limit, read_only_op] {
     if (in_txn_limit) {
       if (!*in_txn_limit) {
         *in_txn_limit = clock_->Now().ToUint64();
+        VLOG_TXN_STATE(2) << "Set in_txn_limit for a " << (read_only_op ? "read" : "write")
+                          << " operation to current ht";
       }
+      VLOG_TXN_STATE(2) << "in_txn_limit for a " << (read_only_op ? "read" : "write")
+                        << " operation = " << *in_txn_limit;
       in_txn_limit_ = HybridTime(*in_txn_limit);
     }
   });

@@ -561,7 +561,7 @@ Result<PerformFuture> PgSession::Perform(
 
   auto promise = std::make_shared<std::promise<PerformResult>>();
 
-  pg_client_.PerformAsync(&options, &ops.operations, [promise](const PerformResult& result) {
+  pg_client_.PerformAsync(&options, &ops.operations, clock_, [promise](const PerformResult& result) {
     promise->set_value(result);
   });
   return PerformFuture(promise->get_future(), this, std::move(ops.relations));

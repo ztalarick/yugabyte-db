@@ -354,12 +354,14 @@ message PgPerformRequestPB {
   PgPerformOptionsPB options = 2;
   repeated PgPerformOpPB ops = 3;
   fixed64 write_time = 4;
+  fixed64 propagated_hybrid_time = 5;
 }
 
 message PgPerformResponsePB {
   AppStatusPB status = 1;
   repeated PgsqlResponsePB responses = 2;
   ReadHybridTimePB catalog_read_time = 3;
+  fixed64 propagated_hybrid_time = 4;
 }
 
 message PgReserveOidsRequestPB {

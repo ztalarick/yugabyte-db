@@ -29,7 +29,7 @@
 #include "yb/master/master_fwd.h"
 
 #include "yb/rpc/rpc_fwd.h"
-
+#include "yb/server/hybrid_clock.h"
 #include "yb/tserver/tserver_fwd.h"
 #include "yb/tserver/tserver_util_fwd.h"
 #include "yb/tserver/pg_client.fwd.h"
@@ -126,6 +126,7 @@ class PgClient {
   void PerformAsync(
       tserver::PgPerformOptionsPB* options,
       PgsqlOps* operations,
+      scoped_refptr<server::HybridClock> clock,
       const PerformCallback& callback);
 
   Result<bool> CheckIfPitrActive();

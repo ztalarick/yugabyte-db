@@ -44,6 +44,9 @@ DECLARE_int32(backfill_index_client_rpc_timeout_ms);
 DECLARE_int32(yb_client_admin_operation_timeout_sec);
 
 DEFINE_uint64(pg_client_heartbeat_interval_ms, 10000, "Pg client heartbeat interval in ms.");
+DEFINE_bool(
+    pg_propagate_hybrid_times, false,
+    "Whether Pg should exchange and update hybrid time with tserver");
 
 DECLARE_bool(TEST_index_read_multiple_partitions);
 
@@ -345,20 +348,31 @@ class PgClient::Impl {
   void PerformAsync(
       tserver::PgPerformOptionsPB* options,
       PgsqlOps* operations,
+      scoped_refptr<server::HybridClock> clock,
       const PerformCallback& callback) {
     auto& arena = operations->front()->arena();
     tserver::LWPgPerformRequestPB req(&arena);
     req.set_session_id(session_id_);
     *req.mutable_options() = std::move(*options);
     PrepareOperations(&req, operations);
+    if (FLAGS_pg_propagate_hybrid_times) {
+      req.set_propagated_hybrid_time(clock->Now().ToUint64());
+      VLOG(3) << "Sending propagated_hybrid_time in PgPerformRequestPB from YSQL: "
+              << req.propagated_hybrid_time();
+    }
 
     auto data = std::make_shared<PerformData>(&arena);
     data->operations = std::move(*operations);
     data->callback = callback;
     data->controller.set_invoke_callback_mode(rpc::InvokeCallbackMode::kReactorThread);
 
-    proxy_->PerformAsync(req, &data->resp, SetupController(&data->controller), [data] {
+    proxy_->PerformAsync(req, &data->resp, SetupController(&data->controller), [data, clock] {
       PerformResult result;
+      if (FLAGS_pg_propagate_hybrid_times && data->resp.has_propagated_hybrid_time()) {
+        VLOG(2) << "Received propagated_hybrid_time in PgPerformResponsePB from tserver: "
+                << data->resp.propagated_hybrid_time();
+        clock->Update(HybridTime::FromPB(data->resp.propagated_hybrid_time()));
+      }
       result.status = data->controller.status();
       result.response = data->controller.response();
       if (result.status.ok()) {
@@ -678,8 +692,9 @@ Status PgClient::DeleteDBSequences(int64_t db_oid) {
 void PgClient::PerformAsync(
     tserver::PgPerformOptionsPB* options,
     PgsqlOps* operations,
+    scoped_refptr<server::HybridClock> clock,
     const PerformCallback& callback) {
-  impl_->PerformAsync(options, operations, callback);
+  impl_->PerformAsync(options, operations, clock, callback);
 }
 
 Result<bool> PgClient::CheckIfPitrActive() {

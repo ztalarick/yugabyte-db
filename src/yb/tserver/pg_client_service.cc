@@ -345,7 +345,15 @@ class PgClientServiceImpl::Impl {
 
   void Perform(
       const PgPerformRequestPB& req, PgPerformResponsePB* resp, rpc::RpcContext* context) {
+    if (req.propagated_hybrid_time()) {
+      VLOG(2) << "Received propagated_hybrid_time in PgPerformRequestPB from YSQL: "
+              << req.propagated_hybrid_time();
+      clock_->Update(HybridTime::FromPB(req.propagated_hybrid_time()));
+    }
     auto status = DoPerform(req, resp, context);
+    resp->set_propagated_hybrid_time(clock_->Now().ToUint64());
+    VLOG(2) << "Sending propagated_hybrid_time in PgPerformResponsePB from tserver: "
+            << resp->propagated_hybrid_time();
     if (!status.ok()) {
       Respond(status, resp, context);
     }
