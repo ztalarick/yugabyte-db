@@ -60,6 +60,8 @@
 #include "yb/util/port_picker.h"
 #include "yb/util/tsan_util.h"
 
+DECLARE_string(time_source);
+
 namespace yb {
 
 namespace master {
@@ -68,7 +70,18 @@ class MiniMaster;
 
 namespace server {
 class SkewedClockDeltaChanger;
-}
+
+class SkewedTimeSourceGuard {
+ public:
+  explicit SkewedTimeSourceGuard(uint16_t clock_skew) {
+    FLAGS_time_source = "skewed," + std::to_string(clock_skew);
+  }
+
+  ~SkewedTimeSourceGuard() {
+    FLAGS_time_source = "";
+  }
+};
+} // namespace server
 
 namespace tserver {
 class MiniTabletServer;
@@ -102,6 +115,8 @@ struct MiniClusterOptions {
   // By default, we create max(2, num_tablet_servers) tablets per transaction table. If this is
   // set to a non-zero value, this value is used instead.
   int transaction_table_num_tablets = 0;
+
+  std::vector<uint16_t> node_clock_skews_ms;
 };
 
 // An in-process cluster with a MiniMaster and a configurable
