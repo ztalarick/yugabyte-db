@@ -152,64 +152,7 @@ log "Removing old JSON-based test report files"
 activate_virtualenv
 set_pythonpath
 
-# We change YB_RUN_JAVA_TEST_METHODS_SEPARATELY in a subshell in a few places and that is OK.
-# shellcheck disable=SC2031
-export YB_RUN_JAVA_TEST_METHODS_SEPARATELY=1
-
-export TSAN_OPTIONS=""
-
-if is_mac; then
-  # This is needed to make sure we're using Homebrew-installed CMake on Mac OS X.
-  export PATH=/usr/local/bin:$PATH
-fi
-
-# gather core dumps
-ulimit -c unlimited
-
-detect_architecture
-
-BUILD_TYPE=${BUILD_TYPE:-debug}
-build_type=$BUILD_TYPE
-normalize_build_type
-readonly build_type
-
-BUILD_TYPE=$build_type
-readonly BUILD_TYPE
-export BUILD_TYPE
-
-export YB_USE_NINJA=1
-
-set_cmake_build_type_and_compiler_type
-
-if [[ ${YB_DOWNLOAD_THIRDPARTY:-auto} == "auto" ]]; then
-  log "Setting YB_DOWNLOAD_THIRDPARTY=1 automatically"
-  export YB_DOWNLOAD_THIRDPARTY=1
-fi
-log "YB_DOWNLOAD_THIRDPARTY=$YB_DOWNLOAD_THIRDPARTY"
-
-# This is normally done in set_build_root, but we need to decide earlier because this is factored
-# into the decision of whether to use LTO.
-decide_whether_to_use_linuxbrew
-
-if [[ -z ${YB_LINKING_TYPE:-} ]]; then
-  if ! is_mac && [[
-        ${YB_COMPILER_TYPE} =~ ^clang[0-9]+$ &&
-        ${BUILD_TYPE} == "release"
-      ]]; then
-    export YB_LINKING_TYPE=full-lto
-  else
-    export YB_LINKING_TYPE=dynamic
-  fi
-  log "Automatically decided to set YB_LINKING_TYPE to ${YB_LINKING_TYPE} based on:" \
-      "YB_COMPILER_TYPE=${YB_COMPILER_TYPE}," \
-      "BUILD_TYPE=${BUILD_TYPE}," \
-      "YB_USE_LINUXBREW=${YB_USE_LINUXBREW}," \
-      "YB_LINUXBREW_DIR=${YB_LINUXBREW_DIR:-undefined}."
-else
-  log "YB_LINKING_TYPE is already set to ${YB_LINKING_TYPE}"
-fi
-log "YB_LINKING_TYPE=${YB_LINKING_TYPE}"
-export YB_LINKING_TYPE
+. "${BASH_SOURCE%/*}/common-lto.sh"
 
 # -------------------------------------------------------------------------------------------------
 # Build root setup and build directory cleanup
@@ -475,31 +418,6 @@ if [[ ${BUILD_TYPE} != "tsan" ]]; then
   fi
 fi
 
-# -------------------------------------------------------------------------------------------------
-# Dependency graph analysis allowing to determine what tests to run.
-# -------------------------------------------------------------------------------------------------
-
-# if [[ $YB_RUN_AFFECTED_TESTS_ONLY == "1" ]]; then
-#   if ! ( set -x
-#          "${YB_SRC_ROOT}/python/yb/dependency_graph.py" \
-#            --build-root "${BUILD_ROOT}" \
-#            self-test \
-#            --rebuild-graph ); then
-#     # Trying to diagnose this error:
-#     # https://gist.githubusercontent.com/mbautin/c5c6f14714f7655c10620d8e658e1f5b/raw
-#     log "dependency_graph.py failed, listing all pb.{h,cc} files in the build directory"
-#     ( set -x; find "$BUILD_ROOT" -name "*.pb.h" -or -name "*.pb.cc" )
-#     fatal "Dependency graph construction failed"
-#   fi
-# fi
-
-# Save the current HEAD commit in case we build Java below and add a new commit. This is used for
-# the following purposes:
-# - So we can upload the release under the correct commit, from Jenkins, to then be picked up from
-#   itest, from the snapshots bucket.
-# - For picking up the changeset corresponding the the current diff being tested and detecting what
-#   tests to run in Phabricator builds. If we just diff with origin/master, we'll always pick up
-#   pom.xml changes we've just made, forcing us to always run Java tests.
 current_git_commit=$(git rev-parse HEAD)
 
 # -------------------------------------------------------------------------------------------------
