@@ -39,6 +39,8 @@
 #
 # Portions Copyright (c) YugaByte, Inc.
 
+set -euo pipefail
+
 # We change YB_RUN_JAVA_TEST_METHODS_SEPARATELY in a subshell in a few places and that is OK.	
 # shellcheck disable=SC2031	
 export YB_RUN_JAVA_TEST_METHODS_SEPARATELY=1	
@@ -76,11 +78,11 @@ if [[ -z ${YB_LINKING_TYPE:-} ]]; then
   else	
     export YB_LINKING_TYPE=dynamic	
   fi	
-  log "Automatically decided to set YB_LINKING_TYPE to ${YB_LINKING_TYPE} based on:" \	
-      "YB_COMPILER_TYPE=${YB_COMPILER_TYPE}," \	
-      "BUILD_TYPE=${BUILD_TYPE}," \	
-      "YB_USE_LINUXBREW=${YB_USE_LINUXBREW}," \	
-      "YB_LINUXBREW_DIR=${YB_LINUXBREW_DIR:-undefined}."	
+  log "Automatically decided to set YB_LINKING_TYPE to ${YB_LINKING_TYPE} based on:" \
+      "YB_COMPILER_TYPE=${YB_COMPILER_TYPE}," \
+      "BUILD_TYPE=${BUILD_TYPE}," \
+      "YB_USE_LINUXBREW=${YB_USE_LINUXBREW}," \
+      "YB_LINUXBREW_DIR=${YB_LINUXBREW_DIR:-undefined}."
 else	
   log "YB_LINKING_TYPE is already set to ${YB_LINKING_TYPE}"	
 fi	
