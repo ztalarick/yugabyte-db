@@ -1057,6 +1057,9 @@ ExplainNode(PlanState *planstate, List *ancestors,
 		es->yb_total_read_rpc_wait
 			+= (planstate->instrument->yb_read_rpcs.wait_time
 				+ planstate->instrument->yb_tbl_read_rpcs.wait_time);
+
+		YBC_LOG_INFO("Reads: (T%f %f)", planstate->instrument->yb_read_rpcs.count,
+			 planstate->instrument->yb_tbl_read_rpcs.count);
 	}
 
 	switch (nodeTag(plan))
@@ -3017,6 +3020,9 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 		= planstate->instrument->yb_tbl_read_rpcs.count / nloops;
 	double tbl_read_wait
 		= planstate->instrument->yb_tbl_read_rpcs.wait_time / nloops;
+	double min_parallelism = planstate->instrument->yb_read_rpcs.min_parallelism;
+	double max_parallelism =
+		planstate->instrument->yb_read_rpcs.max_parallelism;
 
 	if (reads > 0.0)
 	{
@@ -3030,6 +3036,15 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 			str = psprintf("Storage %s Execution Time", kindStr);
 			ExplainPropertyFloat(str, "ms", read_wait / 1000000.0, 3, es);
 		}
+		pfree(str);
+
+		// Print out DocDB parallelism
+		str = psprintf("Storage Table Min Parallelism");
+		ExplainPropertyFloat(str, NULL, min_parallelism, 0, es);
+		pfree(str);
+
+		str = psprintf("Storage Table Max Parallelism");
+		ExplainPropertyFloat(str, NULL, max_parallelism, 0, es);
 		pfree(str);
 	}
 

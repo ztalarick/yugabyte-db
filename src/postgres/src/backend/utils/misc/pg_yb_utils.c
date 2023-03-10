@@ -3046,13 +3046,22 @@ void YBCheckServerAccessIsAllowed() {
 
 void YbUpdateReadRpcStats(YBCPgStatement handle,
 						  YbPgRpcStats *reads, YbPgRpcStats *tbl_reads) {
+	YBCPgExecStats exec_stats;
+	YBCGetPgExecStats(handle, &exec_stats);
+
 	uint64_t read_count = 0, read_wait = 0, tbl_read_count = 0, tbl_read_wait = 0;
 	YBCGetAndResetReadRpcStats(handle, &read_count, &read_wait,
 							   &tbl_read_count, &tbl_read_wait);
-	reads->count += read_count;
-	reads->wait_time += read_wait;
-	tbl_reads->count += tbl_read_count;
-	tbl_reads->wait_time += tbl_read_wait;
+
+	// YBC_LOG_INFO("Table reads: (E:%f A:%llu), Index reads: (E:%f, A:%llu)",
+	// 			 reads->count, exec_stats.num_table_reads, tbl_reads->count,
+	// 			 exec_stats.num_index_reads);
+	reads->count = exec_stats.num_table_reads;
+	reads->wait_time = exec_stats.wait_time;
+	reads->min_parallelism = exec_stats.min_parallelism;
+	reads->max_parallelism = exec_stats.max_parallelism;
+	tbl_reads->count = exec_stats.num_index_reads;
+	tbl_reads->wait_time = tbl_read_wait;
 }
 
 void YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)

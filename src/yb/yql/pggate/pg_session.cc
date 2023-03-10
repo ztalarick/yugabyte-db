@@ -285,15 +285,19 @@ PgSession::PgSession(
     const std::string& database_name,
     scoped_refptr<PgTxnManager> pg_txn_manager,
     scoped_refptr<server::HybridClock> clock,
-    const YBCPgCallbacks& pg_callbacks)
-    : pg_client_(*pg_client),
+    const YBCPgCallbacks& pg_callbacks):
+    metric_registry_(new MetricRegistry()),
+      pg_client_(*pg_client),
       pg_txn_manager_(std::move(pg_txn_manager)),
       clock_(std::move(clock)),
-      buffer_(std::bind(
-          &PgSession::FlushOperations, this, std::placeholders::_1, std::placeholders::_2),
+      buffer_(
+          std::bind(
+              &PgSession::FlushOperations, this, std::placeholders::_1, std::placeholders::_2),
           buffering_settings_),
-      pg_callbacks_(pg_callbacks) {
-      Update(&buffering_settings_);
+      pg_callbacks_(pg_callbacks)
+
+      {
+  Update(&buffering_settings_);
 }
 
 PgSession::~PgSession() = default;

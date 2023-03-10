@@ -40,6 +40,29 @@ namespace yb {
 namespace pggate {
 namespace {
 
+METRIC_DEFINE_entity(pg_doc_request);
+METRIC_DEFINE_counter(
+    pg_doc_request, docdb_index_reads, "Number of DocDB index reads", yb::MetricUnit::kRequests,
+    "Desc goes here");
+METRIC_DEFINE_counter(
+    pg_doc_request, docdb_index_writes, "Number of DocDB index writes", yb::MetricUnit::kRequests,
+    "Desc goes here");
+METRIC_DEFINE_counter(
+    pg_doc_request, docdb_table_reads, "Number of DocDB table reads", yb::MetricUnit::kRequests,
+    "Desc goes here");
+METRIC_DEFINE_counter(
+    pg_doc_request, docdb_table_writes, "Number of DocDB index writes", yb::MetricUnit::kRequests,
+    "Desc goes here");
+METRIC_DEFINE_gauge_uint64(
+    pg_doc_request, docdb_req_wait, "Time (in unit: X) waited to complete DocDB request",
+    yb::MetricUnit::kMicroseconds, "Desc goes here");
+METRIC_DEFINE_gauge_uint64(
+    pg_doc_request, docdb_min_parallelism, "Minimum number of requests batched to DocDB",
+    yb::MetricUnit::kRequests, "Desc goes here");
+METRIC_DEFINE_gauge_uint64(
+    pg_doc_request, docdb_max_parallelism, "Maximum number of requests batched to DocDB",
+    yb::MetricUnit::kRequests, "Desc goes here");
+
 struct PgDocReadOpCachedHelper {
   PgTable dummy_table;
 };
@@ -47,7 +70,7 @@ struct PgDocReadOpCachedHelper {
 class PgDocReadOpCached : private PgDocReadOpCachedHelper, public PgDocOp {
  public:
   PgDocReadOpCached(const PgSession::ScopedRefPtr& pg_session, PrefetchedDataHolder data)
-      : PgDocOp(pg_session, &dummy_table), data_(std::move(data)) {
+      : PgDocOp(pg_session, &dummy_table, ""), data_(std::move(data)) {
   }
 
   Result<std::list<PgDocResult>> GetResult() override {
@@ -226,8 +249,22 @@ Result<PgDocResponse::Data> PgDocResponse::Get(MonoDelta* wait_time) {
 
 //--------------------------------------------------------------------------------------------------
 
-PgDocOp::PgDocOp(const PgSession::ScopedRefPtr& pg_session, PgTable* table, const Sender& sender)
-    : pg_session_(pg_session), table_(*table), sender_(sender) {}
+PgDocOp::PgDocOp(const PgSession::ScopedRefPtr& pg_session, PgTable* table, const char *context, const Sender& sender)
+    : pg_session_(pg_session), table_(*table), sender_(sender) {
+
+      MetricEntity::AttributeMap attrs;
+      // std::string stmt_id = std::to_string(reinterpret_cast<uint64_t>(this));
+      std::string stmt_id = std::string(context) + "::" + Uuid::Generate().ToString();
+
+      metric_entity_ = METRIC_ENTITY_pg_doc_request.Instantiate(pg_session->GetMetricRegistry(), stmt_id);
+      counter_table_reads = metric_entity_->FindOrCreateCounter(&METRIC_docdb_table_reads);
+      counter_index_reads = metric_entity_->FindOrCreateCounter(&METRIC_docdb_index_reads);
+      counter_table_writes = metric_entity_->FindOrCreateCounter(&METRIC_docdb_table_writes);
+      counter_index_writes = metric_entity_->FindOrCreateCounter(&METRIC_docdb_index_writes);
+      gauge_wait_time = metric_entity_->FindOrCreateGauge(&METRIC_docdb_req_wait, static_cast<uint64>(0));
+      gauge_min_parallelism = metric_entity_->FindOrCreateGauge(&METRIC_docdb_min_parallelism, static_cast<uint64>(0));
+      gauge_max_parallelism = metric_entity_->FindOrCreateGauge(&METRIC_docdb_max_parallelism, static_cast<uint64>(0));
+  }
 
 Status PgDocOp::ExecuteInit(const PgExecParameters *exec_params) {
   end_of_data_ = false;
@@ -295,6 +332,7 @@ Status PgDocOp::SendRequest(ForceNonBufferable force_non_bufferable) {
   DCHECK(!response_.Valid());
   exec_status_ = SendRequestImpl(force_non_bufferable);
   ++read_rpc_count_;
+  PerformPreRequestInstrumentation();
   return exec_status_;
 }
 
@@ -318,6 +356,27 @@ Status PgDocOp::SendRequestImpl(ForceNonBufferable force_non_bufferable) {
   return Status::OK();
 }
 
+void PgDocOp::PerformPreRequestInstrumentation() {
+  // TODO: Perform checks here.
+
+  for (const auto& op : pgsql_ops_) {
+    op->is_read() ? counter_table_reads->Increment() : counter_table_writes->Increment();
+  }
+
+  gauge_min_parallelism->set_value(std::min<uint64>(gauge_min_parallelism->value(), pgsql_ops_.size()));
+  gauge_max_parallelism->set_value(std::max<uint64>(gauge_max_parallelism->value(), pgsql_ops_.size()));
+
+  LOG(INFO) << Format(
+      "Updated ops for $0 --> now at (T$1, I$2) (Parallelism: $4) Expected: ($3)", metric_entity_->id(), counter_table_reads->value(),
+      counter_index_reads->value(), read_rpc_count_, pgsql_ops_.size());
+}
+
+void PgDocOp::PerformPostRequestInstrumentation() {
+  // Perform timing related functions
+  gauge_wait_time->set_value(static_cast<uint64_t>(read_rpc_wait_time_.ToNanoseconds()));
+  LOG(INFO) << "Wait time is $0" << read_rpc_wait_time_;
+}
+
 Result<std::list<PgDocResult>> PgDocOp::ProcessResponse(
     const Result<PgDocResponse::Data>& response) {
   VLOG(1) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
@@ -328,6 +387,7 @@ Result<std::list<PgDocResult>> PgDocOp::ProcessResponse(
     return result;
   }
   exec_status_ = result.status();
+  PerformPostRequestInstrumentation();
   return exec_status_;
 }
 
@@ -433,15 +493,15 @@ Result<PgDocResponse> PgDocOp::DefaultSender(
 //-------------------------------------------------------------------------------------------------
 
 PgDocReadOp::PgDocReadOp(const PgSession::ScopedRefPtr& pg_session,
-                         PgTable* table,
+                         PgTable* table, const char *context,
                          PgsqlReadOpPtr read_op)
-    : PgDocOp(pg_session, table), read_op_(std::move(read_op)) {}
+    : PgDocOp(pg_session, table, context), read_op_(std::move(read_op)) {}
 
 PgDocReadOp::PgDocReadOp(const PgSession::ScopedRefPtr& pg_session,
-                         PgTable* table,
+                         PgTable* table, const char *context,
                          PgsqlReadOpPtr read_op,
                          const Sender& sender)
-    : PgDocOp(pg_session, table, sender), read_op_(std::move(read_op)) {}
+    : PgDocOp(pg_session, table, context, sender), read_op_(std::move(read_op)) {}
 
 Status PgDocReadOp::ExecuteInit(const PgExecParameters *exec_params) {
   SCHECK(pgsql_ops_.empty(),
@@ -1118,9 +1178,9 @@ void PgDocReadOp::ClonePgsqlOps(size_t op_count) {
 //--------------------------------------------------------------------------------------------------
 
 PgDocWriteOp::PgDocWriteOp(const PgSession::ScopedRefPtr& pg_session,
-                           PgTable* table,
+                           PgTable* table, const char *context,
                            PgsqlWriteOpPtr write_op)
-    : PgDocOp(pg_session, table), write_op_(std::move(write_op)) {
+    : PgDocOp(pg_session, table, context), write_op_(std::move(write_op)) {
 }
 
 Status PgDocWriteOp::CompleteProcessResponse() {

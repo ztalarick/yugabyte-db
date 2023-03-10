@@ -261,7 +261,7 @@ Status FetchExistingYbctids(PgSession::ScopedRefPtr session,
     auto* expr_pb = read_op->read_request().add_targets();
     expr_pb->set_column_id(to_underlying(PgSystemAttrNum::kYBTupleId));
     doc_ops.push_back(std::make_unique<PgDocReadOp>(
-        session, &read_op->table(), std::move(read_op), request_sender));
+        session, &read_op->table(), read_op->table()->id().ToString().c_str(), std::move(read_op), request_sender));
     auto& doc_op = *doc_ops.back();
     // Postgres uses SELECT FOR KEY SHARE query for FK check. Use same lock level.
     auto exec_params = doc_op.ExecParameters();
@@ -1715,6 +1715,10 @@ void PgApiImpl::GetAndResetReadRpcStats(PgStatement *handle,
                                         uint64_t* tbl_reads, uint64_t* tbl_read_wait) {
   down_cast<PgDmlRead*>(handle)->GetAndResetReadRpcStats(reads, read_wait,
                                                          tbl_reads, tbl_read_wait);
+}
+
+void PgApiImpl::GetExecStats(PgStatement *handle, YBCPgExecStats *stats) {
+  down_cast<PgDml*>(handle)->GetDocDBStats(stats);
 }
 
 void PgApiImpl::GetAndResetOperationFlushRpcStats(uint64_t* count,

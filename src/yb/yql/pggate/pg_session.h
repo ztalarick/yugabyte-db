@@ -33,6 +33,7 @@
 #include "yb/tserver/tserver_util_fwd.h"
 
 #include "yb/util/lw_function.h"
+#include "yb/util/metrics.h"
 #include "yb/util/oid_generator.h"
 #include "yb/util/result.h"
 
@@ -340,6 +341,10 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   Result<bool> CheckIfPitrActive();
 
   void GetAndResetOperationFlushRpcStats(uint64_t* count, uint64_t* wait_time);
+
+  MetricRegistry *GetMetricRegistry() { return metric_registry_.get(); }
+
+  std::unique_ptr<MetricRegistry> metric_registry_;
 
  private:
   Result<PgTableDescPtr> DoLoadTable(const PgObjectId& table_id, bool fail_on_cache_hit);

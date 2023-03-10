@@ -398,6 +398,17 @@ typedef enum PgBoundType {
   YB_YQL_BOUND_VALID_INCLUSIVE
 } YBCPgBoundType;
 
+// Each instantion holds stats for a single plan node in a PG Query Plan.
+typedef struct PgExecStats {
+  uint64_t num_table_reads;
+  uint64_t num_index_reads;
+  uint64_t num_table_writes;
+  uint64_t min_parallelism;
+  uint64_t max_parallelism;
+  uint64_t wait_time;
+
+} YBCPgExecStats;
+
 // source:
 // https://github.com/gperftools/gperftools/blob/master/src/gperftools/malloc_extension.h#L154
 typedef struct YbTcmallocStats {

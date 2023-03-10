@@ -628,6 +628,7 @@ class PgApiImpl {
   // RPC stats for EXPLAIN ANALYZE
   void GetAndResetReadRpcStats(PgStatement *handle, uint64_t* reads, uint64_t* read_wait,
                                uint64_t* tbl_reads, uint64_t* tbl_read_wait);
+  void GetExecStats(PgStatement *handle, YBCPgExecStats *stats);
 
   //------------------------------------------------------------------------------------------------
   // System Validation.

@@ -24,6 +24,7 @@
 
 #include "yb/util/locks.h"
 #include "yb/util/lw_function.h"
+#include "yb/util/metrics.h"
 #include "yb/util/ref_cnt_buffer.h"
 
 #include "yb/yql/pggate/pg_gate_fwd.h"
@@ -326,10 +327,35 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
     read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
   }
 
+  uint64_t GetNumDocDBTableReadRequests() {
+    return counter_table_reads->value();
+  }
+
+  uint64_t GetNumDocDBIndexReadRequests() {
+    return counter_index_reads->value();
+  }
+
+  uint64_t GetNumDocDBTableWriteRequests() {
+    return counter_table_writes->value();
+  }
+
+  uint64_t GetDocDBRequestWaitTime() {
+    return gauge_wait_time->value();
+  }
+
+  uint64_t GetDocDBMinParallelism() {
+    return gauge_min_parallelism->value();
+  }
+
+  uint64_t GetDocDBMaxParallelism() {
+    return gauge_max_parallelism->value();
+  }
+
  protected:
   PgDocOp(
-    const PgSession::ScopedRefPtr& pg_session, PgTable* table,
-    const Sender& = Sender(&PgDocOp::DefaultSender));
+    const PgSession::ScopedRefPtr& pg_session, PgTable* table, const char *context,
+    const Sender& = Sender(&PgDocOp::DefaultSender)
+    );
 
   uint64_t& GetInTxnLimit();
 
@@ -440,6 +466,15 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
   uint64_t read_rpc_count_ = 0;
   MonoDelta read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
 
+  scoped_refptr<MetricEntity> metric_entity_;
+  scoped_refptr<Counter> counter_table_reads;
+  scoped_refptr<Counter> counter_index_reads;
+  scoped_refptr<Counter> counter_table_writes;
+  scoped_refptr<Counter> counter_index_writes;
+  scoped_refptr<AtomicGauge<uint64_t>> gauge_wait_time;
+  scoped_refptr<AtomicGauge<uint64_t>> gauge_min_parallelism;
+  scoped_refptr<AtomicGauge<uint64_t>> gauge_max_parallelism;
+
  private:
   Status SendRequest(ForceNonBufferable force_non_bufferable = ForceNonBufferable::kFalse);
 
@@ -459,6 +494,9 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
       PgSession* session, const PgsqlOpPtr* ops, size_t ops_count, const PgTableDesc& table,
       uint64_t in_txn_limit, ForceNonBufferable force_non_bufferable);
 
+  void PerformPreRequestInstrumentation();
+  void PerformPostRequestInstrumentation();
+
   // Result set either from selected or returned targets is cached in a list of strings.
   // Querying state variables.
   Status exec_status_ = Status::OK();
@@ -472,9 +510,9 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
 
 class PgDocReadOp : public PgDocOp {
  public:
-  PgDocReadOp(const PgSession::ScopedRefPtr& pg_session, PgTable* table, PgsqlReadOpPtr read_op);
+  PgDocReadOp(const PgSession::ScopedRefPtr& pg_session, PgTable* table, const char *context, PgsqlReadOpPtr read_op);
   PgDocReadOp(
-      const PgSession::ScopedRefPtr& pg_session, PgTable* table,
+      const PgSession::ScopedRefPtr& pg_session, PgTable* table, const char *context,
       PgsqlReadOpPtr read_op, const Sender& sender);
 
   Status ExecuteInit(const PgExecParameters *exec_params) override;
@@ -621,7 +659,7 @@ class PgDocReadOp : public PgDocOp {
 class PgDocWriteOp : public PgDocOp {
  public:
   PgDocWriteOp(const PgSession::ScopedRefPtr& pg_session,
-               PgTable* table,
+               PgTable* table, const char *context,
                PgsqlWriteOpPtr write_op);
 
   // Set write time.

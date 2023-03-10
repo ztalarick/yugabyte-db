@@ -1030,6 +1030,7 @@ YBCStatus YBCPgNewSelect(const YBCPgOid database_oid,
   const PgObjectId table_id(database_oid, table_oid);
   const PgObjectId index_id(database_oid,
                             prepare_params ? prepare_params->index_oid : kInvalidOid);
+  LOG(INFO) << "Executing a new PG Select on relation " << table_oid;
   return ToYBCStatus(pgapi->NewSelect(table_id, index_id, prepare_params, is_region_local, handle));
 }
 
@@ -1418,6 +1419,10 @@ YBCStatus YBCGetTabletServerHosts(YBCServerDescriptor **servers, size_t *count) 
 void YBCGetAndResetReadRpcStats(YBCPgStatement handle, uint64_t* reads, uint64_t* read_wait,
                                 uint64_t* tbl_reads, uint64_t* tbl_read_wait) {
   pgapi->GetAndResetReadRpcStats(handle, reads, read_wait, tbl_reads, tbl_read_wait);
+}
+
+void YBCGetPgExecStats(YBCPgStatement handle, YBCPgExecStats *stats) {
+  pgapi->GetExecStats(handle, stats);
 }
 
 YBCStatus YBCGetIndexBackfillProgress(YBCPgOid* index_oids, YBCPgOid* database_oids,

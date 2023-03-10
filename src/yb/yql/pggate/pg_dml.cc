@@ -518,5 +518,28 @@ void PgDml::GetAndResetReadRpcStats(uint64_t* reads, uint64_t* read_wait,
   }
 }
 
+void PgDml::GetDocDBStats(YBCPgExecStats *stats) {
+  YBCPgExecStats index_stats = {0, 0, 0, 0, 0, 0};
+
+  stats->num_table_reads = doc_op_->GetNumDocDBTableReadRequests();
+  stats->num_table_writes = doc_op_->GetNumDocDBTableWriteRequests();
+  stats->wait_time = doc_op_->GetDocDBRequestWaitTime();
+
+  // Temporary hack for wait time.
+  uint64_t temp;
+  GetAndResetReadRpcStats(&temp, &stats->wait_time);
+
+  stats->min_parallelism = doc_op_->GetDocDBMinParallelism();
+  stats->max_parallelism = doc_op_->GetDocDBMaxParallelism();
+  stats->num_index_reads = 0;
+
+  if (secondary_index_query_) {
+    secondary_index_query_->GetDocDBStats(&index_stats);
+    stats->num_index_reads = index_stats.num_table_reads;
+  }
+
+  // NB: Index reads of the table's PRIMARY KEY count towards table_reads, rather than index reads.
+}
+
 }  // namespace pggate
 }  // namespace yb

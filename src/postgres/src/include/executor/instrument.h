@@ -47,6 +47,8 @@ typedef enum InstrumentOption
 typedef struct YbPgRpcStats {
 	double  count;			/* # of RPCs */
 	double	wait_time;		/* RPC wait time (ns) */
+	double	min_parallelism;
+	double	max_parallelism;
 } YbPgRpcStats;
 
 typedef struct Instrumentation
