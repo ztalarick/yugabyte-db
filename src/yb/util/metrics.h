@@ -880,6 +880,7 @@ class CounterPrototype : public MetricPrototype {
 class Counter : public Metric {
  public:
   int64_t value() const;
+  void ResetValue();
   void Increment();
   void IncrementBy(int64_t amount);
   virtual Status WriteAsJson(JsonWriter* w,

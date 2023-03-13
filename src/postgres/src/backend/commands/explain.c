@@ -1887,10 +1887,14 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			if (plan->qual)
 				show_instrumentation_count("Rows Removed by Filter", 1,
 										   planstate, es);
+			if (es->rpc && es->analyze && planstate->instrument->nloops > 0)
+				show_yb_rpc_stats(planstate, false /*indexScan*/, es);
 			break;
 		case T_ModifyTable:
 			show_modifytable_info(castNode(ModifyTableState, planstate), ancestors,
 								  es);
+			if (es->rpc && es->analyze && planstate->instrument->nloops > 0)
+				show_yb_rpc_stats(planstate, false /*indexScan*/, es);
 			break;
 		case T_Hash:
 			show_hash_info(castNode(HashState, planstate), es);
@@ -3023,6 +3027,7 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 	double min_parallelism = planstate->instrument->yb_read_rpcs.min_parallelism;
 	double max_parallelism =
 		planstate->instrument->yb_read_rpcs.max_parallelism;
+	double writes = planstate->instrument->yb_tbl_write_rpcs.count / nloops;
 
 	if (reads > 0.0)
 	{
@@ -3045,6 +3050,15 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 
 		str = psprintf("Storage Table Max Parallelism");
 		ExplainPropertyFloat(str, NULL, max_parallelism, 0, es);
+		pfree(str);
+	}
+
+	if (writes > 0.0)
+	{
+		char *str;
+		// Write requests
+		str = psprintf("Storage Table Write Requests");
+		ExplainPropertyFloat(str, NULL, writes, (writes < 1.0 ? 2 : 0), es);
 		pfree(str);
 	}
 

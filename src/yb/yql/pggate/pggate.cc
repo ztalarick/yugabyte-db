@@ -1718,7 +1718,7 @@ void PgApiImpl::GetAndResetReadRpcStats(PgStatement *handle,
 }
 
 void PgApiImpl::GetExecStats(PgStatement *handle, YBCPgExecStats *stats) {
-  down_cast<PgDml*>(handle)->GetDocDBStats(stats);
+  down_cast<PgDml*>(handle)->GetAndResetDocDBStats(stats);
 }
 
 void PgApiImpl::GetAndResetOperationFlushRpcStats(uint64_t* count,

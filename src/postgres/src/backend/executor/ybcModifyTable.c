@@ -207,13 +207,11 @@ static void YBCExecWriteStmt(YBCPgStatement ybc_stmt,
 /*
  * Utility method to insert a tuple into the relation's backing YugaByte table.
  */
-static Oid YBCExecuteInsertInternal(Oid dboid,
-                                    Relation rel,
-                                    TupleDesc tupleDesc,
-                                    HeapTuple tuple,
-                                    bool is_single_row_txn,
-                                    OnConflictAction onConflictAction,
-                                    Datum *ybctid)
+static Oid
+YBCExecuteInsertInternal(Oid dboid, Relation rel, TupleDesc tupleDesc,
+						 HeapTuple tuple, bool is_single_row_txn,
+						 OnConflictAction onConflictAction, Datum *ybctid,
+						 YBCPgStatement *handle)
 {
 	Oid            relid    = RelationGetRelid(rel);
 	AttrNumber     minattr  = YBGetFirstLowInvalidAttributeNumber(rel);
@@ -312,7 +310,10 @@ static Oid YBCExecuteInsertInternal(Oid dboid,
 	YBCExecWriteStmt(insert_stmt, rel, NULL /* rows_affected_count */);
 
 	/* Cleanup. */
-	YBCPgDeleteStatement(insert_stmt);
+	if (handle != NULL) {
+		*handle = insert_stmt;
+	}
+
 	/* Add row into foreign key cache */
 	if (!is_single_row_txn)
 		YBCPgAddIntoForeignKeyReferenceCache(relid, tuple->t_ybctid);
@@ -330,15 +331,14 @@ Oid YBCExecuteInsert(Relation rel,
 	                             tupleDesc,
 	                             tuple,
 	                             onConflictAction,
-	                             NULL /* ybctid */);
+	                             NULL /* ybctid */,
+								 NULL);
 }
 
-Oid YBCExecuteInsertForDb(Oid dboid,
-                          Relation rel,
-                          TupleDesc tupleDesc,
-                          HeapTuple tuple,
-                          OnConflictAction onConflictAction,
-                          Datum *ybctid)
+Oid
+YBCExecuteInsertForDb(Oid dboid, Relation rel, TupleDesc tupleDesc,
+					  HeapTuple tuple, OnConflictAction onConflictAction,
+					  Datum *ybctid, YBCPgStatement *insert_stmt)
 {
 	bool non_transactional = !IsSystemRelation(rel) && yb_disable_transactional_writes;
 	return YBCExecuteInsertInternal(dboid,
@@ -347,7 +347,8 @@ Oid YBCExecuteInsertForDb(Oid dboid,
 	                                tuple,
 	                                non_transactional,
 	                                onConflictAction,
-	                                ybctid);
+	                                ybctid,
+									insert_stmt);
 }
 
 Oid YBCExecuteNonTxnInsert(Relation rel,
@@ -360,15 +361,14 @@ Oid YBCExecuteNonTxnInsert(Relation rel,
 	                                   tupleDesc,
 	                                   tuple,
 	                                   onConflictAction,
-	                                   NULL /* ybctid */);
+	                                   NULL /* ybctid */,
+									   NULL /* insert_stmt */);
 }
 
-Oid YBCExecuteNonTxnInsertForDb(Oid dboid,
-                                Relation rel,
-                                TupleDesc tupleDesc,
-                                HeapTuple tuple,
-                                OnConflictAction onConflictAction,
-                                Datum *ybctid)
+Oid
+YBCExecuteNonTxnInsertForDb(Oid dboid, Relation rel, TupleDesc tupleDesc,
+							HeapTuple tuple, OnConflictAction onConflictAction,
+							Datum *ybctid, YBCPgStatement *insert_stmt)
 {
 	return YBCExecuteInsertInternal(dboid,
 	                                rel,
@@ -376,7 +376,8 @@ Oid YBCExecuteNonTxnInsertForDb(Oid dboid,
 	                                tuple,
 	                                true /* is_single_row_txn */,
 	                                onConflictAction,
-	                                ybctid);
+	                                ybctid,
+									insert_stmt);
 }
 
 Oid YBCHeapInsert(TupleTableSlot *slot,
@@ -384,14 +385,14 @@ Oid YBCHeapInsert(TupleTableSlot *slot,
                   EState *estate)
 {
 	Oid dboid = YBCGetDatabaseOid(estate->es_result_relation_info->ri_RelationDesc);
-	return YBCHeapInsertForDb(dboid, slot, tuple, estate, NULL /* ybctid */);
+	YBCPgStatement insert_stmt = NULL;
+	estate->yb_handle = insert_stmt;
+	return YBCHeapInsertForDb(dboid, slot, tuple, estate, NULL /* ybctid */, &estate->yb_handle);
 }
 
-Oid YBCHeapInsertForDb(Oid dboid,
-                       TupleTableSlot* slot,
-                       HeapTuple tuple,
-                       EState* estate,
-                       Datum* ybctid)
+Oid
+YBCHeapInsertForDb(Oid dboid, TupleTableSlot *slot, HeapTuple tuple,
+				   EState *estate, Datum *ybctid, YBCPgStatement *insert_stmt)
 {
 	/*
 	 * get information on the (current) result relation
@@ -413,7 +414,8 @@ Oid YBCHeapInsertForDb(Oid dboid,
 		                                   slot->tts_tupleDescriptor,
 		                                   tuple,
 		                                   ONCONFLICT_NONE,
-		                                   ybctid);
+		                                   ybctid,
+										   insert_stmt);
 	}
 	else
 	{
@@ -422,7 +424,8 @@ Oid YBCHeapInsertForDb(Oid dboid,
 		                             slot->tts_tupleDescriptor,
 		                             tuple,
 		                             ONCONFLICT_NONE,
-		                             ybctid);
+		                             ybctid,
+									 insert_stmt);
 	}
 }
 

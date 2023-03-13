@@ -104,7 +104,7 @@ class PgDml : public PgStatement {
   void GetAndResetReadRpcStats(uint64_t* reads, uint64_t* read_wait,
                                uint64_t* tbl_reads, uint64_t* tbl_read_wait);
 
-  void GetDocDBStats(YBCPgExecStats *stats);
+  void GetAndResetDocDBStats(YBCPgExecStats *stats);
 
  protected:
   // Method members.

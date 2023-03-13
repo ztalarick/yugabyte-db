@@ -327,6 +327,14 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
     read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
   }
 
+  void ResetOrCreateCounter(const CounterPrototype* proto, scoped_refptr<Counter> &metric) {
+    if (metric) {
+      metric->Release();
+    }
+
+    metric = metric_entity_->FindOrCreateCounter(proto);
+  }
+
   uint64_t GetNumDocDBTableReadRequests() {
     return counter_table_reads->value();
   }
@@ -350,6 +358,8 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
   uint64_t GetDocDBMaxParallelism() {
     return gauge_max_parallelism->value();
   }
+
+  void ResetDocDBLiveMetricCounters();
 
  protected:
   PgDocOp(
@@ -471,6 +481,8 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
   scoped_refptr<Counter> counter_index_reads;
   scoped_refptr<Counter> counter_table_writes;
   scoped_refptr<Counter> counter_index_writes;
+  scoped_refptr<Counter> counter_lifetime_reads;
+  scoped_refptr<Counter> counter_lifetime_writes;
   scoped_refptr<AtomicGauge<uint64_t>> gauge_wait_time;
   scoped_refptr<AtomicGauge<uint64_t>> gauge_min_parallelism;
   scoped_refptr<AtomicGauge<uint64_t>> gauge_max_parallelism;

@@ -413,6 +413,10 @@ int64_t Counter::value() const {
   return value_.Value();
 }
 
+void Counter::ResetValue() {
+  value_.Reset();
+}
+
 void Counter::Increment() {
   IncrementBy(1);
 }

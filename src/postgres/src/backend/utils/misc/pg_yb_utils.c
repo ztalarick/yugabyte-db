@@ -3056,15 +3056,28 @@ void YbUpdateReadRpcStats(YBCPgStatement handle,
 	// YBC_LOG_INFO("Table reads: (E:%f A:%llu), Index reads: (E:%f, A:%llu)",
 	// 			 reads->count, exec_stats.num_table_reads, tbl_reads->count,
 	// 			 exec_stats.num_index_reads);
-	reads->count = exec_stats.num_table_reads;
-	reads->wait_time = exec_stats.wait_time;
+	reads->count += exec_stats.num_table_reads;
+	reads->wait_time += exec_stats.wait_time;
 	reads->min_parallelism = exec_stats.min_parallelism;
 	reads->max_parallelism = exec_stats.max_parallelism;
-	tbl_reads->count = exec_stats.num_index_reads;
-	tbl_reads->wait_time = tbl_read_wait;
+	tbl_reads->count += exec_stats.num_index_reads;
+	tbl_reads->wait_time += tbl_read_wait;
 }
 
-void YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)
+void
+YbUpdateRpcStats(YBCPgStatement handle, Instrumentation *instr) {
+	YBCPgExecStats exec_stats;
+	YBCGetPgExecStats(handle, &exec_stats);
+ 
+	instr->yb_tbl_write_rpcs.count += exec_stats.num_table_writes;
+	instr->yb_tbl_write_rpcs.wait_time += exec_stats.wait_time;
+	// TODO: Do minmin, maxmax
+	instr->yb_tbl_write_rpcs.min_parallelism = exec_stats.min_parallelism;
+	instr->yb_tbl_write_rpcs.max_parallelism = exec_stats.max_parallelism;
+}
+
+void
+YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)
 {
 	HandleYBStatus(YBIsDBCatalogVersionMode()
 		? YBCPgSetDBCatalogCacheVersion(handle, MyDatabaseId, version)

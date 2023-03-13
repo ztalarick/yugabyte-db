@@ -65,6 +65,7 @@ typedef struct Instrumentation
 	BufferUsage bufusage_start; /* Buffer usage at start */
 	YbPgRpcStats yb_read_rpcs;	/* Index read RPC stats */
 	YbPgRpcStats yb_tbl_read_rpcs;	/* Table row fetch RPC stats */
+	YbPgRpcStats yb_tbl_write_rpcs;
 	/* Accumulated statistics across all completed cycles: */
 	double		startup;		/* Total startup time (in seconds) */
 	double		total;			/* Total total time (in seconds) */

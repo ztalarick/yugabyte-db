@@ -518,7 +518,7 @@ void PgDml::GetAndResetReadRpcStats(uint64_t* reads, uint64_t* read_wait,
   }
 }
 
-void PgDml::GetDocDBStats(YBCPgExecStats *stats) {
+void PgDml::GetAndResetDocDBStats(YBCPgExecStats *stats) {
   YBCPgExecStats index_stats = {0, 0, 0, 0, 0, 0};
 
   stats->num_table_reads = doc_op_->GetNumDocDBTableReadRequests();
@@ -534,9 +534,11 @@ void PgDml::GetDocDBStats(YBCPgExecStats *stats) {
   stats->num_index_reads = 0;
 
   if (secondary_index_query_) {
-    secondary_index_query_->GetDocDBStats(&index_stats);
+    secondary_index_query_->GetAndResetDocDBStats(&index_stats);
     stats->num_index_reads = index_stats.num_table_reads;
   }
+
+  doc_op_->ResetDocDBLiveMetricCounters();
 
   // NB: Index reads of the table's PRIMARY KEY count towards table_reads, rather than index reads.
 }

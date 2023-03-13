@@ -66,7 +66,8 @@ extern Oid YBCHeapInsertForDb(Oid dboid,
                               TupleTableSlot *slot,
                               HeapTuple tuple,
                               EState *estate,
-                              Datum *ybctid);
+                              Datum *ybctid,
+							  YBCPgStatement *insert_stmt);
 
 /*
  * Insert a tuple into a YugaByte table. Will execute within a distributed
@@ -85,7 +86,8 @@ extern Oid YBCExecuteInsertForDb(Oid dboid,
                                  TupleDesc tupleDesc,
                                  HeapTuple tuple,
                                  OnConflictAction onConflictAction,
-                                 Datum *ybctid);
+                                 Datum *ybctid,
+								 YBCPgStatement *insert_stmt);
 
 /*
  * Execute the insert outside of a transaction.
@@ -104,7 +106,8 @@ extern Oid YBCExecuteNonTxnInsertForDb(Oid dboid,
                                        TupleDesc tupleDesc,
                                        HeapTuple tuple,
                                        OnConflictAction onConflictAction,
-                                       Datum *ybctid);
+                                       Datum *ybctid,
+									   YBCPgStatement *insert_stmt);
 
 /*
  * Insert a tuple into the an index's backing YugaByte index table.

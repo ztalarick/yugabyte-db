@@ -53,6 +53,12 @@ METRIC_DEFINE_counter(
 METRIC_DEFINE_counter(
     pg_doc_request, docdb_table_writes, "Number of DocDB index writes", yb::MetricUnit::kRequests,
     "Desc goes here");
+METRIC_DEFINE_counter(
+    pg_doc_request, docdb_lifetime_reads, "Number of DocDB table reads in the lifetime",
+    yb::MetricUnit::kRequests, "Desc goes here");
+METRIC_DEFINE_counter(
+    pg_doc_request, docdb_lifetime_writes, "Number of DocDB table writes in the lifetime",
+    yb::MetricUnit::kRequests, "Desc goes here");
 METRIC_DEFINE_gauge_uint64(
     pg_doc_request, docdb_req_wait, "Time (in unit: X) waited to complete DocDB request",
     yb::MetricUnit::kMicroseconds, "Desc goes here");
@@ -261,9 +267,11 @@ PgDocOp::PgDocOp(const PgSession::ScopedRefPtr& pg_session, PgTable* table, cons
       counter_index_reads = metric_entity_->FindOrCreateCounter(&METRIC_docdb_index_reads);
       counter_table_writes = metric_entity_->FindOrCreateCounter(&METRIC_docdb_table_writes);
       counter_index_writes = metric_entity_->FindOrCreateCounter(&METRIC_docdb_index_writes);
+      counter_lifetime_reads = metric_entity_->FindOrCreateCounter(&METRIC_docdb_lifetime_reads);
+      counter_lifetime_writes = metric_entity_->FindOrCreateCounter(&METRIC_docdb_lifetime_writes);
       gauge_wait_time = metric_entity_->FindOrCreateGauge(&METRIC_docdb_req_wait, static_cast<uint64>(0));
-      gauge_min_parallelism = metric_entity_->FindOrCreateGauge(&METRIC_docdb_min_parallelism, static_cast<uint64>(0));
-      gauge_max_parallelism = metric_entity_->FindOrCreateGauge(&METRIC_docdb_max_parallelism, static_cast<uint64>(0));
+      gauge_min_parallelism = metric_entity_->FindOrCreateGauge(&METRIC_docdb_min_parallelism, static_cast<uint64>(1));
+      gauge_max_parallelism = metric_entity_->FindOrCreateGauge(&METRIC_docdb_max_parallelism, static_cast<uint64>(1));
   }
 
 Status PgDocOp::ExecuteInit(const PgExecParameters *exec_params) {
@@ -361,14 +369,15 @@ void PgDocOp::PerformPreRequestInstrumentation() {
 
   for (const auto& op : pgsql_ops_) {
     op->is_read() ? counter_table_reads->Increment() : counter_table_writes->Increment();
+    op->is_read() ? counter_lifetime_reads->Increment() : counter_lifetime_writes->Increment();
   }
 
   gauge_min_parallelism->set_value(std::min<uint64>(gauge_min_parallelism->value(), pgsql_ops_.size()));
   gauge_max_parallelism->set_value(std::max<uint64>(gauge_max_parallelism->value(), pgsql_ops_.size()));
 
   LOG(INFO) << Format(
-      "Updated ops for $0 --> now at (T$1, I$2) (Parallelism: $4) Expected: ($3)", metric_entity_->id(), counter_table_reads->value(),
-      counter_index_reads->value(), read_rpc_count_, pgsql_ops_.size());
+      "Updated ops for $0 --> now at (R$1, W$2) (Parallelism: $4) Expected: ($3)", metric_entity_->id(), counter_lifetime_reads->value(),
+      counter_lifetime_writes->value(), read_rpc_count_, pgsql_ops_.size());
 }
 
 void PgDocOp::PerformPostRequestInstrumentation() {
@@ -480,6 +489,13 @@ Status PgDocOp::CompleteRequests() {
     RETURN_NOT_OK(op->InitPartitionKey(*table_));
   }
   return Status::OK();
+}
+
+void PgDocOp::ResetDocDBLiveMetricCounters() {
+  counter_table_reads->ResetValue();
+  counter_table_writes->ResetValue();
+  counter_index_reads->ResetValue();
+  counter_index_writes->ResetValue();
 }
 
 Result<PgDocResponse> PgDocOp::DefaultSender(
