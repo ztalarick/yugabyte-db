@@ -532,6 +532,7 @@ void PgDml::GetAndResetDocDBStats(YBCPgExecStats *stats) {
   stats->min_parallelism = doc_op_->GetDocDBMinParallelism();
   stats->max_parallelism = doc_op_->GetDocDBMaxParallelism();
   stats->num_index_reads = 0;
+  stats->num_index_writes = 0;
 
   if (secondary_index_query_) {
     secondary_index_query_->GetAndResetDocDBStats(&index_stats);

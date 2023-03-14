@@ -23,6 +23,7 @@
 
 /* We don't want this file to depend on execnodes.h. */
 struct IndexInfo;
+struct EState;
 
 /*
  * Struct for statistics returned by ambuild
@@ -131,7 +132,7 @@ extern Relation index_open(Oid relationId, LOCKMODE lockmode);
 extern void index_close(Relation relation, LOCKMODE lockmode);
 
 extern bool index_insert(Relation indexRelation,
-			 Datum *values, bool *isnull,
+			 Datum *values, struct EState *estate, bool *isnull,
 			 ItemPointer heap_t_ctid,
 			 HeapTuple heapTuple,
 			 Relation heapRelation,

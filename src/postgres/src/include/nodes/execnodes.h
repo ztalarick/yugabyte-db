@@ -597,6 +597,7 @@ typedef struct EState
 									   * then free the slot after the conflict is resolved. */
 	YBCPgExecParameters yb_exec_params;
 	YBCPgStatement yb_handle;
+	YBCPgStatement yb_index_handle; /* This should be a list of handles */
 
 	/*
 	 *  The in txn limit used for this query. This value is initialized

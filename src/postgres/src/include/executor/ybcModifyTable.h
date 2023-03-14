@@ -118,7 +118,7 @@ extern void YBCExecuteInsertIndex(Relation rel,
 								  Datum ybctid,
 								  const uint64_t* backfill_write_time,
 								  yb_bind_for_write_function callback,
-								  void *indexstate);
+								  void *indexstate, YBCPgStatement *insert_stmt);
 extern void YBCExecuteInsertIndexForDb(Oid dboid,
 									   Relation rel,
 									   Datum* values,
@@ -126,7 +126,7 @@ extern void YBCExecuteInsertIndexForDb(Oid dboid,
 									   Datum ybctid,
 									   const uint64_t* backfill_write_time,
 									   yb_bind_for_write_function callback,
-									   void *indexstate);
+									   void *indexstate, YBCPgStatement *insert_stmt);
 
 /*
  * Delete a tuple (identified by ybctid) from a YugaByte table.

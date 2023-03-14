@@ -206,7 +206,8 @@ ybcinbuildCallback(Relation index, HeapTuple heapTuple, Datum *values, bool *isn
 							  heapTuple->t_ybctid,
 							  buildstate->backfill_write_time,
 							  doBindsForIdxWrite,
-							  NULL /* indexstate */);
+							  NULL /* indexstate */,
+							  NULL);
 
 	buildstate->index_tuples += 1;
 }
@@ -278,11 +279,13 @@ ybcinbuildempty(Relation index)
 }
 
 bool
-ybcininsert(Relation index, Datum *values, bool *isnull, Datum ybctid, Relation heap,
-			IndexUniqueCheck checkUnique, struct IndexInfo *indexInfo, bool sharedInsert)
+ybcininsert(Relation index, Datum *values, EState *estate, bool *isnull,
+			Datum ybctid, Relation heap, IndexUniqueCheck checkUnique,
+			struct IndexInfo *indexInfo, bool sharedInsert)
 {
 	if (!index->rd_index->indisprimary)
 	{
+		YBCPgStatement insert_stmt;
 		if (sharedInsert)
 		{
 			if (!IsYsqlUpgrade)
@@ -302,18 +305,21 @@ ybcininsert(Relation index, Datum *values, bool *isnull, Datum ybctid, Relation 
 										   ybctid,
 										   NULL /* backfill_write_time */,
 										   doBindsForIdxWrite,
-										   NULL /* indexstate */);
+										   NULL /* indexstate */,
+										   &insert_stmt);
 			}
 			YB_FOR_EACH_DB_END;
 		}
 		else
-			YBCExecuteInsertIndex(index,
-								  values,
-								  isnull,
-								  ybctid,
+			YBCExecuteInsertIndex(index, values, isnull, ybctid,
 								  NULL /* backfill_write_time */,
-								  doBindsForIdxWrite,
-								  NULL /* indexstate */);
+								  doBindsForIdxWrite, NULL /* indexstate */,
+								  &insert_stmt);
+		
+		if (insert_stmt && estate != NULL) {
+			YBC_LOG_INFO("Adding index insert statement to execution state");
+			estate->yb_index_handle = insert_stmt;
+		}
 	}
 
 	return index->rd_index->indisunique ? true : false;

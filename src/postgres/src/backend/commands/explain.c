@@ -3028,6 +3028,8 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 	double max_parallelism =
 		planstate->instrument->yb_read_rpcs.max_parallelism;
 	double writes = planstate->instrument->yb_tbl_write_rpcs.count / nloops;
+	double writes_wait = planstate->instrument->yb_tbl_write_rpcs.wait_time / nloops;
+	double index_writes = planstate->instrument->yb_index_write_rpcs.count / nloops;
 
 	if (reads > 0.0)
 	{
@@ -3053,13 +3055,24 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 		pfree(str);
 	}
 
-	if (writes > 0.0)
+	if (writes > 0.0 || index_writes > 0.0)
 	{
 		char *str;
 		// Write requests
 		str = psprintf("Storage Table Write Requests");
 		ExplainPropertyFloat(str, NULL, writes, (writes < 1.0 ? 2 : 0), es);
 		pfree(str);
+
+		str = psprintf("Storage Index Write Requests");
+		ExplainPropertyFloat(str, NULL, index_writes, (index_writes < 1.0 ? 2 : 0), es);
+		pfree(str);
+
+		if (es->timing)
+		{
+			str = psprintf("Storage Write Execution Time");
+			ExplainPropertyFloat(str, "ms", writes_wait / 1000000.0, 3, es);
+			pfree(str);
+		}
 	}
 
 	if (tbl_reads > 0.0)

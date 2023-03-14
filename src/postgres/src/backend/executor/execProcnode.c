@@ -493,7 +493,20 @@ YbUpdateInstrument(PlanState *node)
 			if (node->state->yb_handle) {
 				YBCPgDeleteStatement(node->state->yb_handle);
 				node->state->yb_handle = NULL;
-			}src/postgres/src/backend/executor/ybcModifyTable.c
+			}
+		}
+
+		if (node->state->yb_index_handle)
+		{
+			YBC_LOG_INFO("Index handle active; Performing instrumentation");
+			YbUpdateWriteIndexRpcStats(node->state->yb_index_handle, node->instrument);
+
+			// Clean up the handle.
+			if (node->state->yb_index_handle)
+			{
+				YBCPgDeleteStatement(node->state->yb_index_handle);
+				node->state->yb_index_handle = NULL;
+			}
 		}
 		break;
 	}

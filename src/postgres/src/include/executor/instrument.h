@@ -66,6 +66,7 @@ typedef struct Instrumentation
 	YbPgRpcStats yb_read_rpcs;	/* Index read RPC stats */
 	YbPgRpcStats yb_tbl_read_rpcs;	/* Table row fetch RPC stats */
 	YbPgRpcStats yb_tbl_write_rpcs;
+	YbPgRpcStats yb_index_write_rpcs;
 	/* Accumulated statistics across all completed cycles: */
 	double		startup;		/* Total startup time (in seconds) */
 	double		total;			/* Total total time (in seconds) */

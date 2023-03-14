@@ -3074,10 +3074,20 @@ YbUpdateRpcStats(YBCPgStatement handle, Instrumentation *instr) {
 	// TODO: Do minmin, maxmax
 	instr->yb_tbl_write_rpcs.min_parallelism = exec_stats.min_parallelism;
 	instr->yb_tbl_write_rpcs.max_parallelism = exec_stats.max_parallelism;
+
+	instr->yb_index_write_rpcs.count += exec_stats.num_index_writes;
 }
 
 void
-YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)
+YbUpdateWriteIndexRpcStats(YBCPgStatement handle, Instrumentation *instr) {
+	YBCPgExecStats exec_stats;
+	YBCGetPgExecStats(handle, &exec_stats);
+
+	instr->yb_index_write_rpcs.count += exec_stats.num_index_writes + exec_stats.num_table_writes;
+	instr->yb_index_write_rpcs.wait_time = exec_stats.wait_time;
+}
+
+	void YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)
 {
 	HandleYBStatus(YBIsDBCatalogVersionMode()
 		? YBCPgSetDBCatalogCacheVersion(handle, MyDatabaseId, version)

@@ -53,7 +53,7 @@ extern void ybginrescan(IndexScanDesc scan, ScanKey scankey, int nscankeys,
 						ScanKey orderbys, int norderbys);
 extern bool ybgingettuple(IndexScanDesc scan, ScanDirection dir);
 extern void ybginendscan(IndexScanDesc scan);
-extern bool ybgininsert(Relation rel, Datum *values, bool *isnull,
+extern bool ybgininsert(Relation rel, Datum *values, EState *estate, bool *isnull,
 						Datum ybctid, Relation heapRel,
 						IndexUniqueCheck checkUnique,
 						struct IndexInfo *indexInfo, bool shared_insert);

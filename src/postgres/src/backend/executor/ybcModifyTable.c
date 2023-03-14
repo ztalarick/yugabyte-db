@@ -481,13 +481,11 @@ YBCForeignKeyReferenceCacheDeleteIndex(Relation index, Datum *values, bool *isnu
 	}
 }
 
-void YBCExecuteInsertIndex(Relation index,
-						   Datum *values,
-						   bool *isnull,
-						   Datum ybctid,
-						   const uint64_t *backfill_write_time,
-						   yb_bind_for_write_function callback,
-						   void *indexstate)
+void
+YBCExecuteInsertIndex(Relation index, Datum *values, bool *isnull, Datum ybctid,
+					  const uint64_t *backfill_write_time,
+					  yb_bind_for_write_function callback, void *indexstate,
+					  YBCPgStatement *insert_stmt)
 {
 	YBCExecuteInsertIndexForDb(YBCGetDatabaseOid(index),
 							   index,
@@ -496,17 +494,16 @@ void YBCExecuteInsertIndex(Relation index,
 							   ybctid,
 							   backfill_write_time,
 							   callback,
-							   indexstate);
+							   indexstate,
+							   insert_stmt);
 }
 
-void YBCExecuteInsertIndexForDb(Oid dboid,
-								Relation index,
-								Datum* values,
-								bool* isnull,
-								Datum ybctid,
-								const uint64_t* backfill_write_time,
-								yb_bind_for_write_function callback,
-								void *indexstate)
+void
+YBCExecuteInsertIndexForDb(Oid dboid, Relation index, Datum *values,
+						   bool *isnull, Datum ybctid,
+						   const uint64_t *backfill_write_time,
+						   yb_bind_for_write_function callback,
+						   void *indexstate, YBCPgStatement *handle)
 {
 	Assert(index->rd_rel->relkind == RELKIND_INDEX);
 	Assert(ybctid != 0);
@@ -559,7 +556,9 @@ void YBCExecuteInsertIndexForDb(Oid dboid,
 					 NULL /* rows_affected_count */);
 
 	/* Cleanup. */
-	YBCPgDeleteStatement(insert_stmt);
+	if (handle != NULL) {
+		*handle = insert_stmt;
+	}
 }
 
 bool YBCExecuteDelete(Relation rel,

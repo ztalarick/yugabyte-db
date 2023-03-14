@@ -153,6 +153,7 @@ CatalogIndexInsert(CatalogIndexState indstate, HeapTuple heapTuple, bool yb_shar
 		 */
 		index_insert(relationDescs[i],	/* index relation */
 					 values,	/* array of index Datums */
+					 NULL,
 					 isnull,	/* is-null flags */
 					 &(heapTuple->t_self),	/* tid of heap tuple */
 					 heapTuple,	/* heap tuple */
