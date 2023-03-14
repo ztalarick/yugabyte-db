@@ -1036,7 +1036,8 @@ bool YBCExecuteUpdate(Relation rel,
 	}
 
 	/* Cleanup. */
-	YBCPgDeleteStatement(update_stmt);
+	estate->yb_handle = update_stmt;
+	// YBCPgDeleteStatement(update_stmt);
 
 	/*
 	 * If the relation has indexes, save the ybctid to insert the updated row into the indexes.

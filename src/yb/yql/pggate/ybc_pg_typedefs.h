@@ -403,6 +403,7 @@ typedef struct PgExecStats {
   uint64_t num_table_reads;
   uint64_t num_index_reads;
   uint64_t num_table_writes;
+  uint64_t num_index_writes;
   uint64_t min_parallelism;
   uint64_t max_parallelism;
   uint64_t wait_time;

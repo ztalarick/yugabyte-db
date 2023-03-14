@@ -490,7 +490,10 @@ YbUpdateInstrument(PlanState *node)
 			YbUpdateRpcStats(node->state->yb_handle, node->instrument);
 
 			// Clean up the handle.
-			YBCPgDeleteStatement(node->state->yb_handle);
+			if (node->state->yb_handle) {
+				YBCPgDeleteStatement(node->state->yb_handle);
+				node->state->yb_handle = NULL;
+			}src/postgres/src/backend/executor/ybcModifyTable.c
 		}
 		break;
 	}

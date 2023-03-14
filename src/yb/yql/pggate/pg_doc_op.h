@@ -339,10 +339,6 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
     return counter_table_reads->value();
   }
 
-  uint64_t GetNumDocDBIndexReadRequests() {
-    return counter_index_reads->value();
-  }
-
   uint64_t GetNumDocDBTableWriteRequests() {
     return counter_table_writes->value();
   }

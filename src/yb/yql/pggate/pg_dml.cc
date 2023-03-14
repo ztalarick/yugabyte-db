@@ -519,7 +519,7 @@ void PgDml::GetAndResetReadRpcStats(uint64_t* reads, uint64_t* read_wait,
 }
 
 void PgDml::GetAndResetDocDBStats(YBCPgExecStats *stats) {
-  YBCPgExecStats index_stats = {0, 0, 0, 0, 0, 0};
+  YBCPgExecStats index_stats = {0, 0, 0, 0, 0, 0, 0};
 
   stats->num_table_reads = doc_op_->GetNumDocDBTableReadRequests();
   stats->num_table_writes = doc_op_->GetNumDocDBTableWriteRequests();
@@ -536,6 +536,7 @@ void PgDml::GetAndResetDocDBStats(YBCPgExecStats *stats) {
   if (secondary_index_query_) {
     secondary_index_query_->GetAndResetDocDBStats(&index_stats);
     stats->num_index_reads = index_stats.num_table_reads;
+    stats->num_index_writes = index_stats.num_index_writes;
   }
 
   doc_op_->ResetDocDBLiveMetricCounters();
