@@ -221,7 +221,6 @@ YBCStatus YBCPgResetMemctx(YBCPgMemctx memctx) {
 }
 
 void YBCPgDeleteStatement(YBCPgStatement handle) {
-  YBCResetPgSessionExecStats();
   pgapi->DeleteStatement(handle);
 }
 

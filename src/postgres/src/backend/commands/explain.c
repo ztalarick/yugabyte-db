@@ -461,6 +461,27 @@ ExplainOneUtility(Node *utilityStmt, IntoClause *into, ExplainState *es,
 	}
 }
 
+static void
+explain_rpc_docdb_request_stats(ExplainState *es, const char *field,
+								double count, double timing)
+{
+	char *desc;
+	if (count > 0)
+	{
+		desc = psprintf("%s Requests", field);
+		ExplainPropertyFloat(desc, NULL, count, (count < 1.0 ? 2 : 0), es);
+
+		if (es->timing && timing > 0.0)
+		{
+			pfree(desc);
+			desc = psprintf("%s Execution Time", field);
+			ExplainPropertyFloat(desc, "ms", timing / 1000000.0, 3, es);
+		}
+
+		pfree(desc);
+	}
+}
+
 /*
  * ExplainOnePlan -
  *		given a planned query, execute it if needed, and then print
@@ -630,11 +651,11 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 			if (es->yb_total_read_rpc_count > 0.0)
 				total_rpc_wait += es->yb_total_read_rpc_wait;
 
-			ExplainPropertyFloat("Storage Read Requests", NULL,
-								 es->yb_total_read_rpc_count, 0, es);
-			ExplainPropertyInteger("Storage Write Requests", NULL, flush_count, es);
-			ExplainPropertyFloat("Storage Execution Time", "ms",
-								 total_rpc_wait / 1000000.0, 3, es);
+			explain_rpc_docdb_request_stats(es, "Storage Read", es->yb_total_read_rpc_count, 0.0);
+			explain_rpc_docdb_request_stats(es, "Storage Write", es->yb_total_write_rpc_count, 0.0);
+			explain_rpc_docdb_request_stats(es, "Storage Flushes", flush_count, 0.0);
+
+			ExplainPropertyFloat("Storage Execution Time", "ms", total_rpc_wait / 1000000.0, 3, es);
 		}
 
 		if (IsYugaByteEnabled())
@@ -1051,15 +1072,17 @@ ExplainNode(PlanState *planstate, List *ancestors,
 
 	if (planstate->instrument)
 	{
-		es->yb_total_read_rpc_count
-			+= (planstate->instrument->yb_read_rpcs.count
-				+ planstate->instrument->yb_tbl_read_rpcs.count);
-		es->yb_total_read_rpc_wait
-			+= (planstate->instrument->yb_read_rpcs.wait_time
-				+ planstate->instrument->yb_tbl_read_rpcs.wait_time);
+		es->yb_total_read_rpc_count +=
+			(planstate->instrument->yb_tbl_read_rpcs.count +
+			 planstate->instrument->yb_index_read_rpcs.count +
+			 planstate->instrument->yb_catalog_read_rpcs.count);
 
-		YBC_LOG_INFO("Reads: (T%f %f)", planstate->instrument->yb_read_rpcs.count,
-			 planstate->instrument->yb_tbl_read_rpcs.count);
+		es->yb_total_read_rpc_wait += (planstate->instrument->yb_tbl_read_rpcs.wait_time);
+
+		es->yb_total_write_rpc_count +=
+			(planstate->instrument->yb_tbl_write_rpcs.count +
+			 planstate->instrument->yb_index_write_rpcs.count +
+			 planstate->instrument->yb_catalog_write_rpcs.count);
 	}
 
 	switch (nodeTag(plan))
@@ -3017,73 +3040,28 @@ static void
 show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 {
 	double nloops = planstate->instrument->nloops;
-	double reads = planstate->instrument->yb_read_rpcs.count / nloops;
-	double read_wait
-		= planstate->instrument->yb_read_rpcs.wait_time / nloops;
-	double tbl_reads
-		= planstate->instrument->yb_tbl_read_rpcs.count / nloops;
-	double tbl_read_wait
-		= planstate->instrument->yb_tbl_read_rpcs.wait_time / nloops;
-	double min_parallelism = planstate->instrument->yb_read_rpcs.min_parallelism;
-	double max_parallelism =
-		planstate->instrument->yb_read_rpcs.max_parallelism;
-	double writes = planstate->instrument->yb_tbl_write_rpcs.count / nloops;
+	// double reads = planstate->instrument->yb_read_rpcs.count / nloops;
+	double read_wait = planstate->instrument->yb_read_rpcs.wait_time / nloops;
+	// double tbl_read_wait = planstate->instrument->yb_tbl_read_rpcs.wait_time / nloops;
 	double writes_wait = planstate->instrument->yb_tbl_write_rpcs.wait_time / nloops;
+
+	double tbl_reads = planstate->instrument->yb_tbl_read_rpcs.count / nloops;
+	double index_reads = planstate->instrument->yb_index_read_rpcs.count / nloops;
+	double catalog_reads = planstate->instrument->yb_catalog_read_rpcs.count / nloops;
+
+	double table_writes = planstate->instrument->yb_tbl_write_rpcs.count / nloops;
 	double index_writes = planstate->instrument->yb_index_write_rpcs.count / nloops;
+	double catalog_writes = planstate->instrument->yb_catalog_write_rpcs.count / nloops;
 
-	if (reads > 0.0)
-	{
-		const char *kindStr = indexScan? "Index": "Table";
-		char *str;
-		str = psprintf("Storage %s Read Requests", kindStr);
-		ExplainPropertyFloat(str, NULL, reads, (reads < 1.0? 2: 0), es);
-		if (es->timing)
-		{
-			pfree(str);
-			str = psprintf("Storage %s Execution Time", kindStr);
-			ExplainPropertyFloat(str, "ms", read_wait / 1000000.0, 3, es);
-		}
-		pfree(str);
+	/* Display the reads first */
+	explain_rpc_docdb_request_stats(es, "Storage Table Read", tbl_reads, read_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Index Read", index_reads, read_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Catalog Read", catalog_reads, read_wait);
 
-		// Print out DocDB parallelism
-		str = psprintf("Storage Table Min Parallelism");
-		ExplainPropertyFloat(str, NULL, min_parallelism, 0, es);
-		pfree(str);
-
-		str = psprintf("Storage Table Max Parallelism");
-		ExplainPropertyFloat(str, NULL, max_parallelism, 0, es);
-		pfree(str);
-	}
-
-	if (writes > 0.0 || index_writes > 0.0)
-	{
-		char *str;
-		// Write requests
-		str = psprintf("Storage Table Write Requests");
-		ExplainPropertyFloat(str, NULL, writes, (writes < 1.0 ? 2 : 0), es);
-		pfree(str);
-
-		str = psprintf("Storage Index Write Requests");
-		ExplainPropertyFloat(str, NULL, index_writes, (index_writes < 1.0 ? 2 : 0), es);
-		pfree(str);
-
-		if (es->timing)
-		{
-			str = psprintf("Storage Write Execution Time");
-			ExplainPropertyFloat(str, "ms", writes_wait / 1000000.0, 3, es);
-			pfree(str);
-		}
-	}
-
-	if (tbl_reads > 0.0)
-	{
-		ExplainPropertyFloat("Storage Table Read Requests", NULL,
-							 tbl_reads,
-							 (tbl_reads < 1.0? 2: 0), es);
-		if (es->timing)
-			ExplainPropertyFloat("Storage Table Execution Time", "ms",
-								 tbl_read_wait / 1000000.0, 3, es);
-	}
+	/* The writes */
+	explain_rpc_docdb_request_stats(es, "Storage Table Write", table_writes, writes_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Index Write", index_writes, writes_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Catalog Write", catalog_writes, writes_wait);
 }
 
 /*

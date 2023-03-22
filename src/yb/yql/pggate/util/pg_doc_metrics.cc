@@ -99,10 +99,14 @@ void PgDocMetrics::GetStats(YBCPgExecStats *stats) {
     stats->num_table_reads = GetNumTableReadRequests();
     stats->num_table_writes = GetNumTableWriteRequests();
 
+    stats->num_index_reads = index_reads->value();
+    stats->num_index_writes = index_writes->value();
+
+    stats->num_catalog_reads = catalog_reads->value();
+    stats->num_catalog_writes = catalog_writes->value();
+
     stats->min_parallelism = min_parallelism->value();
     stats->max_parallelism = max_parallelism->value();
-    stats->num_index_reads = 0;
-    stats->num_index_writes = 0;
 }
 
 void PgDocMetrics::AddDocOpRequest(master::RelationType relation, bool is_read, uint64_t parallelism) {
