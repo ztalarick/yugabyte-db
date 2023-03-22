@@ -521,6 +521,8 @@ YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec
 void YBCGetAndResetReadRpcStats(YBCPgStatement handle, uint64_t* reads, uint64_t* read_wait,
                                 uint64_t* tbl_reads, uint64_t* tbl_read_wait);
 void YBCGetPgExecStats(YBCPgStatement handle, YBCPgExecStats *stats);
+void YBCGetPgSessionExecStats(YBCPgExecStats *stats);
+void YBCResetPgSessionExecStats();
 
 // Transaction control -----------------------------------------------------------------------------
 YBCStatus YBCPgBeginTransaction();

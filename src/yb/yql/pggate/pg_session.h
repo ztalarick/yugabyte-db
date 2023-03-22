@@ -43,6 +43,7 @@
 #include "yb/yql/pggate/pg_perform_future.h"
 #include "yb/yql/pggate/pg_tabledesc.h"
 #include "yb/yql/pggate/pg_txn_manager.h"
+#include "yb/yql/pggate/util/pg_doc_metrics.h"
 
 namespace yb {
 namespace pggate {
@@ -344,6 +345,11 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   MetricRegistry *GetMetricRegistry() { return metric_registry_.get(); }
 
+  void GetAndResetDocDBStats(YBCPgExecStats *stats);
+  void ResetDocDBStats() { metrics_->Reset(); };
+
+  PgDocMetrics *GetMetricsHandle() { return metrics_; }
+
   std::unique_ptr<MetricRegistry> metric_registry_;
 
  private:
@@ -412,6 +418,9 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   const YBCPgCallbacks& pg_callbacks_;
   bool has_write_ops_in_ddl_mode_ = false;
   std::variant<TxnSerialNoPerformInfo> last_perform_on_txn_serial_no_;
+
+  // Stats for EXPLAIN ANALYZE
+  PgDocMetrics *metrics_;
 };
 
 }  // namespace pggate

@@ -61,8 +61,7 @@ Status PgSelect::Prepare() {
   auto read_op = ArenaMakeShared<PgsqlReadOp>(arena_ptr(), &arena(), *target_, is_region_local_);
   read_req_ = std::shared_ptr<LWPgsqlReadRequestPB>(read_op, &read_op->read_request());
 
-  context_ = "SELECT::" + context_;
-  auto doc_op = std::make_shared<PgDocReadOp>(pg_session_, &target_, context_.c_str(), std::move(read_op));
+  auto doc_op = std::make_shared<PgDocReadOp>(pg_session_, &target_, std::move(read_op));
 
   // Prepare the index selection if this operation is using the index.
   RETURN_NOT_OK(PrepareSecondaryIndex());

@@ -398,12 +398,19 @@ typedef enum PgBoundType {
   YB_YQL_BOUND_VALID_INCLUSIVE
 } YBCPgBoundType;
 
-// Each instantion holds stats for a single plan node in a PG Query Plan.
 typedef struct PgExecStats {
+  // User table stats
   uint64_t num_table_reads;
-  uint64_t num_index_reads;
   uint64_t num_table_writes;
+
+  // Secondary index stats
+  uint64_t num_index_reads;
   uint64_t num_index_writes;
+
+  // Catalog stats
+  uint64_t num_catalog_reads;
+  uint16_t num_catalog_writes;
+
   uint64_t min_parallelism;
   uint64_t max_parallelism;
   uint64_t wait_time;

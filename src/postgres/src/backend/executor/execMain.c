@@ -1043,6 +1043,8 @@ InitPlan(QueryDesc *queryDesc, int eflags)
 	 * tree.  This opens files, allocates storage and leaves us ready to start
 	 * processing tuples.
 	 */
+	// YbCreateSingleQuerySysStats();
+	// Create session stats here.
 	planstate = ExecInitNode(plan, estate, eflags);
 
 	/*
@@ -1659,6 +1661,11 @@ ExecEndPlan(PlanState *planstate, EState *estate)
 
 		if (erm->relation)
 			heap_close(erm->relation, NoLock);
+	}
+
+	if (estate->es_instrument)
+	{
+		YbResetRpcStats();
 	}
 }
 

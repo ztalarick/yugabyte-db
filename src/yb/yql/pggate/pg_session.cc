@@ -298,6 +298,8 @@ PgSession::PgSession(
 
       {
   Update(&buffering_settings_);
+
+  metrics_ = new PgDocMetrics(metric_registry_.get(), "pg-session-id");
 }
 
 PgSession::~PgSession() = default;
@@ -849,6 +851,11 @@ Result<PerformFuture> PgSession::RunAsyncCacheable(
 
 Result<bool> PgSession::CheckIfPitrActive() {
   return pg_client_.CheckIfPitrActive();
+}
+
+void PgSession::GetAndResetDocDBStats(YBCPgExecStats *stats) {
+  metrics_->GetStats(stats);
+  metrics_->Reset();
 }
 
 }  // namespace pggate

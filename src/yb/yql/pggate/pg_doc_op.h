@@ -327,39 +327,20 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
     read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
   }
 
-  void ResetOrCreateCounter(const CounterPrototype* proto, scoped_refptr<Counter> &metric) {
-    if (metric) {
-      metric->Release();
-    }
-
-    metric = metric_entity_->FindOrCreateCounter(proto);
-  }
-
-  uint64_t GetNumDocDBTableReadRequests() {
-    return counter_table_reads->value();
-  }
-
-  uint64_t GetNumDocDBTableWriteRequests() {
-    return counter_table_writes->value();
+  void GetAndResetDocDBStats(YBCPgExecStats *stats) {
+    doc_op_metrics_->GetStats(stats);  
+    doc_op_metrics_->Reset();
   }
 
   uint64_t GetDocDBRequestWaitTime() {
     return gauge_wait_time->value();
   }
 
-  uint64_t GetDocDBMinParallelism() {
-    return gauge_min_parallelism->value();
-  }
-
-  uint64_t GetDocDBMaxParallelism() {
-    return gauge_max_parallelism->value();
-  }
-
   void ResetDocDBLiveMetricCounters();
 
  protected:
   PgDocOp(
-    const PgSession::ScopedRefPtr& pg_session, PgTable* table, const char *context,
+    const PgSession::ScopedRefPtr& pg_session, PgTable* table,
     const Sender& = Sender(&PgDocOp::DefaultSender)
     );
 
@@ -472,16 +453,9 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
   uint64_t read_rpc_count_ = 0;
   MonoDelta read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
 
+  PgDocMetrics *doc_op_metrics_;
   scoped_refptr<MetricEntity> metric_entity_;
-  scoped_refptr<Counter> counter_table_reads;
-  scoped_refptr<Counter> counter_index_reads;
-  scoped_refptr<Counter> counter_table_writes;
-  scoped_refptr<Counter> counter_index_writes;
-  scoped_refptr<Counter> counter_lifetime_reads;
-  scoped_refptr<Counter> counter_lifetime_writes;
   scoped_refptr<AtomicGauge<uint64_t>> gauge_wait_time;
-  scoped_refptr<AtomicGauge<uint64_t>> gauge_min_parallelism;
-  scoped_refptr<AtomicGauge<uint64_t>> gauge_max_parallelism;
 
  private:
   Status SendRequest(ForceNonBufferable force_non_bufferable = ForceNonBufferable::kFalse);
@@ -518,9 +492,9 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
 
 class PgDocReadOp : public PgDocOp {
  public:
-  PgDocReadOp(const PgSession::ScopedRefPtr& pg_session, PgTable* table, const char *context, PgsqlReadOpPtr read_op);
+  PgDocReadOp(const PgSession::ScopedRefPtr& pg_session, PgTable* table, PgsqlReadOpPtr read_op);
   PgDocReadOp(
-      const PgSession::ScopedRefPtr& pg_session, PgTable* table, const char *context,
+      const PgSession::ScopedRefPtr& pg_session, PgTable* table,
       PgsqlReadOpPtr read_op, const Sender& sender);
 
   Status ExecuteInit(const PgExecParameters *exec_params) override;
@@ -667,7 +641,7 @@ class PgDocReadOp : public PgDocOp {
 class PgDocWriteOp : public PgDocOp {
  public:
   PgDocWriteOp(const PgSession::ScopedRefPtr& pg_session,
-               PgTable* table, const char *context,
+               PgTable* table,
                PgsqlWriteOpPtr write_op);
 
   // Set write time.

@@ -132,30 +132,6 @@ Status PgsqlReadOp::InitPartitionKey(const PgTableDesc& table) {
        table.schema(), table.partition_schema(), table.GetPartitionList(), &read_request_);
 }
 
-
-/*
-
-table k v1 v2
-index on v1 include v2
-
-1,3,5
-
-update t set v2 = 7 where k = 1;
-
-read from t
-update t on k = 1
-
-DELETE from t_index on v1 = 3
-<flush>
-
-INSERT into t_index (3,7)
-
-INSERT into test values (1), (2), (3) ||  (1);
-
-
-
-*/
-
 PgsqlOpPtr PgsqlReadOp::DeepCopy(const std::shared_ptr<void>& shared_ptr) const {
   auto result = ArenaMakeShared<PgsqlReadOp>(
       std::shared_ptr<ThreadSafeArena>(shared_ptr, &arena()), &arena(), is_region_local());

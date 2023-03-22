@@ -221,6 +221,7 @@ YBCStatus YBCPgResetMemctx(YBCPgMemctx memctx) {
 }
 
 void YBCPgDeleteStatement(YBCPgStatement handle) {
+  YBCResetPgSessionExecStats();
   pgapi->DeleteStatement(handle);
 }
 
@@ -1421,8 +1422,30 @@ void YBCGetAndResetReadRpcStats(YBCPgStatement handle, uint64_t* reads, uint64_t
   pgapi->GetAndResetReadRpcStats(handle, reads, read_wait, tbl_reads, tbl_read_wait);
 }
 
+void YBCUpdatePgExecStats(YBCPgStatement handle, YBCPgExecStats *stats) {
+  YBCPgExecStats copy_stats;
+  YBCGetPgExecStats(handle, &copy_stats);
+
+  stats->num_index_reads += copy_stats.num_index_reads;
+  stats->num_index_writes += copy_stats.num_index_writes;
+  stats->num_table_reads += copy_stats.num_table_reads;
+  stats->num_table_writes += copy_stats.num_table_writes;
+  stats->wait_time += copy_stats.wait_time;
+
+  stats->min_parallelism = std::min(stats->min_parallelism, copy_stats.min_parallelism);
+  stats->max_parallelism = std::max(stats->max_parallelism, copy_stats.max_parallelism);
+}
+
 void YBCGetPgExecStats(YBCPgStatement handle, YBCPgExecStats *stats) {
-  pgapi->GetExecStats(handle, stats);
+  pgapi->GetAndResetExecStats(handle, stats);
+}
+
+void YBCGetPgSessionExecStats(YBCPgExecStats *stats) {
+  pgapi->GetAndResetSessionExecStats(stats);
+}
+
+void YBCResetPgSessionExecStats() {
+  pgapi->ResetSessionExecStats();
 }
 
 YBCStatus YBCGetIndexBackfillProgress(YBCPgOid* index_oids, YBCPgOid* database_oids,

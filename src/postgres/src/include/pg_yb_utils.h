@@ -708,10 +708,9 @@ extern void assign_yb_xcluster_consistency_level(const char *newval,
 /*
  * Update read RPC statistics for EXPLAIN ANALYZE.
  */
-void YbUpdateReadRpcStats(YBCPgStatement handle,
-						  YbPgRpcStats *reads, YbPgRpcStats *tbl_reads);
-void
-YbUpdateRpcStats(YBCPgStatement handle, Instrumentation *instr);
+void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr); /* Handle related */
+void YbUpdateRpcStats(Instrumentation *instr); /* Non-handle related */
+void YbResetRpcStats();
 
 void
 YbUpdateWriteIndexRpcStats(YBCPgStatement handle, Instrumentation *instr);

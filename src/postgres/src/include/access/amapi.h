@@ -32,7 +32,7 @@ struct IndexInfo;
 struct YbBackfillInfo;
 struct YbPgExecOutParam;
 
-struct EState; 
+struct EState;
 /*
  * Properties for amproperty API.  This list covers properties known to the
  * core code, but an index AM can define its own properties, by matching the
