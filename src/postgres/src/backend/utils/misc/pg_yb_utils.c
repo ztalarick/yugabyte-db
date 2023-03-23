@@ -3047,28 +3047,31 @@ void YBCheckServerAccessIsAllowed() {
 void aggregateStats(Instrumentation *instr, YBCPgExecStats exec_stats) {
 	// User Table metrics
 	instr->yb_tbl_read_rpcs.count += exec_stats.num_table_reads;
+	instr->yb_tbl_read_rpcs.wait_time += exec_stats.table_read_wait;
 	instr->yb_tbl_write_rpcs.count += exec_stats.num_table_writes;
+	instr->yb_tbl_write_rpcs.wait_time += exec_stats.table_write_wait;
 
 	// Secondary Index metrics
 	instr->yb_index_read_rpcs.count += exec_stats.num_index_reads;
+	instr->yb_index_read_rpcs.wait_time += exec_stats.index_read_wait;
 	instr->yb_index_write_rpcs.count += exec_stats.num_index_writes;
-
-	instr->yb_tbl_write_rpcs.wait_time += exec_stats.wait_time;
+	instr->yb_index_write_rpcs.wait_time += exec_stats.index_write_wait;
 
 	// System Catalog metrics
 	instr->yb_catalog_read_rpcs.count += exec_stats.num_catalog_reads;
+	instr->yb_catalog_read_rpcs.wait_time += exec_stats.catalog_read_wait;
 	instr->yb_catalog_write_rpcs.count += exec_stats.num_catalog_writes;
+	instr->yb_catalog_write_rpcs.wait_time += exec_stats.catalog_write_wait;
 
 	// Cumulative metrics
 	instr->yb_tbl_write_rpcs.min_parallelism = exec_stats.min_parallelism;
 	instr->yb_tbl_write_rpcs.max_parallelism = exec_stats.max_parallelism;
-	instr->yb_tbl_read_rpcs.wait_time += exec_stats.wait_time;
 }
 
 void
 YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr)
 {
-	YBCPgExecStats exec_stats = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+	YBCPgExecStats exec_stats = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	YBCGetPgExecStats(handle, &exec_stats);
 	aggregateStats(instr, exec_stats);
@@ -3076,7 +3079,7 @@ YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr)
 
 void
 YbUpdateRpcStats(Instrumentation *instr) {
-	YBCPgExecStats exec_stats = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+	YBCPgExecStats exec_stats = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	YBCGetPgSessionExecStats(&exec_stats);
 	aggregateStats(instr, exec_stats);
@@ -3085,15 +3088,6 @@ YbUpdateRpcStats(Instrumentation *instr) {
 void YbResetRpcStats()
 {
 	YBCResetPgSessionExecStats();
-}
-
-void YbUpdateWriteIndexRpcStats(YBCPgStatement handle, Instrumentation *instr)
-{
-	YBCPgExecStats exec_stats;
-	YBCGetPgExecStats(handle, &exec_stats);
-
-	instr->yb_index_write_rpcs.count += exec_stats.num_index_writes + exec_stats.num_table_writes;
-	instr->yb_index_write_rpcs.wait_time = exec_stats.wait_time;
 }
 
 void YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)

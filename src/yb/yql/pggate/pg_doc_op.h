@@ -330,10 +330,8 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
   void GetAndResetDocDBStats(YBCPgExecStats *stats) {
     doc_op_metrics_->GetStats(stats);  
     doc_op_metrics_->Reset();
-  }
 
-  uint64_t GetDocDBRequestWaitTime() {
-    return gauge_wait_time->value();
+    read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
   }
 
   void ResetDocDBLiveMetricCounters();
@@ -453,9 +451,7 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
   uint64_t read_rpc_count_ = 0;
   MonoDelta read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
 
-  PgDocMetrics *doc_op_metrics_;
-  scoped_refptr<MetricEntity> metric_entity_;
-  scoped_refptr<AtomicGauge<uint64_t>> gauge_wait_time;
+  scoped_refptr<PgDocMetrics> doc_op_metrics_;
 
  private:
   Status SendRequest(ForceNonBufferable force_non_bufferable = ForceNonBufferable::kFalse);

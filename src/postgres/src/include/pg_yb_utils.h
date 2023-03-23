@@ -712,9 +712,6 @@ void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr); /* Han
 void YbUpdateRpcStats(Instrumentation *instr); /* Non-handle related */
 void YbResetRpcStats();
 
-void
-YbUpdateWriteIndexRpcStats(YBCPgStatement handle, Instrumentation *instr);
-
 /*
  * If the tserver gflag --ysql_disable_server_file_access is set to
  * true, then prevent any server file writes/reads/execution.

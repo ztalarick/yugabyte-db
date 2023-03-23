@@ -21,14 +21,23 @@ METRIC_DEFINE_counter(
     pg_doc_request, docdb_catalog_writes, "Number of system catalog writes", yb::MetricUnit::kRequests,
     "Desc goes here");
 
-METRIC_DEFINE_counter(
-    pg_doc_request, docdb_lifetime_table_reads, "Number of DocDB table reads in the lifetime",
-    yb::MetricUnit::kRequests, "Desc goes here");
-METRIC_DEFINE_counter(
-    pg_doc_request, docdb_lifetime_table_writes, "Number of DocDB table writes in the lifetime",
-    yb::MetricUnit::kRequests, "Desc goes here");
 METRIC_DEFINE_gauge_uint64(
-    pg_doc_request, docdb_req_wait, "Time (in unit: X) waited to complete DocDB request",
+    pg_doc_request, docdb_table_read_wait, "Time (in unit: X) waited to complete DocDB request",
+    yb::MetricUnit::kMicroseconds, "Desc goes here");
+METRIC_DEFINE_gauge_uint64(
+    pg_doc_request, docdb_index_read_wait, "Time (in unit: X) waited to complete DocDB request",
+    yb::MetricUnit::kMicroseconds, "Desc goes here");
+METRIC_DEFINE_gauge_uint64(
+    pg_doc_request, docdb_catalog_read_wait, "Time (in unit: X) waited to complete DocDB request",
+    yb::MetricUnit::kMicroseconds, "Desc goes here");
+METRIC_DEFINE_gauge_uint64(
+    pg_doc_request, docdb_table_write_wait, "Time (in unit: X) waited to complete DocDB request",
+    yb::MetricUnit::kMicroseconds, "Desc goes here");
+METRIC_DEFINE_gauge_uint64(
+    pg_doc_request, docdb_index_write_wait, "Time (in unit: X) waited to complete DocDB request",
+    yb::MetricUnit::kMicroseconds, "Desc goes here");
+METRIC_DEFINE_gauge_uint64(
+    pg_doc_request, docdb_catalog_write_wait, "Time (in unit: X) waited to complete DocDB request",
     yb::MetricUnit::kMicroseconds, "Desc goes here");
 METRIC_DEFINE_gauge_uint64(
     pg_doc_request, docdb_min_parallelism, "Minimum number of requests batched to DocDB",
@@ -40,87 +49,124 @@ METRIC_DEFINE_gauge_uint64(
 namespace yb {
 namespace pggate {
 
+void RpcStats::Reset() {
+    count->ResetValue();
+    exec_time->set_value(0);
+}
+
+void RpcStats::IncrementCountBy(uint64_t num) {
+    count->IncrementBy(num);
+}
+
 PgDocMetrics::PgDocMetrics(MetricRegistry* registry, const std::string& id) {
     entity_ = METRIC_ENTITY_pg_doc_request.Instantiate(registry, id);
     
     // User table metrics
-    table_reads = entity_->FindOrCreateCounter(&METRIC_docdb_table_reads);
-    table_writes = entity_->FindOrCreateCounter(&METRIC_docdb_index_reads);
+    table_reads = RpcStats {
+        entity_->FindOrCreateCounter(&METRIC_docdb_table_reads),
+        entity_->FindOrCreateGauge(&METRIC_docdb_table_read_wait, static_cast<uint64>(0))
+    };
+
+    table_writes = RpcStats {
+        entity_->FindOrCreateCounter(&METRIC_docdb_table_writes),
+        entity_->FindOrCreateGauge(&METRIC_docdb_table_write_wait, static_cast<uint64>(0))
+    };
 
     // Secondary index metrics
-    index_reads = entity_->FindOrCreateCounter(&METRIC_docdb_table_writes);
-    index_writes = entity_->FindOrCreateCounter(&METRIC_docdb_index_writes);
+    index_reads = RpcStats {
+        entity_->FindOrCreateCounter(&METRIC_docdb_index_reads),
+        entity_->FindOrCreateGauge(&METRIC_docdb_index_read_wait, static_cast<uint64>(0))
+    };
+
+    index_writes = RpcStats {
+        entity_->FindOrCreateCounter(&METRIC_docdb_index_writes),
+        entity_->FindOrCreateGauge(&METRIC_docdb_index_write_wait, static_cast<uint64>(0))
+    };
 
     // Catalog metrics
-    catalog_reads = entity_->FindOrCreateCounter(&METRIC_docdb_catalog_reads);
-    catalog_writes = entity_->FindOrCreateCounter(&METRIC_docdb_catalog_writes);
+    catalog_reads = RpcStats {
+        entity_->FindOrCreateCounter(&METRIC_docdb_catalog_reads),
+        entity_->FindOrCreateGauge(&METRIC_docdb_catalog_read_wait, static_cast<uint64>(0))
+    };
+
+    catalog_writes = RpcStats {
+        entity_->FindOrCreateCounter(&METRIC_docdb_catalog_writes),
+        entity_->FindOrCreateGauge(&METRIC_docdb_catalog_write_wait, static_cast<uint64>(0))
+    };
 
     min_parallelism = entity_->FindOrCreateGauge(&METRIC_docdb_min_parallelism, static_cast<uint64>(1));
     max_parallelism = entity_->FindOrCreateGauge(&METRIC_docdb_max_parallelism, static_cast<uint64>(1));
-
-    // counter_lifetime_reads = metric_entity_->FindOrCreateCounter(&METRIC_docdb_lifetime_table_reads);
-    // counter_lifetime_writes = metric_entity_->FindOrCreateCounter(&METRIC_docdb_lifetime_table_writes);
 }
 
 PgDocMetrics::~PgDocMetrics() = default;
 
 void PgDocMetrics::Reset() {
-    LOG(INFO) << Format("Stats: UT($0, $1), IND($2, $3), CAT($4, $5)", 
-        table_reads->value(), table_writes->value(),
-        index_reads->value(), index_writes->value(),
-        catalog_reads->value(), catalog_writes->value()
-    );
+    // LOG(INFO) << Format("Stats: UT($0, $1, $6), IND($2, $3, $7), CAT($4, $5, $8)",
+    //     table_reads.count->value(), table_writes.count->value(),
+    //     index_reads.count->value(), index_writes.count->value(),
+    //     catalog_reads.count->value(), catalog_writes.count->value(),
+    //     table_reads.exec_time->value(), index_reads.exec_time->value(), catalog_reads.exec_time->value()
+    // );
 
     // User table metrics
-    table_reads->ResetValue();
-    table_writes->ResetValue();
+    table_reads.Reset();
+    table_writes.Reset();
 
     // Secondary index metrics
-    index_reads->ResetValue();
-    index_writes->ResetValue();
+    index_reads.Reset();
+    index_writes.Reset();
 
     // Catalog metrics
-    catalog_reads->ResetValue();
-    catalog_writes->ResetValue();
+    catalog_reads.Reset();
+    catalog_writes.Reset();
 
     min_parallelism->set_value(1);
     max_parallelism->set_value(1);
 }
 
 uint64_t PgDocMetrics::GetNumTableReadRequests() {
-    return table_reads->value();
+    return table_reads.count->value();
 }
 
 uint64_t PgDocMetrics::GetNumTableWriteRequests() {
-    return table_writes->value();
+    return table_writes.count->value();
 }
 
 void PgDocMetrics::GetStats(YBCPgExecStats *stats) {
+    // User table metrics
     stats->num_table_reads = GetNumTableReadRequests();
+    stats->table_read_wait = table_reads.exec_time->value();
     stats->num_table_writes = GetNumTableWriteRequests();
+    stats->table_write_wait = table_writes.exec_time->value();
 
-    stats->num_index_reads = index_reads->value();
-    stats->num_index_writes = index_writes->value();
+    // Secondary Index metrics
+    stats->num_index_reads = GetNumIndexReadRequests();
+    stats->index_read_wait = index_reads.exec_time->value();
+    stats->num_index_writes = GetNumIndexWriteRequests();
+    stats->index_write_wait = index_writes.exec_time->value();
 
-    stats->num_catalog_reads = catalog_reads->value();
-    stats->num_catalog_writes = catalog_writes->value();
+    // Catalog metrics
+    stats->num_catalog_reads = GetNumCatalogReadRequests();
+    stats->catalog_read_wait = catalog_reads.exec_time->value();
+    stats->num_catalog_writes = GetNumCatalogWriteRequests();
+    stats->catalog_write_wait = catalog_writes.exec_time->value();
 
     stats->min_parallelism = min_parallelism->value();
-    stats->max_parallelism = max_parallelism->value();
+    stats->max_parallelism = max_parallelism->value(); 
 }
 
 void PgDocMetrics::AddDocOpRequest(master::RelationType relation, bool is_read, uint64_t parallelism) {
-    // master::RelationType rtype = relation.has_value() ? relation.value() : master::SYSTEM_TABLE_RELATION;
-
+    // TODO: Scoped_refptr of count
+    
     switch (relation) {
         case master::SYSTEM_TABLE_RELATION:
-            is_read ? catalog_reads->IncrementBy(parallelism) : catalog_writes->IncrementBy(parallelism);
+            is_read ? catalog_reads.IncrementCountBy(parallelism) : catalog_writes.IncrementCountBy(parallelism);
             break;
         case master::USER_TABLE_RELATION:
-            is_read ? table_reads->IncrementBy(parallelism) : table_writes->IncrementBy(parallelism);
+            is_read ? table_reads.IncrementCountBy(parallelism) : table_writes.IncrementCountBy(parallelism);
             break;
         case master::INDEX_TABLE_RELATION:
-            is_read ? index_reads->IncrementBy(parallelism) : index_writes->IncrementBy(parallelism);
+            is_read ? index_reads.IncrementCountBy(parallelism) : index_writes.IncrementCountBy(parallelism);
             break;
         default:
             LOG(WARNING) << "Unhandled relation type " << relation;
@@ -128,6 +174,27 @@ void PgDocMetrics::AddDocOpRequest(master::RelationType relation, bool is_read, 
 
     min_parallelism->set_value(std::min<uint64>(min_parallelism->value(), parallelism));
     max_parallelism->set_value(std::max<uint64>(max_parallelism->value(), parallelism));
+}
+
+void PgDocMetrics::IncrementExecutionTime(master::RelationType relation, bool is_read, uint64_t wait_time) {
+    // scoped_refptr<AtomicGauge<uint64_t>> exec_time;
+
+    switch (relation) {
+        case master::SYSTEM_TABLE_RELATION:
+            is_read ? catalog_reads.exec_time->IncrementBy(wait_time) : catalog_writes.exec_time->IncrementBy(wait_time);
+            break;
+        case master::USER_TABLE_RELATION:
+            is_read ? table_reads.exec_time->IncrementBy(wait_time) : table_writes.exec_time->IncrementBy(wait_time);
+            break;
+        case master::INDEX_TABLE_RELATION:
+            is_read ? index_reads.exec_time->IncrementBy(wait_time) : index_writes.exec_time->IncrementBy(wait_time);
+            break;
+        default:
+            LOG(WARNING) << "Unhandled relation type " << relation;
+            return;
+    }
+
+    // exec_time->IncrementBy(wait_time);
 }
 
 } // pggate

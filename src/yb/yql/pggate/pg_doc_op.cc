@@ -343,27 +343,41 @@ void PgDocOp::PerformPreRequestInstrumentation() {
   // TODO: Update Parallelism counts.
 
   LOG(INFO) << Format(
-      "Updated ops for $0 --> now at (R$1, W$2) (Parallelism: $4) Expected: ($3) ($5::$6)", doc_op_metrics_->entity_->id(), doc_op_metrics_->table_reads->value(),
-      doc_op_metrics_->table_writes->value(), read_rpc_count_, pgsql_ops_.size(), this->table()->table_name().namespace_name(), this->table()->table_name().table_name());
+      "Updated ops for $0 --> now at (R$1, W$2) (Parallelism: $4) Expected: ($3) ($5::$6)", doc_op_metrics_->MetricId(), doc_op_metrics_->GetNumTableReadRequests(),
+      doc_op_metrics_->GetNumTableWriteRequests(), read_rpc_count_, pgsql_ops_.size(), this->table()->table_name().namespace_name(), this->table()->table_name().table_name());
 }
 
 void PgDocOp::PerformPostRequestInstrumentation() {
+  master::RelationType rtype;
+
+  // TODO:
+  // 1. Fix descrepancy between read/write ops to the same table buffered in the same request.
+  // 2. Fix monotonically increasing timing issue.
+
+  if (table_->id().object_oid < kPgFirstNormalObjectId) {
+    rtype = master::SYSTEM_TABLE_RELATION;
+  } else if (table_->IsIndex()) {
+    rtype = master::INDEX_TABLE_RELATION;
+  } else {
+    rtype = master::USER_TABLE_RELATION;
+  }
+
   // Perform timing related functions
-  gauge_wait_time->set_value(static_cast<uint64_t>(read_rpc_wait_time_.ToNanoseconds()));
-  LOG(INFO) << "Wait time is $0" << read_rpc_wait_time_;
+  doc_op_metrics_->IncrementExecutionTime(rtype, pgsql_ops_[0]->is_read(), static_cast<uint64_t>(read_rpc_wait_time_.ToNanoseconds()));
+  LOG(INFO) << "Wait time is " << read_rpc_wait_time_.ToNanoseconds() / (1000);
 }
 
 Result<std::list<PgDocResult>> PgDocOp::ProcessResponse(
-    const Result<PgDocResponse::Data>& response) {
+  const Result<PgDocResponse::Data>& response) {
   VLOG(1) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
   // Check operation status.
   DCHECK(exec_status_.ok());
+  PerformPostRequestInstrumentation();
   auto result = ProcessResponseImpl(response);
   if (result.ok()) {
     return result;
   }
   exec_status_ = result.status();
-  PerformPostRequestInstrumentation();
   return exec_status_;
 }
 

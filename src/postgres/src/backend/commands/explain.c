@@ -461,6 +461,7 @@ ExplainOneUtility(Node *utilityStmt, IntoClause *into, ExplainState *es,
 	}
 }
 
+/* TODO: Find a better place for this */
 static void
 explain_rpc_docdb_request_stats(ExplainState *es, const char *field,
 								double count, double timing)
@@ -1077,12 +1078,20 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			 planstate->instrument->yb_index_read_rpcs.count +
 			 planstate->instrument->yb_catalog_read_rpcs.count);
 
-		es->yb_total_read_rpc_wait += (planstate->instrument->yb_tbl_read_rpcs.wait_time);
+		es->yb_total_read_rpc_wait +=
+			(planstate->instrument->yb_tbl_read_rpcs.wait_time +
+			 planstate->instrument->yb_index_read_rpcs.wait_time +
+			 planstate->instrument->yb_catalog_read_rpcs.wait_time);
 
 		es->yb_total_write_rpc_count +=
 			(planstate->instrument->yb_tbl_write_rpcs.count +
 			 planstate->instrument->yb_index_write_rpcs.count +
 			 planstate->instrument->yb_catalog_write_rpcs.count);
+
+		es->yb_total_read_rpc_wait +=
+			(planstate->instrument->yb_tbl_write_rpcs.wait_time +
+			 planstate->instrument->yb_index_write_rpcs.wait_time +
+			 planstate->instrument->yb_catalog_write_rpcs.wait_time);
 	}
 
 	switch (nodeTag(plan))
@@ -3040,28 +3049,32 @@ static void
 show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 {
 	double nloops = planstate->instrument->nloops;
-	// double reads = planstate->instrument->yb_read_rpcs.count / nloops;
-	double read_wait = planstate->instrument->yb_read_rpcs.wait_time / nloops;
-	// double tbl_read_wait = planstate->instrument->yb_tbl_read_rpcs.wait_time / nloops;
-	double writes_wait = planstate->instrument->yb_tbl_write_rpcs.wait_time / nloops;
-
-	double tbl_reads = planstate->instrument->yb_tbl_read_rpcs.count / nloops;
-	double index_reads = planstate->instrument->yb_index_read_rpcs.count / nloops;
+	
+	// Read stats
+	double table_reads = planstate->instrument->yb_tbl_read_rpcs.count;
+	double table_read_wait = planstate->instrument->yb_tbl_read_rpcs.wait_time;
+	double index_reads = planstate->instrument->yb_index_read_rpcs.count;
+	double index_read_wait = planstate->instrument->yb_index_read_rpcs.wait_time;
 	double catalog_reads = planstate->instrument->yb_catalog_read_rpcs.count / nloops;
+	double catalog_read_wait = planstate->instrument->yb_catalog_read_rpcs.wait_time / nloops;
 
+	// Write stats
 	double table_writes = planstate->instrument->yb_tbl_write_rpcs.count / nloops;
+	double table_write_wait = planstate->instrument->yb_tbl_write_rpcs.wait_time / nloops;
 	double index_writes = planstate->instrument->yb_index_write_rpcs.count / nloops;
+	double index_write_wait = planstate->instrument->yb_index_write_rpcs.wait_time / nloops;
 	double catalog_writes = planstate->instrument->yb_catalog_write_rpcs.count / nloops;
+	double catalog_write_wait = planstate->instrument->yb_catalog_write_rpcs.wait_time / nloops;
 
 	/* Display the reads first */
-	explain_rpc_docdb_request_stats(es, "Storage Table Read", tbl_reads, read_wait);
-	explain_rpc_docdb_request_stats(es, "Storage Index Read", index_reads, read_wait);
-	explain_rpc_docdb_request_stats(es, "Storage Catalog Read", catalog_reads, read_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Table Read", table_reads, table_read_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Index Read", index_reads, index_read_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Catalog Read", catalog_reads, catalog_read_wait);
 
 	/* The writes */
-	explain_rpc_docdb_request_stats(es, "Storage Table Write", table_writes, writes_wait);
-	explain_rpc_docdb_request_stats(es, "Storage Index Write", index_writes, writes_wait);
-	explain_rpc_docdb_request_stats(es, "Storage Catalog Write", catalog_writes, writes_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Table Write", table_writes, table_write_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Index Write", index_writes, index_write_wait);
+	explain_rpc_docdb_request_stats(es, "Storage Catalog Write", catalog_writes, catalog_write_wait);
 }
 
 /*

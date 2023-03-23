@@ -348,7 +348,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   void GetAndResetDocDBStats(YBCPgExecStats *stats);
   void ResetDocDBStats() { metrics_->Reset(); };
 
-  PgDocMetrics *GetMetricsHandle() { return metrics_; }
+  scoped_refptr<PgDocMetrics> GetMetricsHandle() { return metrics_; }
 
   std::unique_ptr<MetricRegistry> metric_registry_;
 
@@ -420,7 +420,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   std::variant<TxnSerialNoPerformInfo> last_perform_on_txn_serial_no_;
 
   // Stats for EXPLAIN ANALYZE
-  PgDocMetrics *metrics_;
+  scoped_refptr<PgDocMetrics> metrics_;
 };
 
 }  // namespace pggate
