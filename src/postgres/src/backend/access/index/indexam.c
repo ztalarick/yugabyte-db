@@ -203,7 +203,6 @@ index_close(Relation relation, LOCKMODE lockmode)
 bool
 index_insert(Relation indexRelation,
 			 Datum *values,
-			 EState *estate,
 			 bool *isnull,
 			 ItemPointer heap_t_ctid,
 			 HeapTuple heapTuple,
@@ -226,7 +225,7 @@ index_insert(Relation indexRelation,
 	if (IsYugaByteEnabled() && IsYBRelation(indexRelation))
 	{
 		CHECK_REL_PROCEDURE(yb_aminsert);
-		return indexRelation->rd_amroutine->yb_aminsert(indexRelation, values, estate, isnull,
+		return indexRelation->rd_amroutine->yb_aminsert(indexRelation, values, isnull,
 														heapTuple->t_ybctid, heapRelation,
 														checkUnique, indexInfo,
 														yb_shared_insert);

@@ -32,7 +32,6 @@ struct IndexInfo;
 struct YbBackfillInfo;
 struct YbPgExecOutParam;
 
-struct EState;
 /*
  * Properties for amproperty API.  This list covers properties known to the
  * core code, but an index AM can define its own properties, by matching the
@@ -86,7 +85,6 @@ typedef bool (*aminsert_function) (Relation indexRelation,
 /* alternate insert callback for YugaByte-based index that passs ybctid instead of ctid */
 typedef bool (*yb_aminsert_function) (Relation indexRelation,
 									  Datum *values,
-									  struct EState *estate,
 									  bool *isnull,
 									  Datum ybctid,
 									  Relation heapRelation,

@@ -421,7 +421,6 @@ ExecInsertIndexTuplesOptimized(TupleTableSlot *slot,
 		satisfiesConstraint =
 			index_insert(indexRelation, /* index relation */
 						 values,	/* array of index Datums */
-						 estate,
 						 isnull,	/* null flags */
 						 &(tuple->t_self),	/* tid of heap tuple */
 						 tuple,		/* heap tuple */

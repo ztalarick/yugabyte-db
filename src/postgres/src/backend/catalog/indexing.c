@@ -153,7 +153,6 @@ CatalogIndexInsert(CatalogIndexState indstate, HeapTuple heapTuple, bool yb_shar
 		 */
 		index_insert(relationDescs[i],	/* index relation */
 					 values,	/* array of index Datums */
-					 NULL,
 					 isnull,	/* is-null flags */
 					 &(heapTuple->t_self),	/* tid of heap tuple */
 					 heapTuple,	/* heap tuple */
@@ -309,8 +308,7 @@ YBCatalogTupleInsert(Relation heapRel, HeapTuple tup, bool yb_shared_insert)
 									  RelationGetDescr(heapRel),
 									  tup,
 									  ONCONFLICT_NONE,
-									  &ybctid,
-									  NULL);
+									  &ybctid);
 			}
 			YB_FOR_EACH_DB_END;
 		}
@@ -319,8 +317,7 @@ YBCatalogTupleInsert(Relation heapRel, HeapTuple tup, bool yb_shared_insert)
 									RelationGetDescr(heapRel),
 									tup,
 									ONCONFLICT_NONE,
-									&ybctid,
-									NULL);
+									&ybctid);
 		/* Update the local cache automatically */
 		YbSetSysCacheTuple(heapRel, tup);
 	}
@@ -380,8 +377,7 @@ CatalogTupleInsertWithInfo(Relation heapRel, HeapTuple tup,
 									  RelationGetDescr(heapRel),
 									  tup,
 									  ONCONFLICT_NONE,
-									  &ybctid,
-									  NULL);
+									  &ybctid);
 			}
 			YB_FOR_EACH_DB_END;
 		}
@@ -390,8 +386,7 @@ CatalogTupleInsertWithInfo(Relation heapRel, HeapTuple tup,
 									RelationGetDescr(heapRel),
 									tup,
 									ONCONFLICT_NONE,
-									&ybctid,
-									NULL);
+									&ybctid);
 		/* Update the local cache automatically */
 		YbSetSysCacheTuple(heapRel, tup);
 	}

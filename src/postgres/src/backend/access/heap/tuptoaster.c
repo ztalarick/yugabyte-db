@@ -1681,7 +1681,7 @@ toast_save_datum(Relation rel, Datum value,
 		{
 			/* Only index relations marked as ready can be updated */
 			if (IndexIsReady(toastidxs[i]->rd_index))
-				index_insert(toastidxs[i], t_values, NULL, t_isnull,
+				index_insert(toastidxs[i], t_values, t_isnull,
 							 &(toasttup->t_self),
 							 toasttup,
 							 toastrel,

@@ -183,7 +183,7 @@ ybginTupleWrite(GinState *ginstate, OffsetNumber attnum,
 		if (isinsert)
 			YBCExecuteInsertIndex(index, &entries[i], &isnull, ybctid,
 								  backfilltime /* backfill_write_time */,
-								  doBindsForIdxWrite, (void *) ginstate, NULL);
+								  doBindsForIdxWrite, (void *) ginstate);
 		else
 		{
 			Assert(!backfilltime);
@@ -388,8 +388,8 @@ ybginWrite(Relation index, Datum *values, bool *isnull, Datum ybctid,
 }
 
 bool
-ybgininsert(Relation index, Datum *values, EState *estate, bool *isnull,
-			Datum ybctid, Relation heap, IndexUniqueCheck checkUnique,
+ybgininsert(Relation index, Datum *values, bool *isnull, Datum ybctid,
+			Relation heap, IndexUniqueCheck checkUnique,
 			struct IndexInfo *indexInfo, bool shared_insert)
 {
 	ybginWrite(index, values, isnull, ybctid, heap, indexInfo,

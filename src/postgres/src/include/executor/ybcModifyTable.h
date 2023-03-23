@@ -66,8 +66,7 @@ extern Oid YBCHeapInsertForDb(Oid dboid,
                               TupleTableSlot *slot,
                               HeapTuple tuple,
                               EState *estate,
-                              Datum *ybctid,
-							  YBCPgStatement *insert_stmt);
+                              Datum *ybctid);
 
 /*
  * Insert a tuple into a YugaByte table. Will execute within a distributed
@@ -86,8 +85,7 @@ extern Oid YBCExecuteInsertForDb(Oid dboid,
                                  TupleDesc tupleDesc,
                                  HeapTuple tuple,
                                  OnConflictAction onConflictAction,
-                                 Datum *ybctid,
-								 YBCPgStatement *insert_stmt);
+                                 Datum *ybctid);
 
 /*
  * Execute the insert outside of a transaction.
@@ -106,8 +104,7 @@ extern Oid YBCExecuteNonTxnInsertForDb(Oid dboid,
                                        TupleDesc tupleDesc,
                                        HeapTuple tuple,
                                        OnConflictAction onConflictAction,
-                                       Datum *ybctid,
-									   YBCPgStatement *insert_stmt);
+                                       Datum *ybctid);
 
 /*
  * Insert a tuple into the an index's backing YugaByte index table.
@@ -118,7 +115,7 @@ extern void YBCExecuteInsertIndex(Relation rel,
 								  Datum ybctid,
 								  const uint64_t* backfill_write_time,
 								  yb_bind_for_write_function callback,
-								  void *indexstate, YBCPgStatement *insert_stmt);
+								  void *indexstate);
 extern void YBCExecuteInsertIndexForDb(Oid dboid,
 									   Relation rel,
 									   Datum* values,
@@ -126,7 +123,7 @@ extern void YBCExecuteInsertIndexForDb(Oid dboid,
 									   Datum ybctid,
 									   const uint64_t* backfill_write_time,
 									   yb_bind_for_write_function callback,
-									   void *indexstate, YBCPgStatement *insert_stmt);
+									   void *indexstate);
 
 /*
  * Delete a tuple (identified by ybctid) from a YugaByte table.
