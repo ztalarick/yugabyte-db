@@ -1372,10 +1372,12 @@ tserver_glog_info_messages:
 
 tserver_uptime_min:
   metric: "server_uptime_ms"
-  function: "min"
+  function: "max_over_time|bottomk.9|min"
+  range : true
   operator: "/ 60000"
   filters:
     metric_id: "yb.tabletserver"
+  group_by: "exported_instance"
   panel_group: "Tablet Server"
   layout:
     title: "Uptime"
@@ -2883,7 +2885,8 @@ master_lsm_rocksdb_compaction_time:
 
 master_uptime_min:
   metric: "server_uptime_ms"
-  function: "min"
+  function: "max_over_time|min"
+  range : true
   operator: "/ 60000"
   filters:
     metric_id: "yb.master"
