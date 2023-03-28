@@ -16,6 +16,9 @@
 
 #include "yb/cdc/cdc_util.h"
 #include "yb/cdc/cdc_rpc.h"
+
+#include "yb/common/wire_protocol.h"
+
 #include "yb/client/client_fwd.h"
 #include "yb/client/client.h"
 #include "yb/client/client_error.h"
@@ -24,8 +27,13 @@
 #include "yb/client/meta_cache.h"
 #include "yb/client/table.h"
 #include "yb/client/transaction.h"
+#include "yb/docdb/doc_key.h"
+#include "yb/docdb/docdb.h"
+
 #include "yb/gutil/strings/join.h"
+
 #include "yb/master/master_replication.pb.h"
+
 #include "yb/rpc/rpc.h"
 #include "yb/rpc/rpc_fwd.h"
 #include "yb/tserver/xcluster_consumer.h"
@@ -43,6 +51,10 @@ DECLARE_int32(cdc_write_rpc_timeout_ms);
 DEFINE_RUNTIME_bool(cdc_force_remote_tserver, false,
     "Avoid local tserver apply optimization for CDC and force remote RPCs.");
 
+DEFINE_RUNTIME_bool(xcluster_enable_packed_rows_support, true,
+    "Enables rewriting of packed rows with xcluster consumer schema version");
+TAG_FLAG(xcluster_enable_packed_rows_support, advanced);
+
 DECLARE_int32(cdc_read_rpc_timeout_ms);
 
 DEFINE_test_flag(bool, xcluster_consumer_fail_after_process_split_op, false,
@@ -50,7 +62,6 @@ DEFINE_test_flag(bool, xcluster_consumer_fail_after_process_split_op, false,
 
 DEFINE_test_flag(bool, xcluster_disable_replication_transaction_status_table, false,
                  "Whether or not to disable replication of txn status table.");
-
 using namespace std::placeholders;
 
 namespace yb {
@@ -65,10 +76,9 @@ class XClusterOutputClient : public XClusterOutputClientIf {
       const std::shared_ptr<XClusterClient>& local_client,
       ThreadPool* thread_pool,
       rpc::Rpcs* rpcs,
-      std::function<void(const XClusterOutputClientResponse& response)>
-          apply_changes_clbk,
+      std::function<void(const XClusterOutputClientResponse& response)> apply_changes_clbk,
       bool use_local_tserver,
-      client::YBTablePtr global_transaction_status_table,
+      const std::vector<TabletId>& global_transaction_status_tablets,
       bool enable_replicate_transaction_status_table)
       : xcluster_consumer_(xcluster_consumer),
         consumer_tablet_info_(consumer_tablet_info),
@@ -80,7 +90,7 @@ class XClusterOutputClient : public XClusterOutputClientIf {
         apply_changes_clbk_(std::move(apply_changes_clbk)),
         use_local_tserver_(use_local_tserver),
         all_tablets_result_(STATUS(Uninitialized, "Result has not been initialized.")),
-        global_transaction_status_table_(global_transaction_status_table),
+        global_transaction_status_tablets_(global_transaction_status_tablets),
         enable_replicate_transaction_status_table_(enable_replicate_transaction_status_table) {}
 
   ~XClusterOutputClient() {
@@ -90,6 +100,10 @@ class XClusterOutputClient : public XClusterOutputClientIf {
 
   // Sets the last compatible consumer schema version
   void SetLastCompatibleConsumerSchemaVersion(uint32_t schema_version) override;
+
+  void UpdateSchemaVersionMappings(
+      const cdc::XClusterSchemaVersionMap& schema_version_map,
+      const cdc::ColocatedSchemaVersionMap& colocated_schema_version_map) override;
 
   Status ApplyChanges(const cdc::GetChangesResponsePB* resp) override;
 
@@ -136,12 +150,19 @@ class XClusterOutputClient : public XClusterOutputClientIf {
 
   Status ProcessRecordForLocalTablet(const cdc::CDCRecordPB& record);
 
+  Status ProcessRecordForTransactionStatusTablet(const cdc::CDCRecordPB& record);
+
   Status ProcessRecordForTabletRange(
       const cdc::CDCRecordPB& record,
       const Result<std::vector<client::internal::RemoteTabletPtr>>& tablets);
 
   bool IsValidMetaOp(const cdc::CDCRecordPB& record);
   Result<bool> ProcessMetaOp(const cdc::CDCRecordPB& record);
+  Result<bool> ProcessChangeMetadataOp(const cdc::CDCRecordPB& record);
+
+  // Gets the producer/consumer schema mapping for the record.
+  Result<cdc::XClusterSchemaVersionMap> GetSchemaVersionMap(
+      const cdc::CDCRecordPB& record) REQUIRES(lock_);
 
   // Processes the Record and sends the CDCWrite for it.
   Status ProcessRecord(const std::vector<std::string>& tablet_ids, const cdc::CDCRecordPB& record)
@@ -158,16 +179,27 @@ class XClusterOutputClient : public XClusterOutputClientIf {
   Result<std::vector<TabletId>> GetInvolvedTargetTabletsFromCommitRecord(
       const cdc::CDCRecordPB& record);
 
-  Result<TabletId> GetTargetTabletIdFromProducerTablet(const TabletId& producer_tablet_id);
+  Result<TabletId> SelectStatusTabletIdForTransaction(const TransactionId& txn_id);
 
   Status SendTransactionUpdates();
 
   Status SendUserTableWrites();
 
   void SendNextCDCWriteToTablet(std::unique_ptr<WriteRequestPB> write_request);
+  void UpdateSchemaVersionMapping(tserver::GetCompatibleSchemaVersionRequestPB* req);
 
   void WriteCDCRecordDone(const Status& status, const WriteResponsePB& response);
   void DoWriteCDCRecordDone(const Status& status, const WriteResponsePB& response);
+
+  void SchemaVersionCheckDone(
+      const Status& status,
+      const GetCompatibleSchemaVersionRequestPB& req,
+      const GetCompatibleSchemaVersionResponsePB& response);
+
+  void DoSchemaVersionCheckDone(
+      const Status& status,
+      const GetCompatibleSchemaVersionRequestPB& req,
+      const GetCompatibleSchemaVersionResponsePB& response);
 
   // Increment processed record count.
   // Returns true if all records are processed, false if there are still some pending records.
@@ -182,8 +214,10 @@ class XClusterOutputClient : public XClusterOutputClientIf {
   bool UseLocalTserver();
 
   XClusterConsumer* xcluster_consumer_;
-  cdc::ConsumerTabletInfo consumer_tablet_info_;
-  cdc::ProducerTabletInfo producer_tablet_info_;
+  const cdc::ConsumerTabletInfo consumer_tablet_info_;
+  const cdc::ProducerTabletInfo producer_tablet_info_;
+  cdc::XClusterSchemaVersionMap schema_versions_ GUARDED_BY(lock_);
+  cdc::ColocatedSchemaVersionMap colocated_schema_version_map_ GUARDED_BY(lock_);
   std::shared_ptr<XClusterClient> local_client_;
   ThreadPool* thread_pool_;  // Use threadpool so that callbacks aren't run on reactor threads.
   rpc::Rpcs* rpcs_;
@@ -208,6 +242,8 @@ class XClusterOutputClient : public XClusterOutputClientIf {
   uint32_t record_count_ GUARDED_BY(lock_) = 0;
 
   SchemaVersion last_compatible_consumer_schema_version_ GUARDED_BY(lock_) = 0;
+  SchemaVersion producer_schema_version_ GUARDED_BY(lock_) = 0;
+  ColocationId colocation_id_  GUARDED_BY(lock_) = 0;
 
   // This will cache the response to an ApplyChanges() request.
   cdc::GetChangesResponsePB xcluster_resp_copy_;
@@ -215,7 +251,7 @@ class XClusterOutputClient : public XClusterOutputClientIf {
   // Store the result of the lookup for all the tablets.
   yb::Result<std::vector<scoped_refptr<yb::client::internal::RemoteTablet>>> all_tablets_result_;
 
-  client::YBTablePtr global_transaction_status_table_;
+  std::vector<TabletId> global_transaction_status_tablets_;
 
   yb::MonoDelta timeout_ms_;
 
@@ -253,6 +289,23 @@ void XClusterOutputClient::SetLastCompatibleConsumerSchemaVersionUnlocked(
 void XClusterOutputClient::SetLastCompatibleConsumerSchemaVersion(SchemaVersion schema_version) {
   std::lock_guard<decltype(lock_)> lock(lock_);
   SetLastCompatibleConsumerSchemaVersionUnlocked(schema_version);
+}
+
+void XClusterOutputClient::UpdateSchemaVersionMappings(
+      const cdc::XClusterSchemaVersionMap& schema_version_map,
+      const cdc::ColocatedSchemaVersionMap& colocated_schema_version_map) {
+  std::lock_guard l(lock_);
+
+  // Incoming schema version map is typically a superset of what we have so merge should be ok.
+  for(const auto& [producer_version, consumer_version] : schema_version_map) {
+    schema_versions_[producer_version] = consumer_version;
+  }
+
+  for(const auto& [colocationid, schema_versions] : colocated_schema_version_map_) {
+    for(const auto& [producer_version, consumer_version] : schema_versions) {
+      colocated_schema_version_map_[colocationid][producer_version] = consumer_version;
+    }
+  }
 }
 
 Status XClusterOutputClient::ApplyChanges(const cdc::GetChangesResponsePB* poller_resp) {
@@ -331,7 +384,14 @@ Status XClusterOutputClient::ProcessChangesStartingFromIndex(int start) {
         HandleResponse();
         return Status::OK();
       }
-      continue;
+
+      // If a meta_op has not completed processing and sent any RPCs,
+      // then we need to wait until those RPCs are sent out and responses
+      // are received, so we break out and wait for callbacks to continue processing.
+      break;
+    } else if (table_->table_type() == client::YBTableType::TRANSACTION_STATUS_TABLE_TYPE) {
+      // Handle txn status tablets specially, since we always map them to a specific status tablet.
+      RETURN_NOT_OK(ProcessRecordForTransactionStatusTablet(record));
     } else if (UseLocalTserver()) {
       RETURN_NOT_OK(ProcessRecordForLocalTablet(record));
     } else {
@@ -339,11 +399,6 @@ Status XClusterOutputClient::ProcessChangesStartingFromIndex(int start) {
         case cdc::CDCRecordPB::APPLY:
           RETURN_NOT_OK(ProcessRecordForTabletRange(record, all_tablets_result_));
           break;
-        case cdc::CDCRecordPB::TRANSACTION_COMMITTED:
-          // TODO(Rahul): Handle the non 1:1 case for the transaction status table.
-          return STATUS(IllegalState, "Cannot currently handle COMMIT records when there is not a "
-                                      "1 to 1 tablet mapping for the transaction status table.");
-           break;
         default: {
           std::string partition_key = record.key(0).key();
           auto tablet_result = local_client_->client->LookupTabletByKeyFuture(
@@ -364,13 +419,6 @@ Status XClusterOutputClient::ProcessChangesStartingFromIndex(int start) {
     }
   }
   return Status::OK();
-}
-
-Result<TabletId> XClusterOutputClient::GetTargetTabletIdFromProducerTablet(
-    const TabletId& producer_tablet_id) {
-  auto consumer_tablet_info =
-      VERIFY_RESULT(xcluster_consumer_->GetConsumerTableInfo(producer_tablet_id));
-  return consumer_tablet_info.tablet_id;
 }
 
 Result<std::vector<TabletId>> XClusterOutputClient::GetInvolvedTargetTabletsFromCommitRecord(
@@ -505,6 +553,24 @@ Status XClusterOutputClient::ProcessCommitRecord(
   return write_strategy_->ProcessCommitRecord(status_tablet, involved_target_tablet_ids, record);
 }
 
+Result<cdc::XClusterSchemaVersionMap> XClusterOutputClient::GetSchemaVersionMap(
+    const cdc::CDCRecordPB& record) {
+  cdc::XClusterSchemaVersionMap* cached_schema_versions = nullptr;
+  auto& kv_pair = record.changes(0);
+  auto decoder = docdb::DocKeyDecoder(kv_pair.key());
+  ColocationId colocationId = kColocationIdNotSet;
+  if (VERIFY_RESULT(decoder.DecodeColocationId(&colocationId))) {
+    // Can't find the table, so we most likely need an update
+    // to the consumer registry, so return an error and fail the apply.
+    cached_schema_versions = FindOrNull(colocated_schema_version_map_, colocationId);
+    SCHECK(cached_schema_versions, NotFound, Format("ColocationId $0 not found.", colocationId));
+  } else {
+    cached_schema_versions = &schema_versions_;
+  }
+
+  return *cached_schema_versions;
+}
+
 Status XClusterOutputClient::ProcessRecord(
     const std::vector<std::string>& tablet_ids, const cdc::CDCRecordPB& record) {
   std::lock_guard<decltype(lock_)> l(lock_);
@@ -513,18 +579,29 @@ Status XClusterOutputClient::ProcessRecord(
     if (enable_replicate_transaction_status_table_ && record.has_transaction_state()) {
       // This is an intent record and we want to use the txn status table, so get the status tablet
       // for this txn id.
-      auto producer_status_tablet_id = record.transaction_state().external_status_tablet_id();
-      if (!producer_status_tablet_id.empty()) {
-        status_tablet_id = VERIFY_RESULT(GetTargetTabletIdFromProducerTablet(
-            producer_status_tablet_id));
-      }
-
+      // Always fill this field, since in the uneven tablets case, we might not have previously sent
+      // a batch with the status tablet id to a tablet yet, in which case that tablet would be
+      // unable to find the matching status tablet.
+      auto txn_id =
+          VERIFY_RESULT(FullyDecodeTransactionId(record.transaction_state().transaction_id()));
+      status_tablet_id = VERIFY_RESULT(SelectStatusTabletIdForTransaction(txn_id));
     }
+
+    // Find the last_compatible_consumer_schema_version for each record as it may be different
+    // for different records depending on the colocation id.
+    cdc::XClusterSchemaVersionMap schema_versions_map;
+    if (PREDICT_TRUE(FLAGS_xcluster_enable_packed_rows_support) &&
+        !record.changes().empty() &&
+        (record.operation() == cdc::CDCRecordPB::WRITE ||
+         record.operation() == cdc::CDCRecordPB::DELETE)) {
+        schema_versions_map = VERIFY_RESULT(GetSchemaVersionMap(record));
+    }
+
     auto status = write_strategy_->ProcessRecord(ProcessRecordInfo {
       .tablet_id = tablet_id,
       .enable_replicate_transaction_status_table = enable_replicate_transaction_status_table_,
       .status_tablet_id = status_tablet_id,
-      .last_compatible_consumer_schema_version = last_compatible_consumer_schema_version_
+      .schema_versions_map = schema_versions_map
     }, record);
     if (!status.ok()) {
       error_status_ = status;
@@ -559,17 +636,38 @@ Status XClusterOutputClient::ProcessRecordForTabletRange(
 }
 
 Status XClusterOutputClient::ProcessRecordForLocalTablet(const cdc::CDCRecordPB& record) {
+  return ProcessRecord({consumer_tablet_info_.tablet_id}, record);
+}
+
+Result<TabletId> XClusterOutputClient::SelectStatusTabletIdForTransaction(
+    const TransactionId& txn_id) {
+  // Return a deterministic status tablet for a given txn id. This is done since we only include
+  // the external_status_tablet for the first batch, and are not guaranteed to compute this value
+  // for later batches. Thus, for uneven tablet counts, we require a way to select a status tablet
+  // that is consistent across all consumers.
+  SCHECK(!global_transaction_status_tablets_.empty(), IllegalState, "Found no status tablets");
+  return global_transaction_status_tablets_
+      [hash_value(txn_id) % global_transaction_status_tablets_.size()];
+}
+
+Status XClusterOutputClient::ProcessRecordForTransactionStatusTablet(
+    const cdc::CDCRecordPB& record) {
+  const auto txn_id =
+      VERIFY_RESULT(FullyDecodeTransactionId(record.transaction_state().transaction_id()));
+  const auto status_tablet_id = VERIFY_RESULT(SelectStatusTabletIdForTransaction(txn_id));
+
   const auto& operation = record.operation();
   if (operation == cdc::CDCRecordPB::TRANSACTION_COMMITTED) {
+    // TODO handle involved_tablets for uneven tablet counts.
     auto target_tablet_ids = VERIFY_RESULT(GetInvolvedTargetTabletsFromCommitRecord(record));
-    return ProcessCommitRecord(consumer_tablet_info_.tablet_id, target_tablet_ids, record);
+    return ProcessCommitRecord(status_tablet_id, target_tablet_ids, record);
   }
 
   if (operation == cdc::CDCRecordPB::TRANSACTION_CREATED) {
-    return ProcessCreateRecord(consumer_tablet_info_.tablet_id, record);
+    return ProcessCreateRecord(status_tablet_id, record);
   }
 
-  return ProcessRecord({consumer_tablet_info_.tablet_id}, record);
+  return ProcessRecord({status_tablet_id}, record);
 }
 
 bool XClusterOutputClient::IsValidMetaOp(const cdc::CDCRecordPB& record) {
@@ -577,9 +675,49 @@ bool XClusterOutputClient::IsValidMetaOp(const cdc::CDCRecordPB& record) {
   return type == cdc::CDCRecordPB::SPLIT_OP || type == cdc::CDCRecordPB::CHANGE_METADATA;
 }
 
+Result<bool> XClusterOutputClient::ProcessChangeMetadataOp(const cdc::CDCRecordPB& record) {
+  YB_LOG_WITH_PREFIX_UNLOCKED_EVERY_N_SECS(INFO, 300) << " Processing Change Metadata Op :"
+                                                      << record.DebugString();
+  if (record.change_metadata_request().has_remove_table_id() ||
+      !record.change_metadata_request().add_multiple_tables().empty()) {
+    // TODO (#16557): Support remove_table_id() for colocated tables / tablegroups.
+    LOG(INFO) << "Ignoring change metadata request to add multiple/remove tables to tablet : "
+              << producer_tablet_info_.tablet_id;
+    return true;
+  }
+
+  if (!record.change_metadata_request().has_schema() &&
+      !record.change_metadata_request().has_add_table()) {
+    LOG(INFO) << "Ignoring change metadata request for tablet : " << producer_tablet_info_.tablet_id
+              << " as it does not contain any schema. ";
+    return true;
+  }
+
+  auto schema = record.change_metadata_request().has_add_table() ?
+                record.change_metadata_request().add_table().schema() :
+                record.change_metadata_request().schema();
+  {
+    std::lock_guard l(lock_);
+
+    // Cache the producer schema version and colocation id if present
+    producer_schema_version_ = record.change_metadata_request().schema_version();
+    if (schema.has_colocated_table_id()) {
+      colocation_id_ = schema.colocated_table_id().colocation_id();
+    }
+  }
+
+  // Find the compatible consumer schema version for the incoming change metadata record.
+  tserver::GetCompatibleSchemaVersionRequestPB req;
+  req.set_tablet_id(consumer_tablet_info_.tablet_id);
+  req.mutable_schema()->CopyFrom(schema);
+  UpdateSchemaVersionMapping(&req);
+
+  // Since we started an Rpc, do not complete the processing of the record
+  // as we need to wait for the response.
+  return false;
+}
+
 Result<bool> XClusterOutputClient::ProcessMetaOp(const cdc::CDCRecordPB& record) {
-  uint32_t wait_for_version = 0;
-  uint32_t last_compatible_consumer_schema_version = cdc::kInvalidSchemaVersion;
   if (record.operation() == cdc::CDCRecordPB::SPLIT_OP) {
     // Construct and send the update request.
     master::ProducerSplitTabletInfoPB split_info;
@@ -597,28 +735,16 @@ Result<bool> XClusterOutputClient::ProcessMetaOp(const cdc::CDCRecordPB& record)
     RETURN_NOT_OK(local_client_->client->UpdateConsumerOnProducerSplit(
         producer_tablet_info_.universe_uuid, producer_tablet_info_.stream_id, split_info));
   } else if (record.operation() == cdc::CDCRecordPB::CHANGE_METADATA) {
-    master::UpdateConsumerOnProducerMetadataResponsePB resp;
-    RETURN_NOT_OK(local_client_->client->UpdateConsumerOnProducerMetadata(
-        producer_tablet_info_.universe_uuid, producer_tablet_info_.stream_id,
-        record.change_metadata_request(), &resp));
-    if (resp.should_wait()) {
-      wait_for_version = record.change_metadata_request().schema_version();
-      LOG(INFO) << "Halting Polling for " << producer_tablet_info_.tablet_id
-                << " due to schema change. Waiting for Schema version: " << wait_for_version;
-    }
-    if (resp.has_last_compatible_consumer_schema_version()) {
-      last_compatible_consumer_schema_version = resp.last_compatible_consumer_schema_version();
+    if (!VERIFY_RESULT(ProcessChangeMetadataOp(record))) {
+      return false;
     }
   }
 
   // Increment processed records, and check for completion.
   bool done = false;
   {
-    std::lock_guard<decltype(lock_)> l(lock_);
+    std::lock_guard l(lock_);
     done = IncProcessedRecordCount();
-    wait_for_version_ = wait_for_version;
-    SetLastCompatibleConsumerSchemaVersionUnlocked(last_compatible_consumer_schema_version);
-    DCHECK(wait_for_version == 0 || done); // If (should_wait) then done.
   }
   return done;
 }
@@ -644,6 +770,132 @@ void XClusterOutputClient::SendNextCDCWriteToTablet(std::unique_ptr<WriteRequest
   } else {
     LOG(WARNING) << "Invalid handle for CDC write, tablet ID: " << write_request->tablet_id();
   }
+}
+
+void XClusterOutputClient::UpdateSchemaVersionMapping(
+    tserver::GetCompatibleSchemaVersionRequestPB* req) {
+  auto deadline =
+      CoarseMonoClock::Now() + MonoDelta::FromMilliseconds(FLAGS_cdc_read_rpc_timeout_ms);
+
+  std::lock_guard<decltype(lock_)> l(lock_);
+  write_handle_ = rpcs_->Prepare();
+  if (write_handle_ != rpcs_->InvalidHandle()) {
+    // Send in nullptr for RemoteTablet since cdc rpc now gets the tablet_id from the write request.
+    *write_handle_ = cdc::CreateGetCompatibleSchemaVersionRpc(
+        deadline,
+        nullptr,
+        local_client_->client.get(),
+        req,
+        std::bind(&XClusterOutputClient::SchemaVersionCheckDone, SharedFromThis(), _1, _2, _3),
+        UseLocalTserver());
+    (**write_handle_).SendRpc();
+  } else {
+    LOG(WARNING) << "Invalid handle for GetCompatibleSchemaVersion,tablet ID: " << req->tablet_id();
+  }
+}
+
+void XClusterOutputClient::SchemaVersionCheckDone(
+    const Status& status,
+    const GetCompatibleSchemaVersionRequestPB& req,
+    const GetCompatibleSchemaVersionResponsePB& response) {
+  rpc::RpcCommandPtr retained;
+  {
+    std::lock_guard l(lock_);
+    retained = rpcs_->Unregister(&write_handle_);
+  }
+  RETURN_WHEN_OFFLINE();
+
+  WARN_NOT_OK(thread_pool_->SubmitFunc(std::bind(
+      &XClusterOutputClient::DoSchemaVersionCheckDone,
+      SharedFromThis(),
+      status,
+      std::move(req),
+      std::move(response))),
+      "Could not submit DoSchemaVersionCheckDone to thread pool");
+}
+
+void XClusterOutputClient::DoSchemaVersionCheckDone(
+    const Status& status,
+    const GetCompatibleSchemaVersionRequestPB& req,
+    const GetCompatibleSchemaVersionResponsePB& resp) {
+  RETURN_WHEN_OFFLINE();
+
+  SchemaVersion producer_schema_version = cdc::kInvalidSchemaVersion;
+  ColocationId colocation_id = 0;
+  {
+    std::lock_guard l(lock_);
+    producer_schema_version = producer_schema_version_;
+    colocation_id = colocation_id_;
+  }
+
+  if (!status.ok()) {
+    ReplicationErrorPb replication_error = ReplicationErrorPb::REPLICATION_SCHEMA_MISMATCH;
+    if (resp.error().code() == TabletServerErrorPB::TABLET_NOT_FOUND) {
+      replication_error = ReplicationErrorPb::REPLICATION_MISSING_TABLE;
+    }
+
+    auto msg = Format(
+        "XCluster schema mismatch. No matching schema for producer schema $0 with version $1",
+        req.schema().DebugString(), producer_schema_version);
+    LOG(WARNING) << msg;
+    if (resp.error().code() == TabletServerErrorPB::MISMATCHED_SCHEMA) {
+      xcluster_consumer_->StoreReplicationError(
+          consumer_tablet_info_.tablet_id,
+          producer_tablet_info_.stream_id,
+          replication_error,
+          msg);
+    }
+    HandleError(status);
+    return;
+  }
+
+  if (resp.has_error()) {
+    HandleError(StatusFromPB(resp.error().status()));
+    return;
+  }
+
+  // Compatible schema version found, update master with the mapping and update local cache also
+  // as there could be some delay in propagation from master to all the cdcconsumer/cdcpollers.
+  tablet::ChangeMetadataRequestPB meta;
+  meta.set_tablet_id(producer_tablet_info_.tablet_id);
+  master::UpdateConsumerOnProducerMetadataResponsePB response;
+  Status s = local_client_->client->UpdateConsumerOnProducerMetadata(
+      producer_tablet_info_.universe_uuid, producer_tablet_info_.stream_id, meta, colocation_id,
+      producer_schema_version, resp.compatible_schema_version(), &response);
+  if (!s.ok()) {
+    HandleError(s);
+    return;
+  }
+
+  {
+    // Since we are done processing the meta op, we can increment the processed count.
+    std::lock_guard l(lock_);
+    // Update the local cache with the response. This should happen automatically on the heartbeat
+    // as well when the poller gets updated, but we opportunistically update here.
+    cdc::XClusterSchemaVersionMap *schema_version_map = nullptr;
+    if (colocation_id != kColocationIdNotSet) {
+      schema_version_map = &colocated_schema_version_map_[colocation_id];
+    } else {
+      schema_version_map = &schema_versions_;
+    }
+    // Log the response from master.
+    LOG_WITH_FUNC(INFO) << "UpdateConsumerOnProducerMetadataResponsePB :" << response.DebugString();
+    DCHECK(schema_version_map);
+    auto resp_schema_versions = response.schema_versions();
+    (*schema_version_map)[resp_schema_versions.current_producer_schema_version()]
+        = resp_schema_versions.current_consumer_schema_version();
+    (*schema_version_map)[resp_schema_versions.old_producer_schema_version()]
+        =  resp_schema_versions.old_consumer_schema_version();
+    IncProcessedRecordCount();
+  }
+
+  // Clear out any replication errors.
+  xcluster_consumer_->ClearReplicationError(
+      consumer_tablet_info_.tablet_id,
+      producer_tablet_info_.stream_id);
+
+  // MetaOps should be the last ones in a batch, so we should be done at this point.
+  HandleResponse();
 }
 
 void XClusterOutputClient::WriteCDCRecordDone(
@@ -771,14 +1023,13 @@ std::shared_ptr<XClusterOutputClientIf> CreateXClusterOutputClient(
     const std::shared_ptr<XClusterClient>& local_client,
     ThreadPool* thread_pool,
     rpc::Rpcs* rpcs,
-    std::function<void(const XClusterOutputClientResponse& response)>
-        apply_changes_clbk,
+    std::function<void(const XClusterOutputClientResponse& response)> apply_changes_clbk,
     bool use_local_tserver,
-    client::YBTablePtr global_transaction_status_table,
+    const std::vector<TabletId>& global_transaction_status_tablets,
     bool enable_replicate_transaction_status_table) {
   return std::make_unique<XClusterOutputClient>(
       xcluster_consumer, consumer_tablet_info, producer_tablet_info, local_client, thread_pool,
-      rpcs, std::move(apply_changes_clbk), use_local_tserver, global_transaction_status_table,
+      rpcs, std::move(apply_changes_clbk), use_local_tserver, global_transaction_status_tablets,
       enable_replicate_transaction_status_table);
 }
 

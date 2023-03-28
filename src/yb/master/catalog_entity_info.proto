@@ -17,6 +17,7 @@ package yb.master;
 option java_package = "org.yb.master";
 
 import "yb/cdc/cdc_consumer.proto";
+import "yb/cdc/xcluster_producer.proto";
 import "yb/common/common.proto";
 import "yb/common/common_net.proto";
 import "yb/common/common_types.proto";
@@ -205,6 +206,9 @@ message SysTablesEntryPB {
   optional TransactionMetadataPB transaction = 29;
 
   repeated StatefulServiceKind hosted_stateful_services = 39;
+
+  // Time when a full compaction was last requested by the user.
+  optional fixed64 last_full_compaction_time = 41;
 }
 
 // The on-disk entry in the sys.catalog table ("metadata" column) for
@@ -347,6 +351,11 @@ message SysClusterConfigEntryPB {
   optional BlacklistPB leader_blacklist = 7;
   optional EncryptionInfoPB encryption_info = 5;
   optional cdc.ConsumerRegistryPB consumer_registry = 6;
+}
+
+message SysXClusterConfigEntryPB {
+  optional uint32 version = 1;
+  optional xcluster.ProducerRegistryPB xcluster_producer_registry = 2;
 }
 
 // The data part of a SysRowEntry in the sys.catalog table for Redis Config.
@@ -514,6 +523,21 @@ message SysSnapshotEntryPB {
   optional fixed64 previous_snapshot_hybrid_time = 7;
 }
 
+message SchemaVersionMappingPB {
+  required uint32 producer_schema_version = 1;
+  required uint32 consumer_schema_version = 2;
+}
+
+message ColocatedSchemaVersionMappingPB {
+  required uint32 colocation_id = 1;
+  required SchemaVersionMappingPB schema_version_mapping = 2;
+}
+
+message SchemaVersionMappingEntryPB {
+  optional SchemaVersionMappingPB schema_version_mapping = 1;
+  repeated ColocatedSchemaVersionMappingPB colocated_schema_versions = 2;
+}
+
 // The data part of a SysRowEntry in the sys.catalog table for a universe replication record.
 message SysUniverseReplicationEntryPB {
   enum State {
@@ -558,6 +582,9 @@ message SysUniverseReplicationEntryPB {
   optional bool is_ns_replication = 7 [default = false];
   optional NamespaceIdentifierPB producer_namespace = 8;
   optional NamespaceIdentifierPB consumer_namespace = 9;
+
+  // Mapping from Producer Table ID to Producer->Consumer schema version mappings
+  map<string, SchemaVersionMappingEntryPB> schema_version_mappings = 10;
 }
 
 message XClusterSafeTimePB {

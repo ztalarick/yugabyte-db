@@ -39,6 +39,8 @@
 
 namespace yb {
 
+class Thread;
+
 namespace client {
 
 class TableHandle;
@@ -64,6 +66,7 @@ static const char* const kTableId = "TABLEID";
 static const char* const kCDCSDKSafeTime = "cdc_sdk_safe_time";
 static const char* const kCDCSDKActiveTime = "active_time";
 static const char* const kCDCSDKSnapshotKey = "snapshot_key";
+static const char* const kCDCSDKSnapshotDoneKey = "snapshot_done_key";
 struct TabletCheckpoint {
   OpId op_id;
   // Timestamp at which the op ID was last updated.
@@ -114,6 +117,7 @@ class CDCServiceImpl : public CDCServiceIf {
       const ListTabletsRequestPB* req, ListTabletsResponsePB* resp, rpc::RpcContext rpc) override;
   void GetChanges(
       const GetChangesRequestPB* req, GetChangesResponsePB* resp, rpc::RpcContext rpc) override;
+  bool IsReplicationPausedForStream(const std::string& stream_id) const EXCLUDES(mutex_);
   void GetCheckpoint(
       const GetCheckpointRequestPB* req,
       GetCheckpointResponsePB* resp,
@@ -198,9 +202,18 @@ class CDCServiceImpl : public CDCServiceIf {
   // Marks the CDC enable flag as true.
   void SetCDCServiceEnabled();
 
+  bool IsCDCSDKSnapshotDone(const GetChangesRequestPB& req);
+
   static bool IsCDCSDKSnapshotRequest(const CDCSDKCheckpointPB& req_checkpoint);
 
   static bool IsCDCSDKSnapshotBootstrapRequest(const CDCSDKCheckpointPB& req_checkpoint);
+
+  // Sets paused producer XCluster streams.
+  void SetPausedXClusterProducerStreams(
+      const ::google::protobuf::Map<std::string, bool>& paused_producer_stream_ids,
+      uint32_t xcluster_config_version);
+
+  uint32_t GetXClusterConfigVersion() const;
 
  private:
   FRIEND_TEST(CDCServiceTest, TestMetricsOnDeletedReplication);
@@ -222,14 +235,25 @@ class CDCServiceImpl : public CDCServiceIf {
   Result<OpId> GetLastCheckpoint(
       const ProducerTabletInfo& producer_tablet, const client::YBSessionPtr& session);
 
-  Result<CDCSDKCheckpointPB> GetLastCDCSDKCheckpoint(
+  Result<uint64_t> GetSafeTime(
       const ProducerTabletInfo& producer_tablet, const client::YBSessionPtr& session);
+
+  Result<CDCSDKCheckpointPB> GetLastCDCSDKCheckpoint(
+      const CDCStreamId& stream_id, const TabletId& tablet_id, const client::YBSessionPtr& session,
+      const TableId& colocated_table_id = "");
 
   Result<std::vector<std::pair<std::string, std::string>>> GetDBStreamInfo(
       const std::string& db_stream_id, const client::YBSessionPtr& session);
 
   Result<std::string> GetCdcStreamId(
       const ProducerTabletInfo& producer_tablet, const std::shared_ptr<client::YBSession>& session);
+
+  Status InsertRowForColocatedTableInCDCStateTable(
+      const ProducerTabletInfo& producer_tablet,
+      const TableId& colocated_table_id,
+      const OpId& commit_op_id,
+      const HybridTime& cdc_sdk_safe_time,
+      const client::YBSessionPtr& session);
 
   Status UpdateCheckpointAndActiveTime(
       const ProducerTabletInfo& producer_tablet,
@@ -241,7 +265,16 @@ class CDCServiceImpl : public CDCServiceIf {
       bool force_update = false,
       const HybridTime& cdc_sdk_safe_time = HybridTime::kInvalid,
       const bool is_snapshot = false,
-      const std::string& snapshot_key = "");
+      const std::string& snapshot_key = "",
+      const TableId& colocated_table_id = "");
+
+  Status UpdateSnapshotDone(
+      const CDCStreamId& stream_id, const TabletId& tablet_id, const TableId& colocated_table_id,
+      const client::YBSessionPtr& session, const CDCSDKCheckpointPB& cdc_sdk_checkpoint);
+
+  Status UpdateActiveTime(
+      const ProducerTabletInfo& producer_tablet, const client::YBSessionPtr& session,
+      const uint64_t& last_active_time, const uint64_t& snapshot_time);
 
   Result<google::protobuf::RepeatedPtrField<master::TabletLocationsPB>> GetTablets(
       const CDCStreamId& stream_id);
@@ -457,7 +490,7 @@ class CDCServiceImpl : public CDCServiceIf {
   // TODO(hector): It would be better to do this update only when a local peer becomes a leader.
   //
   // Periodically update lag metrics (FLAGS_update_metrics_interval_ms).
-  std::unique_ptr<std::thread> update_peers_and_metrics_thread_;
+  scoped_refptr<Thread> update_peers_and_metrics_thread_;
 
   // True when this service is stopped. Used to inform
   // get_minimum_checkpoints_and_update_peers_thread_ that it should exit.
@@ -465,6 +498,10 @@ class CDCServiceImpl : public CDCServiceIf {
 
   // True when the server is a producer of a valid replication stream.
   std::atomic<bool> cdc_enabled_{false};
+
+  std::unordered_set<std::string> paused_xcluster_producer_streams_ GUARDED_BY(mutex_);
+
+  uint32_t xcluster_config_version_ GUARDED_BY(mutex_) = 0;
 };
 
 }  // namespace cdc

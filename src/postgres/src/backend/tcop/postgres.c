@@ -2193,7 +2193,7 @@ check_log_duration(char *msec_str, bool was_logged)
 		int			usecs;
 		int			msecs;
 		bool		exceeded_duration;
-		bool 		exceeded_sample_duration;
+		bool		exceeded_sample_duration;
 		bool		in_sample = false;
 
 		TimestampDifference(GetCurrentStatementStartTimestamp(),
@@ -2208,8 +2208,8 @@ check_log_duration(char *msec_str, bool was_logged)
 		 */
 		exceeded_duration = (log_min_duration_statement == 0 ||
 							 (log_min_duration_statement > 0 &&
-					 		  (secs > log_min_duration_statement / 1000 ||
-					  		   secs * 1000 + msecs >= log_min_duration_statement)));
+							  (secs > log_min_duration_statement / 1000 ||
+							   secs * 1000 + msecs >= log_min_duration_statement)));
 
 		exceeded_sample_duration = (log_min_duration_sample == 0 ||
 									(log_min_duration_sample > 0 &&
@@ -2221,7 +2221,6 @@ check_log_duration(char *msec_str, bool was_logged)
 		 * log_statement_sample_rate <= 1 and avoid unecessary random() call
 		 * if log_statement_sample_rate = 1.
 		 */
-
 		if (exceeded_sample_duration)
 			in_sample = log_statement_sample_rate != 0 &&
 				(log_statement_sample_rate == 1 ||
@@ -3694,28 +3693,6 @@ process_postgres_switches(int argc, char *argv[], GucContext ctx,
 #endif
 }
 
-static void
-YbPreloadRelCacheHelper()
-{
-	const uint64_t catalog_master_version =
-		YbGetCatalogCacheVersionForTablePrefetching();
-	YBCPgResetCatalogReadTime();
-	YBCStartSysTablePrefetching(
-		catalog_master_version,
-		*YBCGetGFlags()->ysql_enable_read_request_caching);
-	PG_TRY();
-	{
-		YBPreloadRelCache();
-	}
-	PG_CATCH();
-	{
-		YBCStopSysTablePrefetching();
-		PG_RE_THROW();
-	}
-	PG_END_TRY();
-	YBCStopSysTablePrefetching();
-}
-
 /*
  * Reload the postgres caches and update the cache version.
  * Note: if catalog changes sneaked in since getting the
@@ -3763,7 +3740,7 @@ static void YBRefreshCache()
 	ResetCatalogCaches();
 	CallSystemCacheCallbacks();
 
-	YbPreloadRelCacheHelper();
+	YBPreloadRelCache();
 
 	/* Also invalidate the pggate cache. */
 	HandleYBStatus(YBCPgInvalidateCache());
@@ -5247,6 +5224,9 @@ PostgresMain(int argc, char *argv[],
 			YBCPgResetCatalogReadTime();
 			YBCheckSharedCatalogCacheVersion();
 			yb_run_with_explain_analyze = false;
+			if (IsYsqlUpgrade &&
+				yb_catalog_version_type != CATALOG_VERSION_CATALOG_TABLE)
+				yb_catalog_version_type = CATALOG_VERSION_UNSET;
 		}
 
 		switch (firstchar)

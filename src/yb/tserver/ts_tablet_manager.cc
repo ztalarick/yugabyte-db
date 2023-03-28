@@ -160,6 +160,10 @@ DEFINE_test_flag(bool, simulate_already_present_in_remote_bootstrap, false,
                  "If true, return an AlreadyPresent error in remote bootstrap after starting the "
                  "remote bootstrap client.");
 
+DEFINE_test_flag(bool, pause_before_remote_bootstrap, false,
+                 "If true, pause after copying the superblock but before "
+                 "RemoteBootstrapClient::Start.");
+
 DEFINE_test_flag(double, fault_crash_in_split_before_log_flushed, 0.0,
                  "Fraction of the time when the tablet will crash immediately before flushing a "
                  "parent tablet's kSplit operation.");
@@ -762,18 +766,17 @@ Result<TabletPeerPtr> TSTabletManager::CreateNewTablet(
   GetAndRegisterDataAndWalDir(
       fs_manager_, table_info->table_id, tablet_id, &data_root_dir, &wal_root_dir);
   fs_manager_->SetTabletPathByDataPath(tablet_id, data_root_dir);
-  auto create_result = RaftGroupMetadata::CreateNew(
-      tablet::RaftGroupMetadataData{
-          .fs_manager = fs_manager_,
-          .table_info = table_info,
-          .raft_group_id = tablet_id,
-          .partition = partition,
-          .tablet_data_state = TABLET_DATA_READY,
-          .colocated = colocated,
-          .snapshot_schedules = snapshot_schedules,
-          .hosted_services = hosted_services,
-      },
-      data_root_dir, wal_root_dir);
+  auto create_result = RaftGroupMetadata::CreateNew(tablet::RaftGroupMetadataData {
+    .fs_manager = fs_manager_,
+    .table_info = table_info,
+    .raft_group_id = tablet_id,
+    .partition = partition,
+    .tablet_data_state = TABLET_DATA_READY,
+    .colocated = colocated,
+    .snapshot_schedules = snapshot_schedules,
+    .hosted_services = hosted_services,
+    .last_change_metadata_op_id = OpId::Min(),
+  }, data_root_dir, wal_root_dir);
   if (!create_result.ok()) {
     UnregisterDataWalDir(table_info->table_id, tablet_id, data_root_dir, wal_root_dir);
   }
@@ -1219,10 +1222,13 @@ Status TSTabletManager::StartRemoteBootstrap(const StartRemoteBootstrapRequestPB
 
   auto rb_client = std::make_unique<RemoteBootstrapClient>(tablet_id, fs_manager_);
 
-  // Download and persist the remote superblock in TABLET_DATA_COPYING state.
   if (replacing_tablet) {
     RETURN_NOT_OK(rb_client->SetTabletToReplace(meta, leader_term));
   }
+
+  TEST_PAUSE_IF_FLAG(TEST_pause_before_remote_bootstrap);
+
+  // Download and persist the remote superblock in TABLET_DATA_COPYING state.
   RETURN_NOT_OK(rb_client->Start(bootstrap_peer_uuid,
                                  &server_->proxy_cache(),
                                  bootstrap_peer_addr,

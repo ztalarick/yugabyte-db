@@ -4,7 +4,6 @@ import { Box, Typography } from '@material-ui/core';
 
 import { YBInputField, YBToggleField } from '../../../../../redesign/components';
 import { YBButton } from '../../../../common/forms/fields';
-import { CloudVendorRegionField } from '../configureRegion/ConfigureRegionModal';
 import { NTPConfigField } from '../../components/NTPConfigField';
 import { RegionList } from '../../components/RegionList';
 import { NTPSetupType, ProviderCode } from '../../constants';
@@ -13,8 +12,8 @@ import { FormContainer } from '../components/FormContainer';
 import { FormField } from '../components/FormField';
 import { FieldLabel } from '../components/FieldLabel';
 import { getNtpSetupType } from '../../utils';
-import { InstanceList } from './InstanceList';
 import { RegionOperation } from '../configureRegion/constants';
+import { ConfigureOnPremRegionFormValues } from '../configureRegion/ConfigureOnPremRegionModal';
 
 import { YBProvider } from '../../types';
 
@@ -24,17 +23,21 @@ interface OnPremProviderEditFormProps {
 
 interface OnPremProviderEditFormFieldValues {
   dbNodePublicInternetAccess: boolean;
+  installNodeExporter: boolean;
   ntpServers: string[];
   ntpSetupType: NTPSetupType;
   providerCredentialType: ProviderCredentialType;
   providerName: string;
-  regions: CloudVendorRegionField[];
+  regions: ConfigureOnPremRegionFormValues[];
+  skipProvisioning: boolean;
   sshKeypairName: string;
   sshPort: number;
   sshPrivateKeyContent: File;
   sshUser: string;
-  ybFirewallTags: string;
-  ybHomeDir: string;
+
+  nodeExporterPort?: number;
+  nodeExporterUser?: string;
+  ybHomeDir?: string;
 }
 
 const ProviderCredentialType = {
@@ -46,7 +49,7 @@ type ProviderCredentialType = typeof ProviderCredentialType[keyof typeof Provide
 export const OnPremProviderEditForm = ({ providerConfig }: OnPremProviderEditFormProps) => {
   const [, setIsRegionFormModalOpen] = useState<boolean>(false);
   const [, setIsDeleteRegionModalOpen] = useState<boolean>(false);
-  const [, setRegionSelection] = useState<CloudVendorRegionField>();
+  const [, setRegionSelection] = useState<ConfigureOnPremRegionFormValues>();
   const [, setRegionOperation] = useState<RegionOperation>(RegionOperation.ADD);
 
   const defaultValues = {
@@ -54,8 +57,12 @@ export const OnPremProviderEditForm = ({ providerConfig }: OnPremProviderEditFor
     sshKeypairName: providerConfig.allAccessKeys?.[0]?.keyInfo.keyPairName,
     dbNodePublicInternetAccess: !providerConfig.details.airGapInstall,
     ntpSetupType: getNtpSetupType(providerConfig),
-    regions: providerConfig.regions,
+    installNodeExporter: providerConfig.details.installNodeExporter,
+    skipProvisioning: providerConfig.details.skipProvisioning,
+    nodeExporterUser: providerConfig.details.nodeExporterUser,
+    nodeExporterPort: providerConfig.details.nodeExporterPort,
     ...(providerConfig.code === ProviderCode.ON_PREM && {
+      regions: providerConfig.regions,
       sshUser: providerConfig.details.sshUser,
       sshPort: providerConfig.details.sshPort,
       ntpServers: providerConfig.details.ntpServers,
@@ -82,6 +89,10 @@ export const OnPremProviderEditForm = ({ providerConfig }: OnPremProviderEditFor
   };
 
   const regions = formMethods.watch('regions');
+  const installNodeExporter = formMethods.watch(
+    'installNodeExporter',
+    defaultValues.installNodeExporter
+  );
 
   return (
     <Box display="flex" justifyContent="center">
@@ -93,35 +104,34 @@ export const OnPremProviderEditForm = ({ providerConfig }: OnPremProviderEditFor
             <YBInputField
               control={formMethods.control}
               name="providerName"
-              required={true}
               disabled={true}
               fullWidth
             />
           </FormField>
-          <FieldGroup
-            heading="Regions"
-            headerAccessories={
-              <YBButton
-                btnIcon="fa fa-plus"
-                btnText="Add Region"
-                btnClass="btn btn-default"
-                btnType="button"
-                onClick={showAddRegionFormModal}
+          <Box width="100%" display="flex" flexDirection="column" gridGap="32px">
+            <FieldGroup
+              heading="Regions"
+              headerAccessories={
+                <YBButton
+                  btnIcon="fa fa-plus"
+                  btnText="Add Region"
+                  btnClass="btn btn-default"
+                  btnType="button"
+                  onClick={showAddRegionFormModal}
+                  disabled={formMethods.formState.isSubmitting}
+                />
+              }
+            >
+              <RegionList
+                providerCode={ProviderCode.ON_PREM}
+                regions={regions}
+                setRegionSelection={setRegionSelection}
+                showAddRegionFormModal={showAddRegionFormModal}
+                showEditRegionFormModal={showEditRegionFormModal}
+                showDeleteRegionModal={showDeleteRegionModal}
                 disabled={formMethods.formState.isSubmitting}
               />
-            }
-          >
-            <RegionList
-              providerCode={ProviderCode.ON_PREM}
-              regions={regions}
-              setRegionSelection={setRegionSelection}
-              showAddRegionFormModal={showAddRegionFormModal}
-              showEditRegionFormModal={showEditRegionFormModal}
-              showDeleteRegionModal={showDeleteRegionModal}
-              disabled={formMethods.formState.isSubmitting}
-            />
-          </FieldGroup>
-          <Box width="100%" display="flex" flexDirection="column" gridGap="32px">
+            </FieldGroup>
             <FieldGroup heading="SSH Key Pairs">
               <FormField>
                 <FieldLabel>SSH User</FieldLabel>
@@ -138,6 +148,7 @@ export const OnPremProviderEditForm = ({ providerConfig }: OnPremProviderEditFor
                   control={formMethods.control}
                   name="sshPort"
                   type="number"
+                  inputProps={{ min: 0, max: 65535 }}
                   disabled={true}
                   fullWidth
                 />
@@ -154,7 +165,9 @@ export const OnPremProviderEditForm = ({ providerConfig }: OnPremProviderEditFor
             </FieldGroup>
             <FieldGroup heading="Advanced">
               <FormField>
-                <FieldLabel>DB Nodes have public internet access?</FieldLabel>
+                <FieldLabel infoContent="If yes, YBA will install some software packages on the DB nodes by downloading from the public internet. If not, all installation of software on the nodes will download from only this YBA instance.">
+                  DB Nodes have public internet access?
+                </FieldLabel>
                 <YBToggleField
                   name="dbNodePublicInternetAccess"
                   control={formMethods.control}
@@ -162,12 +175,57 @@ export const OnPremProviderEditForm = ({ providerConfig }: OnPremProviderEditFor
                 />
               </FormField>
               <FormField>
-                <FieldLabel>NTP Setup</FieldLabel>
-                <NTPConfigField providerCode={ProviderCode.ON_PREM} />
+                <FieldLabel infoContent="If enabled, node provisioning will not be done when the universe is created. A pre-provision script will be provided to be run manually instead.">
+                  Manually Provision Nodes
+                </FieldLabel>
+                <YBToggleField
+                  name="skipProvisioning"
+                  control={formMethods.control}
+                  disabled={true}
+                />
               </FormField>
-            </FieldGroup>
-            <FieldGroup heading="Instances">
-              <InstanceList disabled={formMethods.formState.isSubmitting} />
+              <FormField>
+                <FieldLabel>YB Nodes Home Directory (Optional)</FieldLabel>
+                <YBInputField
+                  control={formMethods.control}
+                  name="ybHomeDir"
+                  fullWidth
+                  disabled={true}
+                />
+              </FormField>
+              <FormField>
+                <FieldLabel>Install Node Exporter</FieldLabel>
+                <YBToggleField
+                  name="installNodeExporter"
+                  control={formMethods.control}
+                  disabled={true}
+                />
+              </FormField>
+              {installNodeExporter && (
+                <FormField>
+                  <FieldLabel>Node Exporter User</FieldLabel>
+                  <YBInputField
+                    control={formMethods.control}
+                    name="nodeExporterUser"
+                    fullWidth
+                    disabled={true}
+                  />
+                </FormField>
+              )}
+              <FormField>
+                <FieldLabel>Node Exporter Port</FieldLabel>
+                <YBInputField
+                  control={formMethods.control}
+                  name="nodeExporterPort"
+                  type="number"
+                  fullWidth
+                  disabled={true}
+                />
+              </FormField>
+              <FormField>
+                <FieldLabel>NTP Setup</FieldLabel>
+                <NTPConfigField providerCode={ProviderCode.ON_PREM} isDisabled={true} />
+              </FormField>
             </FieldGroup>
           </Box>
         </FormContainer>

@@ -102,7 +102,7 @@ class TabletSnapshots : public TabletComponent {
   // Only used when table_type_ == YQL_TABLE_TYPE.
   Status RestoreCheckpoint(
       const std::string& dir, HybridTime restore_at, const RestoreMetadata& metadata,
-      const docdb::ConsensusFrontier& frontier, bool is_pitr_restore);
+      const docdb::ConsensusFrontier& frontier, bool is_pitr_restore, const OpId& op_id);
 
   // Applies specified snapshot operation.
   Status Apply(SnapshotOperation* operation);
@@ -122,8 +122,8 @@ class TabletRestorePatch : public RestorePatch {
  public:
   TabletRestorePatch(
       FetchState* existing_state, FetchState* restoring_state,
-      docdb::DocWriteBatch* doc_batch, int64_t db_oid)
-      : RestorePatch(existing_state, restoring_state, doc_batch),
+      docdb::DocWriteBatch* doc_batch, tablet::TableInfo* table_info, int64_t db_oid)
+      : RestorePatch(existing_state, restoring_state, doc_batch, table_info),
         db_oid_(db_oid) {}
 
  private:

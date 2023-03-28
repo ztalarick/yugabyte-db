@@ -48,8 +48,6 @@ class GcpCreateInstancesMethod(CreateInstancesMethod):
 
     def add_extra_args(self):
         super(GcpCreateInstancesMethod, self).add_extra_args()
-        self.parser.add_argument("--use_preemptible", action="store_true",
-                                 help="If to use preemptible instances.")
         self.parser.add_argument("--volume_type", choices=[GCP_SCRATCH, GCP_PERSISTENT],
                                  default="scratch", help="Storage type for GCP instances.")
         self.parser.add_argument("--instance_template",
@@ -315,6 +313,7 @@ class GcpResumeInstancesMethod(AbstractInstancesMethod):
                                  help="The ip of the instance to resume.")
 
     def callback(self, args):
+        self.update_ansible_vars_with_args(args)
         server_ports = self.get_server_ports_to_check(args)
         self.cloud.start_instance(vars(args), server_ports)
 
@@ -354,6 +353,7 @@ class GcpHardRebootInstancesMethod(AbstractInstancesMethod):
             logging.info("Stopping instance {}".format(args.search_pattern))
             self.cloud.stop_instance(host_info)
         logging.info("Starting instance {}".format(args.search_pattern))
+        self.update_ansible_vars_with_args(args)
         server_ports = self.get_server_ports_to_check(args)
         self.cloud.start_instance(host_info, server_ports)
 

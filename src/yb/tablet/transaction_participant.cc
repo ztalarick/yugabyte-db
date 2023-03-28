@@ -15,6 +15,7 @@
 
 #include "yb/tablet/transaction_participant.h"
 
+#include <ctime>
 #include <queue>
 
 #include <boost/multi_index/hashed_index.hpp>
@@ -95,6 +96,10 @@ DEFINE_UNKNOWN_uint64(transactions_status_poll_interval_ms, 500 * yb::kTimeMulti
 DEFINE_UNKNOWN_bool(transactions_poll_check_aborted, true,
     "Check aborted transactions during poll.");
 
+DEFINE_NON_RUNTIME_int32(wait_queue_poll_interval_ms, 100,
+    "The interval duration between wait queue polls to fetch transaction statuses of "
+    "active blockers.");
+
 DECLARE_int64(transaction_abort_check_timeout_ms);
 
 DECLARE_int64(cdc_intent_retention_ms);
@@ -122,6 +127,9 @@ YB_STRONGLY_TYPED_BOOL(PostApplyCleanup);
 
 } // namespace
 
+constexpr size_t kRunningTransactionSize = sizeof(RunningTransaction);
+const std::string kParentMemTrackerId = "transactions";
+
 std::string TransactionApplyData::ToString() const {
   return YB_STRUCT_TO_STRING(
       leader_term, transaction_id, op_id, commit_ht, log_ht, sealed, status_tablet, apply_state,
@@ -132,16 +140,22 @@ class TransactionParticipant::Impl
     : public RunningTransactionContext, public TransactionLoaderContext {
  public:
   Impl(TransactionParticipantContext* context, TransactionIntentApplier* applier,
-       const scoped_refptr<MetricEntity>& entity)
+       const scoped_refptr<MetricEntity>& entity,
+       const std::shared_ptr<MemTracker>& tablets_mem_tracker)
       : RunningTransactionContext(context, applier),
         log_prefix_(context->LogPrefix()),
         loader_(this, entity),
-        poller_(log_prefix_, std::bind(&Impl::Poll, this)) {
+        poller_(log_prefix_, std::bind(&Impl::Poll, this)),
+        wait_queue_poller_(log_prefix_, std::bind(&Impl::PollWaitQueue, this)) {
     LOG_WITH_PREFIX(INFO) << "Create";
     metric_transactions_running_ = METRIC_transactions_running.Instantiate(entity, 0);
     metric_transaction_not_found_ = METRIC_transaction_not_found.Instantiate(entity);
     metric_aborted_transactions_pending_cleanup_ =
         METRIC_aborted_transactions_pending_cleanup.Instantiate(entity, 0);
+    auto parent_mem_tracker = MemTracker::FindOrCreateTracker(
+        kParentMemTrackerId, tablets_mem_tracker);
+    mem_tracker_ = MemTracker::CreateTracker(Format("$0-$1", kParentMemTrackerId,
+        participant_context_.tablet_id()), parent_mem_tracker);
   }
 
   ~Impl() {
@@ -153,10 +167,23 @@ class TransactionParticipant::Impl
     }
   }
 
+  void SetWaitQueue(std::unique_ptr<docdb::WaitQueue> wait_queue) {
+    wait_queue_ = std::move(wait_queue);
+  }
+
+  docdb::WaitQueue* wait_queue() const {
+    return wait_queue_.get();
+  }
+
   bool StartShutdown() {
     bool expected = false;
     if (!closing_.compare_exchange_strong(expected, true)) {
       return false;
+    }
+
+    wait_queue_poller_.Shutdown();
+    if (wait_queue_) {
+      wait_queue_->StartShutdown();
     }
 
     if (start_latch_.count()) {
@@ -174,6 +201,10 @@ class TransactionParticipant::Impl
   void CompleteShutdown() {
     LOG_IF_WITH_PREFIX(DFATAL, !Closing()) << __func__ << " w/o StartShutdown";
 
+    if (wait_queue_) {
+      wait_queue_->CompleteShutdown();
+    }
+
     decltype(status_resolvers_) status_resolvers;
     {
       UNIQUE_LOCK(lock, mutex_);
@@ -186,6 +217,7 @@ class TransactionParticipant::Impl
       transactions_.clear();
       TransactionsModifiedUnlocked(&min_running_notifier);
       status_resolvers.swap(status_resolvers_);
+      mem_tracker_->UnregisterFromParent();
     }
 
     rpcs_.Shutdown();
@@ -229,6 +261,7 @@ class TransactionParticipant::Impl
     }
     transactions_.insert(std::make_shared<RunningTransaction>(
         metadata, TransactionalBatchData(), OneWayBitmap(), metadata.start_time, this));
+    mem_tracker_->Consume(kRunningTransactionSize);
     TransactionsModifiedUnlocked(&min_running_notifier);
     return true;
   }
@@ -636,7 +669,7 @@ class TransactionParticipant::Impl
       return Status::OK();
     }
 
-    bool was_applied = false;
+    bool was_previously_committed = false;
 
     {
       // It is our last chance to load transaction metadata, if missing.
@@ -658,7 +691,7 @@ class TransactionParticipant::Impl
 
       auto existing_commit_ht = lock_and_iterator.transaction().local_commit_time();
       if (existing_commit_ht) {
-        was_applied = true;
+        was_previously_committed = true;
         LOG_WITH_PREFIX(INFO) << "Transaction already applied: " << data.transaction_id;
         LOG_IF_WITH_PREFIX(DFATAL, data.commit_ht != existing_commit_ht)
             << "Transaction was previously applied with another commit ht: " << existing_commit_ht
@@ -675,7 +708,16 @@ class TransactionParticipant::Impl
       }
     }
 
-    if (!was_applied) {
+    if (!was_previously_committed) {
+      if (wait_queue_) {
+        // We signal this commit to the wait queue if it is newly committed. It's important to do so
+        // *after* the local running transaction's metadata is updated to indicate that this was
+        // committed. Otherwise, the wait queue will resume any waiters blocked on this transaction,
+        // and they may re-run conflict resolution and not find that the transaction is committed,
+        // forcing them to re-enter the wait queue.
+        // TODO(wait-queues): Consider signaling before replicating the transaction update.
+        wait_queue_->SignalCommitted(data.transaction_id, data.commit_ht);
+      }
       auto apply_state = CHECK_RESULT(applier_.ApplyIntents(data));
 
       VLOG_WITH_PREFIX(4) << "TXN: " << data.transaction_id << ": apply state: "
@@ -813,6 +855,7 @@ class TransactionParticipant::Impl
     std::lock_guard<std::mutex> lock(mutex_);
     DumpClear(RemoveReason::kSetDB);
     transactions_.clear();
+    mem_tracker_->Release(mem_tracker_->consumption());
     TransactionsModifiedUnlocked(&min_running_notifier);
   }
 
@@ -1088,26 +1131,37 @@ class TransactionParticipant::Impl
     loader_.WaitLoaded(transaction_id);
     MinRunningNotifier min_running_notifier(&applier_);
 
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = transactions_.find(transaction_id);
-    if (it == transactions_.end()) {
-      // This case may happen if the transaction gets aborted due to conflict or expired
-      // before the update RPC is received.
-      YB_LOG_WITH_PREFIX_HIGHER_SEVERITY_WHEN_TOO_MANY(INFO, WARNING, 1s, 50)
-          << "Request to unknown transaction " << transaction_id;
-      return STATUS_EC_FORMAT(
-          Expired, PgsqlError(YBPgErrorCode::YB_PG_T_R_SERIALIZATION_FAILURE),
-          "Transaction $0 expired or aborted by a conflict", transaction_id);
+    TransactionMetadata metadata;
+    TransactionStatusResult txn_status_res;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      auto it = transactions_.find(transaction_id);
+      if (it == transactions_.end()) {
+        // This case may happen if the transaction gets aborted due to conflict or expired
+        // before the update RPC is received.
+        YB_LOG_WITH_PREFIX_HIGHER_SEVERITY_WHEN_TOO_MANY(INFO, WARNING, 1s, 50)
+            << "Request to unknown transaction " << transaction_id;
+        return STATUS_EC_FORMAT(
+            Expired, PgsqlError(YBPgErrorCode::YB_PG_T_R_SERIALIZATION_FAILURE),
+            "Transaction $0 expired or aborted by a conflict", transaction_id);
+      }
+
+      auto& transaction = *it;
+      metadata = transaction->metadata();
+      VLOG_WITH_PREFIX(2) << "Update transaction status location for transaction: "
+                          << metadata.transaction_id << " from tablet " << metadata.status_tablet
+                          << " to " << new_status_tablet;
+      transaction->UpdateTransactionStatusLocation(new_status_tablet);
+      TransactionsModifiedUnlocked(&min_running_notifier);
+      txn_status_res = TransactionStatusResult{
+          TransactionStatus::PROMOTED, transaction->last_known_status_hybrid_time(),
+          transaction->last_known_aborted_subtxn_set(), new_status_tablet};
     }
 
-    auto& transaction = *it;
-    const auto& metadata = transaction->metadata();
-    VLOG_WITH_PREFIX(2) << "Update transaction status location for transaction: "
-                        << metadata.transaction_id << " from tablet " << metadata.status_tablet
-                        << " to " << new_status_tablet;
-    transaction->UpdateTransactionStatusLocation(new_status_tablet);
-    TransactionsModifiedUnlocked(&min_running_notifier);
-    return metadata;
+    if (wait_queue_) {
+      wait_queue_->SignalPromoted(transaction_id, std::move(txn_status_res));
+    }
+    return std::move(metadata);
   }
 
   Result<IsExternalTransaction> IsExternalTransactionResult(
@@ -1212,6 +1266,11 @@ class TransactionParticipant::Impl
 
     poller_.Start(
         &participant_context_.scheduler(), 1ms * FLAGS_transactions_status_poll_interval_ms);
+
+    if (wait_queue_) {
+      wait_queue_poller_.Start(
+        &participant_context_.scheduler(), 1ms * FLAGS_wait_queue_poll_interval_ms);
+    }
   }
 
   void TransactionsModifiedUnlocked(MinRunningNotifier* min_running_notifier) REQUIRES(mutex_) {
@@ -1429,6 +1488,7 @@ class TransactionParticipant::Impl
       txn->SetApplyData(pending_apply->state);
     }
     transactions_.insert(txn);
+    mem_tracker_->Consume(kRunningTransactionSize);
     TransactionsModifiedUnlocked(&min_running_notifier);
   }
 
@@ -1479,6 +1539,7 @@ class TransactionParticipant::Impl
       metric_aborted_transactions_pending_cleanup_->Decrement();
     }
     transactions_.erase(it);
+    mem_tracker_->Release(kRunningTransactionSize);
     TransactionsModifiedUnlocked(min_running_notifier);
   }
 
@@ -1552,6 +1613,10 @@ class TransactionParticipant::Impl
       operation->CompleteWithStatus(id.status());
       return;
     }
+    if (operation->request()->status() == TransactionStatus::IMMEDIATE_CLEANUP && wait_queue_) {
+      // We should only receive IMMEDIATE_CLEANUP from the client in case of certain txn abort.
+      wait_queue_->SignalAborted(*id);
+    }
 
     TransactionApplyData data = {
         .leader_term = term,
@@ -1610,6 +1675,7 @@ class TransactionParticipant::Impl
       };
       it = transactions_.insert(std::make_shared<RunningTransaction>(
           metadata, TransactionalBatchData(), OneWayBitmap(), HybridTime::kMax, this)).first;
+      mem_tracker_->Consume(kRunningTransactionSize);
       TransactionsModifiedUnlocked(&min_running_notifier);
     }
 
@@ -1632,6 +1698,10 @@ class TransactionParticipant::Impl
       CheckForAbortedTransactions();
     }
     CleanupStatusResolvers();
+  }
+
+  void PollWaitQueue() {
+    DCHECK_NOTNULL(wait_queue_)->Poll(participant_context_.Now());
   }
 
   void CheckForAbortedTransactions() EXCLUDES(mutex_) {
@@ -1786,16 +1856,23 @@ class TransactionParticipant::Impl
 
   rpc::Poller poller_;
 
+  rpc::Poller wait_queue_poller_;
+
   OpId cdc_sdk_min_checkpoint_op_id_ = OpId::Invalid();
   CoarseTimePoint cdc_sdk_min_checkpoint_op_id_expiration_ = CoarseTimePoint::min();
 
   std::condition_variable requests_completed_cond_;
+
+  std::unique_ptr<docdb::WaitQueue> wait_queue_;
+
+  std::shared_ptr<MemTracker> mem_tracker_ GUARDED_BY(mutex_);
 };
 
 TransactionParticipant::TransactionParticipant(
     TransactionParticipantContext* context, TransactionIntentApplier* applier,
-    const scoped_refptr<MetricEntity>& entity)
-    : impl_(new Impl(context, applier, entity)) {
+    const scoped_refptr<MetricEntity>& entity,
+    const std::shared_ptr<MemTracker>& tablets_mem_tracker)
+    : impl_(new Impl(context, applier, entity, tablets_mem_tracker)) {
 }
 
 TransactionParticipant::~TransactionParticipant() {
@@ -1934,6 +2011,14 @@ OneWayBitmap TransactionParticipant::TEST_TransactionReplicatedBatches(
 
 std::string TransactionParticipant::ReplicatedData::ToString() const {
   return YB_STRUCT_TO_STRING(leader_term, state, op_id, hybrid_time, already_applied_to_regular_db);
+}
+
+void TransactionParticipant::SetWaitQueue(std::unique_ptr<docdb::WaitQueue> wait_queue) {
+  return impl_->SetWaitQueue(std::move(wait_queue));
+}
+
+docdb::WaitQueue* TransactionParticipant::wait_queue() const {
+  return impl_->wait_queue();
 }
 
 void TransactionParticipant::StartShutdown() {

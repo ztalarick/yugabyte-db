@@ -274,19 +274,30 @@ void XClusterConsumer::UpdateInMemoryState(
   }
 
   if (consumer_registry->enable_replicate_transaction_status_table() &&
-      !global_transaction_status_table_) {
+      global_transaction_status_tablets_.empty()) {
     auto global_transaction_status_table_name = client::YBTableName(
         YQL_DATABASE_CQL, master::kSystemNamespaceName, kGlobalTransactionsTableName);
-    auto global_transaction_status_table_res =
-        local_client_->client->OpenTable(global_transaction_status_table_name);
-    if (!global_transaction_status_table_res.ok()) {
+
+    std::vector<TabletId> tablets;
+    const auto get_tablets_status = local_client_->client->GetTablets(
+        global_transaction_status_table_name, 0 /* max_tablets */, &tablets, nullptr /* ranges */);
+
+    if (!get_tablets_status.ok() || tablets.empty()) {
       // We could not open the transaction status table, so return without setting any in-memory
       // state.
-      LOG(WARNING) << global_transaction_status_table_res.status();
+      LOG(WARNING) << "Error getting global transaction status tablets: " << get_tablets_status;
       cond_.notify_all();
       return;
     }
-    global_transaction_status_table_ = std::move(*global_transaction_status_table_res);
+
+    // Sort tablets to ensure we have the same order across all XClusterConsumers.
+    sort(tablets.begin(), tablets.end());
+
+    // TODO handle adding of new txn status tablets (GH #16307).
+    // Currently we block add_transaction_tablet for xCluster enabled clusters, since adding in a
+    // new txn status tablet would disrupt the deterministic mapping we have for txn id -> status
+    // tablet (since we would need to support existing txns and new ones).
+    global_transaction_status_tablets_ = std::move(tablets);
   }
 
   cluster_config_version_.store(cluster_config_version, std::memory_order_release);
@@ -297,6 +308,9 @@ void XClusterConsumer::UpdateInMemoryState(
   if (!consumer_registry) {
     LOG_WITH_PREFIX(INFO) << "Given empty CDC consumer registry: removing Pollers";
     consumer_role_ = cdc::XClusterRole::ACTIVE;
+    // Clear the tablets list in case users want to increase number of txn status tablets in between
+    // having active replication setups.
+    global_transaction_status_tablets_.clear();
     cond_.notify_all();
     return;
   }
@@ -305,6 +319,8 @@ void XClusterConsumer::UpdateInMemoryState(
 
   consumer_role_ = consumer_registry->role();
   streams_with_local_tserver_optimization_.clear();
+  stream_schema_version_map_.clear();
+  stream_colocated_schema_version_map_.clear();
   stream_to_schema_version_.clear();
 
   for (const auto& producer_map : DCHECK_NOTNULL(consumer_registry)->producer_map()) {
@@ -334,6 +350,26 @@ void XClusterConsumer::UpdateInMemoryState(
             stream_entry_pb.producer_schema().validated_schema_version(),
             stream_entry_pb.producer_schema().last_compatible_consumer_schema_version());
       }
+
+      if (stream_entry_pb.has_schema_versions()) {
+        auto schema_version_map = stream_schema_version_map_[stream_entry.first];
+        auto schema_versions = stream_entry_pb.schema_versions();
+        schema_version_map[schema_versions.current_producer_schema_version()] =
+            schema_versions.current_consumer_schema_version();
+        schema_version_map[schema_versions.old_producer_schema_version()] =
+            schema_versions.old_consumer_schema_version();
+      }
+
+      for (const auto& colocated_entry : stream_entry_pb.colocated_schema_versions()) {
+        auto schema_version_map =
+            stream_colocated_schema_version_map_[stream_entry.first][colocated_entry.first];
+        auto schema_versions = stream_entry_pb.schema_versions();
+        schema_version_map[schema_versions.current_producer_schema_version()] =
+            schema_versions.current_consumer_schema_version();
+        schema_version_map[schema_versions.old_producer_schema_version()] =
+            schema_versions.old_consumer_schema_version();
+      }
+
       for (const auto& tablet_entry : stream_entry_pb.consumer_producer_tablet_map()) {
         const auto& consumer_tablet_id = tablet_entry.first;
         for (const auto& producer_tablet_id : tablet_entry.second.tablets()) {
@@ -377,6 +413,7 @@ Result<cdc::ConsumerTabletInfo> XClusterConsumer::GetConsumerTableInfo(
 
 void XClusterConsumer::TriggerPollForNewTablets() {
   std::lock_guard<rw_spinlock> write_lock_master(master_data_mutex_);
+  int32_t current_cluster_config_version = cluster_config_version();
 
   for (const auto& entry : producer_consumer_tablet_map_from_master_) {
     if (entry.disable_stream) {
@@ -475,8 +512,21 @@ void XClusterConsumer::TriggerPollForNewTablets() {
         auto xcluster_poller = std::make_shared<XClusterPoller>(
             producer_tablet_info, consumer_tablet_info, thread_pool_.get(), rpcs_.get(),
             local_client_, remote_clients_[uuid], this, use_local_tserver,
-            global_transaction_status_table_, enable_replicate_transaction_status_table_,
+            global_transaction_status_tablets_, enable_replicate_transaction_status_table_,
             last_compatible_consumer_schema_version);
+
+        auto schema_versions = FindOrNull(stream_schema_version_map_,
+                                          producer_tablet_info.stream_id);
+        if (schema_versions != nullptr) {
+          xcluster_poller->UpdateSchemaVersions(*schema_versions);
+        }
+
+        auto colocated_schema_versions = FindOrNull(stream_colocated_schema_version_map_,
+                                                    producer_tablet_info.stream_id);
+        if (colocated_schema_versions != nullptr) {
+          xcluster_poller->UpdateColocatedSchemaVersionMap(*colocated_schema_versions);
+        }
+
         LOG_WITH_PREFIX(INFO) << Format(
             "Start polling for producer tablet $0, consumer tablet $1", producer_tablet_info,
             consumer_tablet_info.tablet_id);
@@ -484,16 +534,32 @@ void XClusterConsumer::TriggerPollForNewTablets() {
         xcluster_poller->Poll();
       }
     }
-    auto schema_version_iter = stream_to_schema_version_.find(producer_tablet_info.stream_id);
-    if (schema_version_iter != stream_to_schema_version_.end()) {
+
+    // Notify existing pollers only if there was a cluster config refresh since last time.
+    if (current_cluster_config_version > last_polled_at_cluster_config_version_) {
       SharedLock<rw_spinlock> read_lock_pollers(producer_pollers_map_mutex_);
       auto xcluster_poller_iter = producer_pollers_map_.find(producer_tablet_info);
       if (xcluster_poller_iter != producer_pollers_map_.end()) {
-        xcluster_poller_iter->second->SetSchemaVersion(
-            schema_version_iter->second.first, schema_version_iter->second.second);
+        auto schema_version_iter = stream_to_schema_version_.find(producer_tablet_info.stream_id);
+        if (schema_version_iter != stream_to_schema_version_.end()) {
+            xcluster_poller_iter->second->SetSchemaVersion(schema_version_iter->second.first,
+                                                      schema_version_iter->second.second);
+        }
+
+        auto schema_versions_iter = stream_schema_version_map_.find(producer_tablet_info.stream_id);
+        if (schema_versions_iter != stream_schema_version_map_.end()) {
+          xcluster_poller_iter->second->UpdateSchemaVersions(schema_versions_iter->second);
+        }
+
+        auto iter = stream_colocated_schema_version_map_.find(producer_tablet_info.stream_id);
+        if (iter != stream_colocated_schema_version_map_.end()) {
+          xcluster_poller_iter->second->UpdateColocatedSchemaVersionMap(iter->second);
+        }
       }
     }
   }
+
+  last_polled_at_cluster_config_version_ = current_cluster_config_version;
 }
 
 void XClusterConsumer::TriggerDeletionOfOldPollers() {
@@ -661,6 +727,18 @@ void XClusterConsumer::StoreReplicationError(
     const std::string& detail) {
   std::lock_guard<simple_spinlock> lock(tablet_replication_error_map_lock_);
   tablet_replication_error_map_[tablet_id][stream_id][error] = detail;
+}
+
+void XClusterConsumer::ClearReplicationError(
+    const TabletId& tablet_id,
+    const CDCStreamId& stream_id) {
+  std::lock_guard l(tablet_replication_error_map_lock_);
+  if (!tablet_replication_error_map_.contains(tablet_id)) {
+    return;
+  }
+
+  tablet_replication_error_map_[tablet_id].erase(stream_id);
+  tablet_replication_error_map_.erase(tablet_id);
 }
 
 cdc::TabletReplicationErrorMap XClusterConsumer::GetReplicationErrors() const {

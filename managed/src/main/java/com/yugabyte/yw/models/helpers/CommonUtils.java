@@ -69,6 +69,7 @@ import play.mvc.Http;
 public class CommonUtils {
 
   public static final String DEFAULT_YB_HOME_DIR = "/home/yugabyte";
+  public static final String DEFAULT_YBC_DIR = "/tmp/yugabyte";
 
   private static final Pattern RELEASE_REGEX =
       Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+).*$");
@@ -80,6 +81,8 @@ public class CommonUtils {
   public static final int DB_MAX_IN_CLAUSE_ITEMS = 1000;
   public static final int DB_IN_CLAUSE_TO_WARN = 50000;
   public static final int DB_OR_CHAIN_TO_WARN = 100;
+
+  public static final String MIN_PROMOTE_AUTO_FLAG_RELEASE = "2.17.0.0";
 
   private static final Configuration JSONPATH_CONFIG =
       Configuration.builder()
@@ -725,7 +728,7 @@ public class CommonUtils {
       Scanner scanner = new Scanner(shellResponse.message);
       int i = 0;
       while (scanner.hasNextLine()) {
-        data = new String(scanner.nextLine());
+        data = scanner.nextLine();
         if (i++ == 3) {
           break;
         }
@@ -767,5 +770,9 @@ public class CommonUtils {
   /** Get the user sending the API request from the HTTP context. */
   public static Users getUserFromContext(Http.Context ctx) {
     return ((UserWithFeatures) ctx.args.get("user")).getUser();
+  }
+
+  public static boolean isAutoFlagSupported(String dbVersion) {
+    return isReleaseEqualOrAfter(MIN_PROMOTE_AUTO_FLAG_RELEASE, dbVersion);
   }
 }

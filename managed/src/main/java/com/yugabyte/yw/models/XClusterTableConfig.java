@@ -13,6 +13,7 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.persistence.Entity;
@@ -20,6 +21,7 @@ import javax.persistence.Id;
 import javax.persistence.IdClass;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
@@ -32,13 +34,13 @@ import lombok.extern.slf4j.Slf4j;
 @ToString(onlyExplicitlyIncluded = true)
 public class XClusterTableConfig extends Model {
 
-  private static final Finder<UUID, XClusterTableConfig> find =
-      new Finder<UUID, XClusterTableConfig>(XClusterTableConfig.class) {};
+  private static final Finder<String, XClusterTableConfig> find =
+      new Finder<String, XClusterTableConfig>(XClusterTableConfig.class) {};
 
   @Id
   @ManyToOne
   @JoinColumn(name = "config_uuid", referencedColumnName = "uuid")
-  @ApiModelProperty(value = "Time of the bootstrap of the table")
+  @ApiModelProperty(value = "The XCluster config that this table is a participant of")
   @JsonIgnore
   public XClusterConfig config;
 
@@ -60,10 +62,8 @@ public class XClusterTableConfig extends Model {
   @ApiModelProperty(value = "Whether this table needs bootstrap process for replication setup")
   public boolean needBootstrap;
 
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
-  @ApiModelProperty(
-      value = "Time of the bootstrap of the table",
-      example = "2022-04-26 15:37:32.610000")
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+  @ApiModelProperty(value = "Time of the bootstrap of the table", example = "2022-12-12T13:07:18Z")
   public Date bootstrapCreateTime;
 
   @ManyToOne
@@ -76,10 +76,10 @@ public class XClusterTableConfig extends Model {
   @JsonProperty("restoreUuid")
   public Restore restore;
 
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
   @ApiModelProperty(
       value = "Time of the last try to restore data to the target universe",
-      example = "2022-04-26 15:37:32.610000")
+      example = "2022-12-12T13:07:18Z")
   public Date restoreTime;
 
   // If its main table is not part the config, it will be false; otherwise, it indicates whether the

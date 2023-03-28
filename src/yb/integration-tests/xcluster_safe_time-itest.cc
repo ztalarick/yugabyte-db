@@ -36,7 +36,7 @@
 #include "yb/util/backoff_waiter.h"
 #include "yb/util/flags.h"
 #include "yb/util/tsan_util.h"
-#include "yb/integration-tests/twodc_test_base.h"
+#include "yb/integration-tests/xcluster_test_base.h"
 #include "yb/client/table.h"
 
 using std::string;
@@ -70,8 +70,8 @@ auto GetSafeTime(tserver::TabletServer* tserver, const NamespaceId& namespace_id
 }
 }  // namespace
 
-class XClusterSafeTimeTest : public TwoDCTestBase {
-  typedef TwoDCTestBase super;
+class XClusterSafeTimeTest : public XClusterTestBase {
+  typedef XClusterTestBase super;
 
  public:
   void SetUp() override {
@@ -182,14 +182,14 @@ class XClusterSafeTimeTest : public TwoDCTestBase {
 
     return WaitFor(
         [&]() -> Result<bool> {
-          auto safe_time_status = GetSafeTime(tserver, namespace_id_);
-          if (!safe_time_status) {
-            CHECK(safe_time_status.status().IsNotFound() || safe_time_status.status().IsTryAgain());
-
+          auto safe_time_result = GetSafeTime(tserver, namespace_id_);
+          if (!safe_time_result) {
+            CHECK(safe_time_result.status().IsTryAgain());
             return false;
           }
-          auto safe_time = safe_time_status.get();
-          return safe_time.is_valid() && safe_time > min_safe_time;
+
+          auto safe_time = safe_time_result.get();
+          return *safe_time && safe_time->is_valid() && *safe_time > min_safe_time;
         },
         safe_time_propagation_timeout_,
         Format("Wait for safe_time to move above $0", min_safe_time.ToDebugString()));
@@ -199,8 +199,8 @@ class XClusterSafeTimeTest : public TwoDCTestBase {
     auto* tserver = consumer_cluster()->mini_tablet_servers().front()->server();
     return WaitFor(
         [&]() -> Result<bool> {
-          auto safe_time_status = GetSafeTime(tserver, namespace_id_);
-          if (!safe_time_status.ok() && safe_time_status.status().IsNotFound()) {
+          auto safe_time_result = GetSafeTime(tserver, namespace_id_);
+          if (safe_time_result && !safe_time_result.get()) {
             return true;
           }
           return false;
@@ -242,7 +242,8 @@ TEST_F(XClusterSafeTimeTest, ComputeSafeTime) {
   auto ht_after_pause = GetProducerSafeTime();
   auto* tserver = consumer_cluster()->mini_tablet_servers().front()->server();
   auto safe_time_after_pause = ASSERT_RESULT(GetSafeTime(tserver, namespace_id_));
-  ASSERT_TRUE(safe_time_after_pause.is_valid());
+  ASSERT_TRUE(safe_time_after_pause);
+  ASSERT_TRUE(safe_time_after_pause->is_valid());
   ASSERT_GE(safe_time_after_pause, ht_before_pause);
   ASSERT_LT(safe_time_after_pause, ht_after_pause);
 
@@ -285,9 +286,9 @@ TEST_F(XClusterSafeTimeTest, LagInSafeTime) {
   ASSERT_OK(WaitForSafeTime(ht_2));
 }
 
-class XClusterConsistencyTest : public XClusterYsqlTest {
+class XClusterConsistencyTest : public XClusterYsqlTestBase {
  public:
-  typedef XClusterYsqlTest super;
+  typedef XClusterYsqlTestBase super;
   void SetUp() override {
     // Skip in TSAN as InitDB times out.
     YB_SKIP_TEST_IN_TSAN();
@@ -636,9 +637,9 @@ class XClusterConsistencyNoSafeTimeTest : public XClusterConsistencyTest {
       RETURN_NOT_OK(WaitFor(
           [&]() -> Result<bool> {
             auto safe_time = GetSafeTime(tserver->server(), namespace_id_);
-            CHECK(!safe_time);
 
-            if (safe_time.status().ToString().find(
+            if (!safe_time.ok() &&
+                safe_time.status().ToString().find(
                     "XCluster safe time not yet initialized for namespace") != string::npos) {
               return true;
             }
@@ -728,7 +729,7 @@ TEST_F_EX(
   ASSERT_OK(ValidateConsumerRows(consumer_table1_->name(), 2 * kNumRecordsPerBatch));
 }
 
-class XClusterSingleClusterTest : public XClusterYsqlTest {
+class XClusterSingleClusterTest : public XClusterYsqlTestBase {
  protected:
   // Setup just the producer cluster table
   void SetUp() override {
@@ -737,7 +738,7 @@ class XClusterSingleClusterTest : public XClusterYsqlTest {
 
     FLAGS_enable_replicate_transaction_status_table = true;
 
-    XClusterYsqlTest::SetUp();
+    XClusterYsqlTestBase::SetUp();
     MiniClusterOptions opts;
     opts.num_masters = kMasterCount;
     opts.num_tablet_servers = kTServerCount;

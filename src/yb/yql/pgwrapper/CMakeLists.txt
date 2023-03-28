@@ -38,6 +38,7 @@ add_dependencies(
   gen_src_yb_tserver_tserver_proto
   gen_src_yb_tserver_tserver_types_proto
   gen_src_yb_cdc_cdc_consumer_proto
+  gen_src_yb_cdc_xcluster_producer_proto
   gen_src_yb_encryption_encryption_proto
   gen_src_yb_master_master_heartbeat_proto
   gen_src_yb_master_master_types_proto
@@ -89,8 +90,10 @@ ADD_YB_LIBRARY(ysql_upgrade
                DEPS ${YSQL_UPGRADE_DEPS})
 
 set(YB_TEST_LINK_LIBS yb_pgwrapper ql-dml-test-base pg_wrapper_test_base tools_test_utils
-    geo_transactions_test_base ${YB_MIN_TEST_LIBS})
+    geo_transactions_test_base rocksdb_tools ${YB_MIN_TEST_LIBS})
+ADD_YB_TEST(pg_auto_analyze-test)
 ADD_YB_TEST(pg_catalog_perf-test)
+ADD_YB_TEST(pg_clock_skew-test)
 ADD_YB_TEST(pg_conn-test)
 ADD_YB_TEST(pg_ddl_concurrency-test)
 ADD_YB_TEST(pg_fkey-test)

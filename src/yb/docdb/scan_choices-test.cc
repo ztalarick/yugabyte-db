@@ -199,8 +199,7 @@ void ScanChoicesTest::InitializeScanChoicesInstance(const Schema &schema, PgsqlC
   const auto &upper_bound = spec.UpperBound();
   EXPECT_OK(upper_bound);
   auto base_choices =
-      ScanChoices::Create(schema, spec, lower_bound.get(), upper_bound.get(),
-                          0 /* prefix_length */).release();
+      ScanChoices::Create(schema, spec, lower_bound.get(), upper_bound.get()).release();
 
   choices_ = std::unique_ptr<HybridScanChoices>(down_cast<HybridScanChoices *>(base_choices));
 }
@@ -232,7 +231,7 @@ void ScanChoicesTest::AdjustForRangeConstraints() {
   EXPECT_FALSE(choices_->FinishedWithScanChoices());
   const auto &cur_target = choices_->current_scan_target_;
   DocKeyDecoder decoder(cur_target);
-  EXPECT_OK(decoder.DecodeToRangeGroup());
+  EXPECT_OK(decoder.DecodeToKeys());
   KeyEntryValue cur_val;
   // The size of the dockey we have found so far that does not need adjustment
   size_t valid_size = 0;

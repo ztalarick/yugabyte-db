@@ -244,6 +244,8 @@ class ClusterAdminClient {
                          int timeout_secs,
                          bool is_compaction);
 
+  Status CompactionStatus(const client::YBTableName& table_name);
+
   Status FlushSysCatalog();
 
   Status CompactSysCatalog();
@@ -270,6 +272,8 @@ class ClusterAdminClient {
   Status DeleteReadReplicaPlacementInfo();
 
   Status GetUniverseConfig();
+
+  Status GetXClusterConfig();
 
   Status ChangeBlacklist(const std::vector<HostPort>& servers, bool add,
       bool blacklist_leader);
@@ -411,6 +415,9 @@ class ClusterAdminClient {
   Status SetUniverseReplicationEnabled(const std::string& producer_id,
                                        bool is_enabled);
 
+  Status PauseResumeXClusterProducerStreams(
+      const std::vector<std::string>& stream_ids, bool is_paused);
+
   Status BootstrapProducer(const std::vector<TableId>& table_id);
 
   Status WaitForReplicationDrain(const std::vector<CDCStreamId>& stream_ids,
@@ -536,6 +543,8 @@ class ClusterAdminClient {
       master::ReplicationInfoPB* replication_info, const std::string& placement_uuid);
 
   Result<master::GetMasterClusterConfigResponsePB> GetMasterClusterConfig();
+
+  Result<master::GetMasterXClusterConfigResponsePB> GetMasterXClusterConfig();
 
   // Perform RPC call without checking Response structure for error
   template<class Response, class Request, class Object>

@@ -15,17 +15,17 @@ import styles from './YBDropZone.module.scss';
 export type YBDropZoneProps = {
   actionButtonText?: string;
   className?: string;
-  descriptionText?: string;
-  dragOverText?: string;
-  showHelpText?: boolean;
   dataTestId?: string;
+  descriptionText?: string;
+  disabled?: boolean;
+  dragOverText?: string;
   name?: string;
-  noClick?: boolean;
+  showHelpText?: boolean;
 } & (
   | {
       multipleFiles: false;
       value?: File;
-      onChange?: (file: File) => void;
+      onChange?: (file: File | undefined) => void;
     }
   | {
       multipleFiles: true;
@@ -37,29 +37,36 @@ export type YBDropZoneProps = {
 const DROP_ZONE_ICON = <i className={`fa fa-upload ${styles.dropZoneIcon}`} />;
 
 export const YBDropZone = ({
-  value,
   actionButtonText,
   className,
+  dataTestId,
   descriptionText,
+  disabled,
   dragOverText,
   multipleFiles,
   onChange,
   name,
   showHelpText = true,
-  noClick = true,
-  dataTestId
+  value
 }: YBDropZoneProps) => {
   const onDropAccepted = (acceptedFiles: File[]) => {
-    onChange && (multipleFiles === true ? onChange(acceptedFiles) : onChange(acceptedFiles[0]));
+    onChange &&
+      (multipleFiles === true
+        ? onChange(value ? acceptedFiles.concat(value) : acceptedFiles)
+        : onChange(acceptedFiles[0]));
   };
-  const { acceptedFiles, getRootProps, getInputProps, open, isDragActive } = useDropzone({
+  const onClearUploads = () => {
+    onChange && (multipleFiles === true ? onChange([]) : onChange(undefined));
+  };
+  const { getRootProps, getInputProps, open, isDragActive } = useDropzone({
     onDropAccepted,
     multiple: multipleFiles,
-    noClick: noClick,
-    noKeyboard: true
+    noClick: true,
+    noKeyboard: true,
+    disabled: disabled
   });
 
-  const storedFiles = value ?? acceptedFiles;
+  const storedFiles = value ? (multipleFiles ? value : [value]) : [];
   const dataTestIdPrefix = dataTestId && dataTestId !== '' ? dataTestId : 'YBDropZone';
   return storedFiles.length === 0 ? (
     <div
@@ -83,13 +90,21 @@ export const YBDropZone = ({
   ) : (
     <div className={styles.updateFilesContainer}>
       <div className={styles.acceptedFilesMetadataContainer}>
-        {Array.isArray(storedFiles)
-          ? storedFiles.map((acceptedFile) => <li>{acceptedFile.name}</li>)
-          : storedFiles.name}
+        {storedFiles.map((acceptedFile) => (
+          <li>{acceptedFile.name}</li>
+        ))}
       </div>
       <YBButton variant="secondary" onClick={open} data-testid={`${dataTestIdPrefix}-uploadButton`}>
         <i className="fa fa-upload" />
         {'Upload'}
+      </YBButton>
+      <YBButton
+        variant="secondary"
+        onClick={onClearUploads}
+        data-testid={`${dataTestIdPrefix}-clearUploadsButton`}
+      >
+        <i className="fa fa-trash" />
+        {'Clear'}
       </YBButton>
     </div>
   );

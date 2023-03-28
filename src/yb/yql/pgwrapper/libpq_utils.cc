@@ -331,6 +331,11 @@ Status PGConn::Execute(const std::string& command, bool show_query_in_error) {
   return Status::OK();
 }
 
+bool PGConn::IsBusy() {
+  static constexpr int kIsBusy = 1;
+  return PQisBusy(impl_.get()) == kIsBusy;
+}
+
 Result<PGResultPtr> CheckResult(PGResultPtr result, const std::string& command) {
   auto status = PQresultStatus(result.get());
   if (ExecStatusType::PGRES_TUPLES_OK != status && ExecStatusType::PGRES_COPY_IN != status) {
@@ -671,7 +676,7 @@ std::string PqEscapeIdentifier(const std::string& input) {
 
 bool HasTransactionError(const Status& status) {
   const auto& message = status.ToString();
-  return message.find("conflicts with higher priority transaction:") != std::string::npos ||
+  return message.find("could not serialize access due to concurrent update") != std::string::npos ||
          message.find("Transaction aborted:") != std::string::npos ||
          message.find("expired or aborted by a conflict:") != std::string::npos ||
          message.find("Unknown transaction, could be recently aborted:") != std::string::npos;

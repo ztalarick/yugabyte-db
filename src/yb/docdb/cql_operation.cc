@@ -68,7 +68,14 @@ DEFINE_UNKNOWN_bool(ycql_disable_index_updating_optimization, false,
             "the index data.");
 TAG_FLAG(ycql_disable_index_updating_optimization, advanced);
 
-DEFINE_UNKNOWN_bool(ycql_enable_packed_row, false, "Whether packed row is enabled for YCQL.");
+#ifdef NDEBUG
+constexpr bool kYcqlPackedRowEnabled = false;
+#else
+constexpr bool kYcqlPackedRowEnabled = true;
+#endif
+
+DEFINE_RUNTIME_bool(ycql_enable_packed_row, kYcqlPackedRowEnabled,
+                    "Whether packed row is enabled for YCQL.");
 
 DEFINE_UNKNOWN_uint64(
     ycql_packed_row_size_limit, 0,
@@ -458,7 +465,7 @@ Status QLWriteOperation::ReadColumns(const DocOperationApplyData& data,
     if (VERIFY_RESULT(iterator.HasNext())) {
       RETURN_NOT_OK(iterator.NextRow(table_row));
     }
-    data.restart_read_ht->MakeAtLeast(iterator.RestartReadHt());
+    data.restart_read_ht->MakeAtLeast(VERIFY_RESULT(iterator.RestartReadHt()));
   }
   if (pk_doc_key_) {
     DocQLScanSpec spec(*non_static_projection, *pk_doc_key_, request_.query_id());
@@ -480,7 +487,7 @@ Status QLWriteOperation::ReadColumns(const DocOperationApplyData& data,
       // columns in the map to indicate the row does not exist.
       table_row->Clear();
     }
-    data.restart_read_ht->MakeAtLeast(iterator.RestartReadHt());
+    data.restart_read_ht->MakeAtLeast(VERIFY_RESULT(iterator.RestartReadHt()));
   }
 
   return Status::OK();
@@ -765,7 +772,8 @@ Status QLWriteOperation::InsertScalar(
     bfql::TSOpcode op_code) {
   ValueRef value_ref(value, column_schema.sorting_type(), op_code);
   if (context.row_packer && value_ref.IsTombstoneOrPrimitive() && !column_schema.is_static() &&
-      VERIFY_RESULT(context.row_packer->AddValue(column_id, value))) {
+      VERIFY_RESULT(context.row_packer->AddValue(
+          column_id, context.column_control_fields.AsSlice(), value))) {
     return Status::OK();
   }
 
@@ -881,6 +889,8 @@ Status QLWriteOperation::ApplyForRegularColumns(const QLColumnValuePB& column_va
 }
 
 Status QLWriteOperation::Apply(const DocOperationApplyData& data) {
+  data.doc_write_batch->SetDocReadContext(doc_read_context_);
+
   QLTableRow existing_row;
   if (request_.has_if_expr()) {
     // Check if the if-condition is satisfied.
@@ -988,7 +998,13 @@ Status QLWriteOperation::ApplyUpsert(
   IsInsert is_insert(request_.type() == QLWriteRequestPB::QL_STMT_INSERT);
 
   std::optional<RowPacker> row_packer;
-  IntraTxnWriteId packed_row_write_id = 0;
+  std::optional<IntraTxnWriteId> packed_row_write_id;
+
+  auto se = ScopeExit([&packed_row_write_id, doc_write_batch = data.doc_write_batch]() {
+    if (packed_row_write_id) {
+      doc_write_batch->RollbackReservedWriteId();
+    }
+  });
 
   if (is_insert && encoded_pk_doc_key_) {
     bool pack_row = FLAGS_ycql_enable_packed_row;
@@ -1072,7 +1088,8 @@ Status QLWriteOperation::ApplyUpsert(
     auto encoded_value = VERIFY_RESULT(row_packer->Complete());
     RETURN_NOT_OK(data.doc_write_batch->SetPrimitive(
         DocPath(encoded_pk_doc_key_.as_slice()), context.control_fields, ValueRef(encoded_value),
-        data.read_time, data.deadline, request_.query_id(), packed_row_write_id));
+        data.read_time, data.deadline, request_.query_id(), *packed_row_write_id));
+    packed_row_write_id.reset();
   }
 
   if (update_indexes_) {
@@ -1173,7 +1190,7 @@ Status QLWriteOperation::ApplyDelete(
         }
       }
     }
-    data.restart_read_ht->MakeAtLeast(iterator.RestartReadHt());
+    data.restart_read_ht->MakeAtLeast(VERIFY_RESULT(iterator.RestartReadHt()));
   } else {
     // Otherwise, delete the referenced row (all columns).
     RETURN_NOT_OK(DeleteRow(DocPath(encoded_pk_doc_key_.as_slice()), data.doc_write_batch,
@@ -1776,7 +1793,7 @@ Status QLReadOperation::Execute(const YQLStorageIf& ql_storage,
       iter.get(), resultset, row_count_limit, num_rows_skipped, read_time));
 
   // SetPagingStateIfNecessary could perform read, so we assign restart_read_ht after it.
-  *restart_read_ht = iter->RestartReadHt();
+  *restart_read_ht = VERIFY_RESULT(iter->RestartReadHt());
 
   return Status::OK();
 }
@@ -1853,7 +1870,7 @@ Status QLReadOperation::PopulateResultSet(const std::unique_ptr<QLScanSpec>& spe
   int rscol_index = 0;
   for (const QLExpressionPB& expr : request_.selected_exprs()) {
     QLExprResult value;
-    RETURN_NOT_OK(EvalExpr(expr, table_row, value.Writer(), spec->schema()));
+    RETURN_NOT_OK(EvalExpr(expr, table_row, value.Writer(), &spec->schema()));
     resultset->AppendColumn(rscol_index, value.Value());
     rscol_index++;
   }

@@ -5,8 +5,6 @@ linkTitle: Drivers and ORMs
 description: Connect your applications with supported drivers and ORMs
 headcontent: Connect applications with your database
 image: /images/section_icons/sample-data/s_s1-sampledata-3x.png
-aliases:
-  - /drivers-orms/
 menu:
   preview:
     identifier: drivers-orms
@@ -48,7 +46,7 @@ In addition to the compatible upstream PostgreSQL drivers, YugabyteDB also suppo
   <li>
     <a href="nodejs/" class="orange">
       <i class="fa-brands fa-node-js"></i>
-      NodeJS
+      Node.js
     </a>
   </li>
 

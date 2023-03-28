@@ -135,6 +135,8 @@ struct TableInfo {
       const std::string& tablet_log_prefix, const TableId& primary_table_id, const TableInfoPB& pb);
   void ToPB(TableInfoPB* pb) const;
 
+  Status MergeSchemaPackings(const TableInfoPB& pb, docdb::OverwriteSchemaPacking overwrite);
+
   std::string ToString() const {
     TableInfoPB pb;
     ToPB(&pb);
@@ -147,7 +149,7 @@ struct TableInfo {
 
   const Schema& schema() const;
 
-  Status MergeWithRestored(const TableInfoPB& pb, docdb::OverwriteSchemaPacking overwrite);
+  Result<SchemaVersion> GetSchemaPackingVersion(const Schema& schema) const;
 
   const std::string& LogPrefix() const {
     return log_prefix;
@@ -159,6 +161,7 @@ struct TableInfo {
 
   // Should account for every field in TableInfo.
   static bool TEST_Equals(const TableInfo& lhs, const TableInfo& rhs);
+
  private:
   Status DoLoadFromPB(Primary primary, const TableInfoPB& pb);
 };
@@ -181,7 +184,19 @@ struct KvStoreInfo {
                     bool local_superblock);
 
   Status MergeWithRestored(
-      const KvStoreInfoPB& pb, bool colocated, docdb::OverwriteSchemaPacking overwrite);
+      const KvStoreInfoPB& snapshot_kvstoreinfo, const TableId& primary_table_id, bool colocated,
+      docdb::OverwriteSchemaPacking overwrite);
+
+  Status MergeTableSchemaPackings(
+      const KvStoreInfoPB& snapshot_kvstoreinfo, const TableId& primary_table_id, bool colocated,
+      docdb::OverwriteSchemaPacking overwrite);
+
+  // Given the table info from the tablet metadata in a snapshot, return the corresponding live
+  // table.  Used to map tables that existed in the snapshot to tables that are live in the current
+  // cluster when restoring a colocated tablet in order to merge schema packings.
+  // If nullptr is returned, the input table can be ignored.
+  Result<TableInfo*> FindMatchingTable(
+      const TableInfoPB& snapshot_table, const TableId& primary_table_id);
 
   Status LoadTablesFromPB(
       const std::string& tablet_log_prefix,
@@ -233,6 +248,7 @@ struct RaftGroupMetadataData {
   bool colocated = false;
   std::vector<SnapshotScheduleId> snapshot_schedules;
   std::unordered_set<StatefulServiceKind> hosted_services;
+  OpId last_change_metadata_op_id;
 };
 
 // At startup, the TSTabletManager will load a RaftGroupMetadata for each
@@ -253,6 +269,7 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
 
   // Load existing metadata from disk.
   static Result<RaftGroupMetadataPtr> Load(FsManager* fs_manager, const RaftGroupId& raft_group_id);
+  static Result<RaftGroupMetadataPtr> LoadFromPath(FsManager* fs_manager, const std::string& path);
 
   // Try to load an existing Raft group. If it does not exist, create it.
   // If it already existed, verifies that the schema of the Raft group matches the
@@ -414,29 +431,31 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
                  const IndexMap& index_map,
                  const std::vector<DeletedColumn>& deleted_cols,
                  const SchemaVersion version,
+                 const OpId& op_id,
                  const TableId& table_id = "");
 
   void SetSchemaUnlocked(const Schema& schema,
                  const IndexMap& index_map,
                  const std::vector<DeletedColumn>& deleted_cols,
                  const SchemaVersion version,
+                 const OpId& op_id,
                  const TableId& table_id = "") REQUIRES(data_mutex_);
 
   void SetPartitionSchema(const PartitionSchema& partition_schema);
 
   void SetTableName(
       const std::string& namespace_name, const std::string& table_name,
-      const TableId& table_id = "");
+      const OpId& op_id, const TableId& table_id = "");
 
   void SetTableNameUnlocked(
       const std::string& namespace_name, const std::string& table_name,
-      const TableId& table_id = "") REQUIRES(data_mutex_);
+      const OpId& op_id, const TableId& table_id = "") REQUIRES(data_mutex_);
 
   void SetSchemaAndTableName(
       const Schema& schema, const IndexMap& index_map,
       const std::vector<DeletedColumn>& deleted_cols,
       const SchemaVersion version, const std::string& namespace_name,
-      const std::string& table_name, const TableId& table_id = "");
+      const std::string& table_name, const OpId& op_id, const TableId& table_id = "");
 
   void AddTable(const std::string& table_id,
                 const std::string& namespace_name,
@@ -446,9 +465,10 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
                 const IndexMap& index_map,
                 const PartitionSchema& partition_schema,
                 const boost::optional<IndexInfo>& index_info,
-                const SchemaVersion schema_version);
+                const SchemaVersion schema_version,
+                const OpId& op_id);
 
-  void RemoveTable(const TableId& table_id);
+  void RemoveTable(const TableId& table_id, const OpId& op_id);
 
   // Returns a list of all tables colocated on this tablet.
   std::vector<TableId> GetAllColocatedTables();
@@ -507,6 +527,9 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
   // When path is empty - obtain path from fs manager for this Raft group.
   Status ReadSuperBlockFromDisk(
       RaftGroupReplicaSuperBlockPB* superblock, const std::string& path = std::string()) const;
+
+  static Status ReadSuperBlockFromDisk(
+      Env* env, const std::string& path, RaftGroupReplicaSuperBlockPB* superblock);
 
   // Sets *superblock to the serialized form of the current metadata.
   void ToSuperBlock(RaftGroupReplicaSuperBlockPB* superblock) const;
@@ -577,9 +600,17 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
 
   std::unordered_set<StatefulServiceKind> GetHostedServiceList() const;
 
+  Result<std::string> FilePath() const;
+
   const KvStoreInfo& TEST_kv_store() const {
     return kv_store_;
   }
+
+  OpId LastChangeMetadataOperationOpId() const;
+
+  void SetLastChangeMetadataOperationOpIdUnlocked(const OpId& op_id) REQUIRES(data_mutex_);
+
+  void SetLastChangeMetadataOperationOpId(const OpId& op_id);
 
  private:
   typedef simple_spinlock MutexType;
@@ -597,7 +628,7 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
   // Constructor for loading an existing Raft group.
   RaftGroupMetadata(FsManager* fs_manager, const RaftGroupId& raft_group_id);
 
-  Status LoadFromDisk();
+  Status LoadFromDisk(const std::string& path = "");
 
   // Update state of metadata to that of the given superblock PB.
   Status LoadFromSuperBlock(const RaftGroupReplicaSuperBlockPB& superblock,
@@ -688,6 +719,10 @@ class RaftGroupMetadata : public RefCountedThreadSafe<RaftGroupMetadata>,
   const std::string log_prefix_;
 
   std::unordered_set<StatefulServiceKind> hosted_services_;
+
+  // OpId of the last change metadata operation. Used to determine if at the time
+  // of local tablet bootstrap we should replay a particular change_metadata op.
+  OpId last_change_metadata_op_id_ GUARDED_BY(data_mutex_) = OpId::Invalid();
 
   DISALLOW_COPY_AND_ASSIGN(RaftGroupMetadata);
 };

@@ -222,6 +222,8 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   PgIsolationLevel GetIsolationLevel();
 
+  bool IsHashBatchingEnabled();
+
   // Run (apply + flush) list of given operations to read and write database content.
   template<class OpPtr>
   struct TableOperation {
@@ -250,13 +252,18 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   }
 
   Result<PerformFuture> RunAsync(
-      const OperationGenerator& generator, uint64_t* in_txn_limit,
+      const OperationGenerator& generator, HybridTime in_txn_limit,
       ForceNonBufferable force_non_bufferable = ForceNonBufferable::kFalse);
   Result<PerformFuture> RunAsync(
-      const ReadOperationGenerator& generator, uint64_t* in_txn_limit,
+      const ReadOperationGenerator& generator, HybridTime in_txn_limit,
       ForceNonBufferable force_non_bufferable = ForceNonBufferable::kFalse);
-  Result<PerformFuture> RunAsyncCacheable(
-      const ReadOperationGenerator& generator, uint64_t* in_txn_limit, std::string&& cache_key);
+
+  struct CacheOptions {
+    std::string key;
+    std::optional<uint32_t> lifetime_threshold_ms;
+  };
+
+  Result<PerformFuture> RunAsync(const ReadOperationGenerator& generator, CacheOptions&& options);
 
   // Smart driver functions.
   // -------------
@@ -367,7 +374,8 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   struct PerformOptions {
     UseCatalogSession use_catalog_session = UseCatalogSession::kFalse;
     EnsureReadTimeIsSet ensure_read_time_is_set = EnsureReadTimeIsSet::kFalse;
-    std::string cache_key = std::string();
+    std::optional<CacheOptions> cache_options = std::nullopt;
+    HybridTime in_txn_limit = {};
   };
 
   Result<PerformFuture> Perform(BufferableOperations&& ops, PerformOptions&& options);
@@ -379,8 +387,8 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   template<class Generator>
   Result<PerformFuture> DoRunAsync(
-      const Generator& generator, uint64_t* in_txn_limit,
-      ForceNonBufferable force_non_bufferable, std::string&& cache_key);
+      const Generator& generator, HybridTime in_txn_limit, ForceNonBufferable force_non_bufferable,
+      std::optional<CacheOptions>&& cache_options = std::nullopt);
 
   struct TxnSerialNoPerformInfo {
     TxnSerialNoPerformInfo() : TxnSerialNoPerformInfo(0, ReadHybridTime()) {}

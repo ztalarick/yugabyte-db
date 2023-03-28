@@ -502,4 +502,54 @@ public class GlobalConfKeys extends RuntimeConfigKeysModule {
           "Minimum supported version for ansible offloading",
           ConfDataType.StringType,
           ImmutableList.of(ConfKeyTags.INTERNAL));
+  public static final ConfKeyInfo<Duration> nodeAgentPollerInterval =
+      new ConfKeyInfo<>(
+          "yb.node_agent.poller_interval",
+          ScopeType.GLOBAL,
+          "Node Agent Poller Interval",
+          "Node agent poller interval",
+          ConfDataType.DurationType,
+          ImmutableList.of(ConfKeyTags.INTERNAL));
+  public static final ConfKeyInfo<Duration> deadNodeAgentRetention =
+      new ConfKeyInfo<>(
+          "yb.node_agent.retention_duration",
+          ScopeType.GLOBAL,
+          "Dead Node Agent Retention Duration",
+          "Retention duration for a dead node agent before deletion",
+          ConfDataType.DurationType,
+          ImmutableList.of(ConfKeyTags.INTERNAL));
+  public static final ConfKeyInfo<Integer> maxParallelNodeAgentUpgrades =
+      new ConfKeyInfo<>(
+          "yb.node_agent.max_parallel_upgrades",
+          ScopeType.GLOBAL,
+          "Max Parallel Node Agent Upgrades",
+          "Maximum number of parallel node agent upgrades",
+          ConfDataType.IntegerType,
+          ImmutableList.of(ConfKeyTags.BETA));
+  public static final ConfKeyInfo<Boolean> backwardCompatibleDate =
+      new ConfKeyInfo<>(
+          "yb.api.backward_compatible_date",
+          ScopeType.GLOBAL,
+          "API support for backward compatible date fields",
+          "Enable when a client to the YBAnywhere API wants to continue using the older date "
+              + " fields in non-ISO format. Default behaviour is to not populate such deprecated "
+              + "API fields and only return newer date fields.",
+          ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<Boolean> attachDetachEnabled =
+      new ConfKeyInfo<>(
+          "yb.attach_detach.enabled",
+          ScopeType.GLOBAL,
+          "Allow universes to be detached/attached",
+          "Allow universes to be detached from a source platform and attached to dest platform",
+          ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<Boolean> transactionalXClusterEnabled =
+      new ConfKeyInfo<>(
+          "yb.xcluster.transactional.enabled",
+          ScopeType.GLOBAL,
+          "Whether YBA supports transactional xCluster configs",
+          "It indicates whether YBA should support transactional xCluster configs",
+          ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
 }

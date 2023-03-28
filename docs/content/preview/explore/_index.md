@@ -6,8 +6,6 @@ headcontent: Learn about YugabyteDB features, with examples
 description: Explore the features of YugabyteDB on macOS, Linux, Docker, and Kubernetes.
 image: /images/section_icons/index/explore.png
 aliases:
-  - /preview/explore/cloud-native/
-  - /preview/explore/transactional/
   - /preview/explore/high-performance/
   - /preview/explore/planet-scale/
   - /preview/explore/cloud-native/orchestration-readiness/
@@ -27,7 +25,7 @@ The following table describes the YugabyteDB features you can explore, along wit
 | :--- | :--- | :--- |
 | [SQL features](ysql-language-features/) | Learn about YugabyteDB's compatibility with PostgreSQL, including data types, queries, expressions, operators, extensions, and more. | Single-node<br/>local/cloud |
 | [Going beyond SQL](ysql-language-features/going-beyond-sql/) | Learn about reducing read latency via follower reads and moving data closer to users using tablespaces. | Multi-node<br/>local |
-| [Continuous availability](fault-tolerance/macos/) | Learn how YugabyteDB achieves high availability when a node fails. | Multi-node<br/>local |
+| [Continuous availability](fault-tolerance/) | Learn how YugabyteDB achieves high availability when a node fails. | Multi-node<br/>local |
 | [Horizontal scalability](linear-scalability/) | See how YugabyteDB handles loads while dynamically adding or removing nodes. | Multi-node<br/>local |
 | [Transactions](transactions/) | Understand how distributed transactions and isolation levels work in YugabyteDB. | Single-node<br/>local/cloud |
 | [Indexes and constraints](indexes-constraints/) | Explore indexes in YugabyteDB, including primary and foreign keys, secondary, unique, partial, and expression indexes, and more. | Single-node<br/>local/cloud |
@@ -75,7 +73,9 @@ You can run examples using a universe set up on your local machine or in a cloud
 
 To run the examples, you need to create a single- or multi-node universe.
 
-For testing and learning YugabyteDB on your computer, use the [yugabyted](../reference/configuration/yugabyted/) utility to create and manage universes.
+For testing and learning YugabyteDB, use the [yugabyted](../reference/configuration/yugabyted/) utility to create and manage universes.
+
+The following instructions show how to _simulate_ a single- or multi-node universe on a single computer. To deploy an actual multi-zone universe using yugabyted, follow the instructions in [Create a multi-zone cluster](../reference/configuration/yugabyted/#create-a-multi-zone-cluster).
 
 {{< tabpane text=true >}}
 
@@ -101,8 +101,6 @@ For more information, refer to [Quick Start](../quick-start/linux/#create-a-loca
   {{% /tab %}}
 
   {{% tab header="Multi-node universe" lang="Multi-node universe" %}}
-
-The following instructions show how to simulate a multi-node universe on a single computer. To deploy a true multi-node universe, follow the instructions in [Deploy](../deploy/).
 
 If a local universe is currently running, first [destroy it](../reference/configuration/yugabyted/#destroy-a-local-cluster).
 
@@ -143,7 +141,7 @@ Next, join two more nodes with the previous node. yugabyted automatically applie
 After starting the yugabyted processes on all the nodes, configure the data placement constraint of the universe, as follows:
 
 ```sh
-./bin/yugabyted configure --fault_tolerance=zone --base_dir=/tmp/ybd1
+./bin/yugabyted configure data_placement --fault_tolerance=zone --base_dir=/tmp/ybd1
 ```
 
 This command can be executed on any node where you already started YugabyteDB.
@@ -219,7 +217,7 @@ You can run Explore exercises in YugabyteDB Managed using the [Cloud Shell](../y
 1. Click **Launch Cloud Shell**.
 1. Enter the user name from the cluster credentials you downloaded when you created the cluster.
 1. Select the API to use (YSQL or YCQL) and click **Confirm**.
-   The shell displays in a separate browser page. Cloud Shell can take up to 30 seconds to be ready.
+    The shell displays in a separate browser page. Cloud Shell can take up to 30 seconds to be ready.
 1. Enter the password from the cluster credentials you downloaded when you created the cluster.
 
 Note that if your Cloud Shell session is idle for more than 5 minutes, your browser may disconnect you. To resume, close the browser tab and connect again.
@@ -375,7 +373,7 @@ To start the application against a running YugabyteDB Anywhere universe, use the
 <!-- The preceding instructions are applicable to a YSQL workload.
 To run a YCQL workload, add the following parameters before the `-jar ./yb-workload-sim-0.0.3.jar` command: -->
 
-<!-- 
+<!--
 ```sh
 -Dworkload=genericCassandraWorkload \
 -Dspring.data.cassandra.contact-points=<host_ip> \

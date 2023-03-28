@@ -1,7 +1,8 @@
 ---
-title: Read replicas
+title: Read replicas in YugabyteDB Managed
+headerTitle: Read replicas
 linkTitle: Read replicas
-description: Scale YugabyteDB Managed clusters.
+description: Add read replicas to YugabyteDB Managed clusters.
 headcontent: Reduce read latencies in remote regions
 beta: /preview/faq/general/#what-is-the-definition-of-the-beta-feature-tag
 menu:
@@ -36,8 +37,7 @@ Read replicas require the following:
 
 ## Limitations
 
-- You can't access read replicas from public IP addresses; connect to read replicas via peered VPCs.
-- Geo-partitioned clusters do not support read replicas.
+- Partition-by-region clusters do not support read replicas.
 
 ## Add or edit read replicas
 

@@ -51,9 +51,8 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
   virtual ~PgTxnManager();
 
   Status BeginTransaction();
-  Status CalculateIsolation(bool read_only_op,
-                            TxnPriorityRequirement txn_priority_requirement,
-                            uint64_t* in_txn_limit = nullptr);
+
+  Status CalculateIsolation(bool read_only_op, TxnPriorityRequirement txn_priority_requirement);
   Status RecreateTransaction();
   Status RestartTransaction();
   Status ResetTransactionReadPoint();
@@ -64,6 +63,7 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
   Status SetPgIsolationLevel(int isolation);
   PgIsolationLevel GetPgIsolationLevel();
   Status SetReadOnly(bool read_only);
+  Status SetEnableTracing(bool tracing);
   Status EnableFollowerReads(bool enable_follower_reads, int32_t staleness);
   Status SetDeferrable(bool deferrable);
   Status EnterSeparateDdlTxnMode();
@@ -73,6 +73,7 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
   bool IsTxnInProgress() const { return txn_in_progress_; }
   IsolationLevel GetIsolationLevel() const { return isolation_level_; }
   bool IsDdlMode() const { return ddl_type_ != DdlType::NonDdl; }
+  bool ShouldEnableTracing() const { return enable_tracing_; }
 
   uint64_t SetupPerformOptions(tserver::PgPerformOptionsPB* options);
 
@@ -110,6 +111,7 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
   // Postgres transaction characteristics.
   PgIsolationLevel pg_isolation_level_ = PgIsolationLevel::REPEATABLE_READ;
   bool read_only_ = false;
+  bool enable_tracing_ = false;
   bool enable_follower_reads_ = false;
   uint64_t follower_read_staleness_ms_ = 0;
   HybridTime read_time_for_follower_reads_;
@@ -122,7 +124,6 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
   // and cancels the other transaction.
   uint64_t priority_ = 0;
   SavePriority use_saved_priority_ = SavePriority::kFalse;
-  HybridTime in_txn_limit_;
 
   PgCallbacks pg_callbacks_;
 

@@ -39,11 +39,7 @@ To run the docs site locally and edit the docs, you'll need:
 
 * **Python**: You need `python` to be available somewhere in your shell path.
 
-    Recent versions of macOS have only a `python3` executable, as does the Homebrew install. Add a symlink somewhere in your PATH. To add a symlink to the system python, you can run a command such as the following:
-
-    ```sh
-    ln -s /usr/bin/python3 /usr/local/bin/python
-    ```
+    Recent versions of macOS have only a `python3` executable, as does the Homebrew install. You can use [pyenv](https://github.com/pyenv/pyenv) to manage multiple versions of python on your system.
 
 * **A GitHub account**.
 
@@ -102,6 +98,7 @@ To get the docs site running in a live-reload server on your local machine, run 
 ```sh
 cd yugabyte-db/docs  # Make sure this is YOUR fork.
 npm ci               # Only necessary the first time you clone the repo.
+hugo mod get -u      # Installs Hugo as a dependency of the site.
 hugo mod clean       # Only necessary the first time you clone the repo.
 npm start            # Do this every time to build the docs and launch the live-reload server.
 ```

@@ -105,6 +105,13 @@ Status GetUniverseConfig(ClusterAdminClient* client,
   return Status::OK();
 }
 
+Status GetXClusterConfig(ClusterAdminClient* client,
+                         const ClusterAdminCli::CLIArguments&) {
+  RETURN_NOT_OK_PREPEND(client->GetXClusterConfig(), "Unable to get xcluster config");
+  return Status::OK();
+}
+
+
 Status ChangeBlacklist(ClusterAdminClient* client,
                        const ClusterAdminCli::CLIArguments& args, bool blacklist_leader,
                        const std::string& errStr) {
@@ -865,6 +872,14 @@ void ClusterAdminCli::RegisterCommandHandlers(ClusterAdminClient* client) {
         return Status::OK();
       });
 
+  Register("compaction_status", " <table>", [client](const CLIArguments& args) -> Status {
+    const auto table_name = VERIFY_RESULT(ResolveSingleTableName(client, args.begin(), args.end()));
+    RETURN_NOT_OK_PREPEND(
+        client->CompactionStatus(table_name),
+        Substitute("Unable to get compaction status of table $0", table_name.ToString()));
+    return Status::OK();
+  });
+
   Register(
       "list_all_tablet_servers", "",
       [client](const CLIArguments&) -> Status {
@@ -1023,6 +1038,10 @@ void ClusterAdminCli::RegisterCommandHandlers(ClusterAdminClient* client) {
   Register(
       "get_universe_config", "",
       std::bind(&GetUniverseConfig, client, _1));
+
+  Register(
+      "get_xcluster_info", "",
+      std::bind(&GetXClusterConfig, client, _1));
 
   Register(
       "change_blacklist", Format(" <$0|$1> <ip_addr>:<port> [<ip_addr>:<port>]...",
@@ -1858,6 +1877,29 @@ void ClusterAdminCli::RegisterCommandHandlers(ClusterAdminClient* client) {
                 "Unable to $0 replication for universe $1",
                 is_enabled ? "enable" : "disable",
                 producer_id));
+        return Status::OK();
+      });
+
+  Register(
+      "pause_producer_xcluster_streams", " (<comma_separated_list_of_stream_ids>|all) [resume]",
+      [client](const CLIArguments& args) -> Status {
+        if (args.size() > 2 || args.size() < 1) {
+          return ClusterAdminCli::kInvalidArguments;
+        }
+        bool is_paused = true;
+        vector<string> stream_ids;
+        if (!boost::iequals(args[0], "all")) {
+          boost::split(stream_ids, args[0], boost::is_any_of(","));
+        }
+        if (args.size() == 2) {
+          if (!boost::iequals(args[args.size() - 1], "resume")) {
+            return ClusterAdminCli::kInvalidArguments;
+          }
+          is_paused = false;
+        }
+        RETURN_NOT_OK_PREPEND(
+            client->PauseResumeXClusterProducerStreams(stream_ids, is_paused),
+            Substitute("Unable to $0 replication", is_paused ? "pause" : "resume"));
         return Status::OK();
       });
 

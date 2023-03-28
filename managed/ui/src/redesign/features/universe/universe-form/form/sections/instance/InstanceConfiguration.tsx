@@ -25,7 +25,6 @@ import {
   DEVICE_INFO_FIELD
 } from '../../../utils/constants';
 import { useSectionStyles } from '../../../universeMainStyle';
-import InfoMessageIcon from '../../../../../../assets/info-message.svg';
 
 const CONTAINER_WIDTH = '605px';
 
@@ -112,10 +111,12 @@ export const InstanceConfiguration = ({ runtimeConfigs }: UniverseFormConfigurat
   };
 
   return (
-    <Box className={classes.sectionContainer} data-testid="instance-config-section">
-      <Typography className={classes.sectionHeaderFont}>
-        {t('universeForm.instanceConfig.title')}
-      </Typography>
+    <Box
+      className={classes.sectionContainer}
+      flexDirection="column"
+      data-testid="InstanceConfiguration-Section"
+    >
+      <Typography variant="h4">{t('universeForm.instanceConfig.title')}</Typography>
       <Box width="100%" display="flex" flexDirection="column" mt={4}>
         <Grid container spacing={3}>
           <Grid lg={6} item container>

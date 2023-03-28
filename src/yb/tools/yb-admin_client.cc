@@ -51,6 +51,7 @@
 #include "yb/client/table_alterer.h"
 #include "yb/client/table_info.h"
 
+#include "yb/common/colocated_util.h"
 #include "yb/common/json_util.h"
 #include "yb/common/ql_type_util.h"
 #include "yb/common/redis_constants_common.h"
@@ -1761,6 +1762,12 @@ Status ClusterAdminClient::FlushTablesById(
   return Status::OK();
 }
 
+Status ClusterAdminClient::CompactionStatus(const YBTableName& table_name) {
+  const auto last_request_time = VERIFY_RESULT(yb_client_->GetCompactionStatus(table_name));
+  cout << "Last full compaction request time: " << last_request_time.ToUint64() << endl;
+  return Status::OK();
+}
+
 Status ClusterAdminClient::FlushSysCatalog() {
   master::FlushSysCatalogRequestPB req;
   auto res = InvokeRpc(
@@ -2108,6 +2115,24 @@ Status ClusterAdminClient::GetUniverseConfig() {
   return Status::OK();
 }
 
+Status ClusterAdminClient::GetXClusterConfig() {
+  const auto xcluster_config = VERIFY_RESULT(GetMasterXClusterConfig());
+  const auto cluster_config = VERIFY_RESULT(GetMasterClusterConfig());
+  std::string producer_registry_output;
+  std::string consumer_registry_output;
+  MessageToJsonString(
+      xcluster_config.xcluster_config().xcluster_producer_registry(), &producer_registry_output);
+  MessageToJsonString(
+      cluster_config.cluster_config().consumer_registry(), &consumer_registry_output);
+  cout << Format(
+              "{\"version\":$0,\"xcluster_producer_registry\":$1,consumer_"
+              "registry:$2}",
+              xcluster_config.xcluster_config().version(), producer_registry_output,
+              consumer_registry_output)
+       << endl;
+  return Status::OK();
+}
+
 Status ClusterAdminClient::GetYsqlCatalogVersion() {
   uint64_t version = 0;
   RETURN_NOT_OK(yb_client_->GetYsqlCatalogMasterVersion(&version));
@@ -2255,6 +2280,12 @@ Result<master::GetMasterClusterConfigResponsePB> ClusterAdminClient::GetMasterCl
   return InvokeRpc(&master::MasterClusterProxy::GetMasterClusterConfig,
                    *master_cluster_proxy_, master::GetMasterClusterConfigRequestPB(),
                    "MasterServiceImpl::GetMasterClusterConfig call failed.");
+}
+
+Result<master::GetMasterXClusterConfigResponsePB> ClusterAdminClient::GetMasterXClusterConfig() {
+  return InvokeRpc(&master::MasterClusterProxy::GetMasterXClusterConfig,
+                   *master_cluster_proxy_, master::GetMasterXClusterConfigRequestPB(),
+                   "MasterServiceImpl::GetMasterXClusterConfig call failed.");
 }
 
 Status ClusterAdminClient::SplitTablet(const std::string& tablet_id) {
@@ -3003,8 +3034,36 @@ Status ClusterAdminClient::ImportSnapshotMetaFile(
           cout << "Target imported " << colocated_prefix << "table name: " << table_name.ToString()
                << endl;
         } else if (!keyspace.name.empty()) {
-          cout << "Target imported " << colocated_prefix << "table name: " << keyspace.name << "."
-               << meta.name() << endl;
+          if (IsColocatedDbParentTableName(meta.name())) {
+            // Check whether the import_snapshot command is invoked for a colocation migration.
+            // And adjust the output message if a colocation migration happens.
+            master::GetNamespaceInfoResponsePB ns_resp;
+            RETURN_NOT_OK(RequestMasterLeader(&ns_resp, [&](RpcController* rpc) {
+              master::GetNamespaceInfoRequestPB req;
+              req.mutable_namespace_()->set_name(keyspace.name);
+              req.mutable_namespace_()->set_database_type(YQL_DATABASE_PGSQL);
+              return master_ddl_proxy_->GetNamespaceInfo(req, &ns_resp, rpc);
+            }));
+            if (ns_resp.has_legacy_colocated_database()
+                && !ns_resp.legacy_colocated_database()) {
+              master::ListTablegroupsResponsePB resp;
+              RETURN_NOT_OK(RequestMasterLeader(&resp, [&](RpcController* rpc) {
+                master::ListTablegroupsRequestPB req;
+                req.set_namespace_id(ns_resp.namespace_().id());
+                return master_ddl_proxy_->ListTablegroups(req, &resp, rpc);
+              }));
+              // For colocation migration, there should be only one default tablegroup in the target
+              // imported database because we don't support tablespace in a legacy colocated
+              // database.
+              DCHECK_EQ(resp.tablegroups().size(), 1);
+              cout << "Target imported " << colocated_prefix << "table name: "
+                   << keyspace.name << "."
+                   << GetColocationParentTableName(resp.tablegroups()[0].id()) << endl;
+            }
+          } else {
+            cout << "Target imported " << colocated_prefix << "table name: " << keyspace.name << "."
+                 << meta.name() << endl;
+          }
         }
 
         // Print old table name before the table renaming in the code below.
@@ -3823,6 +3882,30 @@ Status ClusterAdminClient::SetUniverseReplicationEnabled(
   if (resp.has_error()) {
         cout << "Error " << toggle << "ing "
              << "universe replication: " << resp.error().status().message() << endl;
+        return StatusFromPB(resp.error().status());
+  }
+
+  cout << "Replication " << toggle << "ed successfully" << endl;
+  return Status::OK();
+}
+
+Status ClusterAdminClient::PauseResumeXClusterProducerStreams(
+    const std::vector<std::string>& stream_ids, bool is_paused) {
+  master::PauseResumeXClusterProducerStreamsRequestPB req;
+  master::PauseResumeXClusterProducerStreamsResponsePB resp;
+  for (const auto& stream_id : stream_ids) {
+        req.add_stream_ids(stream_id);
+  }
+  req.set_is_paused(is_paused);
+  const auto toggle = (is_paused ? "paus" : "resum");
+
+  RpcController rpc;
+  rpc.set_timeout(timeout_);
+  RETURN_NOT_OK(master_replication_proxy_->PauseResumeXClusterProducerStreams(req, &resp, &rpc));
+
+  if (resp.has_error()) {
+        cout << "Error " << toggle << "ing "
+             << "replication: " << resp.error().status().message() << endl;
         return StatusFromPB(resp.error().status());
   }
 

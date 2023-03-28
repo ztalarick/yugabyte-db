@@ -15,15 +15,14 @@ import { YBControlledSelect, YBInputField } from '../../../common/forms/fields';
 import { YBErrorIndicator, YBLoading } from '../../../common/indicators';
 import { hasSubstringMatch } from '../../../queries/helpers/queriesHelper';
 import { formatBytes, augmentTablesWithXClusterDetails, tableSort } from '../../ReplicationUtils';
-import { SortOrder } from '../../constants';
 import YBPagination from '../../../tables/YBPagination/YBPagination';
 import { ExpandedConfigTableSelect } from './ExpandedConfigTableSelect';
+import { SortOrder, YBTableRelationType } from '../../../../redesign/helpers/constants';
 
 import { TableType, Universe, YBTable } from '../../../../redesign/helpers/dtos';
 import { XClusterConfig, XClusterTable, XClusterTableType } from '../../XClusterTypes';
 
 import styles from './ConfigTableSelect.module.scss';
-import { YBTableRelationType } from '../../../../redesign/helpers/constants';
 
 interface RowItem {
   keyspace: string;
@@ -177,7 +176,8 @@ export const ConfigTableSelect = ({
 
   const tablesInConfig = augmentTablesWithXClusterDetails(
     sourceUniverseTablesQuery.data,
-    xClusterConfig.tableDetails
+    xClusterConfig.tableDetails,
+    xClusterConfig.txnTableDetails
   );
 
   const tablesForSelection = tablesInConfig.filter(

@@ -1,5 +1,5 @@
 ---
-title: YugabyteDB Managed quick start
+title: Contribute - page with elements
 headerTitle: Page with elements
 linkTitle: Page with elements
 headcontent: Just about every page element on a single page
@@ -13,7 +13,7 @@ menu:
     weight: 9000
 ---
 
-This page demonstrates styles and widgets used for the YugabyteDB Documentation site.
+This page demonstrates styles and widgets used for the YugabyteDB Documentation site. To view the source for the file, click **Contribute** and choose **Edit this page**.
 
 ## Tab widgets
 
@@ -152,7 +152,7 @@ These pills automatically re-flow based on page width; just keep adding list ite
   <li>
     <a href="../../../develop/build-apps/nodejs/cloud-ysql-node/" class="orange">
       <i class="fa-brands fa-node-js"></i>
-      NodeJS
+      Node.js
     </a>
   </li>
 

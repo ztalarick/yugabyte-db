@@ -504,6 +504,8 @@ public class TaskExecutor {
 
     // Parent task runnable to which this group belongs.
     private volatile RunnableTask runnableTask;
+    // Group position which is same as that of the subtasks.
+    private int position;
     // Optional executor service for the subtasks.
     private ExecutorService executorService;
     private SubTaskGroupType subTaskGroupType = SubTaskGroupType.Invalid;
@@ -511,6 +513,7 @@ public class TaskExecutor {
     // It is instantiated internally.
     private SubTaskGroup(String name, SubTaskGroupType subTaskGroupType, boolean ignoreErrors) {
       this.name = name;
+      this.subTaskGroupType = subTaskGroupType;
       this.ignoreErrors = ignoreErrors;
       this.numTasksCompleted = new AtomicInteger();
     }
@@ -556,6 +559,7 @@ public class TaskExecutor {
 
     private void setRunnableTaskContext(RunnableTask runnableTask, int position) {
       this.runnableTask = runnableTask;
+      this.position = position;
       for (RunnableSubTask runnable : subTasks) {
         runnable.setRunnableTaskContext(runnableTask, position);
       }
@@ -583,7 +587,7 @@ public class TaskExecutor {
 
     // Wait for all the subtasks to complete. In this method, the state updates on
     // exceptions are done for tasks which are not yet running and exception occurs.
-    private void waitForSubTasks() {
+    private void waitForSubTasks(boolean abortOnFailure) {
       UUID parentTaskUUID = runnableTask.getTaskUUID();
       Instant waitStartTime = Instant.now();
       List<RunnableSubTask> runnableSubTasks =
@@ -604,8 +608,13 @@ public class TaskExecutor {
             // Ignore state update because this exception is thrown
             // during the task execution and is already taken care
             // by RunnableSubTask.
-            anyEx = e.getCause();
-            removeCompletedSubTask(iter, runnableSubTask, anyEx);
+            anyEx = (anyEx != null) ? anyEx : e.getCause();
+            removeCompletedSubTask(iter, runnableSubTask, e.getCause());
+            // Call parent task abort if abortOnFailure set.
+            if (abortOnFailure) {
+              runnableTask.setAbortTime(Instant.now());
+              runnableTask.cancelWaiterIfAborted();
+            }
           } catch (TimeoutException e) {
             // The exception is ignored if the elapsed time has not surpassed
             // the time limit.
@@ -630,18 +639,20 @@ public class TaskExecutor {
               future.cancel(true);
               // Report aborted to the parent task.
               // Update the subtask state to aborted if the execution timed out.
-              anyEx = new CancellationException(e.getMessage());
-              runnableSubTask.updateTaskDetailsOnError(TaskInfo.State.Aborted, anyEx);
+              Throwable thisEx = new CancellationException(e.getMessage());
+              anyEx = (anyEx != null) ? anyEx : thisEx;
+              runnableSubTask.updateTaskDetailsOnError(TaskInfo.State.Aborted, thisEx);
               removeCompletedSubTask(iter, runnableSubTask, anyEx);
             }
           } catch (CancellationException e) {
-            anyEx = e;
+            anyEx = (anyEx != null) ? anyEx : e;
             runnableSubTask.updateTaskDetailsOnError(TaskInfo.State.Aborted, e);
             removeCompletedSubTask(iter, runnableSubTask, e);
           } catch (InterruptedException e) {
             future.cancel(true);
-            anyEx = new CancellationException(e.getMessage());
-            runnableSubTask.updateTaskDetailsOnError(TaskInfo.State.Aborted, anyEx);
+            Throwable thisEx = new CancellationException(e.getMessage());
+            anyEx = (anyEx != null) ? anyEx : thisEx;
+            runnableSubTask.updateTaskDetailsOnError(TaskInfo.State.Aborted, thisEx);
             removeCompletedSubTask(iter, runnableSubTask, anyEx);
           } catch (Exception e) {
             anyEx = e;
@@ -650,6 +661,8 @@ public class TaskExecutor {
           }
         }
       }
+      Duration elapsed = Duration.between(waitStartTime, Instant.now());
+      log.debug("{}: wait completed in {}ms", title(), elapsed.toMillis());
       if (anyEx != null) {
         Throwables.propagate(anyEx);
       }
@@ -664,7 +677,7 @@ public class TaskExecutor {
       if (subTaskGroupType == null) {
         return;
       }
-      log.info("Setting subtask({}} group type to {}", name, subTaskGroupType);
+      log.info("Setting subtask({}) group type to {}", name, subTaskGroupType);
       this.subTaskGroupType = subTaskGroupType;
       for (RunnableSubTask runnable : subTasks) {
         runnable.setSubTaskGroupType(subTaskGroupType);
@@ -679,14 +692,15 @@ public class TaskExecutor {
       return numTasksCompleted.get();
     }
 
+    private String title() {
+      return String.format(
+          "SubTaskGroup %s of type %s at position %d", name, subTaskGroupType.name(), position);
+    }
+
     @Override
     public String toString() {
-      return name
-          + " : completed "
-          + getTasksCompletedCount()
-          + " out of "
-          + getSubTaskCount()
-          + " tasks.";
+      return String.format(
+          "%s: completed %d out of %d tasks", title(), getTasksCompletedCount(), getSubTaskCount());
     }
   }
 
@@ -1075,6 +1089,16 @@ public class TaskExecutor {
      * start execution of the subtasks.
      */
     public void runSubTasks() {
+      runSubTasks(false);
+    }
+
+    /**
+     * Equivalent to runSubTasks() method, additional abortOnFailure to abort peer subtasks if one
+     * fails.
+     *
+     * @param abortOnFailure boolean whether to abort peer subtasks on failure of one subtask.
+     */
+    public void runSubTasks(boolean abortOnFailure) {
       RuntimeException anyRe = null;
       try {
         for (SubTaskGroup subTaskGroup : subTaskGroups) {
@@ -1098,7 +1122,7 @@ public class TaskExecutor {
               // TODO Does it make sense to abort the task?
               // There can be conflicts between aborted and failed task states.
               // Wait for already submitted subtasks.
-              subTaskGroup.waitForSubTasks();
+              subTaskGroup.waitForSubTasks(abortOnFailure);
             }
           } catch (CancellationException e) {
             throw new CancellationException(subTaskGroup.toString() + " is cancelled.");

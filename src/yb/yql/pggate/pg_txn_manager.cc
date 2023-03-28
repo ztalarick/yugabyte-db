@@ -177,8 +177,13 @@ PgIsolationLevel PgTxnManager::GetPgIsolationLevel() {
 
 Status PgTxnManager::SetReadOnly(bool read_only) {
   read_only_ = read_only;
-  VLOG(2) << __func__ << " set to " << read_only_ << " from " << GetStackTrace();
+  VLOG(2) << __func__ << " set to " << read_only_;
   return UpdateReadTimeForFollowerReadsIfRequired();
+}
+
+Status PgTxnManager::SetEnableTracing(bool tracing) {
+  enable_tracing_ = tracing;
+  return Status::OK();
 }
 
 Status PgTxnManager::EnableFollowerReads(bool enable_follower_reads, int32_t session_staleness) {
@@ -230,22 +235,12 @@ uint64_t PgTxnManager::NewPriority(TxnPriorityRequirement txn_priority_requireme
                           txn_priority_regular_upper_bound);
 }
 
-Status PgTxnManager::CalculateIsolation(bool read_only_op,
-                                        TxnPriorityRequirement txn_priority_requirement,
-                                        uint64_t* in_txn_limit) {
+Status PgTxnManager::CalculateIsolation(
+    bool read_only_op, TxnPriorityRequirement txn_priority_requirement) {
   if (IsDdlMode()) {
     VLOG_TXN_STATE(2);
     return Status::OK();
   }
-
-  auto se = ScopeExit([this, in_txn_limit] {
-    if (in_txn_limit) {
-      if (!*in_txn_limit) {
-        *in_txn_limit = clock_->Now().ToUint64();
-      }
-      in_txn_limit_ = HybridTime(*in_txn_limit);
-    }
-  });
 
   VLOG_TXN_STATE(2);
   if (!txn_in_progress_) {
@@ -368,12 +363,12 @@ void PgTxnManager::ResetTxnAndSession() {
   txn_in_progress_ = false;
   isolation_level_ = IsolationLevel::NON_TRANSACTIONAL;
   priority_ = 0;
-  in_txn_limit_ = HybridTime();
   ++txn_serial_no_;
   active_sub_transaction_id_ = 0;
 
   enable_follower_reads_ = false;
   read_only_ = false;
+  enable_tracing_ = false;
   read_time_for_follower_reads_ = HybridTime();
   read_time_manipulation_ = tserver::ReadTimeManipulation::NONE;
 }
@@ -430,12 +425,10 @@ uint64_t PgTxnManager::SetupPerformOptions(tserver::PgPerformOptionsPB* options)
   }
   options->set_isolation(isolation_level_);
   options->set_ddl_mode(IsDdlMode());
+  options->set_trace_requested(enable_tracing_);
   options->set_txn_serial_no(txn_serial_no_);
   options->set_active_sub_transaction_id(active_sub_transaction_id_);
 
-  if (txn_in_progress_ && in_txn_limit_) {
-    options->set_in_txn_limit_ht(in_txn_limit_.ToUint64());
-  }
   if (use_saved_priority_) {
     options->set_use_existing_priority(true);
   } else {

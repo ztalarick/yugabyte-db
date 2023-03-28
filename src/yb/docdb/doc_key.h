@@ -396,6 +396,7 @@ class DocKeyDecoder {
   Result<bool> DecodeCotableId(Uuid* uuid = nullptr);
   Result<bool> DecodeColocationId(ColocationId* colocation_id = nullptr);
 
+  Status DecodeToKeys();
   Result<bool> HasPrimitiveValue(AllowSpecial allow_special = AllowSpecial::kFalse);
 
   Result<bool> DecodeHashCode(
@@ -424,8 +425,6 @@ class DocKeyDecoder {
     return &input_;
   }
 
-  Status DecodeToRangeGroup();
-
  private:
   Slice input_;
 };
@@ -438,6 +437,8 @@ Result<bool> ClearRangeComponents(KeyBytes* out, AllowSpecial allow_special = Al
 Result<bool> HashedOrFirstRangeComponentsEqual(const Slice& lhs, const Slice& rhs);
 
 bool DocKeyBelongsTo(Slice doc_key, const Schema& schema);
+
+Result<bool> IsColocatedTableTombstoneKey(Slice doc_key);
 
 // Consumes single primitive value from start of slice.
 // Returns true when value was consumed, false when group end is found. The group end byte is

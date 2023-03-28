@@ -29,13 +29,13 @@ import com.yugabyte.yw.common.KubernetesManagerFactory;
 import com.yugabyte.yw.common.PlacementInfoUtil;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.Util;
-import com.yugabyte.yw.common.YbcManager;
 import com.yugabyte.yw.common.certmgmt.CertConfigType;
 import com.yugabyte.yw.common.certmgmt.CertificateHelper;
 import com.yugabyte.yw.common.certmgmt.EncryptionInTransitUtil;
 import com.yugabyte.yw.common.certmgmt.providers.VaultPKI;
 import com.yugabyte.yw.common.config.CustomerConfKeys;
 import com.yugabyte.yw.common.config.GlobalConfKeys;
+import com.yugabyte.yw.common.config.ProviderConfKeys;
 import com.yugabyte.yw.common.config.RuntimeConfGetter;
 import com.yugabyte.yw.common.config.RuntimeConfigFactory;
 import com.yugabyte.yw.common.config.UniverseConfKeys;
@@ -43,6 +43,7 @@ import com.yugabyte.yw.common.config.impl.SettableRuntimeConfigFactory;
 import com.yugabyte.yw.common.gflags.GFlagsUtil;
 import com.yugabyte.yw.common.kms.EncryptionAtRestManager;
 import com.yugabyte.yw.common.password.PasswordPolicyService;
+import com.yugabyte.yw.common.ybc.YbcManager;
 import com.yugabyte.yw.forms.CertsRotateParams;
 import com.yugabyte.yw.forms.DiskIncreaseFormData;
 import com.yugabyte.yw.forms.ResizeNodeParams;
@@ -439,7 +440,17 @@ public class UniverseCRUDHandler {
     boolean cloudEnabled =
         runtimeConfigFactory.forCustomer(customer).getBoolean("yb.cloud.enabled");
     boolean isAuthEnforced = confGetter.getConfForScope(customer, CustomerConfKeys.isAuthEnforced);
-
+    // Verify that there are no nodes in unknown cluster
+    for (NodeDetails nodeDetails : taskParams.nodeDetailsSet) {
+      if (taskParams.getClusterByUuid(nodeDetails.placementUuid) == null) {
+        throw new PlatformServiceException(
+            BAD_REQUEST,
+            "Unknown cluster "
+                + nodeDetails.placementUuid
+                + " for node with idx "
+                + nodeDetails.nodeIdx);
+      }
+    }
     for (Cluster c : taskParams.clusters) {
       Provider provider = Provider.getOrBadRequest(UUID.fromString(c.userIntent.provider));
       // Set the provider code.
@@ -478,6 +489,7 @@ public class UniverseCRUDHandler {
       }
 
       PlacementInfoUtil.updatePlacementInfo(taskParams.getNodesInCluster(c.uuid), c.placementInfo);
+      PlacementInfoUtil.finalSanityCheckConfigure(c, taskParams.getNodesInCluster(c.uuid));
     }
 
     if (taskParams.getPrimaryCluster() != null) {
@@ -485,12 +497,28 @@ public class UniverseCRUDHandler {
           taskParams.getPrimaryCluster().userIntent;
 
       if (taskParams.enableYbc) {
-        if (Util.compareYbVersions(
+        Provider p = Provider.getOrBadRequest(UUID.fromString(userIntent.provider));
+        if (userIntent.providerType.equals(Common.CloudType.kubernetes)) {
+          if (confGetter.getConfForScope(p, ProviderConfKeys.enableYbcOnK8s)
+              && Util.compareYbVersions(
+                      userIntent.ybSoftwareVersion, Util.K8S_YBC_COMPATIBLE_DB_VERSION, true)
+                  >= 0) {
+            taskParams.ybcSoftwareVersion =
+                StringUtils.isNotBlank(taskParams.ybcSoftwareVersion)
+                    ? taskParams.ybcSoftwareVersion
+                    : ybcManager.getStableYbcVersion();
+          } else {
+            taskParams.enableYbc = false;
+            LOG.error(
+                "Ybc installation is skipped on k8s universe with DB version lower than "
+                    + Util.K8S_YBC_COMPATIBLE_DB_VERSION);
+          }
+        } else if (Util.compareYbVersions(
                 userIntent.ybSoftwareVersion, Util.YBC_COMPATIBLE_DB_VERSION, true)
             < 0) {
           taskParams.enableYbc = false;
           LOG.error(
-              "Ybc installation is skipped on universe with DB version lower than "
+              "Ybc installation is skipped on VM universe with DB version lower than "
                   + Util.YBC_COMPATIBLE_DB_VERSION);
         } else {
           taskParams.ybcSoftwareVersion =
@@ -563,8 +591,6 @@ public class UniverseCRUDHandler {
           taskType = TaskType.CreateKubernetesUniverse;
           universe.updateConfig(
               ImmutableMap.of(Universe.HELM2_LEGACY, Universe.HelmLegacy.V3.toString()));
-          universe.save(); // RFC should we remove this? we are saving later in the method.
-          // Moreover We might reject the create request in following statements.
           // This flag will be used for testing purposes as well. Don't remove.
           if (confGetter.getGlobalConf(GlobalConfKeys.useNewHelmNaming)) {
             if (Util.compareYbVersions(primaryIntent.ybSoftwareVersion, "2.15.4.0") >= 0) {
@@ -636,7 +662,7 @@ public class UniverseCRUDHandler {
           ImmutableMap.of(
               Universe.TAKE_BACKUPS, "true",
               Universe.KEY_CERT_HOT_RELOADABLE, "true"));
-      universe.save();
+
       // If cloud enabled and deployment AZs have two subnets, mark the cluster as a
       // non legacy cluster for proper operations.
       if (cloudEnabled) {
@@ -645,7 +671,6 @@ public class UniverseCRUDHandler {
         AvailabilityZone zone = provider.regions.get(0).zones.get(0);
         if (zone.secondarySubnet != null) {
           universe.updateConfig(ImmutableMap.of(Universe.DUAL_NET_LEGACY, "false"));
-          universe.save();
         }
       }
 
@@ -967,7 +992,9 @@ public class UniverseCRUDHandler {
               + universe.universeUUID);
     }
 
-    for (Cluster cluster : taskParams.clusters) validateUserTags(customer, cluster.userIntent);
+    for (Cluster cluster : taskParams.clusters) {
+      validateUserTags(customer, cluster.userIntent);
+    }
 
     if (universe.isYbcEnabled()) {
       taskParams.installYbc = true;
@@ -1104,8 +1131,6 @@ public class UniverseCRUDHandler {
     Cluster primaryCluster = universe.getUniverseDetails().getPrimaryCluster();
     taskParams.clusters.add(primaryCluster);
     validateConsistency(primaryCluster, readOnlyCluster);
-
-    boolean isCloud = runtimeConfigFactory.forCustomer(customer).getBoolean("yb.cloud.enabled");
 
     // Set the provider code.
     Provider provider =

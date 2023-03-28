@@ -156,8 +156,8 @@ public enum TaskType {
 
   UpdateKubernetesDiskSize(com.yugabyte.yw.commissioner.tasks.UpdateKubernetesDiskSize.class),
 
-  KubernetesCheckStorageClass(
-      com.yugabyte.yw.commissioner.tasks.subtasks.KubernetesCheckStorageClass.class),
+  KubernetesCheckVolumeExpansion(
+      com.yugabyte.yw.commissioner.tasks.subtasks.KubernetesCheckVolumeExpansion.class),
 
   StartMasterOnNode(com.yugabyte.yw.commissioner.tasks.StartMasterOnNode.class),
 
@@ -314,6 +314,8 @@ public enum TaskType {
   SetReplicationPaused(
       com.yugabyte.yw.commissioner.tasks.subtasks.xcluster.SetReplicationPaused.class),
 
+  ChangeXClusterRole(com.yugabyte.yw.commissioner.tasks.subtasks.xcluster.ChangeXClusterRole.class),
+
   SetRestoreTime(com.yugabyte.yw.commissioner.tasks.subtasks.xcluster.SetRestoreTime.class),
 
   XClusterConfigSetup(
@@ -432,9 +434,16 @@ public enum TaskType {
 
   RunYsqlUpgrade(com.yugabyte.yw.commissioner.tasks.subtasks.RunYsqlUpgrade.class),
 
+  PromoteAutoFlags(com.yugabyte.yw.commissioner.tasks.subtasks.PromoteAutoFlags.class),
+
+  CheckUpgrade(com.yugabyte.yw.commissioner.tasks.subtasks.check.CheckUpgrade.class),
+
   ResizeNode(com.yugabyte.yw.commissioner.tasks.upgrade.ResizeNode.class),
 
   CheckMemory(com.yugabyte.yw.commissioner.tasks.subtasks.check.CheckMemory.class),
+
+  CheckSoftwareVersion(
+      com.yugabyte.yw.commissioner.tasks.subtasks.check.CheckSoftwareVersion.class),
 
   UpdateMountedDisks(com.yugabyte.yw.commissioner.tasks.subtasks.UpdateMountedDisks.class),
 
@@ -461,6 +470,8 @@ public enum TaskType {
   UpgradeYbc(com.yugabyte.yw.commissioner.tasks.subtasks.UpgradeYbc.class),
 
   InstallYbcSoftware(com.yugabyte.yw.commissioner.tasks.InstallYbcSoftware.class),
+
+  InstallYbcSoftwareOnK8s(com.yugabyte.yw.commissioner.tasks.InstallYbcSoftwareOnK8s.class),
 
   UpgradeUniverseYbc(com.yugabyte.yw.commissioner.tasks.UpgradeUniverseYbc.class),
 

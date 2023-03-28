@@ -50,6 +50,7 @@
 #include "yb/master/master_fwd.h"
 #include "yb/server/webserver_options.h"
 #include "yb/tserver/db_server_base.h"
+#include "yb/tserver/pg_mutation_counter.h"
 #include "yb/tserver/tserver_shared_mem.h"
 #include "yb/tserver/tablet_server_interface.h"
 #include "yb/tserver/tablet_server_options.h"
@@ -240,6 +241,12 @@ class TabletServer : public DbServerBase, public TabletServerIf {
   // Currently only used by cdc.
   virtual int32_t cluster_config_version() const;
 
+  Result<uint32_t> XClusterConfigVersion() const;
+
+  Status SetPausedXClusterProducerStreams(
+      const ::google::protobuf::Map<::std::string, bool>& paused_producer_stream_ids,
+      uint32_t xcluster_config_version);
+
   client::TransactionPool& TransactionPool() override;
 
   const std::shared_future<client::YBClient*>& client_future() const override;
@@ -256,10 +263,14 @@ class TabletServer : public DbServerBase, public TabletServerIf {
 
   const XClusterSafeTimeMap& GetXClusterSafeTimeMap() const;
 
+  const std::shared_ptr<PgMutationCounter> GetPgNodeLevelMutationCounter();
+
   void UpdateXClusterSafeTime(const XClusterNamespaceToSafeTimePBMap& safe_time_map);
 
   Result<bool> XClusterSafeTimeCaughtUpToCommitHt(
       const NamespaceId& namespace_id, HybridTime commit_ht) const;
+
+  Result<cdc::XClusterRole> TEST_GetXClusterRole() const;
 
   Status ListMasterServers(const ListMasterServersRequestPB* req,
                            ListMasterServersResponsePB* resp) const;
@@ -269,13 +280,17 @@ class TabletServer : public DbServerBase, public TabletServerIf {
   Status SetConfigVersionAndConsumerRegistry(
       int32_t cluster_config_version, const cdc::ConsumerRegistryPB* consumer_registry);
 
-  XClusterConsumer* GetXClusterConsumer();
+  XClusterConsumer* GetXClusterConsumer() const;
 
   // Mark the CDC service as enabled via heartbeat.
   Status SetCDCServiceEnabled();
 
   Status ReloadKeysAndCertificates() override;
   std::string GetCertificateDetails() override;
+
+  PgClientServiceImpl* TEST_GetPgClientService() {
+    return pg_client_service_.lock().get();
+  }
 
  protected:
   virtual Status RegisterServices();
@@ -307,8 +322,6 @@ class TabletServer : public DbServerBase, public TabletServerIf {
   // Used to forward redis pub/sub messages to the redis pub/sub handler
   yb::AtomicUniquePtr<rpc::Publisher> publish_service_ptr_;
 
-  std::thread fetch_universe_key_thread_;
-
   // Thread responsible for heartbeating to the master.
   std::unique_ptr<Heartbeater> heartbeater_;
 
@@ -316,6 +329,9 @@ class TabletServer : public DbServerBase, public TabletServerIf {
 
   // Thread responsible for collecting metrics snapshots for native storage.
   std::unique_ptr<MetricsSnapshotter> metrics_snapshotter_;
+
+  // Thread responsible for sending aggregated table mutations to the auto analyzer service
+  std::unique_ptr<TableMutationCountSender> pg_table_mutation_count_sender_;
 
   // Webserver path handlers
   std::unique_ptr<TabletServerPathHandlers> path_handlers_;
@@ -372,6 +388,8 @@ class TabletServer : public DbServerBase, public TabletServerIf {
   HostPort pgsql_proxy_bind_address_;
 
   XClusterSafeTimeMap xcluster_safe_time_map_;
+
+  std::shared_ptr<PgMutationCounter> pg_node_level_mutation_counter_;
 
   PgConfigReloader pg_config_reloader_;
 

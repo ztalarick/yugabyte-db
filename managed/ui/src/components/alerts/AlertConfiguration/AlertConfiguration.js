@@ -24,6 +24,7 @@ export const AlertConfiguration = (props) => {
   const [alertUniverseList, setAlertUniverseList] = useState([]);
   const [enablePlatformAlert, setPlatformAlert] = useState(false);
   const [alertDestinationListView, setAlertDestinationListView] = useState(false);
+
   const {
     activeTab,
     apiToken,
@@ -72,7 +73,7 @@ export const AlertConfiguration = (props) => {
   };
 
   return (
-    <div className="provider-config-container">
+    <div className="provider-alert-config-container">
       <YBTabsPanel
         activeTab={activeTab}
         className="config-tabs"
