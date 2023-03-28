@@ -22,10 +22,10 @@ import play.inject.Injector;
 @Deprecated
 public class StaticInjectorHolder {
 
-  static AtomicReference<Injector> injectorRef;
+  private static final AtomicReference<Injector> injectorRef = new AtomicReference<>();
 
   @Inject
-  StaticInjectorHolder(Injector injector) {
+  public StaticInjectorHolder(Injector injector) {
     StaticInjectorHolder.injectorRef.set(injector);
   }
 
