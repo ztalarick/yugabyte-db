@@ -327,15 +327,6 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
     read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
   }
 
-  void GetAndResetDocDBStats(YBCPgExecStats *stats) {
-    doc_op_metrics_->GetStats(stats);  
-    doc_op_metrics_->Reset();
-
-    read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
-  }
-
-  void ResetDocDBLiveMetricCounters();
-
  protected:
   PgDocOp(
     const PgSession::ScopedRefPtr& pg_session, PgTable* table,
@@ -450,8 +441,6 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
   // Read RPC stats for EXPLAIN ANALYZE.
   uint64_t read_rpc_count_ = 0;
   MonoDelta read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
-
-  scoped_refptr<PgDocMetrics> doc_op_metrics_;
 
  private:
   Status SendRequest(ForceNonBufferable force_non_bufferable = ForceNonBufferable::kFalse);

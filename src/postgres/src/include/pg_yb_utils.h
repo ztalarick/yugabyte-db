@@ -710,7 +710,7 @@ extern void assign_yb_xcluster_consistency_level(const char *newval,
  */
 void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr); /* Handle related */
 void YbUpdateRpcStats(Instrumentation *instr); /* Non-handle related */
-void YbResetRpcStats();
+void YbRefreshSessionStats();
 
 /*
  * If the tserver gflag --ysql_disable_server_file_access is set to

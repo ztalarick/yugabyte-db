@@ -626,11 +626,8 @@ class PgApiImpl {
   void RegisterSysTableForPrefetching(const PgObjectId& table_id, const PgObjectId& index_id);
 
   // RPC stats for EXPLAIN ANALYZE
-  void GetAndResetReadRpcStats(PgStatement *handle, uint64_t* reads, uint64_t* read_wait,
-                               uint64_t* tbl_reads, uint64_t* tbl_read_wait);
-  void GetAndResetExecStats(PgStatement *handle, YBCPgExecStats *stats);
-  void GetAndResetSessionExecStats(YBCPgExecStats *stats);
-  void ResetSessionExecStats();
+  void GetSessionExecStats(YBCPgExecStats *stats);
+  void RefreshSessionExecStats();
 
   //------------------------------------------------------------------------------------------------
   // System Validation.

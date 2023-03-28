@@ -1416,21 +1416,12 @@ YBCStatus YBCGetTabletServerHosts(YBCServerDescriptor **servers, size_t *count) 
   return YBCStatusOK();
 }
 
-void YBCGetAndResetReadRpcStats(YBCPgStatement handle, uint64_t* reads, uint64_t* read_wait,
-                                uint64_t* tbl_reads, uint64_t* tbl_read_wait) {
-  pgapi->GetAndResetReadRpcStats(handle, reads, read_wait, tbl_reads, tbl_read_wait);
-}
-
-void YBCGetPgExecStats(YBCPgStatement handle, YBCPgExecStats *stats) {
-  pgapi->GetAndResetExecStats(handle, stats);
-}
-
 void YBCGetPgSessionExecStats(YBCPgExecStats *stats) {
-  pgapi->GetAndResetSessionExecStats(stats);
+  pgapi->GetSessionExecStats(stats);
 }
 
-void YBCResetPgSessionExecStats() {
-  pgapi->ResetSessionExecStats();
+void YBCRefreshPgSessionExecStats() {
+  pgapi->RefreshSessionExecStats();
 }
 
 YBCStatus YBCGetIndexBackfillProgress(YBCPgOid* index_oids, YBCPgOid* database_oids,
@@ -1510,6 +1501,27 @@ YBCStatus YBCPgCheckIfPitrActive(bool* is_active) {
     return YBCStatusOK();
   }
   return ToYBCStatus(res.status());
+}
+
+/* Performs c = a - b for the collected stats */
+void Subtract(YBCPgExecStats *a, YBCPgExecStats *b, YBCPgExecStats *c) {
+  // User table stats
+  c->num_table_reads = a->num_table_reads - b->num_table_reads;
+  c->table_read_wait = a->table_read_wait - b->table_read_wait;
+  c->num_table_writes = a->num_table_writes - b->num_table_writes;
+  c->table_write_wait = a->table_write_wait - b->table_write_wait;
+
+  // Secondary index stats
+  c->num_index_reads = a->num_index_reads - b->num_index_reads;
+  c->index_read_wait = a->index_read_wait - b->index_read_wait;
+  c->num_index_writes = a->num_index_writes - b->num_index_writes;
+  c->index_write_wait = a->index_write_wait - b->index_write_wait;
+
+  // Catalog stats
+  c->num_catalog_reads = a->num_catalog_reads - b->num_catalog_reads;
+  c->catalog_read_wait = a->catalog_read_wait - b->catalog_read_wait;
+  c->num_catalog_writes = a->num_catalog_writes - b->num_catalog_writes;
+  c->catalog_write_wait = a->catalog_write_wait - b->catalog_write_wait;
 }
 
 } // extern "C"

@@ -1720,31 +1720,22 @@ uint64_t PgApiImpl::GetSharedAuthKey() const {
   return tserver_shared_object_->postgres_auth_key();
 }
 
-void PgApiImpl::GetAndResetReadRpcStats(PgStatement *handle,
-                                        uint64_t* reads, uint64_t* read_wait,
-                                        uint64_t* tbl_reads, uint64_t* tbl_read_wait) {
-  down_cast<PgDmlRead*>(handle)->GetAndResetReadRpcStats(reads, read_wait,
-                                                         tbl_reads, tbl_read_wait);
-}
-
-void PgApiImpl::GetAndResetExecStats(PgStatement *handle, YBCPgExecStats *stats) {
-  down_cast<PgDml*>(handle)->GetAndResetDocDBStats(stats);
-}
-
-void PgApiImpl::GetAndResetSessionExecStats(YBCPgExecStats *stats) {
+void PgApiImpl::GetSessionExecStats(YBCPgExecStats *stats) {
   if (!pg_session_) {
-    DLOG(WARNING) << "No PG Session found";
+    DLOG(WARNING) << "No PG Session found. Not updating session execution stats";
     return;
   }
 
-  pg_session_->GetAndResetDocDBStats(stats);
+  pg_session_->GetDocDBStats(stats);
 }
 
-void PgApiImpl::ResetSessionExecStats() {
-  pg_session_->ResetDocDBStats();
+void PgApiImpl::RefreshSessionExecStats() {
+  if (!pg_session_) {
+    return;
+  }
+
+  pg_session_->RefreshDocDBSessionStats();
 }
-
-
 
 void PgApiImpl::GetAndResetOperationFlushRpcStats(uint64_t* count,
                                                   uint64_t* wait_time) {

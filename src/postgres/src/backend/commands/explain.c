@@ -137,7 +137,8 @@ static void ExplainJSONLineEnding(ExplainState *es);
 static void ExplainYAMLLineStarting(ExplainState *es);
 static void escape_yaml(StringInfo buf, const char *str);
 static void appendPgMemInfo(ExplainState *es, const Size peakMem);
-
+static void explainRpcRequestStat(ExplainState *es, const char *field, double count,
+					  double timing);
 
 /*
  * ExplainQuery -
@@ -461,28 +462,6 @@ ExplainOneUtility(Node *utilityStmt, IntoClause *into, ExplainState *es,
 	}
 }
 
-/* TODO: Find a better place for this */
-static void
-explain_rpc_docdb_request_stats(ExplainState *es, const char *field,
-								double count, double timing)
-{
-	char *desc;
-	if (count > 0)
-	{
-		desc = psprintf("%s Requests", field);
-		ExplainPropertyFloat(desc, NULL, count, (count < 1.0 ? 2 : 0), es);
-
-		if (es->timing && timing > 0.0)
-		{
-			pfree(desc);
-			desc = psprintf("%s Execution Time", field);
-			ExplainPropertyFloat(desc, "ms", timing / 1000000.0, 3, es);
-		}
-
-		pfree(desc);
-	}
-}
-
 /*
  * ExplainOnePlan -
  *		given a planned query, execute it if needed, and then print
@@ -652,9 +631,9 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 			if (es->yb_total_read_rpc_count > 0.0)
 				total_rpc_wait += es->yb_total_read_rpc_wait;
 
-			explain_rpc_docdb_request_stats(es, "Storage Read", es->yb_total_read_rpc_count, 0.0);
-			explain_rpc_docdb_request_stats(es, "Storage Write", es->yb_total_write_rpc_count, 0.0);
-			explain_rpc_docdb_request_stats(es, "Storage Flushes", flush_count, 0.0);
+			explainRpcRequestStat(es, "Storage Read", es->yb_total_read_rpc_count, 0.0);
+			explainRpcRequestStat(es, "Storage Write", es->yb_total_write_rpc_count, 0.0);
+			explainRpcRequestStat(es, "Storage Flushes", flush_count, 0.0);
 
 			ExplainPropertyFloat("Storage Execution Time", "ms", total_rpc_wait / 1000000.0, 3, es);
 		}
@@ -3051,10 +3030,10 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 	double nloops = planstate->instrument->nloops;
 	
 	// Read stats
-	double table_reads = planstate->instrument->yb_tbl_read_rpcs.count;
-	double table_read_wait = planstate->instrument->yb_tbl_read_rpcs.wait_time;
-	double index_reads = planstate->instrument->yb_index_read_rpcs.count;
-	double index_read_wait = planstate->instrument->yb_index_read_rpcs.wait_time;
+	double table_reads = planstate->instrument->yb_tbl_read_rpcs.count / nloops;
+	double table_read_wait = planstate->instrument->yb_tbl_read_rpcs.wait_time / nloops;
+	double index_reads = planstate->instrument->yb_index_read_rpcs.count / nloops;
+	double index_read_wait = planstate->instrument->yb_index_read_rpcs.wait_time / nloops;
 	double catalog_reads = planstate->instrument->yb_catalog_read_rpcs.count / nloops;
 	double catalog_read_wait = planstate->instrument->yb_catalog_read_rpcs.wait_time / nloops;
 
@@ -3067,14 +3046,14 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 	double catalog_write_wait = planstate->instrument->yb_catalog_write_rpcs.wait_time / nloops;
 
 	/* Display the reads first */
-	explain_rpc_docdb_request_stats(es, "Storage Table Read", table_reads, table_read_wait);
-	explain_rpc_docdb_request_stats(es, "Storage Index Read", index_reads, index_read_wait);
-	explain_rpc_docdb_request_stats(es, "Storage Catalog Read", catalog_reads, catalog_read_wait);
+	explainRpcRequestStat(es, "Storage Table Read", table_reads, table_read_wait);
+	explainRpcRequestStat(es, "Storage Index Read", index_reads, index_read_wait);
+	explainRpcRequestStat(es, "Storage Catalog Read", catalog_reads, catalog_read_wait);
 
 	/* The writes */
-	explain_rpc_docdb_request_stats(es, "Storage Table Write", table_writes, table_write_wait);
-	explain_rpc_docdb_request_stats(es, "Storage Index Write", index_writes, index_write_wait);
-	explain_rpc_docdb_request_stats(es, "Storage Catalog Write", catalog_writes, catalog_write_wait);
+	explainRpcRequestStat(es, "Storage Table Write", table_writes, table_write_wait);
+	explainRpcRequestStat(es, "Storage Index Write", index_writes, index_write_wait);
+	explainRpcRequestStat(es, "Storage Catalog Write", catalog_writes, catalog_write_wait);
 }
 
 /*
@@ -4054,4 +4033,26 @@ appendPgMemInfo(ExplainState *es, const Size peakMem)
 {
 	Size peakMemKb = CEILING_K(peakMem);
 	ExplainPropertyInteger("Peak Memory Usage", "kB", peakMemKb, es);
+}
+
+/* Explains a single RPC related stat */
+static void
+explainRpcRequestStat(ExplainState *es, const char *field,
+								double count, double timing)
+{
+	char *desc;
+	if (count > 0)
+	{
+		desc = psprintf("%s Requests", field);
+		ExplainPropertyFloat(desc, NULL, count, (count < 1.0 ? 2 : 0), es);
+
+		if (es->timing && timing > 0.0)
+		{
+			pfree(desc);
+			desc = psprintf("%s Execution Time", field);
+			ExplainPropertyFloat(desc, "ms", timing / 1000000.0, 3, es);
+		}
+
+		pfree(desc);
+	}
 }

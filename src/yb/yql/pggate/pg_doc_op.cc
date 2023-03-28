@@ -227,12 +227,7 @@ Result<PgDocResponse::Data> PgDocResponse::Get(MonoDelta* wait_time) {
 //--------------------------------------------------------------------------------------------------
 
 PgDocOp::PgDocOp(const PgSession::ScopedRefPtr& pg_session, PgTable* table, const Sender& sender)
-    : pg_session_(pg_session), table_(*table), sender_(sender) {
-
-      // std::string stmt_id = std::string(context) + "::" + Uuid::Generate().ToString();
-
-      doc_op_metrics_ = pg_session->GetMetricsHandle();
-  }
+    : pg_session_(pg_session), table_(*table), sender_(sender) {}
 
 Status PgDocOp::ExecuteInit(const PgExecParameters *exec_params) {
   end_of_data_ = false;
@@ -324,47 +319,40 @@ Status PgDocOp::SendRequestImpl(ForceNonBufferable force_non_bufferable) {
   return Status::OK();
 }
 
-void PgDocOp::PerformPreRequestInstrumentation() {
-  // TODO: Perform checks here.
-  master::RelationType rtype;
+master::RelationType resolveRelationType(const PgTable &table) {
+  // TODO: Replace this with a standard library function.
 
-  if (table_->id().object_oid < kPgFirstNormalObjectId) {
-    rtype = master::SYSTEM_TABLE_RELATION;
-  } else if (table_->IsIndex()) {
-    rtype = master::INDEX_TABLE_RELATION;
+  if (table->id().object_oid < kPgFirstNormalObjectId) {
+    return master::SYSTEM_TABLE_RELATION;
+  } else if (table->IsIndex()) {
+    return master::INDEX_TABLE_RELATION;
   } else {
-    rtype = master::USER_TABLE_RELATION;
+    return master::USER_TABLE_RELATION;
   }
+}
+
+void PgDocOp::PerformPreRequestInstrumentation() {
+  uint64_t reads = 0, writes = 0;
 
   for (const auto& op : pgsql_ops_) {
-    doc_op_metrics_->AddDocOpRequest(rtype, op->is_read(), 1);
+    op->is_read() ? ++reads : ++writes;
   }
 
-  // TODO: Update Parallelism counts.
+  if (reads > 0)
+    pg_session_->UpdateSessionStatsCount(resolveRelationType(table_), true, reads);
 
-  LOG(INFO) << Format(
-      "Updated ops for $0 --> now at (R$1, W$2) (Parallelism: $4) Expected: ($3) ($5::$6)", doc_op_metrics_->MetricId(), doc_op_metrics_->GetNumTableReadRequests(),
-      doc_op_metrics_->GetNumTableWriteRequests(), read_rpc_count_, pgsql_ops_.size(), this->table()->table_name().namespace_name(), this->table()->table_name().table_name());
+  if (writes > 0)
+    pg_session_->UpdateSessionStatsCount(resolveRelationType(table_), false, writes);
 }
 
 void PgDocOp::PerformPostRequestInstrumentation() {
-  master::RelationType rtype;
-
+  uint64_t wait_time = static_cast<uint64_t>(read_rpc_wait_time_.ToNanoseconds());
   // TODO:
   // 1. Fix descrepancy between read/write ops to the same table buffered in the same request.
-  // 2. Fix monotonically increasing timing issue.
 
-  if (table_->id().object_oid < kPgFirstNormalObjectId) {
-    rtype = master::SYSTEM_TABLE_RELATION;
-  } else if (table_->IsIndex()) {
-    rtype = master::INDEX_TABLE_RELATION;
-  } else {
-    rtype = master::USER_TABLE_RELATION;
-  }
-
-  // Perform timing related functions
-  doc_op_metrics_->IncrementExecutionTime(rtype, pgsql_ops_[0]->is_read(), static_cast<uint64_t>(read_rpc_wait_time_.ToNanoseconds()));
-  LOG(INFO) << "Wait time is " << read_rpc_wait_time_.ToNanoseconds() / (1000);
+  pg_session_->UpdateSessionStatsWaitTime(
+    resolveRelationType(table_), pgsql_ops_[0]->is_read(), wait_time);
+  read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
 }
 
 Result<std::list<PgDocResult>> PgDocOp::ProcessResponse(

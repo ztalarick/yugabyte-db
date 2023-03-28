@@ -525,14 +525,7 @@ void PgDml::GetAndResetDocDBStats(YBCPgExecStats *stats) {
     return;
   }
 
-  doc_op_->GetAndResetDocDBStats(stats);
-
-
-//   if (secondary_index_query_) {
-//     secondary_index_query_->GetAndResetDocDBStats(&index_stats);
-//     stats->num_index_reads = index_stats.num_table_reads;
-//     stats->num_index_writes = index_stats.num_index_writes;
-//   }
+  pg_session_->GetDocDBStats(stats);
 }
 
 }  // namespace pggate

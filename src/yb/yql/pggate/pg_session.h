@@ -343,12 +343,18 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   void GetAndResetOperationFlushRpcStats(uint64_t* count, uint64_t* wait_time);
 
-  MetricRegistry *GetMetricRegistry() { return metric_registry_.get(); }
+  void GetDocDBStats(YBCPgExecStats *stats);
+  void RefreshDocDBSessionStats();
 
-  void GetAndResetDocDBStats(YBCPgExecStats *stats);
-  void ResetDocDBStats() { metrics_->Reset(); };
+  void UpdateSessionStatsCount(
+      master::RelationType relation_type, bool is_read, uint64_t parallelism) {
+    metrics_.AddDocOpRequest(relation_type, is_read, parallelism);
+  }
 
-  scoped_refptr<PgDocMetrics> GetMetricsHandle() { return metrics_; }
+  void UpdateSessionStatsWaitTime(
+      master::RelationType relation_type, bool is_read, uint64_t wait_time) {
+    metrics_.IncrementExecutionTime(relation_type, is_read, wait_time);
+  }
 
   std::unique_ptr<MetricRegistry> metric_registry_;
 
@@ -420,7 +426,8 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   std::variant<TxnSerialNoPerformInfo> last_perform_on_txn_serial_no_;
 
   // Stats for EXPLAIN ANALYZE
-  scoped_refptr<PgDocMetrics> metrics_;
+  PgDocMetrics metrics_;
+  YBCPgExecStats metrics_snapshot;
 };
 
 }  // namespace pggate

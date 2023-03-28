@@ -1663,10 +1663,9 @@ ExecEndPlan(PlanState *planstate, EState *estate)
 			heap_close(erm->relation, NoLock);
 	}
 
-	if (estate->es_instrument)
-	{
-		YbResetRpcStats();
-	}
+	/* Refresh the session execution stats at the end of each query, so
+	 * that stats don't accumulate across queries */
+	YbRefreshSessionStats();
 }
 
 /* ----------------------------------------------------------------

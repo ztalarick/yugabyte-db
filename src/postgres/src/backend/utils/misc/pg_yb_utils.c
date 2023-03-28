@@ -3068,26 +3068,22 @@ void aggregateStats(Instrumentation *instr, YBCPgExecStats exec_stats) {
 	instr->yb_tbl_write_rpcs.max_parallelism = exec_stats.max_parallelism;
 }
 
-void
-YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr)
-{
-	YBCPgExecStats exec_stats = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-	YBCGetPgExecStats(handle, &exec_stats);
-	aggregateStats(instr, exec_stats);
+void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr) {
+	YbUpdateRpcStats(instr);
 }
 
 void
-YbUpdateRpcStats(Instrumentation *instr) {
+YbUpdateRpcStats(Instrumentation *instr)
+{
 	YBCPgExecStats exec_stats = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	YBCGetPgSessionExecStats(&exec_stats);
 	aggregateStats(instr, exec_stats);
 }
 
-void YbResetRpcStats()
+void YbRefreshSessionStats()
 {
-	YBCResetPgSessionExecStats();
+	YBCRefreshPgSessionExecStats();
 }
 
 void YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)

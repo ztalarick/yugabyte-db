@@ -285,21 +285,19 @@ PgSession::PgSession(
     const std::string& database_name,
     scoped_refptr<PgTxnManager> pg_txn_manager,
     scoped_refptr<server::HybridClock> clock,
-    const YBCPgCallbacks& pg_callbacks):
-    metric_registry_(new MetricRegistry()),
+    const YBCPgCallbacks& pg_callbacks)
+    : metric_registry_(new MetricRegistry()),
       pg_client_(*pg_client),
       pg_txn_manager_(std::move(pg_txn_manager)),
       clock_(std::move(clock)),
       buffer_(
           std::bind(
-              &PgSession::FlushOperations, this, std::placeholders::_1, std::placeholders::_2),
+          &PgSession::FlushOperations, this, std::placeholders::_1, std::placeholders::_2),
           buffering_settings_),
-      pg_callbacks_(pg_callbacks)
+      pg_callbacks_(pg_callbacks),
+      metrics_(std::move(PgDocMetrics(metric_registry_.get(), "pg-session-id"))) {
 
-      {
   Update(&buffering_settings_);
-
-  metrics_ = new PgDocMetrics(metric_registry_.get(), "pg-session-id");
 }
 
 PgSession::~PgSession() = default;
@@ -853,9 +851,20 @@ Result<bool> PgSession::CheckIfPitrActive() {
   return pg_client_.CheckIfPitrActive();
 }
 
-void PgSession::GetAndResetDocDBStats(YBCPgExecStats *stats) {
-  metrics_->GetStats(stats);
-  metrics_->Reset();
+void PgSession::GetDocDBStats(YBCPgExecStats *stats) {
+  YBCPgExecStats current_metrics;
+
+  metrics_.GetStats(&current_metrics);
+  Subtract(&current_metrics, &metrics_snapshot, stats);
+
+  RefreshDocDBSessionStats();
+}
+
+void PgSession::RefreshDocDBSessionStats() {
+  YBCPgExecStats current_metrics;
+
+  metrics_.GetStats(&current_metrics);
+  metrics_snapshot = current_metrics;
 }
 
 }  // namespace pggate
