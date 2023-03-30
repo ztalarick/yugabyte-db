@@ -585,6 +585,7 @@ message SysUniverseReplicationEntryPB {
 
   // Mapping from Producer Table ID to Producer->Consumer schema version mappings
   map<string, SchemaVersionMappingEntryPB> schema_version_mappings = 10;
+  optional string producer_transaction_status_table = 11;
 }
 
 message XClusterSafeTimePB {

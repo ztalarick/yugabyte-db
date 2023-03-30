@@ -112,7 +112,6 @@ DECLARE_bool(ysql_enable_packed_row);
 DECLARE_bool(ysql_enable_packed_row_for_colocated_table);
 DECLARE_uint64(ysql_packed_row_size_limit);
 DECLARE_bool(xcluster_wait_on_ddl_alter);
-DECLARE_bool(enable_replicate_transaction_status_table);
 DECLARE_bool(TEST_disable_apply_committed_transactions);
 DECLARE_uint64(ysql_session_max_batch_size);
 DECLARE_bool(use_libbacktrace);
@@ -794,7 +793,6 @@ class XClusterYSqlTestConsistentTransactionsTest : public XClusterYsqlTest {
 
   Result<std::pair<client::YBTablePtr, client::YBTablePtr>> CreateClusterAndTable(
       int num_masters = 3) {
-    FLAGS_enable_replicate_transaction_status_table = true;
     auto tables = VERIFY_RESULT(SetUpWithParams({4}, {4}, 3, num_masters));
     auto producer_table = tables[0];
     auto consumer_table = tables[1];
@@ -805,7 +803,11 @@ class XClusterYSqlTestConsistentTransactionsTest : public XClusterYsqlTest {
       const std::pair<client::YBTablePtr, client::YBTablePtr>& tables) {
     auto producer_table = tables.first;
     auto consumer_table = tables.second;
-    RETURN_NOT_OK(SetupUniverseReplication(kUniverseId, {producer_table}));
+    std::shared_ptr<client::YBTable> producer_tran_table;
+    YBTableName producer_tran_table_name(
+        YQL_DATABASE_CQL, master::kSystemNamespaceName, kGlobalTransactionsTableName);
+    ASSERT_OK(producer_client()->OpenTable(producer_tran_table_name, &producer_tran_table));
+    RETURN_NOT_OK(SetupUniverseReplication(kUniverseId, {producer_table, producer_tran_table}));
     // Verify that universe was setup on consumer.
     master::GetUniverseReplicationResponsePB resp;
     RETURN_NOT_OK(VerifyUniverseReplication(kUniverseId, &resp));
@@ -916,7 +918,6 @@ TEST_F(XClusterYSqlTestConsistentTransactionsTest, TransactionSpanningMultipleBa
 TEST_F(XClusterYSqlTestConsistentTransactionsTest, TransactionsWithUpdates) {
   // Write a transactional workload of updates with valdation for 30s and ensure there are no
   // FATALs and that we maintain consistent reads.
-  FLAGS_enable_replicate_transaction_status_table = true;
   const auto namespace_name = "demo";
   const auto table_name = "account_balance";
 
@@ -935,8 +936,13 @@ TEST_F(XClusterYSqlTestConsistentTransactionsTest, TransactionsWithUpdates) {
   ASSERT_TRUE(table_name_with_id.has_table_id());
   auto yb_table = ASSERT_RESULT(producer_client()->OpenTable(table_name_with_id.table_id()));
 
+  std::shared_ptr<client::YBTable> producer_tran_table;
+  YBTableName producer_tran_table_name(
+      YQL_DATABASE_CQL, master::kSystemNamespaceName, kGlobalTransactionsTableName);
+  ASSERT_OK(producer_client()->OpenTable(producer_tran_table_name, &producer_tran_table));
+
   const string kUniverseId = ASSERT_RESULT(GetUniverseId(&producer_cluster_));
-  ASSERT_OK(SetupUniverseReplication(kUniverseId, {yb_table}));
+  ASSERT_OK(SetupUniverseReplication(kUniverseId, {yb_table, producer_tran_table}));
   // Verify that universe was setup on consumer.
   master::GetUniverseReplicationResponsePB resp;
   ASSERT_OK(VerifyUniverseReplication(kUniverseId, &resp));
@@ -1366,7 +1372,6 @@ TEST_P(XClusterYsqlTestToggleBatching, GenerateSeriesMultipleTransactions) {
 TEST_P(XClusterYsqlTestToggleBatching, ChangeRole) {
   // 1. Test that an existing universe without replication of txn status table cannot become a
   // STANDBY.
-  FLAGS_enable_replicate_transaction_status_table = false;
   auto tables = ASSERT_RESULT(SetUpWithParams({1}, {1}, 3, 1));
   const string kUniverseId = ASSERT_RESULT(GetUniverseId(&producer_cluster_));
   auto producer_table = tables[0];
@@ -1381,8 +1386,11 @@ TEST_P(XClusterYsqlTestToggleBatching, ChangeRole) {
   ASSERT_OK(DeleteUniverseReplication(kUniverseId));
 
   // 2. Test that a universe cannot change a role to its same role.
-  FLAGS_enable_replicate_transaction_status_table = true;
-  ASSERT_OK(SetupUniverseReplication(kUniverseId, {producer_table}));
+  std::shared_ptr<client::YBTable> producer_tran_table;
+  YBTableName producer_tran_table_name(
+      YQL_DATABASE_CQL, master::kSystemNamespaceName, kGlobalTransactionsTableName);
+  ASSERT_OK(producer_client()->OpenTable(producer_tran_table_name, &producer_tran_table));
+  ASSERT_OK(SetupUniverseReplication(kUniverseId, {producer_table, producer_tran_table}));
 
   ASSERT_OK(VerifyUniverseReplication(kUniverseId, &resp));
   ASSERT_EQ(resp.entry().producer_id(), kUniverseId);

@@ -499,6 +499,38 @@ Status XClusterTestBase::DeleteUniverseReplication(
   return Status::OK();
 }
 
+Status XClusterTestBase::AlterUniverseReplication(
+    const std::string& universe_id,
+    const std::vector<std::shared_ptr<client::YBTable>>& tables,
+    bool add_tables) {
+  master::AlterUniverseReplicationRequestPB alter_req;
+  master::AlterUniverseReplicationResponsePB alter_resp;
+  rpc::RpcController rpc;
+  alter_req.set_producer_id(universe_id);
+  for (const auto& table : tables) {
+    if (add_tables) {
+      alter_req.add_producer_table_ids_to_add(table->id());
+    } else {
+      alter_req.add_producer_table_ids_to_remove(table->id());
+    }
+  }
+
+  auto master_proxy = std::make_shared<master::MasterReplicationProxy>(
+      &consumer_client()->proxy_cache(),
+      VERIFY_RESULT(consumer_cluster()->GetLeaderMiniMaster())->bound_rpc_addr());
+
+  rpc.set_timeout(MonoDelta::FromSeconds(kRpcTimeout));
+  RETURN_NOT_OK(master_proxy->AlterUniverseReplication(alter_req, &alter_resp, &rpc));
+  SCHECK(!alter_resp.has_error(), IllegalState, alter_resp.ShortDebugString());
+  master::IsSetupUniverseReplicationDoneResponsePB setup_resp;
+  RETURN_NOT_OK(WaitForSetupUniverseReplication(
+      consumer_cluster(), consumer_client(), universe_id + ".ALTER", &setup_resp));
+  SCHECK(!setup_resp.has_error(), IllegalState, alter_resp.ShortDebugString());
+  RETURN_NOT_OK(WaitForSetupUniverseReplicationCleanUp(universe_id + ".ALTER"));
+  master::GetUniverseReplicationResponsePB get_resp;
+  return VerifyUniverseReplication(universe_id, &get_resp);
+}
+
 Status XClusterTestBase::CorrectlyPollingAllTablets(
     MiniCluster* cluster, uint32_t num_producer_tablets) {
   return cdc::CorrectlyPollingAllTablets(

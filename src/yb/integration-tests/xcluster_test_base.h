@@ -166,6 +166,11 @@ class XClusterTestBase : public YBTest {
   Status DeleteUniverseReplication(
       const std::string& universe_id, YBClient* client, MiniCluster* cluster);
 
+  Status AlterUniverseReplication(
+      const std::string& universe_id,
+      const std::vector<std::shared_ptr<client::YBTable>>& tables,
+      bool add_tables);
+
   Status CorrectlyPollingAllTablets(MiniCluster* cluster, uint32_t num_producer_tablets);
 
   Status WaitForSetupUniverseReplicationCleanUp(std::string producer_uuid);

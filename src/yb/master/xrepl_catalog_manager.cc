@@ -120,7 +120,6 @@ namespace yb {
 using client::internal::RemoteTabletServer;
 
 namespace master {
-static const string kSystemXClusterReplicationId = "system";
 
 ////////////////////////////////////////////////////////////
 // CDC Stream Loader
@@ -1893,15 +1892,6 @@ Status CatalogManager::SetupUniverseReplication(
         MasterError(MasterErrorPB::INVALID_REQUEST));
   }
 
-  if (GetAtomicFlag(&FLAGS_enable_replicate_transaction_status_table) &&
-      req->producer_id() == kSystemXClusterReplicationId) {
-    return STATUS(
-        InvalidArgument,
-        Format(
-            "Producer universe ID cannot equal reserved string $0.", kSystemXClusterReplicationId),
-        req->ShortDebugString(), MasterError(MasterErrorPB::INVALID_REQUEST));
-  }
-
   if (req->producer_master_addresses_size() <= 0) {
     return STATUS(
         InvalidArgument, "Producer master address must be provided", req->ShortDebugString(),
@@ -2016,28 +2006,6 @@ Status CatalogManager::SetupUniverseReplication(
   }
 
   LOG(INFO) << "Started schema validation for universe replication " << ri->ToString();
-
-  // Call setup on the transaction status table if it doesn't already exist.
-  if (GetAtomicFlag(&FLAGS_enable_replicate_transaction_status_table) &&
-      FindPtrOrNull(universe_replication_map_, kSystemXClusterReplicationId) == nullptr) {
-    // Create an entry in the system catalog DocDB for this new universe replication.
-    auto system_ri = VERIFY_RESULT(CreateUniverseReplicationInfoForProducer(
-        kSystemXClusterReplicationId, req->producer_master_addresses(), {}));
-    auto table_info = std::make_shared<client::YBTableInfo>();
-    auto transaction_status_table = client::YBTableName(
-        YQL_DATABASE_CQL, master::kSystemNamespaceName, kGlobalTransactionsTableName);
-    Status s = cdc_rpc->client()->GetYBTableInfo(
-        transaction_status_table, table_info,
-        Bind(
-            &CatalogManager::GetTableSchemaCallback, Unretained(this), system_ri->id(), table_info,
-            table_id_to_bootstrap_id));
-    if (!s.ok()) {
-      MarkUniverseReplicationFailed(system_ri, s);
-      return SetupError(resp->mutable_error(), MasterErrorPB::INVALID_REQUEST, s);
-    }
-
-    LOG(INFO) << "Started schema validation for universe replication " << system_ri->ToString();
-  }
   return Status::OK();
 }
 
@@ -2312,73 +2280,41 @@ Status CatalogManager::ValidateTableAndCreateCdcStreams(
     scoped_refptr<UniverseReplicationInfo> universe,
     const std::shared_ptr<client::YBTableInfo>& producer_info,
     const std::unordered_map<TableId, std::string>& producer_bootstrap_ids) {
-  bool validate_and_add_table = true;
+  auto l = universe->LockForWrite();
+  if (producer_info->table_name.namespace_name() == master::kSystemNamespaceName &&
+      PREDICT_FALSE(FLAGS_TEST_fail_setup_system_universe_replication)) {
+    auto status = STATUS(IllegalState, "Cannot replicate system tables.");
+    MarkUniverseReplicationFailed(status, &l, universe);
+    return status;
+  }
+  RETURN_ACTION_NOT_OK(
+      sys_catalog_->Upsert(leader_ready_term(), universe),
+      "updating system tables in universe replication");
+  l.Commit();
 
-  // Special handling for system tables like transaction status table.
-  // During setup with bootstrap the user may provide the transaction status table and its bootstrap
-  // id. These system tables are handled in kSystemXClusterReplicationId replication group, so
-  // remove them from the user replication group.
-  if (producer_info->table_name.namespace_name() == master::kSystemNamespaceName) {
-    auto l = universe->LockForWrite();
-    auto& replication_entry_pb = l.mutable_data()->pb;
-    if (universe->id() == kSystemXClusterReplicationId) {
-      // We do this because the target doesn't know the source txn status table id until this
-      // callback.
-      *(replication_entry_pb.add_tables()) = producer_info->table_id;
+  GetTableSchemaResponsePB consumer_schema;
+  RETURN_NOT_OK(ValidateTableSchema(producer_info, producer_bootstrap_ids, &consumer_schema));
 
-      if (PREDICT_FALSE(FLAGS_TEST_fail_setup_system_universe_replication)) {
-        auto status = STATUS(IllegalState, "Cannot replicate system tables.");
-        MarkUniverseReplicationFailed(status, &l, universe);
-        return status;
-      }
-    } else {
-      const int tables_size = replication_entry_pb.tables_size();
-      int i = 0;
-      for (; i < tables_size; i++) {
-        if (replication_entry_pb.tables(i) == producer_info->table_id) {
-          replication_entry_pb.mutable_tables()->DeleteSubrange(i, 1);
-          break;
-        }
-      }
-      SCHECK_LT(
-          i, tables_size, NotFound,
-          Format("Expected to find System table $0", producer_info->table_id));
+  // If Bootstrap Id is passed in then it must be provided for all tables.
+  SCHECK(
+      producer_bootstrap_ids.empty() || producer_bootstrap_ids.contains(producer_info->table_id),
+      NotFound,
+      Format("Bootstrap id not found for table $0", producer_info->table_name.ToString()));
 
-      validate_and_add_table = false;
-    }
-
-    RETURN_ACTION_NOT_OK(
-        sys_catalog_->Upsert(leader_ready_term(), universe),
-        "updating system tables in universe replication");
-    l.Commit();
+  // System tables like transaction status table can be much older than the user tables begin
+  // added. Only check them if the BootstrapId has been passed in to ensure the checkpoint is
+  // still valid.
+  if (producer_bootstrap_ids.contains(producer_info->table_id)) {
+    RETURN_NOT_OK(
+        IsBootstrapRequiredOnProducer(universe, producer_info->table_id, producer_bootstrap_ids));
   }
 
-  if (validate_and_add_table) {
-    GetTableSchemaResponsePB consumer_schema;
-    RETURN_NOT_OK(ValidateTableSchema(producer_info, producer_bootstrap_ids, &consumer_schema));
-
-    // If Bootstrap Id is passed in then it must be provided for all tables.
-    SCHECK(
-        producer_bootstrap_ids.empty() || producer_bootstrap_ids.contains(producer_info->table_id),
-        NotFound,
-        Format("Bootstrap id not found for table $0", producer_info->table_name.ToString()));
-
-    // System tables like transaction status table can be much older than the user tables begin
-    // added. Only check them if the BootstrapId has been passed in to ensure the checkpoint is
-    // still valid.
-    if (producer_info->table_name.namespace_name() != master::kSystemNamespaceName ||
-        producer_bootstrap_ids.contains(producer_info->table_id)) {
-      RETURN_NOT_OK(
-          IsBootstrapRequiredOnProducer(universe, producer_info->table_id, producer_bootstrap_ids));
-    }
-
-    SchemaVersion producer_schema_version = producer_info->schema.version();
-    SchemaVersion consumer_schema_version = consumer_schema.version();
-    ColocationSchemaVersions colocated_schema_versions;
-    RETURN_NOT_OK(AddValidatedTableToUniverseReplication(
-        universe, producer_info->table_id, consumer_schema.identifier().table_id(),
-        producer_schema_version, consumer_schema_version, colocated_schema_versions));
-  }
+  SchemaVersion producer_schema_version = producer_info->schema.version();
+  SchemaVersion consumer_schema_version = consumer_schema.version();
+  ColocationSchemaVersions colocated_schema_versions;
+  RETURN_NOT_OK(AddValidatedTableToUniverseReplication(
+      universe, producer_info->table_id, consumer_schema.identifier().table_id(),
+      producer_schema_version, consumer_schema_version, colocated_schema_versions));
 
   return CreateCdcStreamsIfReplicationValidated(universe, producer_bootstrap_ids);
 }
@@ -2770,12 +2706,30 @@ void CatalogManager::AddCDCStreamToUniverseAndInitConsumer(
       auto& validated_tables = l->pb.validated_tables();
 
       consumer_info.reserve(l->pb.tables_size());
+      TableInfoPtr transaction_status_table;
+      auto transaction_status_table_result = GetGlobalTransactionStatusTable();
+      if (transaction_status_table_result.ok()) {
+        transaction_status_table = *transaction_status_table_result;
+      } else {
+        MarkUniverseReplicationFailed(universe, ResultToStatus(transaction_status_table_result));
+        return;
+      }
       for (const auto& table : validated_tables) {
         CDCConsumerStreamInfo info;
         info.producer_table_id = table.first;
         info.consumer_table_id = table.second;
         info.stream_id = (*map)[info.producer_table_id];
         consumer_info.push_back(info);
+        if (transaction_status_table &&
+            info.consumer_table_id == transaction_status_table->id()) {
+          if (cdc::IsAlterReplicationUniverseId(universe->id())) {
+            // Ensure that we cannot add the transaction status table to a replication group.
+            MarkUniverseReplicationFailed(universe, STATUS(InvalidArgument,
+                "Cannot add transaction status table to existing replication group"));
+            return;
+          }
+          l.mutable_data()->pb.set_producer_transaction_status_table(info.producer_table_id);
+        }
       }
 
       std::vector<HostPort> hp;
@@ -2954,7 +2908,6 @@ Status CatalogManager::InitXClusterConsumer(
     const std::string& master_addrs,
     const std::string& producer_universe_uuid,
     std::shared_ptr<CDCRpcTasks> cdc_rpc_tasks) {
-
   scoped_refptr<UniverseReplicationInfo> universe;
   {
     SharedLock lock(mutex_);
@@ -2969,6 +2922,10 @@ Status CatalogManager::InitXClusterConsumer(
 
   // Get the tablets in the consumer table.
   cdc::ProducerEntryPB producer_entry;
+  auto cluster_config = ClusterConfig();
+  auto l = cluster_config->LockForWrite();
+  auto* consumer_registry = l.mutable_data()->pb.mutable_consumer_registry();
+  auto transaction_status_table = VERIFY_RESULT(GetGlobalTransactionStatusTable());
   for (const auto& stream_info : consumer_info) {
     auto consumer_tablet_keys = VERIFY_RESULT(GetTableKeyRanges(stream_info.consumer_table_id));
     auto schema_version = VERIFY_RESULT(GetTableSchemaVersion(stream_info.consumer_table_id));
@@ -3002,6 +2959,11 @@ Status CatalogManager::InitXClusterConsumer(
     }
 
     (*producer_entry.mutable_stream_map())[stream_info.stream_id] = std::move(stream_entry);
+    if (stream_info.consumer_table_id == transaction_status_table->id()) {
+      // The replication group includes the transaction status table, enable consistent
+      // transactions.
+      consumer_registry->set_enable_replicate_transaction_status_table(true);
+    }
   }
 
   // Log the Network topology of the Producer Cluster
@@ -3010,16 +2972,6 @@ Status CatalogManager::InitXClusterConsumer(
   for (const auto& addr : master_addrs_list) {
     auto hp = VERIFY_RESULT(HostPort::FromString(addr, 0));
     HostPortToPB(hp, producer_entry.add_master_addrs());
-  }
-
-  auto cluster_config = ClusterConfig();
-  auto l = cluster_config->LockForWrite();
-  auto* consumer_registry = l.mutable_data()->pb.mutable_consumer_registry();
-  if (consumer_registry->producer_map().empty()) {
-    // There are no active streams, so use --enable_replicate_transaction_status_table to determine
-    // whether replication of the transaction status table is enabled.
-    consumer_registry->set_enable_replicate_transaction_status_table(
-        GetAtomicFlag(&FLAGS_enable_replicate_transaction_status_table));
   }
 
   auto* producer_map = consumer_registry->mutable_producer_map();
@@ -3247,20 +3199,6 @@ Status CatalogManager::DeleteUniverseReplication(
   }
 
   RETURN_NOT_OK(DeleteUniverseReplication(req->producer_id(), req->ignore_errors(), resp));
-  bool delete_system_replication_id = false;
-  {
-    SharedLock lock(mutex_);
-    delete_system_replication_id =
-        universe_replication_map_.size() == 1 &&
-        universe_replication_map_.count(kSystemXClusterReplicationId) == 1;
-  }
-  if (delete_system_replication_id) {
-    // The only entry left in the universe replication map is the transaction status table, so
-    // it can be removed.
-    RETURN_NOT_OK(
-        DeleteUniverseReplication(kSystemXClusterReplicationId, req->ignore_errors(), resp));
-  }
-
   LOG(INFO) << "Successfully completed DeleteUniverseReplication request from "
             << RequestorString(rpc);
   return Status::OK();
@@ -3315,10 +3253,9 @@ Status CatalogManager::ChangeXClusterRole(
     if (!consumer_registry->enable_replicate_transaction_status_table()) {
       return STATUS(
           InvalidArgument,
-          "This universe replication does not support xCluster roles. "
-          "Recreate all existing streams with "
-          "--enable_replicate_transaction_status_table=true to enable "
-          " STANDBY mode",
+          "This replication group does not support xCluster roles. "
+          "Recreate the group with the transaction status table to enable "
+          "STANDBY mode",
           req->ShortDebugString(), MasterError(MasterErrorPB::INVALID_REQUEST));
     }
   }
@@ -3416,22 +3353,11 @@ Status CatalogManager::SetUniverseReplicationEnabled(
   }
 
   const auto is_enabled = req->is_enabled();
-  const auto is_replicating_transaction_status_table =
-      FindPtrOrNull(universe_replication_map_, kSystemXClusterReplicationId) != nullptr;
-  RETURN_NOT_OK(SetUniverseReplicationInfoEnabled(req->producer_id(), is_enabled));
-  if (is_replicating_transaction_status_table) {
-    RETURN_NOT_OK(SetUniverseReplicationInfoEnabled(kSystemXClusterReplicationId, is_enabled));
-  }
-
   // When updating the cluster config, make sure that the change to the user replication and
   // system replication commit atomically by using the same lock.
   auto cluster_config = ClusterConfig();
   auto l = cluster_config->LockForWrite();
   RETURN_NOT_OK(SetConsumerRegistryEnabled(req->producer_id(), is_enabled, &l));
-  if (is_replicating_transaction_status_table) {
-    RETURN_NOT_OK(SetConsumerRegistryEnabled(kSystemXClusterReplicationId, is_enabled, &l));
-  }
-
   l.mutable_data()->pb.set_version(l.mutable_data()->pb.version() + 1);
   RETURN_NOT_OK(CheckStatus(
       sys_catalog_->Upsert(leader_ready_term(), cluster_config.get()),
@@ -3612,6 +3538,19 @@ Status CatalogManager::UpdateProducerAddress(
 Status CatalogManager::RemoveTablesFromReplication(
     scoped_refptr<UniverseReplicationInfo> universe, const AlterUniverseReplicationRequestPB* req) {
   CHECK_GT(req->producer_table_ids_to_remove_size() , 0);
+
+  {
+    auto l = universe->LockForRead();
+    if (l->pb.has_producer_transaction_status_table() &&
+       !l->pb.producer_transaction_status_table().empty()) {
+      for (const auto& producer_tables_to_remove : req->producer_table_ids_to_remove()) {
+        if (producer_tables_to_remove == l->pb.producer_transaction_status_table()) {
+          return STATUS(InvalidArgument,
+                        "Cannot remove transaction status table to replication group");
+        }
+      }
+    }
+  }
 
   auto it = req->producer_table_ids_to_remove();
   std::set<string> table_ids_to_remove(it.begin(), it.end());
@@ -3994,23 +3933,6 @@ Status CatalogManager::IsSetupUniverseReplicationDone(
   auto terminal_state = is_alter_request ? SysUniverseReplicationEntryPB::DELETED
                                          : SysUniverseReplicationEntryPB::ACTIVE;
   if (universe_resp.entry().state() == terminal_state) {
-    if (producer_id != kSystemXClusterReplicationId &&
-        universe_resp.entry().state() == SysUniverseReplicationEntryPB::ACTIVE) {
-      // If enable_replicate_transaction_status_table is set then we need to wait for the System
-      // replication to also complete setup.
-      auto cluster_config = ClusterConfig();
-      auto l = cluster_config->LockForRead();
-      auto consumer_registry = l.data().pb.consumer_registry();
-
-      if (consumer_registry.enable_replicate_transaction_status_table()) {
-        l.Unlock();
-
-        IsSetupUniverseReplicationDoneRequestPB system_req;
-        system_req.set_producer_id(kSystemXClusterReplicationId);
-        return IsSetupUniverseReplicationDone(&system_req, resp, rpc);
-      }
-    }
-
     resp->set_done(true);
     StatusToPB(Status::OK(), resp->mutable_replication_error());
     return Status::OK();
@@ -5603,13 +5525,6 @@ Status CatalogManager::FillHeartbeatResponseCDC(
 
     if (req->cluster_config_version() < cluster_config.version()) {
       const auto& consumer_registry = cluster_config.consumer_registry();
-      if (consumer_registry.enable_replicate_transaction_status_table()) {
-        auto producer_map = consumer_registry.producer_map();
-        if ((!producer_map.empty() && producer_map.count(kSystemXClusterReplicationId) == 0) ||
-            producer_map.size() == 1) {
-          return Status::OK();
-        }
-      }
       resp->set_cluster_config_version(cluster_config.version());
       *resp->mutable_consumer_registry() = consumer_registry;
     }
