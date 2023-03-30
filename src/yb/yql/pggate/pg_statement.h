@@ -70,7 +70,6 @@ class PgStatement : public PgMemctx::Registrable {
   // while statement is running, pg_session::sharedptr can still be accessed without crashing.
   explicit PgStatement(PgSession::ScopedRefPtr pg_session)
       : pg_session_(std::move(pg_session)), arena_(SharedArena()) {
-        context_ = Uuid::Generate().ToString();
   }
 
   virtual ~PgStatement() = default;
@@ -96,8 +95,6 @@ class PgStatement : public PgMemctx::Registrable {
   // Execution status.
   Status status_;
   std::string errmsg_;
-
-  std::string context_;
 
   std::shared_ptr<ThreadSafeArena> arena_;
 };

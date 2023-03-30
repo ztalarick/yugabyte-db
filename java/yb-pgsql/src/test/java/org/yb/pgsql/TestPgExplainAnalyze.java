@@ -113,15 +113,19 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
       Checker checker = makeTopLevelBuilder()
           .storageReadRequests(Checkers.greater(0))
           .storageWriteRequests(Checkers.equal(0))
+          .storageFlushesRequests(Checkers.equal(0))
           .storageExecutionTime(Checkers.greater(0.0))
           .plan(makePlanBuilder()
               .nodeType(NODE_SEQ_SCAN)
               .relationName(TABLE_NAME)
               .alias(TABLE_NAME)
               .storageTableReadRequests(Checkers.equal(5))
-              .storageTableExecutionTime(Checkers.greater(0.0))
+              .storageTableReadExecutionTime(Checkers.greater(0.0))
               .build())
           .build();
+
+      // Warm up the cache to get catalog requests out of the way.
+      stmt.execute(String.format("SELECT * FROM %s", TABLE_NAME));
 
       // Seq Scan (ybc_fdw ForeignScan)
       testExplain(String.format("SELECT * FROM %s", TABLE_NAME), checker);
@@ -134,11 +138,17 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
 
   @Test
   public void testPKScan() throws Exception {
-    testExplain(
+
+    try (Statement stmt = connection.createStatement()) {
+      // Warm up the cache to get catalog requests out of the way.
+      stmt.execute(String.format("SELECT * FROM %s", TABLE_NAME));
+
+      testExplain(
         String.format("SELECT * FROM %s WHERE c1 = 10", TABLE_NAME),
         makeTopLevelBuilder()
             .storageReadRequests(Checkers.greater(0))
             .storageWriteRequests(Checkers.equal(0))
+            .storageFlushesRequests(Checkers.equal(0))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(makePlanBuilder()
                 .nodeType(NODE_INDEX_SCAN)
@@ -146,45 +156,57 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                 .alias(TABLE_NAME)
                 .indexName(PK_INDEX_NAME)
                 .storageIndexReadRequests(Checkers.equal(1))
-                .storageIndexExecutionTime(Checkers.greater(0.0))
+                .storageIndexReadExecutionTime(Checkers.greater(0.0))
                 .build())
             .build());
+    }
   }
 
   @Test
   public void testIndexScan() throws Exception {
     final String alias = "t";
-    testExplain(
+
+    try (Statement stmt = connection.createStatement()) {
+      // Warm up the cache to get catalog requests out of the way.
+      stmt.execute(String.format("SELECT * FROM %s WHERE c3 = 0", TABLE_NAME));
+
+      testExplain(
         String.format(
-            "/*+ IndexScan(t %s) */SELECT * FROM %s AS %s WHERE c3 <= 15",
-            INDEX_NAME, TABLE_NAME, alias),
+          "/*+ IndexScan(t %s) */SELECT * FROM %s AS %s WHERE c3 <= 15",
+          INDEX_NAME, TABLE_NAME, alias),
         makeTopLevelBuilder()
-            .storageReadRequests(Checkers.greater(0))
-            .storageWriteRequests(Checkers.equal(0))
-            .storageExecutionTime(Checkers.greater(0.0))
-            .plan(makePlanBuilder()
-                .nodeType(NODE_INDEX_SCAN)
-                .relationName(TABLE_NAME)
-                .alias(alias)
-                .indexName(INDEX_NAME)
-                .storageTableReadRequests(Checkers.equal(4))
-                .storageTableExecutionTime(Checkers.greater(0.0))
-                .storageIndexReadRequests(Checkers.equal(4))
-                .storageIndexExecutionTime(Checkers.greater(0.0))
-                .build())
-            .build());
+          .storageReadRequests(Checkers.greater(8))
+          .storageWriteRequests(Checkers.equal(0))
+          .storageFlushesRequests(Checkers.equal(0))
+          .storageExecutionTime(Checkers.greater(0.0))
+          .plan(makePlanBuilder()
+              .nodeType(NODE_INDEX_SCAN)
+              .relationName(TABLE_NAME)
+              .alias(alias)
+              .indexName(INDEX_NAME)
+              .storageIndexReadRequests(Checkers.equal(8))
+              .storageIndexReadExecutionTime(Checkers.greater(0.0))
+              .build())
+          .build());
+    }
   }
 
   @Test
   public void testIndexOnlyScan() throws Exception {
     final String alias = "t";
-    testExplain(
+
+    try (Statement stmt = connection.createStatement()) {
+      // Warm up the cache to get catalog requests out of the way.
+      stmt.execute(String.format("SELECT * FROM %s", TABLE_NAME));
+
+      testExplain(
         String.format(
             "/*+ IndexOnlyScan(t %s) */SELECT c2, c3 FROM %s AS %s WHERE c3 <= 15",
             INDEX_NAME, TABLE_NAME, alias),
         makeTopLevelBuilder()
             .storageReadRequests(Checkers.greater(0))
             .storageWriteRequests(Checkers.equal(0))
+            .storageFlushesRequests(Checkers.equal(0))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(makePlanBuilder()
                 .nodeType(NODE_INDEX_ONLY_SCAN)
@@ -192,9 +214,10 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                 .alias(alias)
                 .indexName(INDEX_NAME)
                 .storageIndexReadRequests(Checkers.equal(4))
-                .storageIndexExecutionTime(Checkers.greater(0.0))
+                .storageIndexReadExecutionTime(Checkers.greater(0.0))
                 .build())
             .build());
+    }
   }
 
   @Test
@@ -202,7 +225,12 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
     // NestLoop accesses the inner table as many times as the rows from the outer
     final String t1Alias = "t1";
     final String t2Alias = "t2";
-    testExplain(
+
+    try (Statement stmt = connection.createStatement()) {
+      // Warm up the cache to get catalog requests out of the way.
+      stmt.execute(String.format("SELECT * FROM %s", TABLE_NAME));
+
+      testExplain(
         String.format(
             "/*+ IndexScan(t1 %s) IndexScan(t2 %s) Leading((t1 t2)) NestLoop(t1 t2) */" +
             "SELECT * FROM %s AS %s JOIN %3$s AS %s ON t1.c2 <= t2.c3 AND t1.c1 = 1",
@@ -210,6 +238,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
         makeTopLevelBuilder()
             .storageReadRequests(Checkers.greater(0))
             .storageWriteRequests(Checkers.equal(0))
+            .storageFlushesRequests(Checkers.equal(0))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(makePlanBuilder()
                 .nodeType(NODE_NESTED_LOOP)
@@ -220,20 +249,19 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                         .indexName(PK_INDEX_NAME)
                         .alias(t1Alias)
                         .storageIndexReadRequests(Checkers.equal(1))
-                        .storageIndexExecutionTime(Checkers.greater(0.0))
+                        .storageIndexReadExecutionTime(Checkers.greater(0.0))
                         .build(),
                     makePlanBuilder()
                         .nodeType(NODE_INDEX_SCAN)
                         .relationName(TABLE_NAME)
                         .indexName(INDEX_NAME)
                         .alias(t2Alias)
-                        .storageTableReadRequests(Checkers.equal(4))
-                        .storageTableExecutionTime(Checkers.greater(0.0))
-                        .storageIndexReadRequests(Checkers.equal(4))
-                        .storageIndexExecutionTime(Checkers.greater(0.0))
+                        .storageIndexReadRequests(Checkers.equal(8))
+                        .storageIndexReadExecutionTime(Checkers.greater(0.0))
                         .build())
                 .build())
             .build());
+    }
   }
 
   @Test
@@ -241,7 +269,12 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
     // Inner table never executed
     final String t1Alias = "t1";
     final String t2Alias = "t2";
-    testExplain(
+
+    try (Statement stmt = connection.createStatement()) {
+      // Warm up the cache to get catalog requests out of the way.
+      stmt.execute(String.format("SELECT * FROM %s", TABLE_NAME));
+
+      testExplain(
         String.format(
             "/*+ IndexScan(t1 %s) IndexScan(t2 %s) Leading((t1 t2)) NestLoop(t1 t2) */" +
             "SELECT * FROM %s AS %s JOIN %3$s AS %s ON t1.c2 <= t2.c3 AND t1.c1 = -1",
@@ -249,6 +282,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
         makeTopLevelBuilder()
             .storageReadRequests(Checkers.greater(0))
             .storageWriteRequests(Checkers.equal(0))
+            .storageFlushesRequests(Checkers.equal(0))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(makePlanBuilder()
                 .nodeType(NODE_NESTED_LOOP)
@@ -259,7 +293,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                         .indexName(PK_INDEX_NAME)
                         .alias(t1Alias)
                         .storageIndexReadRequests(Checkers.equal(1))
-                        .storageIndexExecutionTime(Checkers.greater(0.0))
+                        .storageIndexReadExecutionTime(Checkers.greater(0.0))
                         .build(),
                     makePlanBuilder()
                         .nodeType(NODE_INDEX_SCAN)
@@ -269,6 +303,8 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                         .build())
                 .build())
             .build());
+
+    }
   }
 
   @Test
@@ -276,6 +312,8 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
     try (Statement stmt = connection.createStatement()) {
       // reduce the batch size to avoid 0 wait time
       stmt.execute("SET ysql_session_max_batch_size = 4");
+      stmt.execute(String.format("SELECT * FROM %s", TABLE_NAME));
+
       ObjectChecker planChecker =
           makePlanBuilder()
               .nodeType(NODE_MODIFY_TABLE)
@@ -291,11 +329,11 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
       testExplain(
         String.format(
             "INSERT INTO %s VALUES (1001, 0, 0, 'xyz'), (1002, 0, 0, 'wxy'), " +
-            "(1003, 0, 0, 'vwx'), (1004, 0, 0, 'vwx')",
-            TABLE_NAME),
+            "(1003, 0, 0, 'vwx'), (1004, 0, 0, 'vwx')", TABLE_NAME),
         makeTopLevelBuilder()
             .storageReadRequests(Checkers.equal(0))
-            .storageWriteRequests(Checkers.equal(2))
+            .storageFlushesRequests(Checkers.equal(2))
+            .storageWriteRequests(Checkers.equal(8))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(planChecker)
             .build());
@@ -309,6 +347,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
             TABLE_NAME),
         makeTopLevelBuilder()
             .storageReadRequests(Checkers.equal(0))
+            .storageFlushesRequests(Checkers.equal(8))
             .storageWriteRequests(Checkers.equal(8))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(planChecker)
@@ -351,7 +390,8 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
             INDEX_NAME, TABLE_NAME, alias),
         makeTopLevelBuilder()
             .storageReadRequests(Checkers.greater(0))
-            .storageWriteRequests(Checkers.equal(1))
+            .storageWriteRequests(Checkers.greater(1))
+            .storageFlushesRequests(Checkers.equal(1))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(makePlanBuilder()
                 .nodeType(NODE_MODIFY_TABLE)
@@ -363,10 +403,8 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                         .relationName(TABLE_NAME)
                         .indexName(INDEX_NAME)
                         .alias(alias)
-                        .storageTableReadRequests(Checkers.equal(1))
-                        .storageTableExecutionTime(Checkers.greater(0.0))
-                        .storageIndexReadRequests(Checkers.equal(1))
-                        .storageIndexExecutionTime(Checkers.greater(0.0))
+                        .storageIndexReadRequests(Checkers.equal(2))
+                        .storageIndexReadExecutionTime(Checkers.greater(0.0))
                         .build())
                 .build())
             .build());
@@ -381,7 +419,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
             PK_INDEX_NAME, TABLE_NAME, alias),
         makeTopLevelBuilder()
             .storageReadRequests(Checkers.greater(0))
-            .storageWriteRequests(Checkers.equal(1))
+            .storageFlushesRequests(Checkers.equal(1))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(makePlanBuilder()
                 .nodeType(NODE_MODIFY_TABLE)
@@ -394,7 +432,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                         .indexName(PK_INDEX_NAME)
                         .alias(alias)
                         .storageIndexReadRequests(Checkers.equal(1))
-                        .storageIndexExecutionTime(Checkers.greater(0.0))
+                        .storageIndexReadExecutionTime(Checkers.greater(0.0))
                         .build())
                 .build())
             .build());
@@ -409,7 +447,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
           query,
           makeTopLevelBuilder()
               .storageReadRequests(Checkers.greater(0))
-              .storageWriteRequests(Checkers.equal(20))
+              .storageFlushesRequests(Checkers.equal(20))
               .storageExecutionTime(Checkers.greater(0.0))
               .plan(makePlanBuilder()
                   .nodeType(NODE_MODIFY_TABLE)
@@ -421,7 +459,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                           .relationName(TABLE_NAME)
                           .alias(TABLE_NAME)
                           .storageTableReadRequests(Checkers.equal(5))
-                          .storageTableExecutionTime(Checkers.greater(0.0))
+                          .storageTableReadExecutionTime(Checkers.greater(0.0))
                           .build())
                   .build())
               .build());
@@ -431,7 +469,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
           query,
           makeTopLevelBuilder()
               .storageReadRequests(Checkers.greater(0))
-              .storageWriteRequests(Checkers.equal(0))
+              .storageFlushesRequests(Checkers.equal(0))
               .storageExecutionTime(Checkers.greater(0.0))
               .plan(makePlanBuilder()
                   .nodeType(NODE_MODIFY_TABLE)
@@ -443,7 +481,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                           .relationName(TABLE_NAME)
                           .alias(TABLE_NAME)
                           .storageTableReadRequests(Checkers.equal(1))
-                          .storageTableExecutionTime(Checkers.greater(0.0))
+                          .storageTableReadExecutionTime(Checkers.greater(0.0))
                           .build())
                   .build())
               .build());
@@ -507,8 +545,8 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
             "UPDATE %s SET c4 = rpad(c1::text, 256, '*') WHERE c1 = 999 RETURNING *",
             TABLE_NAME),
         makeTopLevelBuilder()
-            .storageReadRequests(Checkers.equal(1))
-            .storageWriteRequests(Checkers.equal(1))
+            .storageReadRequests(Checkers.greater(1))
+            .storageFlushesRequests(Checkers.equal(1))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(makePlanBuilder()
                 .nodeType(NODE_MODIFY_TABLE)
@@ -521,7 +559,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                         .indexName(PK_INDEX_NAME)
                         .alias(TABLE_NAME)
                         .storageIndexReadRequests(Checkers.equal(1))
-                        .storageIndexExecutionTime(Checkers.greater(0.0))
+                        .storageIndexReadExecutionTime(Checkers.greater(0.0))
                         .build())
                 .build())
             .build());
@@ -535,8 +573,8 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
             "/*+ IndexScan(t %s) */DELETE FROM %s AS %s WHERE c1 >= 500 RETURNING *",
             PK_INDEX_NAME, TABLE_NAME, alias),
         makeTopLevelBuilder()
-            .storageReadRequests(Checkers.equal(3))
-            .storageWriteRequests(Checkers.equal(10))
+            .storageReadRequests(Checkers.greater(3))
+            .storageFlushesRequests(Checkers.equal(10))
             .storageExecutionTime(Checkers.greater(0.0))
             .plan(makePlanBuilder()
                 .nodeType(NODE_MODIFY_TABLE)
@@ -549,7 +587,7 @@ public class TestPgExplainAnalyze extends BasePgSQLTest {
                         .indexName(PK_INDEX_NAME)
                         .alias(alias)
                         .storageIndexReadRequests(Checkers.equal(3))
-                        .storageIndexExecutionTime(Checkers.greater(0.0))
+                        .storageIndexReadExecutionTime(Checkers.greater(0.0))
                         .build())
                 .build())
             .build());

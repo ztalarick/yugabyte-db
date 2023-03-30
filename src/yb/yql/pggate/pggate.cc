@@ -298,16 +298,6 @@ Status FetchExistingYbctids(PgSession::ScopedRefPtr session,
     }
   }
 
-  // for (auto& it: doc_ops) {
-  //   YBCPgExecStats exec_stats;
-  //   exec_stats.num_table_reads = it->GetNumDocDBTableReadRequests();
-  //   exec_stats.num_table_writes = it->GetNumDocDBTableWriteRequests();
-  //   exec_stats.min_parallelism = it->GetDocDBMinParallelism();
-  //   exec_stats.max_parallelism = it->GetDocDBMaxParallelism();
-  //   exec_stats.wait_time = it->GetDocDBRequestWaitTime();
-  //   session->UpdateStats(&exec_stats);
-  // }
-
   return Status::OK();
 }
 

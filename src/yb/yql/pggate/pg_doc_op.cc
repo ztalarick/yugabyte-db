@@ -319,30 +319,48 @@ Status PgDocOp::SendRequestImpl(ForceNonBufferable force_non_bufferable) {
   return Status::OK();
 }
 
-master::RelationType resolveRelationType(const PgTable &table) {
+master::RelationType resolveRelationType(std::shared_ptr<PgsqlOp> op, const PgTable &table) {
+  bool has_index_request = false;
   // TODO: Replace this with a standard library function.
 
   if (table->id().object_oid < kPgFirstNormalObjectId) {
+    // We don't distinguish between table reads and index reads for a catalog table.
     return master::SYSTEM_TABLE_RELATION;
-  } else if (table->IsIndex()) {
-    return master::INDEX_TABLE_RELATION;
-  } else {
-    return master::USER_TABLE_RELATION;
   }
+
+  // Check if we're making an index request.
+  if (op->is_read() &&
+  (std::dynamic_pointer_cast<PgsqlReadOp>(op)->read_request().has_index_request() ||
+  (std::dynamic_pointer_cast<PgsqlReadOp>(op)->read_request().has_is_forward_scan())))
+    has_index_request = true;
+
+  // Check for scans on primary or secondary indexes.
+  if (table->IsIndex() || has_index_request) {
+    return master::INDEX_TABLE_RELATION;
+  }
+
+  return master::USER_TABLE_RELATION;
 }
 
 void PgDocOp::PerformPreRequestInstrumentation() {
-  uint64_t reads = 0, writes = 0;
+  uint64_t reads = 0, writes = 0, counter = 0, last_read_index, last_write_index;
+
+  // Open question: Can you table reads and index reads batched together in the same DocDB req?
 
   for (const auto& op : pgsql_ops_) {
     op->is_read() ? ++reads : ++writes;
+    op->is_read() ? last_read_index = counter : last_write_index = counter;
+
+    counter++;
   }
 
   if (reads > 0)
-    pg_session_->UpdateSessionStatsCount(resolveRelationType(table_), true, reads);
+    pg_session_->UpdateSessionStatsCount(
+      resolveRelationType(pgsql_ops_[last_read_index], table_), true, reads);
 
   if (writes > 0)
-    pg_session_->UpdateSessionStatsCount(resolveRelationType(table_), false, writes);
+    pg_session_->UpdateSessionStatsCount(
+      resolveRelationType(pgsql_ops_[last_write_index], table_), false, writes);
 }
 
 void PgDocOp::PerformPostRequestInstrumentation() {
@@ -351,7 +369,7 @@ void PgDocOp::PerformPostRequestInstrumentation() {
   // 1. Fix descrepancy between read/write ops to the same table buffered in the same request.
 
   pg_session_->UpdateSessionStatsWaitTime(
-    resolveRelationType(table_), pgsql_ops_[0]->is_read(), wait_time);
+    resolveRelationType(pgsql_ops_[0], table_), pgsql_ops_[0]->is_read(), wait_time);
   read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
 }
 

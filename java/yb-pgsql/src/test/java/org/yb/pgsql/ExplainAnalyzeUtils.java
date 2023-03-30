@@ -39,6 +39,7 @@ public class ExplainAnalyzeUtils {
     TopLevelCheckerBuilder plan(ObjectChecker checker);
     TopLevelCheckerBuilder storageReadRequests(ValueChecker<Long> checker);
     TopLevelCheckerBuilder storageWriteRequests(ValueChecker<Long> checker);
+    TopLevelCheckerBuilder storageFlushesRequests(ValueChecker<Long> checker);
     TopLevelCheckerBuilder storageExecutionTime(ValueChecker<Double> checker);
   }
 
@@ -50,9 +51,10 @@ public class ExplainAnalyzeUtils {
     PlanCheckerBuilder plans(Checker... checker);
     PlanCheckerBuilder relationName(String value);
     PlanCheckerBuilder storageTableReadRequests(ValueChecker<Long> checker);
-    PlanCheckerBuilder storageTableExecutionTime(ValueChecker<Double> checker);
+    PlanCheckerBuilder storageTableReadExecutionTime(ValueChecker<Double> checker);
     PlanCheckerBuilder storageIndexReadRequests(ValueChecker<Long> checker);
-    PlanCheckerBuilder storageIndexExecutionTime(ValueChecker<Double> checker);
+    PlanCheckerBuilder storageIndexReadExecutionTime(ValueChecker<Double> checker);
+    PlanCheckerBuilder storageCatalogReadRequests(ValueChecker<Long> checker);
   }
 
   private static void testExplain(

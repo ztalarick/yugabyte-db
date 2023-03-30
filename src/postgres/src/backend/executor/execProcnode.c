@@ -486,12 +486,6 @@ YbUpdateInstrument(PlanState *node)
 		break;
 	default:
 		YbUpdateRpcStats(node->instrument);
-
-		if (node->state->yb_handle) {
-			YBC_LOG_INFO("Handle active; Performing instrumentation");
-			YBCPgDeleteStatement(node->state->yb_handle);
-			node->state->yb_handle = NULL;
-		}
 		break;
 	}
 }

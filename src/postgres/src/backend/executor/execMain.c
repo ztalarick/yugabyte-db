@@ -1043,8 +1043,6 @@ InitPlan(QueryDesc *queryDesc, int eflags)
 	 * tree.  This opens files, allocates storage and leaves us ready to start
 	 * processing tuples.
 	 */
-	// YbCreateSingleQuerySysStats();
-	// Create session stats here.
 	planstate = ExecInitNode(plan, estate, eflags);
 
 	/*

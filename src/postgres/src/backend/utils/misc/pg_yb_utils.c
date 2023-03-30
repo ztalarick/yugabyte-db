@@ -3087,10 +3087,6 @@ void aggregateStats(Instrumentation *instr, YBCPgExecStats exec_stats) {
 	instr->yb_catalog_read_rpcs.wait_time += exec_stats.catalog_read_wait;
 	instr->yb_catalog_write_rpcs.count += exec_stats.num_catalog_writes;
 	instr->yb_catalog_write_rpcs.wait_time += exec_stats.catalog_write_wait;
-
-	// Cumulative metrics
-	instr->yb_tbl_write_rpcs.min_parallelism = exec_stats.min_parallelism;
-	instr->yb_tbl_write_rpcs.max_parallelism = exec_stats.max_parallelism;
 }
 
 void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr) {
