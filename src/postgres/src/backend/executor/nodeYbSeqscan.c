@@ -276,3 +276,12 @@ ExecReScanYbSeqScan(YbSeqScanState *node)
 
 	ExecScanReScan((ScanState *) node);
 }
+
+void
+YbExecUpdateInstrumentYbSeqScan(YbSeqScanState *node, Instrumentation *instr)
+{
+	YbScanDesc ybscan = node->ss.ss_currentScanDesc->ybscan;
+	Assert(PointerIsValid(ybscan));
+
+	YbUpdateRpcStats(instr);
+}

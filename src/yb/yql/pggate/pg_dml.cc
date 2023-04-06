@@ -518,15 +518,5 @@ void PgDml::GetAndResetReadRpcStats(uint64_t* reads, uint64_t* read_wait,
   }
 }
 
-void PgDml::GetAndResetDocDBStats(YBCPgExecStats *stats) {
-
-  if (!doc_op_) {
-    LOG(INFO) << "No doc op available";
-    return;
-  }
-
-  pg_session_->GetDocDBStats(stats);
-}
-
 }  // namespace pggate
 }  // namespace yb

@@ -2039,6 +2039,16 @@ YbExecUpdateInstrumentIndexScan(IndexScanState *node, Instrumentation *instr)
 {
 	YbScanDesc ybscan = (YbScanDesc)node->iss_ScanDesc->opaque;
 	Assert(PointerIsValid(ybscan));
+
+	if (node->ss.ss_currentRelation->rd_islocaltemp)
+	{
+		/*
+		 * Temp tables do not create YB Handles. So, bypass instrumenting them.
+		 */
+		YbUpdateRpcStats(instr);
+		return;
+	}
+
 	if (ybscan->handle)
 		YbUpdateReadRpcStats(ybscan->handle, instr);
 }

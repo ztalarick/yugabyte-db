@@ -551,8 +551,6 @@ extern void YBBeginOperationsBuffering();
 extern void YBEndOperationsBuffering();
 extern void YBResetOperationsBuffering();
 extern void YBFlushBufferedOperations();
-extern void YBGetAndResetOperationFlushRpcStats(uint64_t *count,
-												uint64_t *wait_time);
 
 bool YBEnableTracing();
 bool YBReadFromFollowersEnabled();
@@ -713,6 +711,7 @@ extern void assign_yb_xcluster_consistency_level(const char *newval,
 void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr); /* Handle related */
 void YbUpdateRpcStats(Instrumentation *instr); /* Non-handle related */
 void YbRefreshSessionStats();
+void YbRefreshPreQuerySessionStats();
 
 /*
  * If the tserver gflag --ysql_disable_server_file_access is set to

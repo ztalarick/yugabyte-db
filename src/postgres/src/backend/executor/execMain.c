@@ -438,6 +438,10 @@ standard_ExecutorFinish(QueryDesc *queryDesc)
 	if (queryDesc->totaltime)
 		InstrStopNode(queryDesc->totaltime, 0);
 
+	/* Refresh the session execution stats at the end of each query, so
+	 * that stats don't accumulate across queries */
+	YbRefreshSessionStats();
+
 	MemoryContextSwitchTo(oldcontext);
 
 	estate->es_finished = true;
@@ -1660,10 +1664,6 @@ ExecEndPlan(PlanState *planstate, EState *estate)
 		if (erm->relation)
 			heap_close(erm->relation, NoLock);
 	}
-
-	/* Refresh the session execution stats at the end of each query, so
-	 * that stats don't accumulate across queries */
-	YbRefreshSessionStats();
 }
 
 /* ----------------------------------------------------------------

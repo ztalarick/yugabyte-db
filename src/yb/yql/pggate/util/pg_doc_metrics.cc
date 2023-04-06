@@ -35,6 +35,9 @@ METRIC_DEFINE_counter(
 METRIC_DEFINE_counter(
     pg_doc_request, docdb_catalog_writes, "Number of system catalog writes",
     yb::MetricUnit::kRequests, "Desc goes here");
+METRIC_DEFINE_counter(
+    pg_doc_request, docdb_flushes, "Number of flushes", yb::MetricUnit::kRequests,
+    "Desc goes here");
 
 METRIC_DEFINE_gauge_uint64(
     pg_doc_request, docdb_table_read_wait, "Time (in unit: X) waited to complete DocDB request",
@@ -55,11 +58,8 @@ METRIC_DEFINE_gauge_uint64(
     pg_doc_request, docdb_catalog_write_wait, "Time (in unit: X) waited to complete DocDB request",
     yb::MetricUnit::kMicroseconds, "Desc goes here");
 METRIC_DEFINE_gauge_uint64(
-    pg_doc_request, docdb_min_parallelism, "Minimum number of requests batched to DocDB",
-    yb::MetricUnit::kRequests, "Desc goes here");
-METRIC_DEFINE_gauge_uint64(
-    pg_doc_request, docdb_max_parallelism, "Maximum number of requests batched to DocDB",
-    yb::MetricUnit::kRequests, "Desc goes here");
+    pg_doc_request, docdb_flush_wait, "Time (in unit: X) waited to complete DocDB request",
+    yb::MetricUnit::kMicroseconds, "Desc goes here");
 
 namespace yb {
 namespace pggate {
@@ -76,12 +76,12 @@ RpcStats::RpcStats(
     exec_time = entity->FindOrCreateGauge(exec_time_proto, static_cast<uint64>(0));
 }
 
-void RpcStats::Reset() {
+void RpcStats::Reset() const {
     count->ResetValue();
     exec_time->set_value(0);
 }
 
-void RpcStats::IncrementCountBy(uint64_t num) {
+void RpcStats::IncrementCountBy(uint64_t num) const {
     count->IncrementBy(num);
 }
 
@@ -111,6 +111,11 @@ PgDocMetrics::PgDocMetrics(MetricRegistry* registry, const std::string& id) {
     catalog_writes = RpcStats(
         entity_, &METRIC_docdb_catalog_writes, &METRIC_docdb_catalog_write_wait
     );
+
+    // Flushes metrics
+    flushes = RpcStats(
+        entity_, &METRIC_docdb_flushes, &METRIC_docdb_flush_wait
+    );
 }
 
 PgDocMetrics::~PgDocMetrics() = default;
@@ -135,19 +140,21 @@ void PgDocMetrics::GetStats(YBCPgExecStats *stats) {
     stats->num_table_reads = table_reads.count->value();
     stats->table_read_wait = table_reads.exec_time->value();
     stats->num_table_writes = table_writes.count->value();
-    stats->table_write_wait = table_writes.exec_time->value();
 
     // Secondary Index metrics
     stats->num_index_reads = index_reads.count->value();
     stats->index_read_wait = index_reads.exec_time->value();
     stats->num_index_writes = index_writes.count->value();
-    stats->index_write_wait = index_writes.exec_time->value();
 
     // Catalog metrics
     stats->num_catalog_reads = catalog_reads.count->value();
     stats->catalog_read_wait = catalog_reads.exec_time->value();
     stats->num_catalog_writes = catalog_writes.count->value();
     stats->catalog_write_wait = catalog_writes.exec_time->value();
+
+    // Flush metrics
+    stats->num_flushes = flushes.count->value();
+    stats->flush_wait = flushes.exec_time->value();
 }
 
 void PgDocMetrics::AddDocOpRequest(
@@ -193,6 +200,13 @@ void PgDocMetrics::IncrementExecutionTime(
     }
 
     metric->IncrementBy(wait_time);
+}
+
+void PgDocMetrics::AddFlushRequest(uint64_t wait_time) const {
+    LOG(INFO) << "Flush count incremented!";
+
+    flushes.IncrementCountBy(1);
+    flushes.exec_time->IncrementBy(wait_time);
 }
 
 } // namespace pggate

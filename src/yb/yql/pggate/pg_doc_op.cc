@@ -345,7 +345,7 @@ master::RelationType resolveRelationType(std::shared_ptr<PgsqlOp> op, const PgTa
 void PgDocOp::PerformPreRequestInstrumentation() {
   uint64_t reads = 0, writes = 0, counter = 0, last_read_index, last_write_index;
 
-  // Open question: Can you table reads and index reads batched together in the same DocDB req?
+  // Open question: Can table reads and index reads batched together in the same DocDB req?
 
   for (const auto& op : pgsql_ops_) {
     op->is_read() ? ++reads : ++writes;
@@ -365,11 +365,10 @@ void PgDocOp::PerformPreRequestInstrumentation() {
 
 void PgDocOp::PerformPostRequestInstrumentation() {
   uint64_t wait_time = static_cast<uint64_t>(read_rpc_wait_time_.ToNanoseconds());
-  // TODO:
-  // 1. Fix descrepancy between read/write ops to the same table buffered in the same request.
+  LOG(INFO) << "Wait time is " << wait_time;
 
   pg_session_->UpdateSessionStatsWaitTime(
-    resolveRelationType(pgsql_ops_[0], table_), pgsql_ops_[0]->is_read(), wait_time);
+    resolveRelationType(pgsql_ops_[0], table_), true, wait_time);
   read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
 }
 

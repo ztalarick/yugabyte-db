@@ -484,6 +484,10 @@ YbUpdateInstrument(PlanState *node)
 		YbExecUpdateInstrumentForeignScan((ForeignScanState *) node,
 										  node->instrument);
 		break;
+	case T_YbSeqScanState:
+		YbExecUpdateInstrumentYbSeqScan((YbSeqScanState *) node,
+										node->instrument);
+		break;
 	default:
 		YbUpdateRpcStats(node->instrument);
 		break;

@@ -31,8 +31,8 @@ typedef struct RpcStats {
     RpcStats(scoped_refptr<MetricEntity>, CounterPrototype *, GaugePrototype<uint64_t> *);
     virtual ~RpcStats();
 
-    void Reset();
-    void IncrementCountBy(uint64_t count);
+    void Reset() const;
+    void IncrementCountBy(uint64_t count) const;
 
 private:
     void CopyFrom(const RpcStats &);
@@ -44,6 +44,7 @@ class PgDocMetrics {
     virtual ~PgDocMetrics();
 
     void AddDocOpRequest(master::RelationType relation, bool is_read, uint64_t parallelism);
+    void AddFlushRequest(uint64_t wait_time) const;
     void IncrementExecutionTime(master::RelationType relation, bool is_read, uint64_t wait_time);
     void GetStats(YBCPgExecStats *stats);
     void Reset(); /* Resets all counter-based metrics */
@@ -60,6 +61,9 @@ class PgDocMetrics {
     // Catalog metrics
     RpcStats catalog_reads;
     RpcStats catalog_writes;
+
+    // Flush metrics
+    RpcStats flushes;
 
     scoped_refptr<MetricEntity> entity_;
 };

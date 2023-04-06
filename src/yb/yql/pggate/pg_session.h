@@ -348,10 +348,9 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   Result<bool> CheckIfPitrActive();
 
-  void GetAndResetOperationFlushRpcStats(uint64_t* count, uint64_t* wait_time);
-
   void GetDocDBStats(YBCPgExecStats *stats);
   void RefreshDocDBSessionStats();
+  void RefreshDocDBPreQuerySessionStats();
 
   void UpdateSessionStatsCount(
       master::RelationType relation_type, bool is_read, uint64_t parallelism) {

@@ -472,7 +472,6 @@ class PgApiImpl {
   Status StopOperationsBuffering();
   void ResetOperationsBuffering();
   Status FlushBufferedOperations();
-  void GetAndResetOperationFlushRpcStats(uint64_t* count, uint64_t* wait_time);
 
   //------------------------------------------------------------------------------------------------
   // Insert.
@@ -630,6 +629,7 @@ class PgApiImpl {
   // RPC stats for EXPLAIN ANALYZE
   void GetSessionExecStats(YBCPgExecStats *stats);
   void RefreshSessionExecStats();
+  void RefreshPreQuerySessionStats();
 
   //------------------------------------------------------------------------------------------------
   // System Validation.

@@ -333,7 +333,8 @@ PgSession::PgSession(
       buffer_(
           std::bind(
           &PgSession::FlushOperations, this, std::placeholders::_1, std::placeholders::_2),
-          buffering_settings_),
+          buffering_settings_,
+          metrics_),
       pg_callbacks_(pg_callbacks),
       metrics_(std::move(PgDocMetrics(metric_registry_.get(), "pg-session-id"))) {
 
@@ -561,11 +562,6 @@ Status PgSession::FlushBufferedOperations() {
 
 void PgSession::DropBufferedOperations() {
   buffer_.Clear();
-}
-
-void PgSession::GetAndResetOperationFlushRpcStats(uint64_t* count,
-                                                  uint64_t* wait_time) {
-  buffer_.GetAndResetRpcStats(count, wait_time);
 }
 
 PgIsolationLevel PgSession::GetIsolationLevel() {
@@ -901,7 +897,7 @@ Result<bool> PgSession::CheckIfPitrActive() {
 }
 
 void PgSession::GetDocDBStats(YBCPgExecStats *stats) {
-  YBCPgExecStats current_metrics;
+  YBCPgExecStats current_metrics = {};
 
   metrics_.GetStats(&current_metrics);
   Subtract(&current_metrics, &metrics_snapshot, stats);
@@ -913,7 +909,33 @@ void PgSession::RefreshDocDBSessionStats() {
   YBCPgExecStats current_metrics;
 
   metrics_.GetStats(&current_metrics);
-  metrics_snapshot = current_metrics;
+
+  metrics_snapshot.num_table_reads = current_metrics.num_table_reads;
+  metrics_snapshot.table_read_wait = current_metrics.table_read_wait;
+
+  metrics_snapshot.num_index_reads = current_metrics.num_index_reads;
+  metrics_snapshot.index_read_wait = current_metrics.index_read_wait;
+
+  metrics_snapshot.num_table_writes = current_metrics.num_table_writes;
+  metrics_snapshot.num_index_writes = current_metrics.num_index_writes;
+
+  metrics_snapshot.num_catalog_reads = current_metrics.num_catalog_reads;
+  metrics_snapshot.num_catalog_writes = current_metrics.num_catalog_writes;
+  metrics_snapshot.catalog_read_wait = current_metrics.catalog_read_wait;
+  metrics_snapshot.catalog_write_wait = current_metrics.catalog_write_wait;
+}
+
+void PgSession::RefreshDocDBPreQuerySessionStats() {
+  YBCPgExecStats current_metrics;
+  metrics_.GetStats(&current_metrics);
+
+  /*
+   * Metrics that are collected async to the Postgres instrumentation framework must be reset
+   * at the beginning of subsequent queries.
+   */
+
+  metrics_snapshot.num_flushes = current_metrics.num_flushes;
+  metrics_snapshot.flush_wait = current_metrics.flush_wait;
 }
 
 }  // namespace pggate

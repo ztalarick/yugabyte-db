@@ -1725,9 +1725,12 @@ void PgApiImpl::RefreshSessionExecStats() {
   pg_session_->RefreshDocDBSessionStats();
 }
 
-void PgApiImpl::GetAndResetOperationFlushRpcStats(uint64_t* count,
-                                                  uint64_t* wait_time) {
-  pg_session_->GetAndResetOperationFlushRpcStats(count, wait_time);
+void PgApiImpl::RefreshPreQuerySessionStats() {
+  if (!pg_session_) {
+    return;
+  }
+
+  pg_session_->RefreshDocDBPreQuerySessionStats();
 }
 
 // Tuple Expression -----------------------------------------------------------------------------

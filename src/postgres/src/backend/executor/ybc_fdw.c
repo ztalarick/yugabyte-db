@@ -693,6 +693,15 @@ YbExecUpdateInstrumentForeignScan(ForeignScanState *node,
 								  Instrumentation *instr)
 {
 	YbFdwExecState *ybc_state = (YbFdwExecState *) node->fdw_state;
+	if (node->ss.ss_currentRelation->rd_islocaltemp)
+	{
+		/*
+		 * Temp tables do not create YB Handles. So, bypass instrumenting them.
+		 */
+		YbUpdateRpcStats(instr);
+		return;
+	}
+
 	if (ybc_state->handle)
 		YbUpdateReadRpcStats(ybc_state->handle, instr);
 }

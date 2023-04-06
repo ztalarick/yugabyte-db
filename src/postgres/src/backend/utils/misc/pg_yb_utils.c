@@ -1696,9 +1696,9 @@ void YBFlushBufferedOperations() {
 	HandleYBStatus(YBCPgFlushBufferedOperations());
 }
 
-void YBGetAndResetOperationFlushRpcStats(uint64_t *count, uint64_t *wait_time) {
-	YBCPgGetAndResetOperationFlushRpcStats(count, wait_time);
-}
+// void YBGetAndResetOperationFlushRpcStats(uint64_t *count, uint64_t *wait_time) {
+// 	YBCPgGetAndResetOperationFlushRpcStats(count, wait_time);
+// }
 
 bool YBEnableTracing() {
   return yb_enable_docdb_tracing;
@@ -3074,19 +3074,21 @@ void aggregateStats(Instrumentation *instr, YBCPgExecStats exec_stats) {
 	instr->yb_tbl_read_rpcs.count += exec_stats.num_table_reads;
 	instr->yb_tbl_read_rpcs.wait_time += exec_stats.table_read_wait;
 	instr->yb_tbl_write_rpcs.count += exec_stats.num_table_writes;
-	instr->yb_tbl_write_rpcs.wait_time += exec_stats.table_write_wait;
 
 	// Secondary Index metrics
 	instr->yb_index_read_rpcs.count += exec_stats.num_index_reads;
 	instr->yb_index_read_rpcs.wait_time += exec_stats.index_read_wait;
 	instr->yb_index_write_rpcs.count += exec_stats.num_index_writes;
-	instr->yb_index_write_rpcs.wait_time += exec_stats.index_write_wait;
 
 	// System Catalog metrics
 	instr->yb_catalog_read_rpcs.count += exec_stats.num_catalog_reads;
 	instr->yb_catalog_read_rpcs.wait_time += exec_stats.catalog_read_wait;
 	instr->yb_catalog_write_rpcs.count += exec_stats.num_catalog_writes;
 	instr->yb_catalog_write_rpcs.wait_time += exec_stats.catalog_write_wait;
+
+	// Flush metrics
+	instr->yb_write_flush_rpcs.count += exec_stats.num_flushes;
+	instr->yb_write_flush_rpcs.wait_time += exec_stats.flush_wait;
 }
 
 void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr) {
@@ -3096,7 +3098,7 @@ void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr) {
 void
 YbUpdateRpcStats(Instrumentation *instr)
 {
-	YBCPgExecStats exec_stats = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	YBCPgExecStats exec_stats = {0};
 
 	YBCGetPgSessionExecStats(&exec_stats);
 	aggregateStats(instr, exec_stats);
@@ -3105,6 +3107,11 @@ YbUpdateRpcStats(Instrumentation *instr)
 void YbRefreshSessionStats()
 {
 	YBCRefreshPgSessionExecStats();
+}
+
+void YbRefreshPreQuerySessionStats()
+{
+	YBCRefreshPgPreQuerySessionExecStats();
 }
 
 void YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)

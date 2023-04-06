@@ -202,9 +202,13 @@ size_t BufferableOperations::size() const {
 
 class PgOperationBuffer::Impl {
  public:
-  Impl(const Flusher& flusher, const BufferingSettings& buffering_settings)
-      : flusher_(flusher),
-        buffering_settings_(buffering_settings) {
+  Impl(
+    const Flusher& flusher,
+    const BufferingSettings& buffering_settings,
+    const PgDocMetrics& metrics
+  ) : flusher_(flusher),
+      buffering_settings_(buffering_settings),
+      metrics_(metrics) {
   }
 
   Status Add(const PgTableDesc& table, PgsqlWriteOpPtr op, bool transactional) {
@@ -240,13 +244,6 @@ class PgOperationBuffer::Impl {
       in_flight_ops.push_back(std::move(i));
     }
     in_flight_ops_.clear();
-  }
-
-  void GetAndResetRpcStats(uint64_t* count, uint64_t* wait_time) {
-    *count = rpc_count_;
-    rpc_count_ = 0;
-    *wait_time = rpc_wait_time_.ToNanoseconds();
-    rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
   }
 
  private:
@@ -327,6 +324,9 @@ class PgOperationBuffer::Impl {
     for(; count && !in_flight_ops_.empty(); --count) {
       RETURN_NOT_OK(in_flight_ops_.front().future.Get(&rpc_wait_time_));
       in_flight_ops_.pop_front();
+
+      metrics_.AddFlushRequest(static_cast<uint64_t>(rpc_wait_time_.ToNanoseconds()));
+      rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
       ++rpc_count_;
     }
     return Status::OK();
@@ -415,11 +415,14 @@ class PgOperationBuffer::Impl {
   InFlightOps in_flight_ops_;
   uint64_t rpc_count_ = 0;
   MonoDelta rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
+  // Stats for EXPLAIN ANALYZE.
+  const PgDocMetrics& metrics_;
 };
 
 PgOperationBuffer::PgOperationBuffer(const Flusher& flusher,
-                                     const BufferingSettings& buffering_settings)
-    : impl_(new Impl(flusher, buffering_settings)) {
+                                     const BufferingSettings& buffering_settings,
+                                     const PgDocMetrics& metrics)
+    : impl_(new Impl(flusher, buffering_settings, metrics)) {
 }
 
 PgOperationBuffer::~PgOperationBuffer() = default;
@@ -443,11 +446,6 @@ size_t PgOperationBuffer::Size() const {
 
 void PgOperationBuffer::Clear() {
     impl_->Clear();
-}
-
-void PgOperationBuffer::GetAndResetRpcStats(uint64_t* count,
-                                            uint64_t* wait_time) {
-  impl_->GetAndResetRpcStats(count, wait_time);
 }
 
 } // namespace pggate

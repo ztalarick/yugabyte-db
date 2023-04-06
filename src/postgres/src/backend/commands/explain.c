@@ -551,8 +551,7 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 		/* clear the stats by dummy read */
 		if (es->rpc)
 		{
-			uint64_t count, wait_time;
-			YBGetAndResetOperationFlushRpcStats(&count, &wait_time);
+			YbRefreshPreQuerySessionStats();
 		}
 
 		/* run the plan */
@@ -563,6 +562,14 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 
 		/* run cleanup too */
 		ExecutorFinish(queryDesc);
+
+		if (es->rpc)
+		{
+			Instrumentation instr = {};
+			YbUpdateRpcStats(&instr);
+			es->yb_total_flush_count = instr.yb_write_flush_rpcs.count;
+			es->yb_total_flush_wait = instr.yb_write_flush_rpcs.wait_time;
+		}
 
 		/* We can't run ExecutorEnd 'till we're done printing the stats... */
 		totaltime += elapsed_time(&starttime);
@@ -623,17 +630,24 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 							 es);
 		if (es->rpc)
 		{
+			/*
+			 * Total RPC wait time is the sum of Read waits, Flush waits and Catalog waits.
+			 */
 			double total_rpc_wait = 0.0;
-			uint64_t flush_count, flush_wait_time;
-			YBGetAndResetOperationFlushRpcStats(&flush_count, &flush_wait_time);
-			if (flush_count > 0)
-				total_rpc_wait += (double)flush_wait_time;
 			if (es->yb_total_read_rpc_count > 0.0)
 				total_rpc_wait += es->yb_total_read_rpc_wait;
 
-			explainRpcRequestStat(es, "Storage Read", es->yb_total_read_rpc_count, 0.0, true);
+			if (es->yb_total_flush_count > 0.0)
+				total_rpc_wait += es->yb_total_flush_wait;
+			
+			if (es->yb_total_catalog_read_rpc_count > 0.0)
+				total_rpc_wait += es->yb_total_catalog_read_rpc_wait;
+
+			explainRpcRequestStat(es, "Storage Read", es->yb_total_read_rpc_count, es->yb_total_read_rpc_wait, true);
 			explainRpcRequestStat(es, "Storage Write", es->yb_total_write_rpc_count, 0.0, true);
-			explainRpcRequestStat(es, "Storage Flushes", flush_count, 0.0, true);
+			explainRpcRequestStat(es, "Storage Flushes", es->yb_total_flush_count, es->yb_total_flush_wait, true);
+			explainRpcRequestStat(es, "Catalog Reads", es->yb_total_catalog_read_rpc_count,
+			es->yb_total_catalog_read_rpc_wait, true);
 
 			ExplainPropertyFloat("Storage Execution Time", "ms", total_rpc_wait / 1000000.0, 3, es);
 		}
@@ -1054,23 +1068,22 @@ ExplainNode(PlanState *planstate, List *ancestors,
 	{
 		es->yb_total_read_rpc_count +=
 			(planstate->instrument->yb_tbl_read_rpcs.count +
-			 planstate->instrument->yb_index_read_rpcs.count +
-			 planstate->instrument->yb_catalog_read_rpcs.count);
+			 planstate->instrument->yb_index_read_rpcs.count);
 
 		es->yb_total_read_rpc_wait +=
 			(planstate->instrument->yb_tbl_read_rpcs.wait_time +
-			 planstate->instrument->yb_index_read_rpcs.wait_time +
-			 planstate->instrument->yb_catalog_read_rpcs.wait_time);
+			 planstate->instrument->yb_index_read_rpcs.wait_time);
 
 		es->yb_total_write_rpc_count +=
 			(planstate->instrument->yb_tbl_write_rpcs.count +
 			 planstate->instrument->yb_index_write_rpcs.count +
 			 planstate->instrument->yb_catalog_write_rpcs.count);
 
-		es->yb_total_read_rpc_wait +=
-			(planstate->instrument->yb_tbl_write_rpcs.wait_time +
-			 planstate->instrument->yb_index_write_rpcs.wait_time +
-			 planstate->instrument->yb_catalog_write_rpcs.wait_time);
+		es->yb_total_catalog_read_rpc_count += planstate->instrument->yb_catalog_read_rpcs.count;
+		es->yb_total_catalog_read_rpc_wait += planstate->instrument->yb_catalog_read_rpcs.wait_time;
+
+		es->yb_total_flush_count += planstate->instrument->yb_write_flush_rpcs.count;
+		es->yb_total_flush_wait += planstate->instrument->yb_write_flush_rpcs.wait_time;
 	}
 
 	switch (nodeTag(plan))
@@ -1683,6 +1696,8 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			if (plan->qual)
 				show_instrumentation_count("Rows Removed by Filter", 1,
 										   planstate, es);
+			if (es->rpc && es->analyze && planstate->instrument->nloops > 0)
+				show_yb_rpc_stats(planstate, false /*indexScan*/, es);
 			break;
 		case T_Gather:
 			{
@@ -3034,26 +3049,21 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 	double table_read_wait = planstate->instrument->yb_tbl_read_rpcs.wait_time / nloops;
 	double index_reads = planstate->instrument->yb_index_read_rpcs.count / nloops;
 	double index_read_wait = planstate->instrument->yb_index_read_rpcs.wait_time / nloops;
-	double catalog_reads = planstate->instrument->yb_catalog_read_rpcs.count / nloops;
-	double catalog_read_wait = planstate->instrument->yb_catalog_read_rpcs.wait_time / nloops;
 
 	// Write stats
 	double table_writes = planstate->instrument->yb_tbl_write_rpcs.count / nloops;
-	double table_write_wait = planstate->instrument->yb_tbl_write_rpcs.wait_time / nloops;
 	double index_writes = planstate->instrument->yb_index_write_rpcs.count / nloops;
-	double index_write_wait = planstate->instrument->yb_index_write_rpcs.wait_time / nloops;
-	double catalog_writes = planstate->instrument->yb_catalog_write_rpcs.count / nloops;
-	double catalog_write_wait = planstate->instrument->yb_catalog_write_rpcs.wait_time / nloops;
+	double flushes = planstate->instrument->yb_write_flush_rpcs.count / nloops;
+	double flushes_wait = planstate->instrument->yb_write_flush_rpcs.wait_time / nloops;
 
 	/* Display the reads first */
 	explainRpcRequestStat(es, "Storage Table Read", table_reads, table_read_wait, false);
 	explainRpcRequestStat(es, "Storage Index Read", index_reads, index_read_wait, false);
-	explainRpcRequestStat(es, "Storage Catalog Read", catalog_reads, catalog_read_wait, false);
 
 	/* The writes */
-	explainRpcRequestStat(es, "Storage Table Write", table_writes, table_write_wait, false);
-	explainRpcRequestStat(es, "Storage Index Write", index_writes, index_write_wait, false);
-	explainRpcRequestStat(es, "Storage Catalog Write", catalog_writes, catalog_write_wait, false);
+	explainRpcRequestStat(es, "Storage Table Write", table_writes, 0.0, false);
+	explainRpcRequestStat(es, "Storage Index Write", index_writes, 0.0, false);
+	explainRpcRequestStat(es, "Storage Flushes", flushes, flushes_wait, false);
 }
 
 /*

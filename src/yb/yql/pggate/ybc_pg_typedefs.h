@@ -405,13 +405,11 @@ typedef struct PgExecStats {
   uint64_t num_table_reads;
   uint64_t num_table_writes;
   uint64_t table_read_wait;
-  uint64_t table_write_wait;
 
   // Secondary index stats
   uint64_t num_index_reads;
   uint64_t num_index_writes;
   uint64_t index_read_wait;
-  uint64_t index_write_wait;
 
   // Catalog stats
   uint64_t num_catalog_reads;
@@ -419,8 +417,8 @@ typedef struct PgExecStats {
   uint64_t catalog_read_wait;
   uint64_t catalog_write_wait;
 
-  uint64_t min_parallelism;
-  uint64_t max_parallelism;
+  uint64_t num_flushes;
+  uint64_t flush_wait;
 
 } YBCPgExecStats;
 

@@ -907,11 +907,6 @@ YBCStatus YBCPgFlushBufferedOperations() {
   return ToYBCStatus(pgapi->FlushBufferedOperations());
 }
 
-void YBCPgGetAndResetOperationFlushRpcStats(uint64_t* count,
-                                            uint64_t* wait_time) {
-  pgapi->GetAndResetOperationFlushRpcStats(count, wait_time);
-}
-
 YBCStatus YBCPgDmlExecWriteOp(YBCPgStatement handle, int32_t *rows_affected_count) {
   return ToYBCStatus(pgapi->DmlExecWriteOp(handle, rows_affected_count));
 }
@@ -1037,7 +1032,6 @@ YBCStatus YBCPgNewSelect(const YBCPgOid database_oid,
   const PgObjectId table_id(database_oid, table_oid);
   const PgObjectId index_id(database_oid,
                             prepare_params ? prepare_params->index_oid : kInvalidOid);
-  LOG(INFO) << "Executing a new PG Select on relation " << table_oid;
   return ToYBCStatus(pgapi->NewSelect(table_id, index_id, prepare_params, is_region_local, handle));
 }
 
@@ -1435,6 +1429,10 @@ void YBCRefreshPgSessionExecStats() {
   pgapi->RefreshSessionExecStats();
 }
 
+void YBCRefreshPgPreQuerySessionExecStats() {
+  pgapi->RefreshPreQuerySessionStats();
+}
+
 YBCStatus YBCGetIndexBackfillProgress(YBCPgOid* index_oids, YBCPgOid* database_oids,
                                       uint64_t** backfill_statuses,
                                       int num_indexes) {
@@ -1539,19 +1537,21 @@ void Subtract(YBCPgExecStats *a, YBCPgExecStats *b, YBCPgExecStats *c) {
   c->num_table_reads = a->num_table_reads - b->num_table_reads;
   c->table_read_wait = a->table_read_wait - b->table_read_wait;
   c->num_table_writes = a->num_table_writes - b->num_table_writes;
-  c->table_write_wait = a->table_write_wait - b->table_write_wait;
 
   // Secondary index stats
   c->num_index_reads = a->num_index_reads - b->num_index_reads;
   c->index_read_wait = a->index_read_wait - b->index_read_wait;
   c->num_index_writes = a->num_index_writes - b->num_index_writes;
-  c->index_write_wait = a->index_write_wait - b->index_write_wait;
 
   // Catalog stats
   c->num_catalog_reads = a->num_catalog_reads - b->num_catalog_reads;
   c->catalog_read_wait = a->catalog_read_wait - b->catalog_read_wait;
   c->num_catalog_writes = a->num_catalog_writes - b->num_catalog_writes;
   c->catalog_write_wait = a->catalog_write_wait - b->catalog_write_wait;
+
+  // Flush stats
+  c->num_flushes = a->num_flushes - b->num_flushes;
+  c->flush_wait = a->flush_wait - b->flush_wait;
 }
 
 } // extern "C"

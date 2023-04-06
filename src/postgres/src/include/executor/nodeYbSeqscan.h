@@ -30,5 +30,6 @@ extern YbSeqScanState *ExecInitYbSeqScan(YbSeqScan *node, EState *estate,
 				  int eflags);
 extern void ExecEndYbSeqScan(YbSeqScanState *node);
 extern void ExecReScanYbSeqScan(YbSeqScanState *node);
+extern void YbExecUpdateInstrumentYbSeqScan(YbSeqScanState *node, Instrumentation *instr);q
 
 #endif							/* NODEYBSEQSCAN_H */

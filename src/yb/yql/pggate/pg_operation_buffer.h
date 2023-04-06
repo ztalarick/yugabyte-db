@@ -24,6 +24,7 @@
 
 #include "yb/yql/pggate/pg_gate_fwd.h"
 #include "yb/yql/pggate/pg_perform_future.h"
+#include "yb/yql/pggate/util/pg_doc_metrics.h"
 
 namespace yb {
 namespace pggate {
@@ -49,7 +50,11 @@ class PgOperationBuffer {
  public:
   using Flusher = std::function<Result<PerformFuture>(BufferableOperations, bool)>;
 
-  PgOperationBuffer(const Flusher& flusher, const BufferingSettings& buffering_settings);
+  PgOperationBuffer(
+    const Flusher& flusher,
+    const BufferingSettings& buffering_settings,
+    const PgDocMetrics& metrics
+  );
   ~PgOperationBuffer();
   Status Add(const PgTableDesc& table, PgsqlWriteOpPtr op, bool transactional);
   Status Flush();
@@ -57,7 +62,6 @@ class PgOperationBuffer {
       const PgTableDesc& table, const PgsqlOp& op, bool transactional);
   size_t Size() const;
   void Clear();
-  void GetAndResetRpcStats(uint64_t* count, uint64_t* wait_time);
 
  private:
   class Impl;
