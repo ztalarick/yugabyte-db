@@ -294,7 +294,6 @@ Status PgDocOp::SendRequest(ForceNonBufferable force_non_bufferable) {
   DCHECK(exec_status_.ok());
   DCHECK(!response_.Valid());
   exec_status_ = SendRequestImpl(force_non_bufferable);
-  ++read_rpc_count_;
   PerformPreRequestInstrumentation();
   return exec_status_;
 }
@@ -319,9 +318,9 @@ Status PgDocOp::SendRequestImpl(ForceNonBufferable force_non_bufferable) {
   return Status::OK();
 }
 
-master::RelationType resolveRelationType(std::shared_ptr<PgsqlOp> op, const PgTable &table) {
+master::RelationType resolveRelationType(PgsqlOp *op, const PgTable &table) {
   bool has_index_request = false;
-  // TODO: Replace this with a standard library function.
+  // TODO(kramanathan): Replace this with a standard library function.
 
   if (table->id().object_oid < kPgFirstNormalObjectId) {
     // We don't distinguish between table reads and index reads for a catalog table.
@@ -329,9 +328,8 @@ master::RelationType resolveRelationType(std::shared_ptr<PgsqlOp> op, const PgTa
   }
 
   // Check if we're making an index request.
-  if (op->is_read() &&
-  (std::dynamic_pointer_cast<PgsqlReadOp>(op)->read_request().has_index_request() ||
-  (std::dynamic_pointer_cast<PgsqlReadOp>(op)->read_request().has_is_forward_scan())))
+  if (op->is_read() && (down_cast<PgsqlReadOp*>(op)->read_request().has_index_request() ||
+      (down_cast<PgsqlReadOp*>(op)->read_request().has_is_forward_scan())))
     has_index_request = true;
 
   // Check for scans on primary or secondary indexes.
@@ -356,11 +354,11 @@ void PgDocOp::PerformPreRequestInstrumentation() {
 
   if (reads > 0)
     pg_session_->UpdateSessionStatsCount(
-      resolveRelationType(pgsql_ops_[last_read_index], table_), true, reads);
+      resolveRelationType(pgsql_ops_[last_read_index].get(), table_), true, reads);
 
   if (writes > 0)
     pg_session_->UpdateSessionStatsCount(
-      resolveRelationType(pgsql_ops_[last_write_index], table_), false, writes);
+      resolveRelationType(pgsql_ops_[last_write_index].get(), table_), false, writes);
 }
 
 void PgDocOp::PerformPostRequestInstrumentation() {
@@ -368,7 +366,7 @@ void PgDocOp::PerformPostRequestInstrumentation() {
   LOG(INFO) << "Wait time is " << wait_time;
 
   pg_session_->UpdateSessionStatsWaitTime(
-    resolveRelationType(pgsql_ops_[0], table_), true, wait_time);
+    resolveRelationType(pgsql_ops_[0].get(), table_), true, wait_time);
   read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
 }
 
@@ -738,7 +736,7 @@ void PgDocReadOp::BindExprsToBatch(
   new_elem->set_int32_value(table_->partition_schema().DecodeMultiColumnHashValue(*partition_key));
   for (auto elem : hashed_values) {
     auto new_elem = tup_elements->add_elems();
-    if(elem->has_value()) {
+    if (elem->has_value()) {
         DCHECK(elem->has_value());
         *new_elem = elem->value();
     }
@@ -747,7 +745,7 @@ void PgDocReadOp::BindExprsToBatch(
   for (auto range_idx : permutation_range_column_indexes_) {
     auto* elem = range_values[range_idx - table_->num_hash_key_columns()];
     DCHECK(elem != nullptr);
-    if(elem->has_value()) {
+    if (elem->has_value()) {
       auto* new_elem = tup_elements->add_elems();
       *new_elem = elem->value();
     }

@@ -13,6 +13,7 @@
 //
 //--------------------------------------------------------------------------------------------------
 
+#include <string>
 #include "yb/yql/pggate/util/pg_doc_metrics.h"
 
 METRIC_DEFINE_entity(pg_doc_request);
@@ -64,16 +65,16 @@ METRIC_DEFINE_gauge_uint64(
 namespace yb {
 namespace pggate {
 
-RpcStats::RpcStats() {}
+using master::RelationType;
 
-RpcStats::~RpcStats() = default;
+RpcStats::RpcStats() {}
 
 RpcStats::RpcStats(
     scoped_refptr<MetricEntity> entity, CounterPrototype *count_proto,
     GaugePrototype<uint64_t> *exec_time_proto) {
 
     count = entity->FindOrCreateCounter(count_proto);
-    exec_time = entity->FindOrCreateGauge(exec_time_proto, static_cast<uint64>(0));
+    exec_time = entity->FindOrCreateGauge(exec_time_proto, static_cast<uint64>(0L));
 }
 
 void RpcStats::Reset() const {
@@ -90,38 +91,30 @@ PgDocMetrics::PgDocMetrics(MetricRegistry* registry, const std::string& id) {
 
     // User table metrics
     table_reads = RpcStats(
-        entity_, &METRIC_docdb_table_reads, &METRIC_docdb_table_read_wait
-    );
+        entity_, &METRIC_docdb_table_reads, &METRIC_docdb_table_read_wait);
     table_writes = RpcStats(
-        entity_, &METRIC_docdb_table_writes, &METRIC_docdb_table_write_wait
-    );
+        entity_, &METRIC_docdb_table_writes, &METRIC_docdb_table_write_wait);
 
     // Secondary index metrics
     index_reads = RpcStats(
-        entity_, &METRIC_docdb_index_reads, &METRIC_docdb_index_read_wait
-    );
+        entity_, &METRIC_docdb_index_reads, &METRIC_docdb_index_read_wait);
     index_writes = RpcStats(
-        entity_, &METRIC_docdb_index_writes, &METRIC_docdb_index_write_wait
-    );
+        entity_, &METRIC_docdb_index_writes, &METRIC_docdb_index_write_wait);
 
     // Catalog metrics
     catalog_reads = RpcStats(
-        entity_, &METRIC_docdb_catalog_reads, &METRIC_docdb_catalog_read_wait
-    );
+        entity_, &METRIC_docdb_catalog_reads, &METRIC_docdb_catalog_read_wait);
     catalog_writes = RpcStats(
-        entity_, &METRIC_docdb_catalog_writes, &METRIC_docdb_catalog_write_wait
-    );
+        entity_, &METRIC_docdb_catalog_writes, &METRIC_docdb_catalog_write_wait);
 
     // Flushes metrics
     flushes = RpcStats(
-        entity_, &METRIC_docdb_flushes, &METRIC_docdb_flush_wait
-    );
+        entity_, &METRIC_docdb_flushes, &METRIC_docdb_flush_wait);
 }
 
 PgDocMetrics::~PgDocMetrics() = default;
 
 void PgDocMetrics::Reset() {
-
     // User table metrics
     table_reads.Reset();
     table_writes.Reset();
@@ -135,7 +128,7 @@ void PgDocMetrics::Reset() {
     catalog_writes.Reset();
 }
 
-void PgDocMetrics::GetStats(YBCPgExecStats *stats) {
+void PgDocMetrics::FillStats(YBCPgExecStats *stats) const {
     // User table metrics
     stats->num_table_reads = table_reads.count->value();
     stats->table_read_wait = table_reads.exec_time->value();
@@ -158,13 +151,13 @@ void PgDocMetrics::GetStats(YBCPgExecStats *stats) {
 }
 
 void PgDocMetrics::AddDocOpRequest(
-    master::RelationType relation, bool is_read, uint64_t parallelism) {
+    RelationType relation, bool is_read, uint64_t parallelism) {
 
     scoped_refptr<Counter> metric;
 
     switch (relation) {
         case master::SYSTEM_TABLE_RELATION:
-            metric = is_read ? catalog_reads.count : catalog_writes.count;
+            metric = is_read ? catalog_reads.count : catalog_writes.count.get();
             break;
         case master::USER_TABLE_RELATION:
             metric = is_read ? table_reads.count : table_writes.count;
@@ -181,7 +174,7 @@ void PgDocMetrics::AddDocOpRequest(
 }
 
 void PgDocMetrics::IncrementExecutionTime(
-    master::RelationType relation, bool is_read, uint64_t wait_time) {
+    RelationType relation, bool is_read, uint64_t wait_time) {
 
     scoped_refptr<AtomicGauge<uint64_t>> metric;
     switch (relation) {

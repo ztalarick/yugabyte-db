@@ -311,19 +311,10 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
 
   const PgTable& table() const { return table_; }
 
-  // RPC stats for EXPLAIN ANALYZE
-  void GetAndResetReadRpcStats(uint64_t* read_rpc_count, uint64_t* read_rpc_wait_time) {
-    *read_rpc_count = read_rpc_count_;
-    read_rpc_count_ = 0;
-    *read_rpc_wait_time = read_rpc_wait_time_.ToNanoseconds();
-    read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
-  }
-
  protected:
   PgDocOp(
     const PgSession::ScopedRefPtr& pg_session, PgTable* table,
-    const Sender& = Sender(&PgDocOp::DefaultSender)
-    );
+    const Sender& = Sender(&PgDocOp::DefaultSender));
 
   // Populate Protobuf requests using the collected information for this DocDB operator.
   virtual Result<bool> DoCreateRequests() = 0;
@@ -416,8 +407,9 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
   // Output parameter of the execution.
   std::string out_param_backfill_spec_;
 
-  // Read RPC stats for EXPLAIN ANALYZE.
-  uint64_t read_rpc_count_ = 0;
+  // Stats for EXPLAIN ANALYZE.
+  // Here, we compute only the time spent waiting for completion of read RPCs.
+  // Write RPCs follow a different path. Refer to pg_operation_buffer.[h/cc]
   MonoDelta read_rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
 
  private:

@@ -899,7 +899,7 @@ Result<bool> PgSession::CheckIfPitrActive() {
 void PgSession::GetDocDBStats(YBCPgExecStats *stats) {
   YBCPgExecStats current_metrics = {};
 
-  metrics_.GetStats(&current_metrics);
+  metrics_.FillStats(&current_metrics);
   Subtract(&current_metrics, &metrics_snapshot, stats);
 
   RefreshDocDBSessionStats();
@@ -908,7 +908,7 @@ void PgSession::GetDocDBStats(YBCPgExecStats *stats) {
 void PgSession::RefreshDocDBSessionStats() {
   YBCPgExecStats current_metrics;
 
-  metrics_.GetStats(&current_metrics);
+  metrics_.FillStats(&current_metrics);
 
   metrics_snapshot.num_table_reads = current_metrics.num_table_reads;
   metrics_snapshot.table_read_wait = current_metrics.table_read_wait;
@@ -927,7 +927,7 @@ void PgSession::RefreshDocDBSessionStats() {
 
 void PgSession::RefreshDocDBPreQuerySessionStats() {
   YBCPgExecStats current_metrics;
-  metrics_.GetStats(&current_metrics);
+  metrics_.FillStats(&current_metrics);
 
   /*
    * Metrics that are collected async to the Postgres instrumentation framework must be reset

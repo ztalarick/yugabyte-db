@@ -438,8 +438,10 @@ standard_ExecutorFinish(QueryDesc *queryDesc)
 	if (queryDesc->totaltime)
 		InstrStopNode(queryDesc->totaltime, 0);
 
-	/* Refresh the session execution stats at the end of each query, so
-	 * that stats don't accumulate across queries */
+	/*
+	 * Refresh the session execution stats at the end of each query, so
+	 * that stats don't accumulate across queries 
+	 */
 	YbRefreshSessionStats();
 
 	MemoryContextSwitchTo(oldcontext);

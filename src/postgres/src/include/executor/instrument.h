@@ -61,14 +61,13 @@ typedef struct Instrumentation
 	double		firsttuple;		/* Time for first tuple of this cycle */
 	double		tuplecount;		/* Tuples emitted so far this cycle */
 	BufferUsage bufusage_start; /* Buffer usage at start */
-	YbPgRpcStats yb_read_rpcs;	/* Index read RPC stats */
 	YbPgRpcStats yb_tbl_read_rpcs;	/* Table row fetch RPC stats */
-	YbPgRpcStats yb_tbl_write_rpcs;
-	YbPgRpcStats yb_index_read_rpcs;
-	YbPgRpcStats yb_index_write_rpcs;
-	YbPgRpcStats yb_catalog_read_rpcs;
-	YbPgRpcStats yb_catalog_write_rpcs;
-	YbPgRpcStats yb_write_flush_rpcs;
+	YbPgRpcStats yb_tbl_write_rpcs; /* Table row write RPC stats */
+	YbPgRpcStats yb_index_read_rpcs; /* Index row fetch RPC stats */
+	YbPgRpcStats yb_index_write_rpcs; /* Index row write RPC stats */
+	YbPgRpcStats yb_catalog_read_rpcs; /* Catalog lookup RPC stats */
+	YbPgRpcStats yb_catalog_write_rpcs; /* Catalog update RPC stats */
+	YbPgRpcStats yb_write_flush_rpcs; /* Writes flush RPC stats */
 	/* Accumulated statistics across all completed cycles: */
 	double		startup;		/* Total startup time (in seconds) */
 	double		total;			/* Total total time (in seconds) */

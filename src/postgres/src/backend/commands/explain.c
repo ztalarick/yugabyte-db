@@ -137,7 +137,7 @@ static void ExplainJSONLineEnding(ExplainState *es);
 static void ExplainYAMLLineStarting(ExplainState *es);
 static void escape_yaml(StringInfo buf, const char *str);
 static void appendPgMemInfo(ExplainState *es, const Size peakMem);
-static void explainRpcRequestStat(ExplainState *es, const char *field, double count,
+static void ExplainRpcRequestStat(ExplainState *es, const char *field, double count,
 					  double timing, bool display_zero);
 
 /*
@@ -643,11 +643,13 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 			if (es->yb_total_catalog_read_rpc_count > 0.0)
 				total_rpc_wait += es->yb_total_catalog_read_rpc_wait;
 
-			explainRpcRequestStat(es, "Storage Read", es->yb_total_read_rpc_count, es->yb_total_read_rpc_wait, true);
-			explainRpcRequestStat(es, "Storage Write", es->yb_total_write_rpc_count, 0.0, true);
-			explainRpcRequestStat(es, "Storage Flushes", es->yb_total_flush_count, es->yb_total_flush_wait, true);
-			explainRpcRequestStat(es, "Catalog Reads", es->yb_total_catalog_read_rpc_count,
-			es->yb_total_catalog_read_rpc_wait, true);
+			ExplainRpcRequestStat(es, "Storage Read", es->yb_total_read_rpc_count, 
+								  es->yb_total_read_rpc_wait, true);
+			ExplainRpcRequestStat(es, "Storage Write", es->yb_total_write_rpc_count, 0.0, true);
+			ExplainRpcRequestStat(es, "Storage Flushes", es->yb_total_flush_count, 
+								  es->yb_total_flush_wait, true);
+			ExplainRpcRequestStat(es, "Catalog Reads", es->yb_total_catalog_read_rpc_count,
+								  es->yb_total_catalog_read_rpc_wait, true);
 
 			ExplainPropertyFloat("Storage Execution Time", "ms", total_rpc_wait / 1000000.0, 3, es);
 		}
@@ -3056,14 +3058,11 @@ show_yb_rpc_stats(PlanState *planstate, bool indexScan, ExplainState *es)
 	double flushes = planstate->instrument->yb_write_flush_rpcs.count / nloops;
 	double flushes_wait = planstate->instrument->yb_write_flush_rpcs.wait_time / nloops;
 
-	/* Display the reads first */
-	explainRpcRequestStat(es, "Storage Table Read", table_reads, table_read_wait, false);
-	explainRpcRequestStat(es, "Storage Index Read", index_reads, index_read_wait, false);
-
-	/* The writes */
-	explainRpcRequestStat(es, "Storage Table Write", table_writes, 0.0, false);
-	explainRpcRequestStat(es, "Storage Index Write", index_writes, 0.0, false);
-	explainRpcRequestStat(es, "Storage Flushes", flushes, flushes_wait, false);
+	ExplainRpcRequestStat(es, "Storage Table Read", table_reads, table_read_wait, false);
+	ExplainRpcRequestStat(es, "Storage Index Read", index_reads, index_read_wait, false);
+	ExplainRpcRequestStat(es, "Storage Table Write", table_writes, 0.0, false);
+	ExplainRpcRequestStat(es, "Storage Index Write", index_writes, 0.0, false);
+	ExplainRpcRequestStat(es, "Storage Flushes", flushes, flushes_wait, false);
 }
 
 /*
@@ -4047,7 +4046,7 @@ appendPgMemInfo(ExplainState *es, const Size peakMem)
 
 /* Explains a single RPC related stat */
 static void
-explainRpcRequestStat(ExplainState *es, const char *field, double count,
+ExplainRpcRequestStat(ExplainState *es, const char *field, double count,
 					  double timing, bool display_zero)
 {
 	char *desc;

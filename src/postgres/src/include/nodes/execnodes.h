@@ -596,8 +596,6 @@ typedef struct EState
 									   * we cache the conflict tuple here when processing and
 									   * then free the slot after the conflict is resolved. */
 	YBCPgExecParameters yb_exec_params;
-	YBCPgStatement yb_handle;
-	YBCPgStatement yb_index_handle; /* This should be a list of handles */
 
 	/*
 	 * The in_txn_limit used by all reads executed by this executor state. This is done to satisfy

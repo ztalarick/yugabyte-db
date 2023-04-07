@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <string>
 #include "yb/master/master_types.pb.h"
 #include "yb/util/logging.h"
 #include "yb/util/metrics.h"
@@ -23,20 +24,20 @@
 namespace yb {
 namespace pggate {
 
-typedef struct RpcStats {
+class RpcStats {
+ public:
     scoped_refptr<Counter> count;
     scoped_refptr<AtomicGauge<uint64_t>> exec_time;
 
     RpcStats();
     RpcStats(scoped_refptr<MetricEntity>, CounterPrototype *, GaugePrototype<uint64_t> *);
-    virtual ~RpcStats();
 
     void Reset() const;
     void IncrementCountBy(uint64_t count) const;
 
-private:
+ private:
     void CopyFrom(const RpcStats &);
-} RpcStats;
+};
 
 class PgDocMetrics {
  public:
@@ -46,7 +47,7 @@ class PgDocMetrics {
     void AddDocOpRequest(master::RelationType relation, bool is_read, uint64_t parallelism);
     void AddFlushRequest(uint64_t wait_time) const;
     void IncrementExecutionTime(master::RelationType relation, bool is_read, uint64_t wait_time);
-    void GetStats(YBCPgExecStats *stats);
+    void FillStats(YBCPgExecStats *stats) const;
     void Reset(); /* Resets all counter-based metrics */
 
  private:
