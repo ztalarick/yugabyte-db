@@ -153,17 +153,17 @@ void PgDocMetrics::FillStats(YBCPgExecStats *stats) const {
 void PgDocMetrics::AddDocOpRequest(
     RelationType relation, bool is_read, uint64_t parallelism) {
 
-    scoped_refptr<Counter> metric;
+    Counter *metric;
 
     switch (relation) {
         case master::SYSTEM_TABLE_RELATION:
-            metric = is_read ? catalog_reads.count : catalog_writes.count.get();
+            metric = is_read ? catalog_reads.count.get() : catalog_writes.count.get();
             break;
         case master::USER_TABLE_RELATION:
-            metric = is_read ? table_reads.count : table_writes.count;
+            metric = is_read ? table_reads.count.get() : table_writes.count.get();
             break;
         case master::INDEX_TABLE_RELATION:
-            metric = is_read ? index_reads.count : index_writes.count;
+            metric = is_read ? index_reads.count.get() : index_writes.count.get();
             break;
         default:
             LOG(WARNING) << "Skipping metric collection for unhandled relation type " << relation;
@@ -176,16 +176,16 @@ void PgDocMetrics::AddDocOpRequest(
 void PgDocMetrics::IncrementExecutionTime(
     RelationType relation, bool is_read, uint64_t wait_time) {
 
-    scoped_refptr<AtomicGauge<uint64_t>> metric;
+    AtomicGauge<uint64_t> *metric;
     switch (relation) {
         case master::SYSTEM_TABLE_RELATION:
-            metric = is_read ? catalog_reads.exec_time : catalog_writes.exec_time;
+            metric = is_read ? catalog_reads.exec_time.get() : catalog_writes.exec_time.get();
             break;
         case master::USER_TABLE_RELATION:
-            metric = is_read ? table_reads.exec_time : table_writes.exec_time;
+            metric = is_read ? table_reads.exec_time.get() : table_writes.exec_time.get();
             break;
         case master::INDEX_TABLE_RELATION:
-            metric =  is_read ? index_reads.exec_time : index_writes.exec_time;
+            metric =  is_read ? index_reads.exec_time.get() : index_writes.exec_time.get();
             break;
         default:
             LOG(WARNING) << "Skipping metric collection for unhandled relation type " << relation;

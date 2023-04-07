@@ -422,6 +422,12 @@ typedef struct PgExecStats {
 
 } YBCPgExecStats;
 
+typedef enum QueryExecutionPhase {
+  BEFORE_EXECUTOR_START = 0,
+  EXECUTION,
+  AFTER_EXECUTOR_END
+} YBCQueryExecutionPhase;
+
 // source:
 // https://github.com/gperftools/gperftools/blob/master/src/gperftools/malloc_extension.h#L154
 typedef struct YbTcmallocStats {

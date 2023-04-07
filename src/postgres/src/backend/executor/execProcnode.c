@@ -469,24 +469,19 @@ YbUpdateInstrument(PlanState *node)
 	switch (nodeTag(node))
 	{
 	case T_IndexScanState:
-		YbExecUpdateInstrumentIndexScan((IndexScanState *) node,
-										node->instrument);
+		YbUpdateRpcStats(node->instrument);
 		break;
 	case T_IndexOnlyScanState:
-		YbExecUpdateInstrumentIndexOnlyScan((IndexOnlyScanState *) node,
-											node->instrument);
+		YbUpdateRpcStats(node->instrument);
 		break;
 	case T_SeqScanState:
-		YbExecUpdateInstrumentSeqScan((SeqScanState *) node,
-									  node->instrument);
+		YbUpdateRpcStats(node->instrument);
 		break;
 	case T_ForeignScanState:
-		YbExecUpdateInstrumentForeignScan((ForeignScanState *) node,
-										  node->instrument);
+		YbUpdateRpcStats(node->instrument);
 		break;
 	case T_YbSeqScanState:
-		YbExecUpdateInstrumentYbSeqScan((YbSeqScanState *) node,
-										node->instrument);
+		YbUpdateRpcStats(node->instrument);
 		break;
 	default:
 		YbUpdateRpcStats(node->instrument);

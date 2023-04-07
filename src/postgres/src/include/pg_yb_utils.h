@@ -708,10 +708,8 @@ extern void assign_yb_xcluster_consistency_level(const char *newval,
 /*
  * Update read RPC statistics for EXPLAIN ANALYZE.
  */
-void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr); /* Handle related */
-void YbUpdateRpcStats(Instrumentation *instr); /* Non-handle related */
-void YbRefreshSessionStats();
-void YbRefreshPreQuerySessionStats();
+void YbUpdateRpcStats(Instrumentation *instr);
+void YbRefreshSessionStats(YBCQueryExecutionPhase phase);
 
 /*
  * If the tserver gflag --ysql_disable_server_file_access is set to

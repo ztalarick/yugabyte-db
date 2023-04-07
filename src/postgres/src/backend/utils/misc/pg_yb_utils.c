@@ -3091,27 +3091,18 @@ void aggregateStats(Instrumentation *instr, YBCPgExecStats exec_stats) {
 	instr->yb_write_flush_rpcs.wait_time += exec_stats.flush_wait;
 }
 
-void YbUpdateReadRpcStats(YBCPgStatement handle, Instrumentation *instr) {
-	YbUpdateRpcStats(instr);
-}
-
 void
 YbUpdateRpcStats(Instrumentation *instr)
 {
 	YBCPgExecStats exec_stats = {0};
 
-	YBCGetPgSessionExecStats(&exec_stats);
+	YBCGetPgSessionExecStats(&exec_stats, EXECUTION);
 	aggregateStats(instr, exec_stats);
 }
 
-void YbRefreshSessionStats()
+void YbRefreshSessionStats(YBCQueryExecutionPhase phase)
 {
-	YBCRefreshPgSessionExecStats();
-}
-
-void YbRefreshPreQuerySessionStats()
-{
-	YBCRefreshPgPreQuerySessionExecStats();
+	YBCRefreshPgSessionExecStats(phase);
 }
 
 void YbSetCatalogCacheVersion(YBCPgStatement handle, uint64_t version)

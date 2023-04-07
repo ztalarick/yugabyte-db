@@ -1708,29 +1708,21 @@ uint64_t PgApiImpl::GetSharedAuthKey() const {
   return tserver_shared_object_->postgres_auth_key();
 }
 
-void PgApiImpl::GetSessionExecStats(YBCPgExecStats *stats) {
+void PgApiImpl::FillSessionExecStats(YBCPgExecStats *stats, YBCQueryExecutionPhase phase) {
   if (!pg_session_) {
     DLOG(WARNING) << "No PG Session found. Not updating session execution stats";
     return;
   }
 
-  pg_session_->GetDocDBStats(stats);
+  pg_session_->FillDocDBStats(stats, phase);
 }
 
-void PgApiImpl::RefreshSessionExecStats() {
+void PgApiImpl::RefreshSessionExecStats(YBCQueryExecutionPhase phase) {
   if (!pg_session_) {
     return;
   }
 
-  pg_session_->RefreshDocDBSessionStats();
-}
-
-void PgApiImpl::RefreshPreQuerySessionStats() {
-  if (!pg_session_) {
-    return;
-  }
-
-  pg_session_->RefreshDocDBPreQuerySessionStats();
+  pg_session_->RefreshDocDBSessionStats(phase);
 }
 
 // Tuple Expression -----------------------------------------------------------------------------

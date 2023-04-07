@@ -516,9 +516,8 @@ YBCStatus YBCPgSetForwardScan(YBCPgStatement handle, bool is_forward_scan);
 YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec_params);
 
 // RPC stats for EXPLAIN ANALYZE
-void YBCGetPgSessionExecStats(YBCPgExecStats *stats);
-void YBCRefreshPgSessionExecStats();
-void YBCRefreshPgPreQuerySessionExecStats();
+void YBCGetPgSessionExecStats(YBCPgExecStats *stats, YBCQueryExecutionPhase phase);
+void YBCRefreshPgSessionExecStats(YBCQueryExecutionPhase phase);
 void Subtract(YBCPgExecStats *a, YBCPgExecStats *b, YBCPgExecStats *c);
 
 // Transaction control -----------------------------------------------------------------------------

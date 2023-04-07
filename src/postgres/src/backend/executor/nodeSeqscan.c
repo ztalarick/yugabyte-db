@@ -335,21 +335,3 @@ ExecSeqScanInitializeWorker(SeqScanState *node,
 	node->ss.ss_currentScanDesc =
 		heap_beginscan_parallel(node->ss.ss_currentRelation, pscan);
 }
-
-void
-YbExecUpdateInstrumentSeqScan(SeqScanState *node, Instrumentation *instr)
-{
-	YbScanDesc ybscan = node->ss.ss_currentScanDesc->ybscan;
-	Assert(PointerIsValid(ybscan));
-
-	if (node->ss.ss_currentRelation->rd_islocaltemp) {
-		/*
-		 * Temp tables do not create YB Handles. So, bypass instrumenting them.
-		 */
-		YbUpdateRpcStats(instr);
-		return;
-	}
-
-	if (ybscan->handle)
-		YbUpdateReadRpcStats(ybscan->handle, instr);
-}

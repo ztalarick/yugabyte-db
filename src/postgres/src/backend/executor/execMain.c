@@ -442,7 +442,7 @@ standard_ExecutorFinish(QueryDesc *queryDesc)
 	 * Refresh the session execution stats at the end of each query, so
 	 * that stats don't accumulate across queries 
 	 */
-	YbRefreshSessionStats();
+	YbRefreshSessionStats(AFTER_EXECUTOR_END);
 
 	MemoryContextSwitchTo(oldcontext);
 

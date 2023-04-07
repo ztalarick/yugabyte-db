@@ -896,46 +896,58 @@ Result<bool> PgSession::CheckIfPitrActive() {
   return pg_client_.CheckIfPitrActive();
 }
 
-void PgSession::GetDocDBStats(YBCPgExecStats *stats) {
+void PgSession::FillDocDBStats(YBCPgExecStats *stats, YBCQueryExecutionPhase phase) {
   YBCPgExecStats current_metrics = {};
 
   metrics_.FillStats(&current_metrics);
   Subtract(&current_metrics, &metrics_snapshot, stats);
 
-  RefreshDocDBSessionStats();
+  RefreshDocDBSessionStats(phase);
 }
 
-void PgSession::RefreshDocDBSessionStats() {
+void PgSession::RefreshDocDBSessionStats(YBCQueryExecutionPhase exec_phase) {
   YBCPgExecStats current_metrics;
 
   metrics_.FillStats(&current_metrics);
 
-  metrics_snapshot.num_table_reads = current_metrics.num_table_reads;
-  metrics_snapshot.table_read_wait = current_metrics.table_read_wait;
+  #define COPY_METRIC_VALUES(field) metrics_snapshot.field = current_metrics.field;
+  #define COPY_2_METRIC_VALUES(field1, field2) \
+    metrics_snapshot.field1 = current_metrics.field1; \
+    metrics_snapshot.field2 = current_metrics.field2; \
 
-  metrics_snapshot.num_index_reads = current_metrics.num_index_reads;
-  metrics_snapshot.index_read_wait = current_metrics.index_read_wait;
+  switch(exec_phase) {
+    case BEFORE_EXECUTOR_START:
+      // Reset all user table and index table reads.
+      COPY_2_METRIC_VALUES(num_table_reads, table_read_wait);
+      COPY_2_METRIC_VALUES(num_index_reads, index_read_wait);
 
-  metrics_snapshot.num_table_writes = current_metrics.num_table_writes;
-  metrics_snapshot.num_index_writes = current_metrics.num_index_writes;
+      // Reset all non-catalog writes
+      COPY_2_METRIC_VALUES(num_table_writes, num_index_writes);
+      COPY_2_METRIC_VALUES(num_flushes, flush_wait);
 
-  metrics_snapshot.num_catalog_reads = current_metrics.num_catalog_reads;
-  metrics_snapshot.num_catalog_writes = current_metrics.num_catalog_writes;
-  metrics_snapshot.catalog_read_wait = current_metrics.catalog_read_wait;
-  metrics_snapshot.catalog_write_wait = current_metrics.catalog_write_wait;
-}
+      break;
 
-void PgSession::RefreshDocDBPreQuerySessionStats() {
-  YBCPgExecStats current_metrics;
-  metrics_.FillStats(&current_metrics);
+    case EXECUTION:
+    case AFTER_EXECUTOR_END:
+      // Reset all metrics except the ones that are executed async to Postgres execution framework
+      // (for example: flushes)
 
-  /*
-   * Metrics that are collected async to the Postgres instrumentation framework must be reset
-   * at the beginning of subsequent queries.
-   */
+      // User table and Index table reads
+      COPY_2_METRIC_VALUES(num_table_reads, table_read_wait);
+      COPY_2_METRIC_VALUES(num_index_reads, index_read_wait);
 
-  metrics_snapshot.num_flushes = current_metrics.num_flushes;
-  metrics_snapshot.flush_wait = current_metrics.flush_wait;
+      // Non catalog Write counts
+      COPY_2_METRIC_VALUES(num_table_writes, num_index_writes);
+
+      // Catalog accesses
+      COPY_2_METRIC_VALUES(num_catalog_reads, catalog_read_wait);
+      COPY_2_METRIC_VALUES(num_catalog_writes, catalog_write_wait);
+
+      break;
+  }
+
+  #undef COPY_2_METRIC_VALUES
+  #undef COPY_METRIC_VALUE
 }
 
 }  // namespace pggate

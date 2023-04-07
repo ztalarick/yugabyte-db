@@ -627,9 +627,8 @@ class PgApiImpl {
   Status PrefetchRegisteredSysTables();
 
   // RPC stats for EXPLAIN ANALYZE
-  void GetSessionExecStats(YBCPgExecStats *stats);
-  void RefreshSessionExecStats();
-  void RefreshPreQuerySessionStats();
+  void FillSessionExecStats(YBCPgExecStats *stats, YBCQueryExecutionPhase phase);
+  void RefreshSessionExecStats(YBCQueryExecutionPhase phase);
 
   //------------------------------------------------------------------------------------------------
   // System Validation.

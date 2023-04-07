@@ -551,7 +551,7 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 		/* clear the stats by dummy read */
 		if (es->rpc)
 		{
-			YbRefreshPreQuerySessionStats();
+			YbRefreshSessionStats(BEFORE_EXECUTOR_START);
 		}
 
 		/* run the plan */

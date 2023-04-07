@@ -1421,16 +1421,12 @@ YBCStatus YBCGetTabletServerHosts(YBCServerDescriptor **servers, size_t *count) 
   return YBCStatusOK();
 }
 
-void YBCGetPgSessionExecStats(YBCPgExecStats *stats) {
-  pgapi->GetSessionExecStats(stats);
+void YBCGetPgSessionExecStats(YBCPgExecStats *stats, YBCQueryExecutionPhase phase) {
+  pgapi->FillSessionExecStats(stats, phase);
 }
 
-void YBCRefreshPgSessionExecStats() {
-  pgapi->RefreshSessionExecStats();
-}
-
-void YBCRefreshPgPreQuerySessionExecStats() {
-  pgapi->RefreshPreQuerySessionStats();
+void YBCRefreshPgSessionExecStats(YBCQueryExecutionPhase phase) {
+  pgapi->RefreshSessionExecStats(phase);
 }
 
 YBCStatus YBCGetIndexBackfillProgress(YBCPgOid* index_oids, YBCPgOid* database_oids,
