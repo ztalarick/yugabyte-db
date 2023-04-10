@@ -3,7 +3,9 @@
 package com.yugabyte.yw.common.operator;
 
 import com.google.inject.Inject;
+import com.yugabyte.yw.controllers.handlers.CloudProviderHandler;
 import com.yugabyte.yw.controllers.handlers.UniverseCRUDHandler;
+import com.yugabyte.yw.controllers.handlers.UpgradeUniverseHandler;
 import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
@@ -25,6 +27,10 @@ import play.Logger;
 public class KubernetesOperator {
   @Inject private UniverseCRUDHandler universeCRUDHandler;
 
+  @Inject private UpgradeUniverseHandler upgradeUniverseHandler;
+
+  @Inject private CloudProviderHandler cloudProviderHandler;
+
   public MixedOperation<YBUniverse, KubernetesResourceList<YBUniverse>, Resource<YBUniverse>>
       ybUniverseClient;
 
@@ -33,8 +39,10 @@ public class KubernetesOperator {
         new Thread(
             () -> {
               try {
+                long startTime = System.currentTimeMillis();
                 Logger.info("Creating KubernetesOperator");
                 try (KubernetesClient client = new KubernetesClientBuilder().build()) {
+                  // maybe use: try (KubernetesClient client = getClient(config)) {
                   String namespace = client.getNamespace();
                   if (namespace == null) {
                     Logger.info("No namespace found via config, assuming default.");
@@ -59,19 +67,23 @@ public class KubernetesOperator {
 
                   Logger.info("Finished setting up SharedIndexInformers");
 
+                  // TODO: Instantiate this - inject this using Module.java
                   KubernetesOperatorController ybUniverseController =
                       new KubernetesOperatorController(
+                          client,
                           ybUniverseClient,
                           ybUniverseSharedIndexInformer,
                           namespace,
-                          universeCRUDHandler);
+                          universeCRUDHandler,
+                          upgradeUniverseHandler,
+                          cloudProviderHandler);
 
                   Future<Void> startedInformersFuture =
                       informerFactory.startAllRegisteredInformers();
 
                   startedInformersFuture.get();
 
-                  ybUniverseController.run();
+                  ybUniverseController.run(startTime);
 
                   Logger.info("Finished running ybUniverseController");
 

@@ -117,3 +117,5 @@ submodules/
 managed/yba-installer/bin/yba-ctl
 managed/yba-installer/yba-ctl
 managed/devops/pex/pexEnv/
+managed/ybc-1.0.0-b18-linux-x86_64.tar.gz
+managed/ybc-1.0.0-b18-el8-aarch64.tar.gz

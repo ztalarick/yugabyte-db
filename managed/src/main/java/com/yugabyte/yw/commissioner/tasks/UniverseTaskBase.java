@@ -115,6 +115,7 @@ import com.yugabyte.yw.common.UniverseInProgressException;
 import com.yugabyte.yw.common.Util;
 import com.yugabyte.yw.common.config.UniverseConfKeys;
 import com.yugabyte.yw.common.gflags.SpecificGFlags;
+import com.yugabyte.yw.common.operator.KubernetesOperatorStatusUpdater;
 import com.yugabyte.yw.common.ybc.YbcBackupNodeRetriever;
 import com.yugabyte.yw.forms.BackupRequestParams;
 import com.yugabyte.yw.forms.BackupRequestParams.ParallelBackupState;
@@ -700,7 +701,10 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
     // the Universe state. It simply sets updateInProgress flag to false.
     executionContext.universe = Universe.saveDetails(universeUUID, updater, false);
     executionContext.unlockUniverse(universeUUID);
-    log.trace("Unlocked universe {} for updates.", universeUUID);
+    log.info("Unlocked universe {} for updates.", universeUUID);
+    if (executionContext.universe.getUniverseDetails().isKubernetesOperatorControlled) {
+      KubernetesOperatorStatusUpdater.updateStatus(executionContext.universe, "Completed task");
+    }
     return executionContext.universe;
   }
 
