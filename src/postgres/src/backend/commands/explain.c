@@ -646,10 +646,12 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 			ExplainRpcRequestStat(es, "Storage Read", es->yb_total_read_rpc_count, 
 								  es->yb_total_read_rpc_wait, true);
 			ExplainRpcRequestStat(es, "Storage Write", es->yb_total_write_rpc_count, 0.0, true);
-			ExplainRpcRequestStat(es, "Storage Flushes", es->yb_total_flush_count, 
-								  es->yb_total_flush_wait, true);
 			ExplainRpcRequestStat(es, "Catalog Reads", es->yb_total_catalog_read_rpc_count,
 								  es->yb_total_catalog_read_rpc_wait, true);
+			ExplainRpcRequestStat(es, "Catalog Writes", es->yb_total_catalog_write_rpc_count,
+								 0.0, true);
+			ExplainRpcRequestStat(es, "Storage Flushes", es->yb_total_flush_count,
+								  es->yb_total_flush_wait, true);
 
 			ExplainPropertyFloat("Storage Execution Time", "ms", total_rpc_wait / 1000000.0, 3, es);
 		}
@@ -1078,11 +1080,12 @@ ExplainNode(PlanState *planstate, List *ancestors,
 
 		es->yb_total_write_rpc_count +=
 			(planstate->instrument->yb_tbl_write_rpcs.count +
-			 planstate->instrument->yb_index_write_rpcs.count +
-			 planstate->instrument->yb_catalog_write_rpcs.count);
+			 planstate->instrument->yb_index_write_rpcs.count);
 
 		es->yb_total_catalog_read_rpc_count += planstate->instrument->yb_catalog_read_rpcs.count;
 		es->yb_total_catalog_read_rpc_wait += planstate->instrument->yb_catalog_read_rpcs.wait_time;
+
+		es->yb_total_catalog_write_rpc_count +=	planstate->instrument->yb_catalog_write_rpcs.count;
 
 		es->yb_total_flush_count += planstate->instrument->yb_write_flush_rpcs.count;
 		es->yb_total_flush_wait += planstate->instrument->yb_write_flush_rpcs.wait_time;

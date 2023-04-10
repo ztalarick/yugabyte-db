@@ -15,7 +15,7 @@ package org.yb.util.json;
 
 import com.google.gson.JsonElement;
 
-final class AbsenceChecker implements Checker {
+public final class AbsenceChecker implements Checker {
   @Override
   public boolean check(JsonElement element, ConflictCollector collector) {
     if (element == null || element.isJsonNull()) {
@@ -23,5 +23,9 @@ final class AbsenceChecker implements Checker {
     }
     collector.addConflict("expected to be absent or null");
     return false;
+  }
+
+  public static AbsenceChecker absent() {
+    return new AbsenceChecker();
   }
 }

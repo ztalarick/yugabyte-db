@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yb.util.json.AbsenceChecker;
 import org.yb.util.json.Checker;
 import org.yb.util.json.JsonUtil;
 import org.yb.util.json.ObjectChecker;
@@ -38,7 +39,11 @@ public class ExplainAnalyzeUtils {
   public interface TopLevelCheckerBuilder extends ObjectCheckerBuilder {
     TopLevelCheckerBuilder plan(ObjectChecker checker);
     TopLevelCheckerBuilder storageReadRequests(ValueChecker<Long> checker);
+    TopLevelCheckerBuilder storageReadExecutionTime(ValueChecker<Long> checker);
     TopLevelCheckerBuilder storageWriteRequests(ValueChecker<Long> checker);
+    TopLevelCheckerBuilder catalogReadsRequests(ValueChecker<Long> checker);
+    TopLevelCheckerBuilder catalogReadsExecutionTime(ValueChecker<Long> checker);
+    TopLevelCheckerBuilder catalogWritesRequests(ValueChecker<Long> checker);
     TopLevelCheckerBuilder storageFlushesRequests(ValueChecker<Long> checker);
     TopLevelCheckerBuilder storageExecutionTime(ValueChecker<Double> checker);
   }
@@ -53,6 +58,7 @@ public class ExplainAnalyzeUtils {
     PlanCheckerBuilder storageTableReadRequests(ValueChecker<Long> checker);
     PlanCheckerBuilder storageTableReadExecutionTime(ValueChecker<Double> checker);
     PlanCheckerBuilder storageIndexReadRequests(ValueChecker<Long> checker);
+    PlanCheckerBuilder storageIndexReadRequests(AbsenceChecker checker);
     PlanCheckerBuilder storageIndexReadExecutionTime(ValueChecker<Double> checker);
     PlanCheckerBuilder storageCatalogReadRequests(ValueChecker<Long> checker);
   }

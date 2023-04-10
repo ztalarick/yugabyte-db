@@ -445,7 +445,7 @@ class PgDocOp : public std::enable_shared_from_this<PgDocOp> {
       PgSession* session, const PgsqlOpPtr* ops, size_t ops_count, const PgTableDesc& table,
       HybridTime in_txn_limit, ForceNonBufferable force_non_bufferable);
 
-  void PerformPreRequestInstrumentation();
+  Status PerformPreRequestInstrumentation();
   void PerformPostRequestInstrumentation();
 
   // Result set either from selected or returned targets is cached in a list of strings.

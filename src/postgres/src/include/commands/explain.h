@@ -49,9 +49,9 @@ typedef struct ExplainState
 	double		yb_total_read_rpc_count;	/* total read RPC count */
 	double		yb_total_read_rpc_wait;	/* total read RPC wait time */
 	double		yb_total_write_rpc_count;
-	double		yb_total_write_rpc_wait;
 	double		yb_total_catalog_read_rpc_count;
 	double		yb_total_catalog_read_rpc_wait;
+	double 		yb_total_catalog_write_rpc_count;
 	double		yb_total_flush_count;
 	double		yb_total_flush_wait;
 } ExplainState;

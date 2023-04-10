@@ -921,8 +921,9 @@ void PgSession::RefreshDocDBSessionStats(YBCQueryExecutionPhase exec_phase) {
       COPY_2_METRIC_VALUES(num_table_reads, table_read_wait);
       COPY_2_METRIC_VALUES(num_index_reads, index_read_wait);
 
-      // Reset all non-catalog writes
+      // Reset all writes
       COPY_2_METRIC_VALUES(num_table_writes, num_index_writes);
+      COPY_2_METRIC_VALUES(num_catalog_writes, catalog_write_wait);
       COPY_2_METRIC_VALUES(num_flushes, flush_wait);
 
       break;
@@ -941,7 +942,6 @@ void PgSession::RefreshDocDBSessionStats(YBCQueryExecutionPhase exec_phase) {
 
       // Catalog accesses
       COPY_2_METRIC_VALUES(num_catalog_reads, catalog_read_wait);
-      COPY_2_METRIC_VALUES(num_catalog_writes, catalog_write_wait);
 
       break;
   }

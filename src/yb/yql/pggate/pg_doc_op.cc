@@ -294,7 +294,7 @@ Status PgDocOp::SendRequest(ForceNonBufferable force_non_bufferable) {
   DCHECK(exec_status_.ok());
   DCHECK(!response_.Valid());
   exec_status_ = SendRequestImpl(force_non_bufferable);
-  PerformPreRequestInstrumentation();
+  CHECK_OK(PerformPreRequestInstrumentation());
   return exec_status_;
 }
 
@@ -340,12 +340,22 @@ master::RelationType resolveRelationType(PgsqlOp *op, const PgTable &table) {
   return master::USER_TABLE_RELATION;
 }
 
-void PgDocOp::PerformPreRequestInstrumentation() {
+Status PgDocOp::PerformPreRequestInstrumentation() {
   uint64_t reads = 0, writes = 0, counter = 0, last_read_index, last_write_index;
 
   // Open question: Can table reads and index reads batched together in the same DocDB req?
 
   for (const auto& op : pgsql_ops_) {
+    if (op->is_write()) {
+      LWPgsqlWriteRequestPB &write = std::dynamic_pointer_cast<PgsqlWriteOp>(op)->write_request();
+      PgObjectId table_id = PgObjectId(write.table_id());
+      PgTable table = PgTable(VERIFY_RESULT(pg_session_->LoadTable(table_id)));
+
+      pg_session_->UpdateSessionStatsCount(resolveRelationType(op.get(), table),
+        false, 1);
+      continue;
+    }
+
     op->is_read() ? ++reads : ++writes;
     op->is_read() ? last_read_index = counter : last_write_index = counter;
 
@@ -356,9 +366,7 @@ void PgDocOp::PerformPreRequestInstrumentation() {
     pg_session_->UpdateSessionStatsCount(
       resolveRelationType(pgsql_ops_[last_read_index].get(), table_), true, reads);
 
-  if (writes > 0)
-    pg_session_->UpdateSessionStatsCount(
-      resolveRelationType(pgsql_ops_[last_write_index].get(), table_), false, writes);
+  return Status::OK();
 }
 
 void PgDocOp::PerformPostRequestInstrumentation() {
