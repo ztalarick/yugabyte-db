@@ -203,6 +203,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
       const PgObjectId& index_id,
       client::YBTableName* indexed_table_name = nullptr);
   Result<PgTableDescPtr> LoadTable(const PgObjectId& table_id);
+  Result<PgTableDescPtr> LoadTableIfCached(const PgObjectId& table_id);
   void InvalidateTableCache(
       const PgObjectId& table_id, InvalidateOnPgClient invalidate_on_pg_client);
   Result<client::TableSizeInfo> GetTableDiskSize(const PgObjectId& table_oid);

@@ -101,4 +101,9 @@ public final class Checkers {
   public static ObjectChecker object(Map<String, Checker> checkers) {
     return new BasicObjectChecker(checkers);
   }
+
+  // Absence
+  public static AbsenceChecker absent() {
+    return new AbsenceChecker();
+  }
 }

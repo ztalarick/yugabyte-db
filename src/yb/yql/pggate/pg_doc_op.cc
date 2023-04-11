@@ -341,37 +341,57 @@ master::RelationType resolveRelationType(PgsqlOp *op, const PgTable &table) {
 }
 
 Status PgDocOp::PerformPreRequestInstrumentation() {
-  uint64_t reads = 0, writes = 0, counter = 0, last_read_index, last_write_index;
+  // We currently keep track of DocDB requests (ie. round-trips) only on a
+  // <RelationType, read/write> basis wherethe RelationType could be one of (user table, catalog,
+  // index). Since we're calculating round trips, and all the requests in pgsql_ops_ are sent in a
+  // single batch, we only need to account for distinct <RelationType, read/write> operations.
+  using RequestType = std::pair<master::RelationType, bool>;
+  std::map<RequestType, uint64_t> request_map;
+  master::RelationType rel_type;
+  PgObjectId tbl_id;
+  PgTable tbl;
 
-  // Open question: Can table reads and index reads batched together in the same DocDB req?
 
   for (const auto& op : pgsql_ops_) {
-    if (op->is_write()) {
-      LWPgsqlWriteRequestPB &write = std::dynamic_pointer_cast<PgsqlWriteOp>(op)->write_request();
-      PgObjectId table_id = PgObjectId(write.table_id());
-      PgTable table = PgTable(VERIFY_RESULT(pg_session_->LoadTable(table_id)));
-
-      pg_session_->UpdateSessionStatsCount(resolveRelationType(op.get(), table),
-        false, 1);
+    if (!op->is_active())
       continue;
+
+    if (op->is_write())
+      tbl_id = PgObjectId(std::dynamic_pointer_cast<PgsqlWriteOp>(op)->write_request().table_id());
+    else
+      tbl_id = PgObjectId(std::dynamic_pointer_cast<PgsqlReadOp>(op)->read_request().table_id());
+
+    // Load table from catalog cache. If table is not cached, avoid making a catalog cache request
+    // to resolve table, as this could result in further instrumentation requests.
+    Result<PgTableDescPtr> table_ptr = pg_session_->LoadTableIfCached(tbl_id);
+    if (PREDICT_TRUE(table_ptr.ok())) {
+      tbl = PgTable(table_ptr->get());
+
+    } else {
+      LOG(WARNING) << "Table with ID " << tbl_id << "not cached to perform instrumentation";
+      tbl = table_;
     }
 
-    op->is_read() ? ++reads : ++writes;
-    op->is_read() ? last_read_index = counter : last_write_index = counter;
+    rel_type = resolveRelationType(op.get(), tbl);
+    auto key = std::make_pair(rel_type, op->is_read());
+    request_map[key]++;
 
-    counter++;
   }
 
-  if (reads > 0)
-    pg_session_->UpdateSessionStatsCount(
-      resolveRelationType(pgsql_ops_[last_read_index].get(), table_), true, reads);
+  for (auto key : request_map) {
+      pg_session_->UpdateSessionStatsCount(key.first.first, key.first.second, 1);
+  }
 
   return Status::OK();
 }
 
 void PgDocOp::PerformPostRequestInstrumentation() {
   uint64_t wait_time = static_cast<uint64_t>(read_rpc_wait_time_.ToNanoseconds());
-  LOG(INFO) << "Wait time is " << wait_time;
+
+  // TODO (kramanathan): If a single DocDB request contains a table read, and an index read batched
+  // together, we will get a single round trip time for the entire batch. In such a case, it would
+  // be erroneous to associate the wait time with each type of operations (double counting).
+  // For now, we associate the wait time with the first operation (pgsql_ops[0]).
 
   pg_session_->UpdateSessionStatsWaitTime(
     resolveRelationType(pgsql_ops_[0].get(), table_), true, wait_time);

@@ -196,8 +196,6 @@ void PgDocMetrics::IncrementExecutionTime(
 }
 
 void PgDocMetrics::AddFlushRequest(uint64_t wait_time) const {
-    LOG(INFO) << "Flush count incremented!";
-
     flushes.IncrementCountBy(1);
     flushes.exec_time->IncrementBy(wait_time);
 }

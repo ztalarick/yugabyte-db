@@ -39,10 +39,10 @@ public class ExplainAnalyzeUtils {
   public interface TopLevelCheckerBuilder extends ObjectCheckerBuilder {
     TopLevelCheckerBuilder plan(ObjectChecker checker);
     TopLevelCheckerBuilder storageReadRequests(ValueChecker<Long> checker);
-    TopLevelCheckerBuilder storageReadExecutionTime(ValueChecker<Long> checker);
+    TopLevelCheckerBuilder storageReadExecutionTime(ValueChecker<Double> checker);
     TopLevelCheckerBuilder storageWriteRequests(ValueChecker<Long> checker);
     TopLevelCheckerBuilder catalogReadsRequests(ValueChecker<Long> checker);
-    TopLevelCheckerBuilder catalogReadsExecutionTime(ValueChecker<Long> checker);
+    TopLevelCheckerBuilder catalogReadsExecutionTime(ValueChecker<Double> checker);
     TopLevelCheckerBuilder catalogWritesRequests(ValueChecker<Long> checker);
     TopLevelCheckerBuilder storageFlushesRequests(ValueChecker<Long> checker);
     TopLevelCheckerBuilder storageExecutionTime(ValueChecker<Double> checker);
@@ -55,11 +55,18 @@ public class ExplainAnalyzeUtils {
     PlanCheckerBuilder planRows(ValueChecker<Long> checker);
     PlanCheckerBuilder plans(Checker... checker);
     PlanCheckerBuilder relationName(String value);
+
+    // Table Reads
+    PlanCheckerBuilder storageTableReadRequests(AbsenceChecker checker);
     PlanCheckerBuilder storageTableReadRequests(ValueChecker<Long> checker);
     PlanCheckerBuilder storageTableReadExecutionTime(ValueChecker<Double> checker);
+
+    // Index Reads
     PlanCheckerBuilder storageIndexReadRequests(ValueChecker<Long> checker);
     PlanCheckerBuilder storageIndexReadRequests(AbsenceChecker checker);
     PlanCheckerBuilder storageIndexReadExecutionTime(ValueChecker<Double> checker);
+
+    // Catalog Reads
     PlanCheckerBuilder storageCatalogReadRequests(ValueChecker<Long> checker);
   }
 

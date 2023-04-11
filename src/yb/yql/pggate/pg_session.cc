@@ -506,6 +506,11 @@ Result<PgTableDescPtr> PgSession::LoadTable(const PgObjectId& table_id) {
   return DoLoadTable(table_id, /* fail_on_cache_hit */ false);
 }
 
+Result<PgTableDescPtr> PgSession::LoadTableIfCached(const PgObjectId& table_id) {
+  VLOG(3) << "Loading table descriptor (if cached) for " << table_id;
+  return DoLoadTable(table_id, /* fail_on_cache_hit */ true);
+}
+
 void PgSession::InvalidateTableCache(
     const PgObjectId& table_id, InvalidateOnPgClient invalidate_on_pg_client) {
   if (invalidate_on_pg_client) {

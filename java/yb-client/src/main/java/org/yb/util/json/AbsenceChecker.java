@@ -24,8 +24,4 @@ public final class AbsenceChecker implements Checker {
     collector.addConflict("expected to be absent or null");
     return false;
   }
-
-  public static AbsenceChecker absent() {
-    return new AbsenceChecker();
-  }
 }

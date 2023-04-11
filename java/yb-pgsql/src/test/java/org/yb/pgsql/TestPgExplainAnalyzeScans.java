@@ -1,6 +1,8 @@
 package org.yb.pgsql;
 
+import static org.yb.pgsql.ExplainAnalyzeUtils.NODE_INDEX_SCAN;
 import static org.yb.pgsql.ExplainAnalyzeUtils.NODE_SEQ_SCAN;
+import static org.yb.pgsql.ExplainAnalyzeUtils.NODE_YB_SEQ_SCAN;
 
 import java.sql.Statement;
 import java.util.Map;
@@ -9,7 +11,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.yb.pgsql.ExplainAnalyzeUtils.PlanCheckerBuilder;
 import org.yb.pgsql.ExplainAnalyzeUtils.TopLevelCheckerBuilder;
-import org.yb.util.json.AbsenceChecker;
 import org.yb.util.json.Checker;
 import org.yb.util.json.Checkers;
 import org.yb.util.json.JsonUtil;
@@ -24,8 +25,6 @@ public class TestPgExplainAnalyzeScans extends TestPgExplainAnalyze {
   private TopLevelCheckerBuilder SCAN_TOP_LEVEL_CHECKER = makeTopLevelBuilder()
       .storageWriteRequests(Checkers.equal(0))
       .storageFlushesRequests(Checkers.equal(0))
-      .catalogReadsRequests(Checkers.greaterOrEqual(0))
-      // .catalogReadsExecutionTime(Checkers.greater(0))
       .catalogWritesRequests(Checkers.equal(0));
 
 
@@ -41,7 +40,7 @@ public class TestPgExplainAnalyzeScans extends TestPgExplainAnalyze {
   public void setUp() throws Exception {
     try (Statement stmt = connection.createStatement()) {
       stmt.execute(String.format("CREATE TABLE %s (k INT PRIMARY KEY, v1 INT, "
-          + "v2 INT, v3 INT, v4 INT, v5 INT);", FOO_TABLE));
+          + "v2 INT, v3 INT, v4 INT, v5 INT) SPLIT INTO 2 TABLETS", FOO_TABLE));
 
       // Multi-column Range Index on (v1, v2)
       stmt.execute(String.format("CREATE INDEX %s ON %s (v1, v2 ASC)",
@@ -77,22 +76,22 @@ public class TestPgExplainAnalyzeScans extends TestPgExplainAnalyze {
 
   @Test
   public void testSeqScan() throws Exception {
-    String simpleQuery = String.format("SELECT * FROM %s", FOO_TABLE);
-    String queryWithExpr = String.format("SELECT * FROM %s WHERE v5 < 1024", FOO_TABLE);
+    final String simpleQuery = String.format("SELECT * FROM %s", FOO_TABLE);
+    final String queryWithExpr = String.format("SELECT * FROM %s WHERE v5 < 128", FOO_TABLE);
 
     PlanCheckerBuilder SEQ_SCAN_PLAN = makePlanBuilder()
         .nodeType(NODE_SEQ_SCAN)
         .relationName(FOO_TABLE)
         .alias(FOO_TABLE)
         .storageTableReadExecutionTime(Checkers.greater(0.0))
-        .storageIndexReadRequests(AbsenceChecker.absent());
+        .storageIndexReadRequests(Checkers.absent());
 
     // Simple Seq Scan
     Checker checker = SCAN_TOP_LEVEL_CHECKER
-      .storageReadRequests(Checkers.equal(NUM_PAGES))
-      .storageReadExecutionTime(Checkers.greater(0))
+      .storageReadRequests(Checkers.equal(NUM_PAGES + 1))
+      .storageReadExecutionTime(Checkers.greater(0.0))
       .plan(SEQ_SCAN_PLAN
-        .storageTableReadRequests(Checkers.equal(NUM_PAGES))
+        .storageTableReadRequests(Checkers.equal(NUM_PAGES + 1))
         .build())
       .build();
 
@@ -100,21 +99,133 @@ public class TestPgExplainAnalyzeScans extends TestPgExplainAnalyze {
 
     // Seq Scan with Pushdown
     Checker pushdown_checker = SCAN_TOP_LEVEL_CHECKER
-        .storageReadRequests(Checkers.equal(NUM_PAGES))
-        .storageReadExecutionTime(Checkers.greater(0))
-        .plan(SEQ_SCAN_PLAN
-          .storageTableReadRequests(Checkers.equal(NUM_PAGES))
-          .build())
-        .build();
+      .storageReadRequests(Checkers.equal(6))
+      .storageReadExecutionTime(Checkers.greater(0.0))
+      .plan(SEQ_SCAN_PLAN
+        .storageTableReadRequests(Checkers.equal(6))
+        .build())
+      .build();
 
     testExplain(queryWithExpr, pushdown_checker);
 
     // Seq Scan without Pushdown
+    Checker no_pushdown_checker = SCAN_TOP_LEVEL_CHECKER
+      .storageReadRequests(Checkers.equal(NUM_PAGES + 1))
+      .storageReadExecutionTime(Checkers.greater(0.0))
+      .plan(SEQ_SCAN_PLAN
+        .storageTableReadRequests(Checkers.equal(NUM_PAGES + 1))
+        .build())
+      .build();
+
     try (Statement stmt = connection.createStatement()) {
       stmt.execute("SET yb_enable_expression_pushdown TO false");
-      ExplainAnalyzeUtils.testExplain(stmt, queryWithExpr, pushdown_checker);
+      ExplainAnalyzeUtils.testExplain(stmt, queryWithExpr, no_pushdown_checker);
       stmt.execute("SET yb_enable_expression_pushdown TO true");
     }
+
+  }
+
+  @Test
+  public void testYbSeqScan() throws Exception {
+    final String simpleQuery = String.format("/*+ SeqScan(foo) */ SELECT * FROM %s;",
+      FOO_TABLE);
+    final String queryWithExpr = String.format("/*+ SeqScan(foo) */ SELECT * FROM %s "
+      + "WHERE v5 < 64", FOO_TABLE);
+
+    PlanCheckerBuilder YB_SEQ_SCAN_PLAN = makePlanBuilder()
+      .nodeType(NODE_YB_SEQ_SCAN)
+      .relationName(FOO_TABLE)
+      .alias(FOO_TABLE)
+      .storageTableReadExecutionTime(Checkers.greater(0.0))
+      .storageIndexReadRequests(Checkers.absent());
+
+    // 1. Simple YB Seq Scan
+    Checker checker = SCAN_TOP_LEVEL_CHECKER
+      .storageReadRequests(Checkers.equal(NUM_PAGES + 1))
+      .storageReadExecutionTime(Checkers.greater(0.0))
+      .plan(YB_SEQ_SCAN_PLAN
+        .storageTableReadRequests(Checkers.equal(NUM_PAGES + 1))
+        .build())
+      .build();
+
+    testExplain(simpleQuery, checker);
+
+    // 2. YB Seq Scan with Pushdown
+    Checker pushdown_checker = SCAN_TOP_LEVEL_CHECKER
+      .storageReadRequests(Checkers.equal(3))
+      .storageReadExecutionTime(Checkers.greater(0.0))
+      .plan(YB_SEQ_SCAN_PLAN
+        .storageTableReadRequests(Checkers.equal(3))
+        .build())
+      .build();
+
+      testExplain(queryWithExpr, pushdown_checker);
+
+      // 3. Seq Scan without Pushdown
+    Checker no_pushdown_checker = SCAN_TOP_LEVEL_CHECKER
+      .storageReadRequests(Checkers.equal(NUM_PAGES + 1))
+      .storageReadExecutionTime(Checkers.greater(0.0))
+      .plan(YB_SEQ_SCAN_PLAN
+        .storageTableReadRequests(Checkers.equal(NUM_PAGES + 1))
+        .build())
+      .build();
+
+    try (Statement stmt = connection.createStatement()) {
+      stmt.execute("SET yb_enable_expression_pushdown TO false");
+      ExplainAnalyzeUtils.testExplain(stmt, queryWithExpr, no_pushdown_checker);
+      stmt.execute("SET yb_enable_expression_pushdown TO true");
+    }
+
+  }
+
+  @Test
+  public void testIndexScan() throws Exception {
+      final String simpleIndexQuery = "SELECT * FROM %s WHERE %s = 128;";
+      final String indexQueryWithPredicate = "/*+ IndexScan(%s %s) */ SELECT * FROM %s WHERE "
+        + "%s < 128;";
+
+      PlanCheckerBuilder indexScanPlan = makePlanBuilder()
+        .nodeType(NODE_INDEX_SCAN)
+        .storageIndexReadExecutionTime(Checkers.greater(0.0));
+
+      // 1. Simple Primary Hash Index Scan
+      Checker checker1 = SCAN_TOP_LEVEL_CHECKER
+        .storageReadRequests(Checkers.equal(1))
+        .storageReadExecutionTime(Checkers.greater(0.0))
+        .plan(indexScanPlan
+          .storageIndexReadRequests(Checkers.equal(1))
+          .storageTableReadRequests(Checkers.absent())
+          .build())
+        .build();
+
+      testExplain(String.format(simpleIndexQuery, FOO_TABLE, "k"), checker1);
+
+      // 2. Simple Primary Range Index Scan
+      testExplain(String.format(simpleIndexQuery, BAR_TABLE, "k1"), checker1);
+
+      // 3. Simple Secondary Range Index Scan
+      Checker checker2 = SCAN_TOP_LEVEL_CHECKER
+        .storageReadRequests(Checkers.equal(2))
+        .storageReadExecutionTime(Checkers.greater(0.0))
+        .plan(indexScanPlan
+          .storageIndexReadRequests(Checkers.equal(2))
+          .build())
+        .build();
+
+      testExplain(String.format(simpleIndexQuery, FOO_TABLE, "v1"), checker2);
+
+      // 4. Index Scan with Inequality Predicate
+      Checker checker3 = SCAN_TOP_LEVEL_CHECKER
+        .storageReadRequests(Checkers.equal(2))
+        .storageReadExecutionTime(Checkers.greater(0.0))
+        .plan(indexScanPlan
+          .storageIndexReadRequests(Checkers.equal(2))
+          .storageTableReadRequests(Checkers.absent())
+          .build())
+        .build();
+
+      testExplain(String.format(indexQueryWithPredicate, FOO_TABLE, FOO_RANGE_INDEX,
+        FOO_TABLE, "v4"), checker3);
 
   }
 
