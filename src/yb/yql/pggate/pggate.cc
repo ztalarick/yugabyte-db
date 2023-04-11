@@ -62,6 +62,7 @@
 #include "yb/yql/pggate/pg_dml_write.h"
 #include "yb/yql/pggate/pg_insert.h"
 #include "yb/yql/pggate/pg_memctx.h"
+#include "yb/yql/pggate/pg_metrics.h"
 #include "yb/yql/pggate/pg_sample.h"
 #include "yb/yql/pggate/pg_select.h"
 #include "yb/yql/pggate/pg_select_index.h"
@@ -1714,7 +1715,17 @@ void PgApiImpl::FillSessionExecStats(YBCPgExecStats *stats, YBCQueryExecutionPha
     return;
   }
 
-  pg_session_->FillDocDBStats(stats, phase);
+  YBCPgExecStats current_metrics = {};
+
+  // Get the current DocDB stats
+  pg_session_->FillDocDBStats(&current_metrics);
+
+  // Find the diff between the current stats and the last metric snapshot
+  SubtractExecStats(&current_metrics, &metrics_snapshot, stats);
+
+  // Refresh the snapshot to reflect the current state of query execution
+  RefreshExecStats(&current_metrics, &metrics_snapshot, phase);
+
 }
 
 void PgApiImpl::RefreshSessionExecStats(YBCQueryExecutionPhase phase) {
@@ -1722,7 +1733,13 @@ void PgApiImpl::RefreshSessionExecStats(YBCQueryExecutionPhase phase) {
     return;
   }
 
-  pg_session_->RefreshDocDBSessionStats(phase);
+  YBCPgExecStats current_metrics = {};
+
+  // Get the current DocDB stats
+  pg_session_->FillDocDBStats(&current_metrics);
+
+  // Refresh the snapshot to reflect the current state of query execution
+  RefreshExecStats(&current_metrics, &metrics_snapshot, phase);
 }
 
 // Tuple Expression -----------------------------------------------------------------------------

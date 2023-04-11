@@ -689,6 +689,8 @@ class PgApiImpl {
   // Used as a snapshot of the tserver catalog version map prior to MyDatabaseId is resolved.
   std::unique_ptr<tserver::PgGetTserverCatalogVersionInfoResponsePB> catalog_version_info_;
   TupleIdBuilder tuple_id_builder_;
+
+  YBCPgExecStats metrics_snapshot;
 };
 
 }  // namespace pggate

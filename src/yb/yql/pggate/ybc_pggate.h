@@ -518,7 +518,7 @@ YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec
 // RPC stats for EXPLAIN ANALYZE
 void YBCGetPgSessionExecStats(YBCPgExecStats *stats, YBCQueryExecutionPhase phase);
 void YBCRefreshPgSessionExecStats(YBCQueryExecutionPhase phase);
-void Subtract(YBCPgExecStats *a, YBCPgExecStats *b, YBCPgExecStats *c);
+
 
 // Transaction control -----------------------------------------------------------------------------
 YBCStatus YBCPgBeginTransaction();

@@ -48,6 +48,7 @@
 
 #include "yb/yql/pggate/pg_client.h"
 #include "yb/yql/pggate/pg_expr.h"
+#include "yb/yql/pggate/pg_metrics.h"
 #include "yb/yql/pggate/pg_op.h"
 #include "yb/yql/pggate/pg_txn_manager.h"
 #include "yb/yql/pggate/pggate_flags.h"
@@ -901,58 +902,8 @@ Result<bool> PgSession::CheckIfPitrActive() {
   return pg_client_.CheckIfPitrActive();
 }
 
-void PgSession::FillDocDBStats(YBCPgExecStats *stats, YBCQueryExecutionPhase phase) {
-  YBCPgExecStats current_metrics = {};
-
-  metrics_.FillStats(&current_metrics);
-  Subtract(&current_metrics, &metrics_snapshot, stats);
-
-  RefreshDocDBSessionStats(phase);
-}
-
-void PgSession::RefreshDocDBSessionStats(YBCQueryExecutionPhase exec_phase) {
-  YBCPgExecStats current_metrics;
-
-  metrics_.FillStats(&current_metrics);
-
-  #define COPY_METRIC_VALUES(field) metrics_snapshot.field = current_metrics.field;
-  #define COPY_2_METRIC_VALUES(field1, field2) \
-    metrics_snapshot.field1 = current_metrics.field1; \
-    metrics_snapshot.field2 = current_metrics.field2; \
-
-  switch(exec_phase) {
-    case BEFORE_EXECUTOR_START:
-      // Reset all user table and index table reads.
-      COPY_2_METRIC_VALUES(num_table_reads, table_read_wait);
-      COPY_2_METRIC_VALUES(num_index_reads, index_read_wait);
-
-      // Reset all writes
-      COPY_2_METRIC_VALUES(num_table_writes, num_index_writes);
-      COPY_2_METRIC_VALUES(num_catalog_writes, catalog_write_wait);
-      COPY_2_METRIC_VALUES(num_flushes, flush_wait);
-
-      break;
-
-    case EXECUTION:
-    case AFTER_EXECUTOR_END:
-      // Reset all metrics except the ones that are executed async to Postgres execution framework
-      // (for example: flushes)
-
-      // User table and Index table reads
-      COPY_2_METRIC_VALUES(num_table_reads, table_read_wait);
-      COPY_2_METRIC_VALUES(num_index_reads, index_read_wait);
-
-      // Non catalog Write counts
-      COPY_2_METRIC_VALUES(num_table_writes, num_index_writes);
-
-      // Catalog accesses
-      COPY_2_METRIC_VALUES(num_catalog_reads, catalog_read_wait);
-
-      break;
-  }
-
-  #undef COPY_2_METRIC_VALUES
-  #undef COPY_METRIC_VALUE
+void PgSession::FillDocDBStats(YBCPgExecStats *stats) {
+  metrics_.FillStats(stats);
 }
 
 }  // namespace pggate

@@ -120,6 +120,30 @@ auto BuildRowOrders(const LWPgsqlResponsePB& response,
 
 } // namespace
 
+namespace {
+    master::RelationType resolveRelationType(PgsqlOp *op, const PgTable &table) {
+    bool has_index_request = false;
+    // TODO(kramanathan): Replace this with a standard library function.
+
+    if (table->id().object_oid < kPgFirstNormalObjectId) {
+      // We don't distinguish between table reads and index reads for a catalog table.
+      return master::SYSTEM_TABLE_RELATION;
+    }
+
+    // Check if we're making an index request.
+    if (op->is_read() && (down_cast<PgsqlReadOp*>(op)->read_request().has_index_request() ||
+        (down_cast<PgsqlReadOp*>(op)->read_request().has_is_forward_scan())))
+      has_index_request = true;
+
+    // Check for scans on primary or secondary indexes.
+    if (table->IsIndex() || has_index_request) {
+      return master::INDEX_TABLE_RELATION;
+    }
+
+    return master::USER_TABLE_RELATION;
+  }
+} // namespace
+
 PgDocResult::PgDocResult(rpc::SidecarHolder data, std::vector<int64_t>&& row_orders)
     : data_(std::move(data)),
       row_orders_(std::move(row_orders)),
@@ -316,28 +340,6 @@ Status PgDocOp::SendRequestImpl(ForceNonBufferable force_non_bufferable) {
       pg_session_.get(), pgsql_ops_.data(), send_count, *table_,
       HybridTime::FromPB(GetInTxnLimitHt()), force_non_bufferable));
   return Status::OK();
-}
-
-master::RelationType resolveRelationType(PgsqlOp *op, const PgTable &table) {
-  bool has_index_request = false;
-  // TODO(kramanathan): Replace this with a standard library function.
-
-  if (table->id().object_oid < kPgFirstNormalObjectId) {
-    // We don't distinguish between table reads and index reads for a catalog table.
-    return master::SYSTEM_TABLE_RELATION;
-  }
-
-  // Check if we're making an index request.
-  if (op->is_read() && (down_cast<PgsqlReadOp*>(op)->read_request().has_index_request() ||
-      (down_cast<PgsqlReadOp*>(op)->read_request().has_is_forward_scan())))
-    has_index_request = true;
-
-  // Check for scans on primary or secondary indexes.
-  if (table->IsIndex() || has_index_request) {
-    return master::INDEX_TABLE_RELATION;
-  }
-
-  return master::USER_TABLE_RELATION;
 }
 
 Status PgDocOp::PerformPreRequestInstrumentation() {
