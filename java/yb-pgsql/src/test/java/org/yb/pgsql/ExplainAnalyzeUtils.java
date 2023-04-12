@@ -36,6 +36,9 @@ public class ExplainAnalyzeUtils {
   public static final String NODE_VALUES_SCAN = "Values Scan";
   public static final String NODE_YB_SEQ_SCAN = "YB Seq Scan";
 
+  public static final String OPERATION_INSERT = "Insert";
+  public static final String OPERATION_UPDATE = "Update";
+
   public interface TopLevelCheckerBuilder extends ObjectCheckerBuilder {
     TopLevelCheckerBuilder plan(ObjectChecker checker);
     TopLevelCheckerBuilder storageReadRequests(ValueChecker<Long> checker);
@@ -52,6 +55,7 @@ public class ExplainAnalyzeUtils {
     PlanCheckerBuilder alias(String value);
     PlanCheckerBuilder indexName(String value);
     PlanCheckerBuilder nodeType(String value);
+    PlanCheckerBuilder operation(String value);
     PlanCheckerBuilder planRows(ValueChecker<Long> checker);
     PlanCheckerBuilder plans(Checker... checker);
     PlanCheckerBuilder relationName(String value);
@@ -61,10 +65,18 @@ public class ExplainAnalyzeUtils {
     PlanCheckerBuilder storageTableReadRequests(ValueChecker<Long> checker);
     PlanCheckerBuilder storageTableReadExecutionTime(ValueChecker<Double> checker);
 
+    // Table Writes
+    PlanCheckerBuilder storageTableWriteRequests(AbsenceChecker checker);
+    PlanCheckerBuilder storageTableWriteRequests(ValueChecker<Long> checker);
+
     // Index Reads
     PlanCheckerBuilder storageIndexReadRequests(ValueChecker<Long> checker);
     PlanCheckerBuilder storageIndexReadRequests(AbsenceChecker checker);
     PlanCheckerBuilder storageIndexReadExecutionTime(ValueChecker<Double> checker);
+
+    // Index Writes
+    PlanCheckerBuilder storageIndexWriteRequests(AbsenceChecker checker);
+    PlanCheckerBuilder storageIndexWriteRequests(ValueChecker<Long> checker);
 
     // Catalog Reads
     PlanCheckerBuilder storageCatalogReadRequests(ValueChecker<Long> checker);
