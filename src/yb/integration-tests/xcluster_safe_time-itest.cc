@@ -48,7 +48,6 @@ DECLARE_int32(TEST_xcluster_simulated_lag_ms);
 DECLARE_bool(enable_replicate_transaction_status_table);
 DECLARE_string(ysql_yb_xcluster_consistency_level);
 DECLARE_int32(transaction_table_num_tablets);
-DECLARE_int32(cdc_max_apply_batch_num_records);
 DECLARE_string(TEST_xcluster_simulated_lag_tablet_filter);
 
 namespace yb {
@@ -191,7 +190,7 @@ class XClusterSafeTimeTest : public XClusterTestBase {
           auto safe_time = safe_time_result.get();
           return *safe_time && safe_time->is_valid() && *safe_time > min_safe_time;
         },
-        safe_time_propagation_timeout_,
+        propagation_timeout_,
         Format("Wait for safe_time to move above $0", min_safe_time.ToDebugString()));
   }
 
@@ -205,7 +204,7 @@ class XClusterSafeTimeTest : public XClusterTestBase {
           }
           return false;
         },
-        safe_time_propagation_timeout_,
+        propagation_timeout_,
         Format("Wait for safe_time to get removed"));
   }
 
@@ -645,7 +644,7 @@ class XClusterConsistencyNoSafeTimeTest : public XClusterConsistencyTest {
             }
             return false;
           },
-          safe_time_propagation_timeout_,
+          propagation_timeout_,
           Format("Wait for safe_time of namespace $0 to be in-valid", namespace_id_)));
     }
 

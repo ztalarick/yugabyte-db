@@ -16,6 +16,7 @@
 #include "yb/client/transaction.h"
 
 #include <atomic>
+#include <unordered_map>
 #include <unordered_set>
 #include <boost/atomic.hpp>
 
@@ -194,7 +195,7 @@ Status YBSubTransaction::RollbackToSubTransaction(SubTransactionId id) {
   return sub_txn_.aborted.SetRange(id, highest_subtransaction_id_);
 }
 
-const SubTransactionMetadata& YBSubTransaction::get() { return sub_txn_; }
+const SubTransactionMetadata& YBSubTransaction::get() const { return sub_txn_; }
 
 class YBTransaction::Impl final : public internal::TxnBatcherIf {
  public:
@@ -373,7 +374,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
     VTRACE_TO(2, trace_, "Preparing $0 ops", AsString(ops_info->groups));
 
     {
-      UNIQUE_LOCK(lock, mutex_);
+      UniqueLock lock(mutex_);
       if (!status_.ok()) {
         auto status = status_;
         lock.unlock();
@@ -417,15 +418,9 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
       SetReadTimeIfNeeded(ops_info->groups.size() > 1 || force_consistent_read);
     }
 
-    {
-      ops_info->metadata = {
-        .transaction = metadata_,
-        .subtransaction = subtransaction_.active()
-            ? boost::make_optional(subtransaction_.get())
-            : boost::none,
-      };
-    }
-
+    // Set the transaction's metadata alone. ops_info->metadata.subtransaction_pb has already been
+    // set upsteam in Batcher::FlushAsync.
+    ops_info->metadata.transaction = metadata_;
     return true;
   }
 
@@ -525,7 +520,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
     auto transaction = transaction_->shared_from_this();
     TRACE_TO(trace_, __func__);
     {
-      UNIQUE_LOCK(lock, mutex_);
+      UniqueLock lock(mutex_);
       auto status = CheckCouldCommitUnlocked(seal_only);
       if (!status.ok()) {
         lock.unlock();
@@ -573,7 +568,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
     VLOG_WITH_PREFIX(2) << "Abort";
     TRACE_TO(trace_, __func__);
     {
-      UNIQUE_LOCK(lock, mutex_);
+      UniqueLock lock(mutex_);
       auto state = state_.load(std::memory_order_acquire);
       if (state != TransactionState::kRunning) {
         if (state != TransactionState::kAborted) {
@@ -672,7 +667,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
 
   Status PromoteToGlobal(const CoarseTimePoint& deadline) EXCLUDES(mutex_) {
     {
-      UNIQUE_LOCK(lock, mutex_);
+      UniqueLock lock(mutex_);
       RETURN_NOT_OK(StartPromotionToGlobal());
     }
     DoPromoteToGlobal(deadline);
@@ -707,7 +702,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
 
   std::shared_future<Result<TransactionMetadata>> GetMetadata(
       CoarseTimePoint deadline) EXCLUDES(mutex_) {
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
     if (metadata_future_.valid()) {
       return metadata_future_;
     }
@@ -717,7 +712,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
       auto transaction = transaction_->shared_from_this();
       waiters_.push_back([this, transaction](const Status& status) {
         WARN_NOT_OK(status, "Transaction request failed");
-        UNIQUE_LOCK(lock, mutex_);
+        UniqueLock lock(mutex_);
         if (status.ok()) {
           metadata_promise_.set_value(metadata_);
         } else {
@@ -739,7 +734,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
       PrepareChildCallback callback) {
     auto transaction = transaction_->shared_from_this();
     TRACE_TO(trace_, __func__);
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
     auto status = CheckRunningUnlocked();
     if (!status.ok()) {
       lock.unlock();
@@ -769,7 +764,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
 
   Result<ChildTransactionResultPB> FinishChild() {
     TRACE_TO(trace_, __func__);
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
     RETURN_NOT_OK(CheckRunningUnlocked());
     if (!child_) {
       return STATUS(IllegalState, "Finish child of non child transaction");
@@ -801,7 +796,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
           manager_->client(), manager_->clock(), metadata_.transaction_id, Sealed::kFalse,
           CleanupType::kImmediate, cleanup_tablet_ids);
     });
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
     if (state_.load(std::memory_order_acquire) == TransactionState::kAborted) {
       cleanup_tablet_ids.reserve(result.tablets().size());
       for (const auto& tablet : result.tablets()) {
@@ -844,7 +839,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
   }
 
   Result<TransactionMetadata> Release() {
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
     auto state = state_.load(std::memory_order_acquire);
     if (state != TransactionState::kRunning) {
       return STATUS_FORMAT(IllegalState, "Attempt to release transaction in the wrong state $0: $1",
@@ -895,13 +890,12 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
   }
 
   bool HasSubTransaction(SubTransactionId id) EXCLUDES(mutex_) {
-    SharedLock<std::shared_mutex> lock(mutex_);
-    return subtransaction_.active() && subtransaction_.HasSubTransaction(id);
+    return subtransaction_.HasSubTransaction(id);
   }
 
   Status RollbackToSubTransaction(SubTransactionId id, CoarseTimePoint deadline) EXCLUDES(mutex_) {
     SCHECK(
-        subtransaction_.active(), InternalError,
+        subtransaction_.HasSubTransaction(kMinSubTransactionId + 1), InternalError,
         "Attempted to rollback to savepoint before creating any savepoints.");
 
     // A heartbeat should be sent (& waited for) to the txn status tablet(s) as part of a rollback.
@@ -1003,26 +997,24 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
   }
 
   void IncreaseMutationCounts(
-      SubTransactionId subtxn_id, const TableId& table_id, uint64 mutation_count) {
-    if (subtxn_table_mutation_counter_map_[subtxn_id].contains(table_id)) {
-      subtxn_table_mutation_counter_map_[subtxn_id][table_id] += mutation_count;
-    } else {
-      subtxn_table_mutation_counter_map_[subtxn_id].insert({table_id, mutation_count});
+      SubTransactionId subtxn_id, const TableId& table_id, uint64_t mutation_count) {
+    auto it = subtxn_table_mutation_counter_map_.find(subtxn_id);
+    if (it != subtxn_table_mutation_counter_map_.end()) {
+      it->second[table_id] += mutation_count;
+      return;
     }
+    subtxn_table_mutation_counter_map_[subtxn_id].insert({table_id, mutation_count});
   }
 
-  const std::map<TableId, uint64> GetTableMutationCounts() {
+  std::unordered_map<TableId, uint64_t> GetTableMutationCounts() const {
     auto& aborted_sub_txn_set = subtransaction_.get().aborted;
-    std::map<TableId, uint64> table_mutation_counts;
+    std::unordered_map<TableId, uint64_t> table_mutation_counts;
     for (const auto& [sub_txn_id, table_mutation_cnt_map] : subtxn_table_mutation_counter_map_) {
       if (aborted_sub_txn_set.Test(sub_txn_id)) {
         continue;
       }
 
       for (const auto& [table_id, mutation_count] : table_mutation_cnt_map) {
-        if (table_mutation_counts.find(table_id) == table_mutation_counts.end()) {
-          table_mutation_counts[table_id] = 0;
-        }
         table_mutation_counts[table_id] += mutation_count;
       }
     }
@@ -1032,6 +1024,15 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
   void SetLogPrefixTag(const LogPrefixName& name, uint64_t id) {
     log_prefix_.tag.store(LogPrefixTag(&name.Get(), id), boost::memory_order_release);
     VLOG_WITH_PREFIX(2) << "Log prefix tag changed";
+  }
+
+  boost::optional<SubTransactionMetadataPB> GetSubTransactionMetadataPB() const {
+    if (subtransaction_.IsDefaultState()) {
+      return boost::none;
+    }
+    SubTransactionMetadataPB subtxn_metadata_pb;
+    subtransaction_.get().ToPB(&subtxn_metadata_pb);
+    return boost::make_optional(subtxn_metadata_pb);
   }
 
  private:
@@ -1139,7 +1140,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
         << Format("Commit, seal_only: $0, tablets: $1, status: $2",
                   seal_only, tablets_, status);
 
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
 
     if (!status.ok()) {
       VLOG_WITH_PREFIX(4) << "Commit failed: " << status;
@@ -1186,7 +1187,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
       return;
     }
 
-    if (subtransaction_.active()) {
+    if (!subtransaction_.IsDefaultState()) {
       subtransaction_.get().aborted.ToPB(state.mutable_aborted()->mutable_set());
     }
 
@@ -1588,13 +1589,13 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
   // See NotifyWaitersAndRelease.
   void NotifyWaiters(const Status& status, const char* operation,
                      SetReady set_ready = SetReady::kFalse) EXCLUDES(mutex_) {
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
     NotifyWaitersAndRelease(&lock, status, operation, set_ready);
   }
 
   // Notify all waiters. The transaction will be aborted if it is running and status is not OK.
-  // `lock` must be UNIQUE_LOCK(.., mutex_), and will be released in this function.
-  // If `set_ready` is true and status is OK, `ready_` must be false, and will be set to true.
+  // `lock` will be released in this function. If `set_ready` is true and status is OK, `ready_`
+  // must be false, and will be set to true.
   void NotifyWaitersAndRelease(UniqueLock<std::shared_mutex>* lock,
                                Status status,
                                const char* operation,
@@ -1786,7 +1787,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
       FATAL_INVALID_ENUM_VALUE(TransactionStatus, transaction_status);
     } else {
       auto state = state_.load(std::memory_order_acquire);
-      LOG_WITH_PREFIX(WARNING) << "Send heartbeat failed: " << status << ", state: " << state;
+      LOG_WITH_PREFIX(WARNING) << "Send heartbeat failed: " << status << ", txn state: " << state;
 
       if (status.IsAborted() || status.IsExpired()) {
         // IsAborted - Service is shutting down, no reason to retry.
@@ -1833,7 +1834,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
     TRACE_TO(trace_, __func__);
     VLOG_WITH_PREFIX(2) << "DoSendUpdateTransactionStatusLocationRpcs()";
 
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
 
     if (transaction_status_move_handles_.empty()) {
       auto old_status_tablet = old_status_tablet_;
@@ -1925,7 +1926,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
       return;
     }
 
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
 
     auto handle = GetTransactionStatusMoveHandle(tablet_id);
     auto rpc = PrepareUpdateTransactionStatusLocationRpc(
@@ -1952,7 +1953,7 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
     VLOG_WITH_PREFIX(1) << "Transaction status update for participant tablet "
                         << tablet_id << ": " << yb::ToString(status);
 
-    UNIQUE_LOCK(lock, mutex_);
+    UniqueLock lock(mutex_);
     auto handle = GetTransactionStatusMoveHandle(tablet_id);
     manager_->rpcs().Unregister(handle);
 
@@ -2072,7 +2073,8 @@ class YBTransaction::Impl final : public internal::TxnBatcherIf {
   // commit, this helps count the total mutations per table which is aggregated to the node level
   // mutation counter that is in turn sent to the auto analyze service that maintains the cluster
   // level mutations (see PgMutationCounter).
-  std::map<SubTransactionId, std::map<TableId, uint64>> subtxn_table_mutation_counter_map_;
+  std::unordered_map<SubTransactionId, std::unordered_map<TableId, uint64_t>>
+      subtxn_table_mutation_counter_map_;
 
   std::atomic<bool> requested_status_tablet_{false};
   internal::RemoteTabletPtr status_tablet_ GUARDED_BY(mutex_);
@@ -2302,16 +2304,20 @@ bool YBTransaction::HasSubTransaction(SubTransactionId id) {
 }
 
 void YBTransaction::IncreaseMutationCounts(
-    SubTransactionId subtxn_id, const TableId& table_id, uint64 mutation_count) {
+    SubTransactionId subtxn_id, const TableId& table_id, uint64_t mutation_count) {
   return impl_->IncreaseMutationCounts(subtxn_id, table_id, mutation_count);
 }
 
-const std::map<TableId, uint64> YBTransaction::GetTableMutationCounts() const {
+std::unordered_map<TableId, uint64_t> YBTransaction::GetTableMutationCounts() const {
   return impl_->GetTableMutationCounts();
 }
 
 void YBTransaction::SetLogPrefixTag(const LogPrefixName& name, uint64_t value) {
   return impl_->SetLogPrefixTag(name, value);
+}
+
+boost::optional<SubTransactionMetadataPB> YBTransaction::GetSubTransactionMetadataPB() const {
+  return impl_->GetSubTransactionMetadataPB();
 }
 
 } // namespace client

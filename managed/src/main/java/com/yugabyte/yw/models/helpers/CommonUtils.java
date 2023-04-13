@@ -18,10 +18,11 @@ import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import com.yugabyte.yw.common.PlatformServiceException;
 import com.yugabyte.yw.common.ShellResponse;
 import com.yugabyte.yw.common.utils.Pair;
+import com.yugabyte.yw.controllers.RequestContext;
+import com.yugabyte.yw.controllers.TokenAuthenticator;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.Users;
-import com.yugabyte.yw.models.extended.UserWithFeatures;
 import com.yugabyte.yw.models.helpers.NodeDetails.NodeState;
 import com.yugabyte.yw.models.paging.PagedQuery;
 import com.yugabyte.yw.models.paging.PagedResponse;
@@ -63,7 +64,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import play.libs.Json;
-import play.mvc.Http;
 
 @Slf4j
 public class CommonUtils {
@@ -702,7 +702,7 @@ public class CommonUtils {
             .collect(Collectors.toList());
     if (tserverLiveNodes.isEmpty()) {
       throw new IllegalStateException(
-          "No live TServers found for Universe UUID: " + universe.universeUUID);
+          "No live TServers found for Universe UUID: " + universe.getUniverseUUID());
     }
     return tserverLiveNodes.get(new Random().nextInt(tserverLiveNodes.size()));
   }
@@ -768,8 +768,8 @@ public class CommonUtils {
   }
 
   /** Get the user sending the API request from the HTTP context. */
-  public static Users getUserFromContext(Http.Context ctx) {
-    return ((UserWithFeatures) ctx.args.get("user")).getUser();
+  public static Users getUserFromContext() {
+    return RequestContext.get(TokenAuthenticator.USER).getUser();
   }
 
   public static boolean isAutoFlagSupported(String dbVersion) {

@@ -968,12 +968,18 @@ T ExternalMiniCluster::GetProxy(const ExternalDaemon* daemon) {
 
 Status RestartAllMasters(ExternalMiniCluster* cluster);
 
-Status CompactTablets(ExternalMiniCluster* cluster);
+Status CompactTablets(
+    ExternalMiniCluster* cluster,
+    const yb::MonoDelta& timeout = MonoDelta::FromSeconds(60* kTimeMultiplier));
 
 void StartSecure(
   std::unique_ptr<ExternalMiniCluster>* cluster,
   std::unique_ptr<rpc::SecureContext>* secure_context,
   std::unique_ptr<rpc::Messenger>* messenger,
   const std::vector<std::string>& master_flags = std::vector<std::string>());
+
+Status WaitForTableIntentsApplied(
+    ExternalMiniCluster* cluster, const TableId& table_id,
+    MonoDelta timeout = MonoDelta::FromSeconds(30));
 
 }  // namespace yb

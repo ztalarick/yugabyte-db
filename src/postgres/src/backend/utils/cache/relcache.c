@@ -100,11 +100,11 @@
 #include "utils/syscache.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
 #include "access/yb_scan.h"
-#include "catalog/yb_catalog_version.h"
 #include "catalog/pg_yb_profile.h"
 #include "catalog/pg_yb_role_profile.h"
+#include "catalog/yb_catalog_version.h"
+#include "pg_yb_utils.h"
 
 #define RELCACHE_INIT_FILEMAGIC		0x573266	/* version ID value */
 
@@ -2014,6 +2014,7 @@ typedef enum YbPFetchTable
 	YB_PFETCH_TABLE_PG_POLICY,
 	YB_PFETCH_TABLE_PG_PROC,
 	YB_PFETCH_TABLE_PG_REWRITE,
+	YB_PFETCH_TABLE_PG_TABLESPACE,
 	YB_PFETCH_TABLE_PG_TRIGGER,
 	YB_PFETCH_TABLE_PG_TYPE,
 	YB_PFETCH_TABLE_YB_PG_PROFILIE,
@@ -2113,6 +2114,9 @@ YbGetPrefetchableTableInfoImpl(YbPFetchTable table)
 	case YB_PFETCH_TABLE_PG_REWRITE:
 		return (YbPFetchTableInfo)
 			{ RewriteRelationId, RULERELNAME, YB_INVALID_CACHE_ID };
+	case YB_PFETCH_TABLE_PG_TABLESPACE:
+		return (YbPFetchTableInfo)
+			{ TableSpaceRelationId, TABLESPACEOID, YB_INVALID_CACHE_ID };
 	case YB_PFETCH_TABLE_PG_TRIGGER:
 		return (YbPFetchTableInfo)
 			{ TriggerRelationId, YB_INVALID_CACHE_ID, YB_INVALID_CACHE_ID };
@@ -2343,7 +2347,8 @@ YbPreloadRelCacheImpl(YbRunWithPrefetcherContext* ctx)
 		static const YbPFetchTable tables[] = {
 			YB_PFETCH_TABLE_PG_AMOP,
 			YB_PFETCH_TABLE_PG_AMPROC,
-			YB_PFETCH_TABLE_PG_CAST
+			YB_PFETCH_TABLE_PG_CAST,
+			YB_PFETCH_TABLE_PG_TABLESPACE
 		};
 		YbRegisterTables(prefetcher, tables, lengthof(tables));
 	}
@@ -2365,6 +2370,7 @@ YbPreloadRelCacheImpl(YbRunWithPrefetcherContext* ctx)
 			YB_PFETCH_TABLE_PG_INHERITS,
 			YB_PFETCH_TABLE_PG_POLICY,
 			YB_PFETCH_TABLE_PG_PROC,
+			YB_PFETCH_TABLE_PG_TABLESPACE,
 			YB_PFETCH_TABLE_PG_TRIGGER
 		};
 		YbRegisterTables(prefetcher, tables, lengthof(tables));
@@ -5022,12 +5028,16 @@ RelationCacheInitializePhase2(void)
 		if (*YBCGetGFlags()->ysql_enable_profile && YbLoginProfileCatalogsExist)
 		{
 			formrdesc("pg_yb_profile", YbProfileRelation_Rowtype_Id, true,
-					true, Natts_pg_yb_profile, Desc_pg_yb_profile);
-			formrdesc("pg_yb_role_profile", YbRoleProfileRelation_Rowtype_Id, true,
-					true, Natts_pg_yb_role_profile, Desc_pg_yb_role_profile);
+					  true, Natts_pg_yb_profile, Desc_pg_yb_profile);
+			formrdesc("pg_yb_role_profile", YbRoleProfileRelation_Rowtype_Id,
+					  true, true, Natts_pg_yb_role_profile,
+					  Desc_pg_yb_role_profile);
 		}
 
-#define NUM_CRITICAL_SHARED_RELS    (*YBCGetGFlags()->ysql_enable_profile && YbLoginProfileCatalogsExist ? 7 : 5)   /* fix if you change list above */
+#define NUM_CRITICAL_SHARED_RELS	(*YBCGetGFlags()->ysql_enable_profile && \
+									 YbLoginProfileCatalogsExist \
+									 ? 7 \
+									 : 5)	/* fix if you change list above */
 	}
 
 	MemoryContextSwitchTo(oldcxt);

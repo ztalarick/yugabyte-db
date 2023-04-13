@@ -36,6 +36,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <atomic>
 
 #include "yb/consensus/metadata.pb.h"
 #include "yb/cdc/cdc_fwd.h"
@@ -55,6 +56,7 @@
 #include "yb/tserver/tablet_server_interface.h"
 #include "yb/tserver/tablet_server_options.h"
 #include "yb/tserver/xcluster_safe_time_map.h"
+#include "yb/tserver/xcluster_context.h"
 
 #include "yb/util/locks.h"
 #include "yb/util/net/net_util.h"
@@ -263,7 +265,7 @@ class TabletServer : public DbServerBase, public TabletServerIf {
 
   const XClusterSafeTimeMap& GetXClusterSafeTimeMap() const;
 
-  const std::shared_ptr<PgMutationCounter> GetPgNodeLevelMutationCounter();
+  PgMutationCounter& GetPgNodeLevelMutationCounter();
 
   void UpdateXClusterSafeTime(const XClusterNamespaceToSafeTimePBMap& safe_time_map);
 
@@ -291,6 +293,8 @@ class TabletServer : public DbServerBase, public TabletServerIf {
   PgClientServiceImpl* TEST_GetPgClientService() {
     return pg_client_service_.lock().get();
   }
+
+  void SetXClusterDDLOnlyMode(bool is_xcluster_read_only_mode);
 
  protected:
   virtual Status RegisterServices();
@@ -389,7 +393,9 @@ class TabletServer : public DbServerBase, public TabletServerIf {
 
   XClusterSafeTimeMap xcluster_safe_time_map_;
 
-  std::shared_ptr<PgMutationCounter> pg_node_level_mutation_counter_;
+  std::atomic<bool> xcluster_read_only_mode_{false};
+
+  PgMutationCounter pg_node_level_mutation_counter_;
 
   PgConfigReloader pg_config_reloader_;
 

@@ -15,6 +15,8 @@ import com.yugabyte.yw.cloud.PublicCloudConstants.OsType;
 import com.yugabyte.yw.commissioner.Common;
 import com.yugabyte.yw.commissioner.Common.CloudType;
 import com.yugabyte.yw.common.utils.Pair;
+import com.yugabyte.yw.controllers.RequestContext;
+import com.yugabyte.yw.controllers.TokenAuthenticator;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.Cluster;
 import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.ClusterType;
@@ -22,8 +24,8 @@ import com.yugabyte.yw.forms.UniverseDefinitionTaskParams.UserIntent;
 import com.yugabyte.yw.models.Customer;
 import com.yugabyte.yw.models.Provider;
 import com.yugabyte.yw.models.Universe;
-import com.yugabyte.yw.models.Users;
 import com.yugabyte.yw.models.Universe.UniverseUpdater;
+import com.yugabyte.yw.models.Users;
 import com.yugabyte.yw.models.extended.UserWithFeatures;
 import com.yugabyte.yw.models.helpers.NodeDetails;
 import io.swagger.annotations.ApiModel;
@@ -65,7 +67,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
-import lombok.Getter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -75,7 +80,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import play.libs.Json;
-import play.mvc.Http.Context;
 
 public class Util {
   public static final Logger LOG = LoggerFactory.getLogger(Util.class);
@@ -209,7 +213,7 @@ public class Util {
     if (c == null) {
       throw new RuntimeException("Invalid Customer Id: " + custId);
     }
-    return String.format("yb-%s-%s", c.code, univName);
+    return String.format("yb-%s-%s", c.getCode(), univName);
   }
 
   /**
@@ -406,22 +410,25 @@ public class Util {
   }
 
   @ApiModel(value = "UniverseDetailSubset", description = "A small subset of universe information")
-  @Getter
+  @Value
+  @Jacksonized
+  @Builder
+  @AllArgsConstructor
   public static class UniverseDetailSubset {
-    final UUID uuid;
-    final String name;
-    final boolean updateInProgress;
-    final boolean updateSucceeded;
-    final long creationDate;
-    final boolean universePaused;
+    UUID uuid;
+    String name;
+    boolean updateInProgress;
+    boolean updateSucceeded;
+    long creationDate;
+    boolean universePaused;
 
     public UniverseDetailSubset(Universe universe) {
       UniverseDefinitionTaskParams universeDetails = universe.getUniverseDetails();
-      uuid = universe.universeUUID;
-      name = universe.name;
+      uuid = universe.getUniverseUUID();
+      name = universe.getName();
       updateInProgress = universeDetails.updateInProgress;
       updateSucceeded = universeDetails.updateSucceeded;
-      creationDate = universe.creationDate.getTime();
+      creationDate = universe.getCreationDate().getTime();
       universePaused = universeDetails.universePaused;
     }
   }
@@ -676,7 +683,7 @@ public class Util {
 
   public static boolean canConvertJsonNode(JsonNode jsonNode, Class<?> toValueType) {
     try {
-      new ObjectMapper().treeToValue(jsonNode, toValueType);
+      Json.mapper().treeToValue(jsonNode, toValueType);
     } catch (JsonProcessingException e) {
       LOG.info(e.getMessage());
       return false;
@@ -714,7 +721,7 @@ public class Util {
     UserIntent userIntent = universe.getUniverseDetails().getPrimaryCluster().userIntent;
     if (userIntent.providerType == Common.CloudType.onprem) {
       Provider provider = Provider.getOrBadRequest(UUID.fromString(userIntent.provider));
-      return provider.details.skipProvisioning;
+      return provider.getDetails().skipProvisioning;
     }
     return false;
   }
@@ -823,11 +830,11 @@ public class Util {
    * @param tarFile the archive we want to sasve to folderPath
    * @param folderPath the directory where we want to extract the archive to
    */
-  public static void extractFilesFromTarGZ(File tarFile, String folderPath) throws IOException {
+  public static void extractFilesFromTarGZ(Path tarFile, String folderPath) throws IOException {
     TarArchiveEntry currentEntry;
     Files.createDirectories(Paths.get(folderPath));
 
-    try (FileInputStream fis = new FileInputStream(tarFile);
+    try (FileInputStream fis = new FileInputStream(tarFile.toFile());
         GZIPInputStream gis = new GZIPInputStream(new BufferedInputStream(fis));
         TarArchiveInputStream tis = new TarArchiveInputStream(gis)) {
       while ((currentEntry = tis.getNextTarEntry()) != null) {
@@ -886,15 +893,12 @@ public class Util {
     }
   }
 
-  public static String maybeGetEmailFromContext(Context context) {
-    String userEmail =
-        Optional.ofNullable(context)
-            .map(context1 -> (UserWithFeatures) context1.args.get("user"))
-            .map(UserWithFeatures::getUser)
-            .map(Users::getEmail)
-            .map(Object::toString)
-            .orElse("Unknown");
-    return userEmail;
+  public static String maybeGetEmailFromContext() {
+    return Optional.ofNullable(RequestContext.getIfPresent(TokenAuthenticator.USER))
+        .map(UserWithFeatures::getUser)
+        .map(Users::getEmail)
+        .map(Object::toString)
+        .orElse("Unknown");
   }
 
   public static Universe lockUniverse(Universe universe) {
@@ -905,7 +909,7 @@ public class Util {
           universeDetails.updateSucceeded = false;
           u.setUniverseDetails(universeDetails);
         };
-    return Universe.saveDetails(universe.universeUUID, updater, false);
+    return Universe.saveDetails(universe.getUniverseUUID(), updater, false);
   }
 
   public static Universe unlockUniverse(Universe universe) {
@@ -916,7 +920,7 @@ public class Util {
           universeDetails.updateSucceeded = true;
           u.setUniverseDetails(universeDetails);
         };
-    return Universe.saveDetails(universe.universeUUID, updater, false);
+    return Universe.saveDetails(universe.getUniverseUUID(), updater, false);
   }
 
   public static boolean isAddressReachable(String host, int port) {

@@ -50,6 +50,7 @@ DECLARE_bool(enable_automatic_tablet_splitting);
 DECLARE_bool(TEST_skip_partitioning_version_validation);
 DECLARE_int32(cleanup_split_tablets_interval_sec);
 DECLARE_int32(TEST_partitioning_version);
+DECLARE_bool(ysql_enable_packed_row);
 
 using yb::test::Partitioning;
 using namespace std::literals;
@@ -282,7 +283,7 @@ class PgPartitioningVersionTest :
     return InvokeSplitTabletRpcAndWaitForSplitCompleted(peer->tablet_id());
   }
 
-  TabletRecordsInfo GetTabletRecordsInfo(
+  Result<TabletRecordsInfo> GetTabletRecordsInfo(
       const std::vector<tablet::TabletPeerPtr>& peers) {
     TabletRecordsInfo result;
     for (const auto& peer : peers) {
@@ -291,7 +292,7 @@ class PgPartitioningVersionTest :
       rocksdb::ReadOptions read_opts;
       read_opts.query_id = rocksdb::kDefaultQueryId;
       docdb::BoundedRocksDbIterator it(db.regular, read_opts, db.key_bounds);
-      for (it.SeekToFirst(); it.Valid(); it.Next(), ++num_records) {}
+      for (it.SeekToFirst(); VERIFY_RESULT(it.CheckedValid()); it.Next(), ++num_records) {}
       result.emplace(peer->tablet_id(), std::make_tuple(*db.key_bounds, num_records));
     }
     return result;
@@ -536,7 +537,7 @@ TEST_P(PgPartitioningVersionTest, IndexRowsPersistenceAfterManualSplit) {
 
       // Keep current numbers of records persisted in tablets for further analyses.
       const auto peers = ListTableActiveTabletLeadersPeers(cluster_.get(), table_id);
-      const auto peers_info = GetTabletRecordsInfo(peers);
+      const auto peers_info = ASSERT_RESULT(GetTabletRecordsInfo(peers));
 
       // Simulate leading nulls for the index table
       ASSERT_OK(conn.Execute(
@@ -562,8 +563,8 @@ TEST_P(PgPartitioningVersionTest, IndexRowsPersistenceAfterManualSplit) {
 
       ASSERT_OK(SetEnableIndexScan(&conn, true));
       const auto count_on = ASSERT_RESULT(FetchTableRowsCount(&conn, table_name, "i0 > 0"));
-      const auto diff =
-          ASSERT_RESULT(DiffTabletRecordsInfo(GetTabletRecordsInfo(peers), peers_info));
+      const auto tablet_records_info = ASSERT_RESULT(GetTabletRecordsInfo(peers));
+      const auto diff = ASSERT_RESULT(DiffTabletRecordsInfo(tablet_records_info, peers_info));
 
       const bool is_asc_ordering = ToLowerCase(sort_order) == "asc";
       if (partitioning_version == 0 && is_asc_ordering) {
@@ -653,26 +654,33 @@ TEST_P(PgPartitioningVersionTest, UniqueIndexRowsPersistenceAfterManualSplit) {
     // the row is being forwarded.
     ASSERT_OK(conn.Execute(Format("DELETE FROM $0 WHERE k > 0", table_name)));
     ASSERT_EQ(0, ASSERT_RESULT(FetchTableRowsCount(&conn, table_name)));
+    ASSERT_OK(WaitForTableIntentsApplied(cluster_.get(), table_id));
 
     // Keep current numbers of records persisted in tablets for further analyses.
-    auto peers_info = GetTabletRecordsInfo(peers);
+    auto peers_info = ASSERT_RESULT(GetTabletRecordsInfo(peers));
 
     // Insert values that match the partition bound.
     ASSERT_OK(conn.Execute(Format(
         "INSERT INTO $0 VALUES($1, $1, $2)", table_name, idx1_i0, idx1_t0)));
     ASSERT_EQ(1, ASSERT_RESULT(FetchTableRowsCount(&conn, table_name)));
+    ASSERT_OK(WaitForTableIntentsApplied(cluster_.get(), table_id));
 
     // Validate insert operation is forwarded correctly (assuming NULL LAST approach is used):
     // - for partitioning_version > 0 all records should be persisted in the second tablet
     //   with partition [split_key, <end>);
     // - for partitioning_version == 0 operation is lost, no diff in peers_info.
-    const auto diff = ASSERT_RESULT(DiffTabletRecordsInfo(GetTabletRecordsInfo(peers), peers_info));
+    const auto tablet_records_info = ASSERT_RESULT(GetTabletRecordsInfo(peers));
+    const auto diff = ASSERT_RESULT(DiffTabletRecordsInfo(tablet_records_info, peers_info));
     if (partitioning_version == 0) {
       ASSERT_EQ(diff.size(), 0); // Having diff.size() == 0 means the records are not written!
       return;
     }
 
     ASSERT_EQ(diff.size(), 1);
+    const auto records_diff = std::get</* records diff */ 1>(diff.begin()->second);
+    const auto expected_records_diff =
+        ANNOTATE_UNPROTECTED_READ(FLAGS_ysql_enable_packed_row) ? 1 : 2;
+    ASSERT_EQ(records_diff, expected_records_diff);
     bool is_correctly_forwarded =
         std::get</* key_bounds */ 0>(diff.begin()->second).IsWithinBounds(Slice(encoded_split_key));
     ASSERT_TRUE(is_correctly_forwarded) <<

@@ -12,6 +12,8 @@ import com.typesafe.config.Config;
 import com.yugabyte.yw.cloud.PublicCloudConstants.Architecture;
 import com.yugabyte.yw.commissioner.Commissioner;
 import com.yugabyte.yw.commissioner.tasks.AddGFlagMetadata;
+import com.yugabyte.yw.common.config.GlobalConfKeys;
+import com.yugabyte.yw.common.config.RuntimeConfGetter;
 import com.yugabyte.yw.common.gflags.GFlagsValidation;
 import com.yugabyte.yw.common.utils.FileUtils;
 import com.yugabyte.yw.forms.ReleaseFormData;
@@ -51,10 +53,10 @@ import javax.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import play.Configuration;
 import play.data.validation.Constraints;
 import play.libs.Json;
 import play.mvc.Http.Status;
+import play.Environment;
 
 @Slf4j
 @Singleton
@@ -67,27 +69,33 @@ public class ReleaseManager {
   private static final String YB_PACKAGE_REGEX =
       "yugabyte-(?:ee-)?(.*)-(alma|centos|linux|el8|darwin)(.*).tar.gz";
 
-  public final ConfigHelper configHelper;
-  private final Configuration appConfig;
+  private final ConfigHelper configHelper;
+  private final Config appConfig;
   private final GFlagsValidation gFlagsValidation;
   private final Commissioner commissioner;
   private final AWSUtil awsUtil;
   private final GCPUtil gcpUtil;
+  private final RuntimeConfGetter confGetter;
+  private final Environment environment;
 
   @Inject
   public ReleaseManager(
       ConfigHelper configHelper,
-      Configuration appConfig,
+      Config appConfig,
       GFlagsValidation gFlagsValidation,
       Commissioner commissioner,
       AWSUtil awsUtil,
-      GCPUtil gcpUtil) {
+      GCPUtil gcpUtil,
+      RuntimeConfGetter confGetter,
+      Environment environment) {
     this.configHelper = configHelper;
     this.appConfig = appConfig;
     this.gFlagsValidation = gFlagsValidation;
     this.commissioner = commissioner;
     this.awsUtil = awsUtil;
     this.gcpUtil = gcpUtil;
+    this.confGetter = confGetter;
+    this.environment = environment;
   }
 
   public enum ReleaseState {
@@ -581,6 +589,7 @@ public class ReleaseManager {
       throw new PlatformServiceException(
           Status.BAD_REQUEST, String.format("Release already exists for version %s", version));
     }
+    validateSoftwareVersionOnCurrentYbaVersion(version);
     log.info("Adding release version {} with metadata {}", version, metadata.toString());
     downloadYbHelmChart(version, metadata);
     currentReleases.put(version, metadata);
@@ -605,14 +614,18 @@ public class ReleaseManager {
     String ybReleasesPath = appConfig.getString("yb.releases.path");
     String ybReleasePath = appConfig.getString("yb.docker.release");
     String ybHelmChartPath = appConfig.getString("yb.helm.packagePath");
+    log.debug("yb releases: " + ybReleasesPath);
+    log.debug("yb release: " + ybReleasePath);
     if (ybReleasesPath != null && !ybReleasesPath.isEmpty()) {
       Map<String, Object> currentReleases = getReleaseMetadata();
 
       // Local copy pattern to account for the presence of characters prior to the file name itself.
       // (ensures that all local releases get imported prior to version checking).
-      Pattern ybPackagePatternCopy = Pattern.compile("[^.]+" + YB_PACKAGE_REGEX);
+      Pattern ybPackagePatternCopy =
+          Pattern.compile(confGetter.getGlobalConf(GlobalConfKeys.ybdbReleasePathRegex));
 
-      Pattern ybHelmChartPatternCopy = Pattern.compile("[^.]+yugabyte-(.*)-helm.tar.gz");
+      Pattern ybHelmChartPatternCopy =
+          Pattern.compile(confGetter.getGlobalConf(GlobalConfKeys.ybdbHelmReleasePathRegex));
 
       copyFiles(ybReleasePath, ybReleasesPath, ybPackagePatternCopy, currentReleases.keySet());
       copyFiles(ybHelmChartPath, ybReleasesPath, ybHelmChartPatternCopy, currentReleases.keySet());
@@ -716,6 +729,9 @@ public class ReleaseManager {
                         + "name matches the DB version in the folder name.");
               }
             }
+
+            validateSoftwareVersionOnCurrentYbaVersion(version);
+
           } catch (RuntimeException e) {
             log.error(
                 "Error verifying file and directory names for local release, "
@@ -941,6 +957,7 @@ public class ReleaseManager {
 
   // Adds metadata to releases is version does not exist. Updates existing value if key present.
   public synchronized void updateReleaseMetadata(String version, ReleaseMetadata newData) {
+    validateSoftwareVersionOnCurrentYbaVersion(version);
     Map<String, Object> currentReleases = getReleaseMetadata();
     currentReleases.put(version, newData);
     configHelper.loadConfigToDB(ConfigHelper.ConfigType.SoftwareReleases, currentReleases);
@@ -964,6 +981,7 @@ public class ReleaseManager {
     try {
       Files.walk(Paths.get(sourceDir))
           .map(String::valueOf)
+          .map(path -> path.substring(sourceDir.length()))
           .map(fileRegex::matcher)
           .filter(Matcher::matches)
           .forEach(
@@ -973,7 +991,7 @@ public class ReleaseManager {
                   log.debug("Skipping re-copy of release files for {}", version);
                   return;
                 }
-                File releaseFile = new File(match.group());
+                File releaseFile = new File(sourceDir + match.group());
                 File destinationFolder = new File(destinationDir, version);
                 File destinationFile = new File(destinationFolder, releaseFile.getName());
                 if (!destinationFolder.exists()) {
@@ -1023,5 +1041,33 @@ public class ReleaseManager {
 
   public boolean getInUse(String version) {
     return Universe.existsRelease(version);
+  }
+
+  private void validateSoftwareVersionOnCurrentYbaVersion(String ybSoftwareVersion) {
+    if (confGetter.getGlobalConf(GlobalConfKeys.allowDbVersionMoreThanYbaVersion)) {
+      return;
+    }
+
+    String currentYbaVersion = ConfigHelper.getCurrentVersion(environment);
+
+    int cmpValue;
+    String msg;
+    try {
+      cmpValue = Util.compareYbVersions(ybSoftwareVersion, currentYbaVersion);
+    } catch (RuntimeException e) {
+      msg =
+          String.format(
+              "There was a problem while comparing requested DB version "
+                  + "%s with YBA version %s, not proceeding.",
+              ybSoftwareVersion, currentYbaVersion);
+      throw new PlatformServiceException(Status.BAD_REQUEST, msg);
+    }
+    if (cmpValue > 0) {
+      msg =
+          String.format(
+              "DB version %s, a version higher than current YBA Version %s is not supported",
+              ybSoftwareVersion, currentYbaVersion);
+      throw new PlatformServiceException(Status.BAD_REQUEST, msg);
+    }
   }
 }

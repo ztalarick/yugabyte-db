@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FormProvider, SubmitHandler, useForm } from 'react-hook-form';
-import { Box, FormHelperText, Typography } from '@material-ui/core';
+import { Box, CircularProgress, FormHelperText, Typography } from '@material-ui/core';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useQuery } from 'react-query';
 import { array, mixed, object, string } from 'yup';
@@ -22,8 +22,9 @@ import { NTPConfigField } from '../../components/NTPConfigField';
 import { RegionList } from '../../components/RegionList';
 import { YBDropZoneField } from '../../components/YBDropZone/YBDropZoneField';
 import {
-  ASYNC_ERROR,
   DEFAULT_SSH_PORT,
+  KeyPairManagement,
+  KEY_PAIR_MANAGEMENT_OPTIONS,
   NTPSetupType,
   ProviderCode,
   VPCSetupType,
@@ -34,7 +35,6 @@ import {
   addItem,
   deleteItem,
   editItem,
-  handleFormServerError,
   generateLowerCaseAlphanumericId,
   readFileAsText
 } from '../utils';
@@ -77,8 +77,6 @@ interface GCPProviderCreateFormFieldValues {
   sshUser: string;
   vpcSetupType: VPCSetupType;
   ybFirewallTags: string;
-
-  [ASYNC_ERROR]: string;
 }
 
 const ProviderCredentialType = {
@@ -86,23 +84,6 @@ const ProviderCredentialType = {
   SPECIFIED_SERVICE_ACCOUNT: 'specifiedServiceAccount'
 } as const;
 type ProviderCredentialType = typeof ProviderCredentialType[keyof typeof ProviderCredentialType];
-
-const KeyPairManagement = {
-  YBA_MANAGED: 'ybaManaged',
-  CUSTOM_KEY_PAIR: 'customKeyPair'
-} as const;
-type KeyPairManagement = typeof KeyPairManagement[keyof typeof KeyPairManagement];
-
-const KEY_PAIR_MANAGEMENT_OPTIONS: OptionProps[] = [
-  {
-    value: KeyPairManagement.YBA_MANAGED,
-    label: 'Use YugabyteDB Anywhere to manage key pairs'
-  },
-  {
-    value: KeyPairManagement.CUSTOM_KEY_PAIR,
-    label: 'Provide custom key pair information'
-  }
-];
 
 const YB_VPC_NAME_BASE = 'yb-gcp-network';
 
@@ -123,14 +104,8 @@ const VALIDATION_SCHEMA = object().shape({
       ([VPCSetupType.EXISTING, VPCSetupType.NEW] as VPCSetupType[]).includes(vpcSetupType),
     then: string().required('Custom GCE Network is required.')
   }),
-
-  // Specified ssh keys
-  sshKeypairName: string().when('sshKeypairManagement', {
-    is: KeyPairManagement.CUSTOM_KEY_PAIR,
-    then: string().required('SSH keypair name is required.')
-  }),
   sshPrivateKeyContent: mixed().when('sshKeypairManagement', {
-    is: KeyPairManagement.CUSTOM_KEY_PAIR,
+    is: KeyPairManagement.SELF_MANAGED,
     then: mixed().required('SSH private key is required.')
   }),
   ntpServers: array().when('ntpSetupType', {
@@ -145,6 +120,8 @@ const VALIDATION_SCHEMA = object().shape({
   }),
   regions: array().min(1, 'Provider configurations must contain at least one region.')
 });
+
+const FORM_NAME = 'GCPProviderCreateForm';
 
 export const GCPProviderCreateForm = ({
   onBack,
@@ -181,8 +158,6 @@ export const GCPProviderCreateForm = ({
   }
 
   const onFormSubmit: SubmitHandler<GCPProviderCreateFormFieldValues> = async (formValues) => {
-    formMethods.clearErrors(ASYNC_ERROR);
-
     if (formValues.ntpSetupType === NTPSetupType.SPECIFIED && !formValues.ntpServers.length) {
       formMethods.setError('ntpServers', {
         type: 'min',
@@ -242,7 +217,7 @@ export const GCPProviderCreateForm = ({
     const providerPayload: YBProviderMutation = {
       code: ProviderCode.GCP,
       name: formValues.providerName,
-      ...(formValues.sshKeypairManagement === KeyPairManagement.CUSTOM_KEY_PAIR && {
+      ...(formValues.sshKeypairManagement === KeyPairManagement.SELF_MANAGED && {
         ...(formValues.sshKeypairName && { keyPairName: formValues.sshKeypairName }),
         ...(formValues.sshPrivateKeyContent && {
           sshPrivateKeyContent: (await readFileAsText(formValues.sshPrivateKeyContent)) ?? ''
@@ -281,11 +256,11 @@ export const GCPProviderCreateForm = ({
         )
       }))
     };
-    await createInfraProvider(providerPayload, {
-      mutateOptions: {
-        onError: (error) => handleFormServerError(error, ASYNC_ERROR, formMethods.setError)
-      }
-    });
+    try {
+      await createInfraProvider(providerPayload);
+    } catch (_) {
+      // Request errors are handled by the onError callback
+    }
   };
 
   const showAddRegionFormModal = () => {
@@ -294,7 +269,7 @@ export const GCPProviderCreateForm = ({
     setIsRegionFormModalOpen(true);
   };
   const showEditRegionFormModal = () => {
-    setRegionOperation(RegionOperation.EDIT);
+    setRegionOperation(RegionOperation.EDIT_NEW);
     setIsRegionFormModalOpen(true);
   };
   const showDeleteRegionModal = () => {
@@ -356,14 +331,20 @@ export const GCPProviderCreateForm = ({
     }
   ];
   const vpcSetupType = formMethods.watch('vpcSetupType', defaultValues.vpcSetupType);
+  const isFormDisabled = formMethods.formState.isValidating || formMethods.formState.isSubmitting;
   return (
     <Box display="flex" justifyContent="center">
       <FormProvider {...formMethods}>
-        <FormContainer name="gcpProviderForm" onSubmit={formMethods.handleSubmit(onFormSubmit)}>
+        <FormContainer name={FORM_NAME} onSubmit={formMethods.handleSubmit(onFormSubmit)}>
           <Typography variant="h3">Create GCP Provider Configuration</Typography>
           <FormField providerNameField={true}>
             <FieldLabel>Provider Name</FieldLabel>
-            <YBInputField control={formMethods.control} name="providerName" fullWidth />
+            <YBInputField
+              control={formMethods.control}
+              name="providerName"
+              disabled={isFormDisabled}
+              fullWidth
+            />
           </FormField>
           <Box width="100%" display="flex" flexDirection="column" gridGap="32px">
             <FieldGroup heading="Cloud Info">
@@ -385,12 +366,18 @@ export const GCPProviderCreateForm = ({
                     actionButtonText="Upload Google service account JSON"
                     multipleFiles={false}
                     showHelpText={false}
+                    disabled={isFormDisabled}
                   />
                 </FormField>
               )}
               <FormField>
                 <FieldLabel>GCE Project Name (Optional Override)</FieldLabel>
-                <YBInputField control={formMethods.control} name="gceProject" fullWidth />
+                <YBInputField
+                  control={formMethods.control}
+                  name="gceProject"
+                  disabled={isFormDisabled}
+                  fullWidth
+                />
               </FormField>
               <FormField>
                 <FieldLabel>VPC Setup</FieldLabel>
@@ -414,21 +401,29 @@ export const GCPProviderCreateForm = ({
               {(vpcSetupType === VPCSetupType.EXISTING || vpcSetupType === VPCSetupType.NEW) && (
                 <FormField>
                   <FieldLabel>Custom GCE Network Name</FieldLabel>
-                  <YBInputField control={formMethods.control} name="destVpcId" fullWidth />
+                  <YBInputField
+                    control={formMethods.control}
+                    name="destVpcId"
+                    disabled={isFormDisabled}
+                    fullWidth
+                  />
                 </FormField>
               )}
             </FieldGroup>
             <FieldGroup
               heading="Regions"
               headerAccessories={
-                <YBButton
-                  btnIcon="fa fa-plus"
-                  btnText="Add Region"
-                  btnClass="btn btn-default"
-                  btnType="button"
-                  onClick={showAddRegionFormModal}
-                  disabled={formMethods.formState.isSubmitting}
-                />
+                regions.length > 0 ? (
+                  <YBButton
+                    btnIcon="fa fa-plus"
+                    btnText="Add Region"
+                    btnClass="btn btn-default"
+                    btnType="button"
+                    onClick={showAddRegionFormModal}
+                    disabled={isFormDisabled}
+                    data-testid={`${FORM_NAME}-AddRegionButton`}
+                  />
+                ) : null
               }
             >
               <RegionList
@@ -438,7 +433,7 @@ export const GCPProviderCreateForm = ({
                 showAddRegionFormModal={showAddRegionFormModal}
                 showEditRegionFormModal={showEditRegionFormModal}
                 showDeleteRegionModal={showDeleteRegionModal}
-                disabled={formMethods.formState.isSubmitting}
+                disabled={isFormDisabled}
                 isError={!!formMethods.formState.errors.regions}
               />
               {formMethods.formState.errors.regions?.message && (
@@ -450,7 +445,12 @@ export const GCPProviderCreateForm = ({
             <FieldGroup heading="SSH Key Pairs">
               <FormField>
                 <FieldLabel>SSH User</FieldLabel>
-                <YBInputField control={formMethods.control} name="sshUser" fullWidth />
+                <YBInputField
+                  control={formMethods.control}
+                  name="sshUser"
+                  disabled={isFormDisabled}
+                  fullWidth
+                />
               </FormField>
               <FormField>
                 <FieldLabel>SSH Port</FieldLabel>
@@ -459,6 +459,7 @@ export const GCPProviderCreateForm = ({
                   name="sshPort"
                   type="number"
                   inputProps={{ min: 0, max: 65535 }}
+                  disabled={isFormDisabled}
                   fullWidth
                 />
               </FormField>
@@ -471,11 +472,16 @@ export const GCPProviderCreateForm = ({
                   orientation={RadioGroupOrientation.HORIZONTAL}
                 />
               </FormField>
-              {keyPairManagement === KeyPairManagement.CUSTOM_KEY_PAIR && (
+              {keyPairManagement === KeyPairManagement.SELF_MANAGED && (
                 <>
                   <FormField>
                     <FieldLabel>SSH Keypair Name</FieldLabel>
-                    <YBInputField control={formMethods.control} name="sshKeypairName" fullWidth />
+                    <YBInputField
+                      control={formMethods.control}
+                      name="sshKeypairName"
+                      disabled={isFormDisabled}
+                      fullWidth
+                    />
                   </FormField>
                   <FormField>
                     <FieldLabel>SSH Private Key Content</FieldLabel>
@@ -485,6 +491,7 @@ export const GCPProviderCreateForm = ({
                       actionButtonText="Upload SSH Key PEM File"
                       multipleFiles={false}
                       showHelpText={false}
+                      disabled={isFormDisabled}
                     />
                   </FormField>
                 </>
@@ -497,37 +504,48 @@ export const GCPProviderCreateForm = ({
                   control={formMethods.control}
                   name="ybFirewallTags"
                   placeholder="my-firewall-tag-1,my-firewall-tag-2"
+                  disabled={isFormDisabled}
                   fullWidth
                 />
               </FormField>
               <FormField>
-                <FieldLabel>DB Nodes have public internet access?</FieldLabel>
-                <YBToggleField name="dbNodePublicInternetAccess" control={formMethods.control} />
+                <FieldLabel
+                  infoTitle="DB Nodes have public internet access?"
+                  infoContent="If yes, YBA will install some software packages on the DB nodes by downloading from the public internet. If not, all installation of software on the nodes will download from only this YBA instance."
+                >
+                  DB Nodes have public internet access?
+                </FieldLabel>
+                <YBToggleField
+                  name="dbNodePublicInternetAccess"
+                  control={formMethods.control}
+                  disabled={isFormDisabled}
+                />
               </FormField>
               <FormField>
                 <FieldLabel>NTP Setup</FieldLabel>
-                <NTPConfigField
-                  isDisabled={formMethods.formState.isSubmitting}
-                  providerCode={ProviderCode.GCP}
-                />
+                <NTPConfigField isDisabled={isFormDisabled} providerCode={ProviderCode.GCP} />
               </FormField>
             </FieldGroup>
           </Box>
+          {(formMethods.formState.isValidating || formMethods.formState.isSubmitting) && (
+            <Box display="flex" gridGap="5px" marginLeft="auto">
+              <CircularProgress size={16} color="primary" thickness={5} />
+            </Box>
+          )}
           <Box marginTop="16px">
             <YBButton
               btnText="Create Provider Configuration"
               btnClass="btn btn-default save-btn"
               btnType="submit"
-              loading={formMethods.formState.isSubmitting}
-              disabled={formMethods.formState.isSubmitting}
-              data-testid="GCPProviderCreateForm-SubmitButton"
+              disabled={isFormDisabled}
+              data-testid={`${FORM_NAME}-SubmitButton`}
             />
             <YBButton
               btnText="Back"
               btnClass="btn btn-default"
               onClick={onBack}
-              disabled={formMethods.formState.isSubmitting}
-              data-testid="GCPProviderCreateForm-BackButton"
+              disabled={isFormDisabled}
+              data-testid={`${FORM_NAME}-BackButton`}
             />
           </Box>
         </FormContainer>
