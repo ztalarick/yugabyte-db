@@ -16,13 +16,15 @@ import org.yb.util.json.Checkers;
 import org.yb.util.json.JsonUtil;
 
 public class TestPgExplainAnalyzeScans extends TestPgExplainAnalyze {
-  private static final String FOO_TABLE = "foo";
-  private static final String BAR_TABLE = "bar";
-  private static final String FOO_RANGE_MC_INDEX = "foo_v1_v2"; // Multi-column Range Index on foo
-  private static final String FOO_HASH_INDEX = "foo_v3";
-  private static final String FOO_RANGE_INDEX = "foo_v4";
-  private static final int NUM_PAGES = 10;
-  private TopLevelCheckerBuilder SCAN_TOP_LEVEL_CHECKER = makeTopLevelBuilder()
+  protected static final String FOO_TABLE = "foo";
+  protected static final String BAR_TABLE = "bar";
+  protected static final String FOO_RANGE_MC_INDEX = "foo_v1_v2"; // Multi-column Range Index on foo
+  protected static final String FOO_HASH_INDEX = "foo_v3";
+  protected static final String FOO_RANGE_INDEX = "foo_v4";
+  protected static final String BAR_HASH_INDEX = "bar_v1";
+  protected static final String BAR_RANGE_INDEX = "bar_v2";
+  protected static final int NUM_PAGES = 10;
+  protected TopLevelCheckerBuilder SCAN_TOP_LEVEL_CHECKER = makeTopLevelBuilder()
       .storageWriteRequests(Checkers.equal(0))
       .storageFlushesRequests(Checkers.equal(0))
       .catalogWritesRequests(Checkers.equal(0));
@@ -62,15 +64,25 @@ public class TestPgExplainAnalyzeScans extends TestPgExplainAnalyze {
       stmt.execute(String.format("CREATE TABLE %s (k1 INT, k2 INT, v1 INT, "
           +"v2 INT, v3 INT, PRIMARY KEY (k1 ASC, k2 DESC));", BAR_TABLE));
 
+      // Hash Index on v1
+      stmt.execute(String.format("CREATE INDEX %s ON %s (v1 HASH)",
+        BAR_HASH_INDEX, BAR_TABLE));
+
+      // Range Index on v2.
+      stmt.execute(String.format("CREATE INDEX %s ON %s (v2 ASC);",
+        BAR_RANGE_INDEX, BAR_TABLE));
+
+      // Populate the table
+      stmt.execute(String.format("INSERT INTO %s (SELECT i, i %% 128, i, i %% 1024, i "
+        + "FROM generate_series(0, %d) i)", BAR_TABLE, (NUM_PAGES * 1024 - 1)));
     }
   }
 
-  private TopLevelCheckerBuilder makeTopLevelBuilder() {
-
+  protected TopLevelCheckerBuilder makeTopLevelBuilder() {
     return JsonUtil.makeCheckerBuilder(TopLevelCheckerBuilder.class, false);
   }
 
-  private static PlanCheckerBuilder makePlanBuilder() {
+  protected static PlanCheckerBuilder makePlanBuilder() {
     return JsonUtil.makeCheckerBuilder(PlanCheckerBuilder.class, false);
   }
 

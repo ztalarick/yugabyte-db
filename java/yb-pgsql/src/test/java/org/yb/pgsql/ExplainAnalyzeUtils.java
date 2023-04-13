@@ -39,6 +39,9 @@ public class ExplainAnalyzeUtils {
   public static final String OPERATION_INSERT = "Insert";
   public static final String OPERATION_UPDATE = "Update";
 
+  public static final String RELATIONSHIP_OUTER_TABLE = "Outer";
+  public static final String RELATIONSHIP_INNER_TABLE = "Inner";
+
   public interface TopLevelCheckerBuilder extends ObjectCheckerBuilder {
     TopLevelCheckerBuilder plan(ObjectChecker checker);
     TopLevelCheckerBuilder storageReadRequests(ValueChecker<Long> checker);
@@ -59,6 +62,9 @@ public class ExplainAnalyzeUtils {
     PlanCheckerBuilder planRows(ValueChecker<Long> checker);
     PlanCheckerBuilder plans(Checker... checker);
     PlanCheckerBuilder relationName(String value);
+    PlanCheckerBuilder relationName(AbsenceChecker checker);
+    PlanCheckerBuilder parentRelationship(String value);
+    PlanCheckerBuilder actualLoops(ValueChecker<Long> checker);
 
     // Table Reads
     PlanCheckerBuilder storageTableReadRequests(AbsenceChecker checker);

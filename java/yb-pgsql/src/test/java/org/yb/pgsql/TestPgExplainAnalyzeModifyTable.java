@@ -36,7 +36,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
   private static final String ABC_RANGE_MC_INDEX = "abc_v1_v2"; // Multi-column Range Index on abc
   private static final String ABC_HASH_INDEX = "abc_v3";
   private static final String ABC_RANGE_INDEX = "abc_v4";
-  private static final long ABC_NUM_SEC_INDEXES = 3; 
+  private static final long ABC_NUM_SEC_INDEXES = 3;
 
   @Before
   public void setUp() throws Exception {
@@ -45,15 +45,15 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
               + "v2 INT, v3 INT, v4 INT, v5 INT) SPLIT INTO 2 TABLETS", ABC_TABLE));
 
       // Multi-column Range Index on (v1, v2)
-      stmt.execute(String.format("CREATE INDEX %s ON %s (v1, v2 ASC)", 
+      stmt.execute(String.format("CREATE INDEX %s ON %s (v1, v2 ASC)",
         ABC_RANGE_MC_INDEX, ABC_TABLE));
 
       // Hash Index on v3
-      stmt.execute(String.format("CREATE INDEX %s ON %s (v3 HASH)", 
+      stmt.execute(String.format("CREATE INDEX %s ON %s (v3 HASH)",
       ABC_HASH_INDEX, ABC_TABLE));
 
       // Range Index on v4
-      stmt.execute(String.format("CREATE INDEX %s ON %s (v4 ASC)", 
+      stmt.execute(String.format("CREATE INDEX %s ON %s (v4 ASC)",
       ABC_RANGE_INDEX, ABC_TABLE));
     }
   }
@@ -74,7 +74,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
       .storageReadRequests(Checkers.equal(0))
       .storageFlushesRequests(Checkers.equal(1))
       .catalogWritesRequests(Checkers.equal(0));
-    
+
     PlanCheckerBuilder insertNodeChecker = makePlanBuilder()
       .nodeType(NODE_MODIFY_TABLE)
       .operation(OPERATION_INSERT)
@@ -108,7 +108,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
       .storageIndexWriteRequests(Checkers.equal(ABC_NUM_SEC_INDEXES * numRows))
       .storageTableReadRequests(Checkers.absent())
       .storageIndexReadRequests(Checkers.absent());
-    
+
     Checker checker2 = topLevelChecker
       .plan(insertNodeChecker
         .plans(valuesNodeChecker
@@ -116,7 +116,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
         .build())
       .build();
 
-    testExplain(String.format(simpleInsert, 
+    testExplain(String.format(simpleInsert,
     "(1, 1, 1, 1, 1), (2, 2, 2, 2, 2), (3, 3, 3, 3, 3)"), checker2);
 
   }
@@ -142,7 +142,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
       .alias(ABC_TABLE)
       .storageTableWriteRequests(Checkers.absent())
       .storageIndexWriteRequests(Checkers.absent());
-    
+
     // 1. Update primary key column using primary key.
     PlanCheckerBuilder indexScanChecker = makePlanBuilder()
       .nodeType(NODE_INDEX_SCAN)
@@ -152,7 +152,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
       .storageIndexReadExecutionTime(Checkers.greater(0.0))
       .storageTableWriteRequests(Checkers.equal(2))
       .storageIndexWriteRequests(Checkers.equal(ABC_NUM_SEC_INDEXES * 2));
-    
+
     Checker checker1 = topLevelChecker
       .plan(updateNodeChecker
         .plans(indexScanChecker
@@ -172,7 +172,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
       .storageTableReadExecutionTime(Checkers.greater(0.0))
       .storageTableWriteRequests(Checkers.equal(numRows * 2))
       .storageIndexWriteRequests(Checkers.equal(numRows * ABC_NUM_SEC_INDEXES * 2));
-    
+
     Checker checker2 = topLevelChecker
       .plan(updateNodeChecker
         .plans(seqScanChecker
@@ -195,7 +195,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
       .storageTableReadExecutionTime(Checkers.greater(0.0))
       .storageTableWriteRequests(Checkers.equal(numRows))
       .storageIndexWriteRequests(Checkers.equal(numRows * 2));
-    
+
     Checker checker3 = topLevelChecker
       .plan(updateNodeChecker
         .plans(seqScanChecker2
