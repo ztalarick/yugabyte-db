@@ -565,7 +565,7 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 
 		if (es->rpc)
 		{
-			Instrumentation instr = {}
+			Instrumentation instr = {};
 			YbUpdateRpcStats(&instr);
 			es->yb_total_flush_count += instr.yb_write_flush_rpcs.count;
 			es->yb_total_flush_wait += instr.yb_write_flush_rpcs.wait_time;
