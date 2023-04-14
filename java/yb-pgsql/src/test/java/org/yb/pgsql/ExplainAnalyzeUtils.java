@@ -51,6 +51,7 @@ public class ExplainAnalyzeUtils {
     TopLevelCheckerBuilder catalogReadsExecutionTime(ValueChecker<Double> checker);
     TopLevelCheckerBuilder catalogWritesRequests(ValueChecker<Long> checker);
     TopLevelCheckerBuilder storageFlushesRequests(ValueChecker<Long> checker);
+    TopLevelCheckerBuilder storageFlushesExecutionTime(ValueChecker<Double> checker);
     TopLevelCheckerBuilder storageExecutionTime(ValueChecker<Double> checker);
   }
 

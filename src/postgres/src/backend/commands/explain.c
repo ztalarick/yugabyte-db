@@ -565,10 +565,10 @@ ExplainOnePlan(PlannedStmt *plannedstmt, IntoClause *into, ExplainState *es,
 
 		if (es->rpc)
 		{
-			Instrumentation instr = {};
+			Instrumentation instr = {}
 			YbUpdateRpcStats(&instr);
-			es->yb_total_flush_count = instr.yb_write_flush_rpcs.count;
-			es->yb_total_flush_wait = instr.yb_write_flush_rpcs.wait_time;
+			es->yb_total_flush_count += instr.yb_write_flush_rpcs.count;
+			es->yb_total_flush_wait += instr.yb_write_flush_rpcs.wait_time;
 		}
 
 		/* We can't run ExecutorEnd 'till we're done printing the stats... */
@@ -1086,9 +1086,6 @@ ExplainNode(PlanState *planstate, List *ancestors,
 		es->yb_total_catalog_read_rpc_wait += planstate->instrument->yb_catalog_read_rpcs.wait_time;
 
 		es->yb_total_catalog_write_rpc_count +=	planstate->instrument->yb_catalog_write_rpcs.count;
-
-		es->yb_total_flush_count += planstate->instrument->yb_write_flush_rpcs.count;
-		es->yb_total_flush_wait += planstate->instrument->yb_write_flush_rpcs.wait_time;
 	}
 
 	switch (nodeTag(plan))

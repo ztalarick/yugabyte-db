@@ -37,6 +37,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
   private static final String ABC_HASH_INDEX = "abc_v3";
   private static final String ABC_RANGE_INDEX = "abc_v4";
   private static final long ABC_NUM_SEC_INDEXES = 3;
+  private static final String CHILD_TABLE = "child";
 
   @Before
   public void setUp() throws Exception {
@@ -55,6 +56,10 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
       // Range Index on v4
       stmt.execute(String.format("CREATE INDEX %s ON %s (v4 ASC)",
       ABC_RANGE_INDEX, ABC_TABLE));
+
+      // Create a child table for testing constraints
+      stmt.execute(String.format("CREATE TABLE %s (k INT PRIMARY KEY REFERENCES %s (%s),"
+      + " v INT)", CHILD_TABLE, ABC_TABLE, "k"));
     }
   }
 
@@ -128,7 +133,7 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
 
     // Populate the table with some rows.
     try (Statement stmt = connection.createStatement()) {
-      stmt.execute(String.format("TRUNCATE %s", ABC_TABLE));
+      stmt.execute(String.format("TRUNCATE %s CASCADE", ABC_TABLE));
       stmt.execute(String.format("INSERT INTO %s VALUES %s", ABC_TABLE,
         "(0, 0, 0, 0, 0), (1, 1, 1, 1, 1), (2, 2, 2, 2, 2), (3, 3, 3, 3, 3)"));
     }
@@ -207,5 +212,128 @@ public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
       .build();
 
     testExplain(String.format(updateQuery, ABC_TABLE, "v4", "v4", "k", "> 0"), checker3);
+  }
+
+  @Test
+  public void testOnConflict() throws Exception {
+    final String insertWithOnConflict = "INSERT INTO %s VALUES %s ON CONFLICT (%s) %s %s";
+
+    // Clear the table.
+    try (Statement stmt = connection.createStatement()) {
+      stmt.execute(String.format("TRUNCATE %s CASCADE", ABC_TABLE));
+    }
+
+    TopLevelCheckerBuilder topLevelChecker = makeTopLevelBuilder()
+      .storageReadRequests(Checkers.greater(0))
+      .catalogWritesRequests(Checkers.equal(0));
+
+    PlanCheckerBuilder insertNodeChecker = makePlanBuilder()
+      .nodeType(NODE_MODIFY_TABLE)
+      .operation(OPERATION_INSERT)
+      .relationName(ABC_TABLE)
+      .alias(ABC_TABLE)
+      .storageTableWriteRequests(Checkers.absent())
+      .storageIndexWriteRequests(Checkers.absent());
+
+    PlanCheckerBuilder resultNodeChecker = makePlanBuilder()
+      .nodeType(NODE_RESULT);
+
+    // 1. ON CONFLICT DO NOTHING - No Conflict
+
+    Checker checker1 = topLevelChecker
+      .plan(insertNodeChecker
+        .plans(resultNodeChecker
+          .storageIndexReadRequests(Checkers.equal(1))
+          .storageTableWriteRequests(Checkers.equal(1))
+          .storageIndexWriteRequests(Checkers.equal(ABC_NUM_SEC_INDEXES))
+          .build())
+        .build())
+      .storageFlushesRequests(Checkers.equal(1))
+      // .storageFlushesExecutionTime(Checkers.greater(0.0))
+      .storageReadRequests(Checkers.equal(1))
+      .storageWriteRequests(Checkers.equal(1 + ABC_NUM_SEC_INDEXES))
+      .build();
+
+    testExplain(String.format(insertWithOnConflict, ABC_TABLE, "(0, 0, 0, 0, 0)", "k",
+      "DO NOTHING", ""), checker1);
+
+    // 2. ON CONFLICT DO NOTHING - Conflict
+    Checker checker2 = topLevelChecker
+      .plan(insertNodeChecker
+        .plans(resultNodeChecker
+          .storageIndexReadRequests(Checkers.equal(1))
+          .storageTableWriteRequests(Checkers.absent())
+          .storageIndexWriteRequests(Checkers.absent())
+          .build())
+        .build())
+      .storageFlushesRequests(Checkers.equal(0))
+      .storageReadRequests(Checkers.equal(1))
+      .storageWriteRequests(Checkers.equal(0))
+      .build();
+
+    testExplain(String.format(insertWithOnConflict, ABC_TABLE, "(0, 0, 0, 0, 0)", "k",
+      "DO NOTHING", ""), checker2);
+
+    // 3. ON CONFLICT DO UPDATE - No conflict
+    testExplain(String.format(insertWithOnConflict, ABC_TABLE, "(1, 1, 1, 1, 1)", "k",
+      "DO UPDATE", "SET v5 = abc.v5 + 1"), checker1);
+
+    // 4. ON CONFLICT DO UPDATE - Conflict
+    Checker checker4 = topLevelChecker
+      .plan(insertNodeChecker
+        .plans(resultNodeChecker
+          .storageIndexReadRequests(Checkers.equal(1))
+          .storageTableWriteRequests(Checkers.equal(1))
+          .storageIndexWriteRequests(Checkers.equal(ABC_NUM_SEC_INDEXES * 2))
+          .build())
+        .build())
+      .storageFlushesRequests(Checkers.equal(2))
+      .storageReadRequests(Checkers.equal(1))
+      .storageWriteRequests(Checkers.equal((ABC_NUM_SEC_INDEXES * 2) + 1)).build();
+
+    testExplain(String.format(insertWithOnConflict, ABC_TABLE, "(1, 1, 1, 1, 1)", "k",
+      "DO UPDATE", "SET v5 = abc.v5 + 1"), checker4);
+  }
+
+  @Test
+  public void testForeignKey() throws Exception {
+    String fkSimpleInsert = "INSERT INTO %s VALUES %s";
+
+    // Create a table with a foreign key constraint.
+    // Populate the table with some rows.
+    try (Statement stmt = connection.createStatement()) {
+      stmt.execute(String.format("TRUNCATE %s CASCADE", ABC_TABLE));
+      stmt.execute(String.format("INSERT INTO %s VALUES %s", ABC_TABLE,
+        "(0, 0, 0, 0, 0), (1, 1, 1, 1, 1), (2, 2, 2, 2, 2), (3, 3, 3, 3, 3)"));
+    }
+
+    TopLevelCheckerBuilder topLevelChecker = makeTopLevelBuilder()
+      .storageReadRequests(Checkers.equal(1))
+      .storageFlushesRequests(Checkers.equal(1))
+      .catalogWritesRequests(Checkers.equal(0));
+
+    PlanCheckerBuilder insertNodeChecker = makePlanBuilder()
+      .nodeType(NODE_MODIFY_TABLE)
+      .operation(OPERATION_INSERT)
+      .relationName(CHILD_TABLE)
+      .alias(CHILD_TABLE)
+      .storageTableWriteRequests(Checkers.absent())
+      .storageIndexWriteRequests(Checkers.absent());
+
+    // 1. Simple Insert
+    PlanCheckerBuilder resultNodeChecker = makePlanBuilder()
+      .nodeType(NODE_RESULT)
+      .storageTableWriteRequests(Checkers.equal(1))
+      .storageTableReadRequests(Checkers.absent())
+      .storageIndexReadRequests(Checkers.absent());
+
+    Checker checker1 = topLevelChecker
+      .plan(insertNodeChecker
+        .plans(resultNodeChecker
+          .build())
+        .build())
+      .build();
+
+    testExplain(String.format(fkSimpleInsert, CHILD_TABLE, "(0, 0)"), checker1);
   }
 }
