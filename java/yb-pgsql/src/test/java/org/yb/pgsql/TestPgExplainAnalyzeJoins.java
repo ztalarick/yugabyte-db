@@ -12,11 +12,14 @@ import static org.yb.pgsql.ExplainAnalyzeUtils.RELATIONSHIP_INNER_TABLE;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.yb.YBTestRunner;
 import org.yb.pgsql.ExplainAnalyzeUtils.PlanCheckerBuilder;
 import org.yb.pgsql.ExplainAnalyzeUtils.TopLevelCheckerBuilder;
 import org.yb.util.json.Checker;
 import org.yb.util.json.Checkers;
 
+@RunWith(value=YBTestRunner.class)
 public class TestPgExplainAnalyzeJoins extends TestPgExplainAnalyzeScans {
   private TopLevelCheckerBuilder JOINS_TOP_LEVEL_CHECKER = makeTopLevelBuilder()
     .storageWriteRequests(Checkers.equal(0))

@@ -25,12 +25,15 @@ import java.sql.Statement;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.yb.YBTestRunner;
 import org.yb.pgsql.ExplainAnalyzeUtils.PlanCheckerBuilder;
 import org.yb.pgsql.ExplainAnalyzeUtils.TopLevelCheckerBuilder;
 import org.yb.util.json.Checker;
 import org.yb.util.json.Checkers;
 import org.yb.util.json.JsonUtil;
 
+@RunWith(value=YBTestRunner.class)
 public class TestPgExplainAnalyzeModifyTable extends TestPgExplainAnalyze {
   private static final String ABC_TABLE = "abc";
   private static final String ABC_RANGE_MC_INDEX = "abc_v1_v2"; // Multi-column Range Index on abc

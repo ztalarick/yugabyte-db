@@ -9,12 +9,15 @@ import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.yb.YBTestRunner;
 import org.yb.pgsql.ExplainAnalyzeUtils.PlanCheckerBuilder;
 import org.yb.pgsql.ExplainAnalyzeUtils.TopLevelCheckerBuilder;
 import org.yb.util.json.Checker;
 import org.yb.util.json.Checkers;
 import org.yb.util.json.JsonUtil;
 
+@RunWith(value=YBTestRunner.class)
 public class TestPgExplainAnalyzeScans extends TestPgExplainAnalyze {
   protected static final String FOO_TABLE = "foo";
   protected static final String BAR_TABLE = "bar";
