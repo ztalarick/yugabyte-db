@@ -543,6 +543,17 @@ Status PgSession::StartOperationsBuffering() {
 Status PgSession::StopOperationsBuffering() {
   SCHECK(buffering_enabled_, IllegalState, "Buffering hasn't been started");
   buffering_enabled_ = false;
+
+  if (!pg_txn_manager_->IsDdlMode() /* && !catalog_read_time_ */ && NumOfFlushes() == 0) {
+    LOG(INFO) << __func__ << " RKNRKN converting to single shard txn";
+    buffer_.ConvertToSingleShardTxn();
+  } else {
+    LOG(INFO) << __func__
+              << " RKNRKN couldn't convert to single shard txn as the number of flushes are "
+              << NumOfFlushes();
+  }
+  should_increment_flush_counter_ = false;
+  ResetNumOfFlushes();
   return FlushBufferedOperations();
 }
 
@@ -615,6 +626,15 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     if (pg_txn_manager_->IsTxnInProgress()) {
       options.mutable_in_txn_limit_ht()->set_value(ops_options.in_txn_limit.ToUint64());
     }
+
+    if (!options.ddl_mode()) {
+      if (should_increment_flush_counter_) {
+        IncrementNumOfFlushes();
+      } else {
+        should_increment_flush_counter_ = true;
+      }
+    }
+
     ProcessPerformOnTxnSerialNo(txn_serial_no, ops_options.ensure_read_time_is_set, &options);
   }
   bool global_transaction = yb_force_global_transaction;
@@ -895,6 +915,10 @@ Result<PerformFuture> PgSession::RunAsync(
 Result<bool> PgSession::CheckIfPitrActive() {
   return pg_client_.CheckIfPitrActive();
 }
+
+void PgSession::IncrementNumOfFlushes() { ++num_of_flushes_; }
+void PgSession::ResetNumOfFlushes() { num_of_flushes_ = 0; }
+uint32_t PgSession::NumOfFlushes() { return num_of_flushes_; }
 
 }  // namespace pggate
 }  // namespace yb

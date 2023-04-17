@@ -40,6 +40,7 @@
 
 #include "yb/yql/pggate/pg_op.h"
 #include "yb/yql/pggate/pg_tabledesc.h"
+#include "yb/yql/pggate/ybc_pggate.h"
 
 namespace yb {
 namespace pggate {
@@ -249,6 +250,18 @@ class PgOperationBuffer::Impl {
     rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
   }
 
+  void ConvertToSingleShardTxn() {
+    convert_to_single_shard_txn_ = true;
+  }
+
+  bool IsSingleShardTxn() {
+    return convert_to_single_shard_txn_;
+  }
+
+  void ResetSingleShardTxnConversionFlag() {
+    convert_to_single_shard_txn_ = false;
+  }
+
  private:
   template<class Res>
   Res ClearOnError(Res res) {
@@ -353,6 +366,34 @@ class PgOperationBuffer::Impl {
     txn_ops_.Swap(&txn_ops);
     keys_.swap(keys);
 
+    if (IsSingleShardTxn()) {
+      if (!txn_ops.empty() && ops.empty()) {
+        bool non_colocated_table_involved = false;
+        ResetSingleShardTxnConversionFlag();
+        for (auto& relation : txn_ops.relations) {
+          YBCPgTableDesc ybc_table_desc = NULL;
+          YbTablePropertiesData yb_table_properties;
+          YBCPgGetTableDesc(relation.database_oid, relation.object_oid, &ybc_table_desc);
+          YBCPgGetTableProperties(ybc_table_desc, &yb_table_properties);
+          if (!yb_table_properties.is_colocated) {
+            non_colocated_table_involved = true;
+            break;
+          }
+        }
+        if (!non_colocated_table_involved) {
+          LOG(INFO) << __func__
+                    << " RKNRKN Only colocated tables involved, swapping txn_ops with ops";
+          txn_ops.Swap(&ops);
+        } else {
+          LOG(INFO) << __func__
+                    << " RKNRKN couldn't swap txn_ops with ops, as non-colocated tables involved, "
+                       "even though IsSingleShardTxn is true";
+        }
+      } else {
+        ResetSingleShardTxnConversionFlag();
+      }
+    }
+
     const auto ops_count = keys.size();
     bool ops_sent = VERIFY_RESULT(SendOperations(
       interceptor, std::move(txn_ops), true /* transactional */, ops_count));
@@ -415,6 +456,7 @@ class PgOperationBuffer::Impl {
   InFlightOps in_flight_ops_;
   uint64_t rpc_count_ = 0;
   MonoDelta rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
+  bool convert_to_single_shard_txn_ = false;
 };
 
 PgOperationBuffer::PgOperationBuffer(const Flusher& flusher,
@@ -448,6 +490,18 @@ void PgOperationBuffer::Clear() {
 void PgOperationBuffer::GetAndResetRpcStats(uint64_t* count,
                                             uint64_t* wait_time) {
   impl_->GetAndResetRpcStats(count, wait_time);
+}
+
+void PgOperationBuffer::ConvertToSingleShardTxn() {
+  impl_->ConvertToSingleShardTxn();
+}
+
+void PgOperationBuffer::ResetSingleShardTxnConversionFlag() {
+  impl_->ResetSingleShardTxnConversionFlag();
+}
+
+bool PgOperationBuffer::IsSingleShardTxn() {
+  return impl_->IsSingleShardTxn();
 }
 
 } // namespace pggate
