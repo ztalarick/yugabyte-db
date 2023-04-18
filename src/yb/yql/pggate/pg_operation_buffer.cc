@@ -381,13 +381,7 @@ class PgOperationBuffer::Impl {
           }
         }
         if (!non_colocated_table_involved) {
-          LOG(INFO) << __func__
-                    << " RKNRKN Only colocated tables involved, swapping txn_ops with ops";
           txn_ops.Swap(&ops);
-        } else {
-          LOG(INFO) << __func__
-                    << " RKNRKN couldn't swap txn_ops with ops, as non-colocated tables involved, "
-                       "even though IsSingleShardTxn is true";
         }
       } else {
         ResetSingleShardTxnConversionFlag();

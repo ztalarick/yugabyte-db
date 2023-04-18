@@ -545,12 +545,7 @@ Status PgSession::StopOperationsBuffering() {
   buffering_enabled_ = false;
 
   if (!pg_txn_manager_->IsDdlMode() /* && !catalog_read_time_ */ && NumOfFlushes() == 0) {
-    LOG(INFO) << __func__ << " RKNRKN converting to single shard txn";
     buffer_.ConvertToSingleShardTxn();
-  } else {
-    LOG(INFO) << __func__
-              << " RKNRKN couldn't convert to single shard txn as the number of flushes are "
-              << NumOfFlushes();
   }
   should_increment_flush_counter_ = false;
   ResetNumOfFlushes();

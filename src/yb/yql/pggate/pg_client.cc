@@ -439,8 +439,6 @@ class PgClient::Impl {
       PerformData data(&arena, std::move(*operations), callback);
       ProcessPerformResponse(&data, ExecutePerform(&data, req));
     } else {
-      LOG(INFO) << __func__ << " RKNRKN Printing stack trace from else :" << GetStackTrace();
-
       auto data = std::make_shared<PerformData>(&arena, std::move(*operations), callback);
       data->controller.set_invoke_callback_mode(rpc::InvokeCallbackMode::kReactorThread);
 
