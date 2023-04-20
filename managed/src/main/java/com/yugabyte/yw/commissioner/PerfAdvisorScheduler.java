@@ -120,8 +120,10 @@ public class PerfAdvisorScheduler {
 
   private RunResult run(Customer customer, Universe universe, boolean scheduled) {
     // Check status of universe
-    if (universe.getUniverseDetails().updateInProgress) {
-      return RunResult.builder().failureReason("Universe update in progress").build();
+    if (universe.getUniverseDetails().isUniverseBusyByTask()) {
+      return RunResult.builder()
+          .failureReason("Universe task, which may affect performance, is in progress")
+          .build();
     }
     if (universesLock.containsKey(universe.getUniverseUUID())) {
       UniversePerfAdvisorRun currentRun =
@@ -158,6 +160,9 @@ public class PerfAdvisorScheduler {
 
     List<UniverseNodeConfigInterface> universeNodeConfigList = new ArrayList<>();
     for (NodeDetails details : universe.getNodes()) {
+      if (!details.isTserver) {
+        continue;
+      }
       if (details.state.equals(NodeDetails.NodeState.Live)) {
         PlatformUniverseNodeConfig nodeConfig =
             new PlatformUniverseNodeConfig(details, universe, ShellProcessContext.DEFAULT);
@@ -168,7 +173,8 @@ public class PerfAdvisorScheduler {
     if (universeNodeConfigList.isEmpty()) {
       log.warn(
           String.format(
-              "Universe %s node config list is empty! Skipping..", universe.getUniverseUUID()));
+              "Universe %s node config list has no TServers! Skipping..",
+              universe.getUniverseUUID()));
       return RunResult.builder().failureReason("No Live nodes found").build();
     }
 

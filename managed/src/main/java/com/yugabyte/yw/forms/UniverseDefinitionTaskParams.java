@@ -75,6 +75,8 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
   private static final Set<String> AWS_INSTANCE_WITH_EPHEMERAL_STORAGE_ONLY =
       ImmutableSet.of("i3.", "c5d.", "c6gd.");
 
+  public static final String UPDATING_TASK_UUID_FIELD = "updatingTaskUUID";
+
   @Constraints.Required()
   @Size(min = 1)
   public List<Cluster> clusters = new LinkedList<>();
@@ -1093,6 +1095,15 @@ public class UniverseDefinitionTaskParams extends UniverseTaskParams {
       return new File(xClusterInfo.sourceRootCertDirPath);
     }
     return null;
+  }
+
+  @JsonIgnore
+  public boolean isUniverseBusyByTask() {
+    return updateInProgress
+        && updatingTask != TaskType.BackupTable
+        && updatingTask != TaskType.MultiTableBackup
+        && updatingTask != TaskType.CreateBackup
+        && updatingTask != TaskType.RestoreBackup;
   }
   // --------------------------------------------------------------------------------
   // End of XCluster.
