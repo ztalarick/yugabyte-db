@@ -446,7 +446,7 @@ YBCStatus YBCPgBuildYBTupleId(const YBCPgYBTupleIdDescriptor* data, uint64_t *yb
 
 // Buffer write operations.
 YBCStatus YBCPgStartOperationsBuffering();
-YBCStatus YBCPgStopOperationsBuffering();
+YBCStatus YBCPgStopOperationsBuffering(bool is_explicit_txn);
 void YBCPgResetOperationsBuffering();
 YBCStatus YBCPgFlushBufferedOperations();
 void YBCPgGetAndResetOperationFlushRpcStats(uint64_t* count,

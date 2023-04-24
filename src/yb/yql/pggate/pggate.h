@@ -472,7 +472,7 @@ class PgApiImpl {
 
   // Buffer write operations.
   Status StartOperationsBuffering();
-  Status StopOperationsBuffering();
+  Status StopOperationsBuffering(bool is_explicit_txn);
   void ResetOperationsBuffering();
   Status FlushBufferedOperations();
   void GetAndResetOperationFlushRpcStats(uint64_t* count, uint64_t* wait_time);

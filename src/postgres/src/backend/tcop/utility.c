@@ -60,6 +60,7 @@
 #include "commands/view.h"
 #include "libpq/libpq-be.h"
 #include "miscadmin.h"
+#include "optimizer/ybcplan.h"
 #include "parser/parse_utilcmd.h"
 #include "postmaster/bgwriter.h"
 #include "rewrite/rewriteDefine.h"
@@ -3607,7 +3608,7 @@ YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
 			IsA(pstmt->utilityStmt, ExplainStmt))) {
 		YBBeginOperationsBuffering();
 		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
-		YBEndOperationsBuffering();
+		YBEndOperationsBuffering(YBCIsSingleRowModify(pstmt));
   } else {
 		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
 	}

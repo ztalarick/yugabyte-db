@@ -613,6 +613,8 @@ typedef struct EState
 	 * a SQL statement don't read any value written by the same statement.
 	 */
 	uint64_t yb_es_in_txn_limit_ht_for_reads;
+
+	bool yb_es_is_explicit_txn;
 } EState;
 
 /*

@@ -555,7 +555,7 @@ bool IsTransactionalDdlStatement(PlannedStmt *pstmt,
 								 bool *is_breaking_catalog_change,
 								 ProcessUtilityContext context);
 extern void YBBeginOperationsBuffering();
-extern void YBEndOperationsBuffering();
+extern void YBEndOperationsBuffering(bool is_explicit_txn);
 extern void YBResetOperationsBuffering();
 extern void YBFlushBufferedOperations();
 extern void YBGetAndResetOperationFlushRpcStats(uint64_t *count,

@@ -45,7 +45,8 @@ static void ProcessQuery(PlannedStmt *plan,
 			 QueryEnvironment *queryEnv,
 			 DestReceiver *dest,
 			 char *completionTag,
-			 bool isSingleRowModifyTxn);
+			 bool isSingleRowModifyTxn,
+			 bool is_explicit_txn);
 static void FillPortalStore(Portal portal, bool isTopLevel);
 static uint64 RunFromStore(Portal portal, ScanDirection direction, uint64 count,
 			 DestReceiver *dest);
@@ -147,7 +148,8 @@ ProcessQuery(PlannedStmt *plan,
 			 QueryEnvironment *queryEnv,
 			 DestReceiver *dest,
 			 char *completionTag,
-			 bool isSingleRowModifyTxn)
+			 bool isSingleRowModifyTxn,
+			 bool is_explicit_txn)
 {
 	QueryDesc  *queryDesc;
 
@@ -168,6 +170,8 @@ ProcessQuery(PlannedStmt *plan,
 		isSingleRowModifyTxn && queryDesc->estate->es_num_result_relations == 1 &&
 		(plan->commandType == CMD_UPDATE ||
 		 YBCIsSingleRowTxnCapableRel(&queryDesc->estate->es_result_relations[0]));
+
+	queryDesc->estate->yb_es_is_explicit_txn = is_explicit_txn;
 
 	/*
 	 * Run the plan to completion.
@@ -1235,6 +1239,7 @@ PortalRunMulti(Portal portal,
 {
 	bool		active_snapshot_set = false;
 	bool        is_single_row_modify_txn = false;
+	bool        is_explicit_txn = false;
 	ListCell   *stmtlist_item;
 
 	/*
@@ -1258,6 +1263,13 @@ PortalRunMulti(Portal portal,
 		{
 			PlannedStmt *pstmt = linitial_node(PlannedStmt, portal->stmts);
 			is_single_row_modify_txn = YBCIsSingleRowModify(pstmt);
+		}
+		else
+		{
+			if (IsTransactionBlock())
+			{
+				is_explicit_txn = true;
+			}
 		}
 	}
 
@@ -1325,7 +1337,8 @@ PortalRunMulti(Portal portal,
 							 portal->queryEnv,
 							 dest,
 							 completionTag,
-							 is_single_row_modify_txn);
+							 is_single_row_modify_txn,
+							 is_explicit_txn);
 			}
 			else
 			{
@@ -1336,7 +1349,8 @@ PortalRunMulti(Portal portal,
 							 portal->queryEnv,
 							 altdest,
 							 NULL,
-							 is_single_row_modify_txn);
+							 is_single_row_modify_txn,
+							 is_explicit_txn);
 			}
 
 			if (log_executor_stats)

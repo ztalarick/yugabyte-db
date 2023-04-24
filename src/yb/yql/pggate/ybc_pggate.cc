@@ -899,8 +899,8 @@ YBCStatus YBCPgStartOperationsBuffering() {
   return ToYBCStatus(pgapi->StartOperationsBuffering());
 }
 
-YBCStatus YBCPgStopOperationsBuffering() {
-  return ToYBCStatus(pgapi->StopOperationsBuffering());
+YBCStatus YBCPgStopOperationsBuffering(bool is_explicit_txn) {
+  return ToYBCStatus(pgapi->StopOperationsBuffering(is_explicit_txn));
 }
 
 void YBCPgResetOperationsBuffering() {

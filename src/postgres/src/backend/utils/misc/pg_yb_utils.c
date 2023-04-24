@@ -1721,12 +1721,12 @@ void YBBeginOperationsBuffering() {
 	}
 }
 
-void YBEndOperationsBuffering() {
+void YBEndOperationsBuffering(bool is_explicit_txn) {
 	// buffering_nesting_level could be 0 because YBResetOperationsBuffering was called
 	// on starting new query and postgres calls standard_ExecutorFinish on non finished executor
 	// from previous failed query.
 	if (buffering_nesting_level && !--buffering_nesting_level) {
-		HandleYBStatus(YBCPgStopOperationsBuffering());
+		HandleYBStatus(YBCPgStopOperationsBuffering(is_explicit_txn));
 	}
 }
 

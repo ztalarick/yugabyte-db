@@ -540,12 +540,15 @@ Status PgSession::StartOperationsBuffering() {
   return Status::OK();
 }
 
-Status PgSession::StopOperationsBuffering() {
+Status PgSession::StopOperationsBuffering(bool is_explicit_txn) {
   SCHECK(buffering_enabled_, IllegalState, "Buffering hasn't been started");
   buffering_enabled_ = false;
 
-  if (!pg_txn_manager_->IsDdlMode() /* && !catalog_read_time_ */ && NumOfFlushes() == 0) {
+  if (!is_explicit_txn && !pg_txn_manager_->IsDdlMode() /* && !catalog_read_time_ */ &&
+      NumOfFlushes() == 0) {
     buffer_.ConvertToSingleShardTxn();
+  } else {
+    buffer_.ResetSingleShardTxnConversionFlag();
   }
   should_increment_flush_counter_ = false;
   ResetNumOfFlushes();

@@ -209,7 +209,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   Status StartOperationsBuffering();
   // Flush all pending buffered operation and stop further buffering.
   // Buffering must be in progress.
-  Status StopOperationsBuffering();
+  Status StopOperationsBuffering(bool is_explicit_txn);
   // Drop all pending buffered operations and stop further buffering. Buffering may be in any state.
   void ResetOperationsBuffering();
 

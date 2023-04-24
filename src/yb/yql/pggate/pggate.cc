@@ -1288,8 +1288,8 @@ Status PgApiImpl::StartOperationsBuffering() {
   return pg_session_->StartOperationsBuffering();
 }
 
-Status PgApiImpl::StopOperationsBuffering() {
-  return pg_session_->StopOperationsBuffering();
+Status PgApiImpl::StopOperationsBuffering(bool is_explicit_txn) {
+  return pg_session_->StopOperationsBuffering(is_explicit_txn);
 }
 
 void PgApiImpl::ResetOperationsBuffering() {
