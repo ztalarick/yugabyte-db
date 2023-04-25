@@ -547,8 +547,10 @@ Status PgSession::StopOperationsBuffering(bool is_explicit_txn) {
   if (!is_explicit_txn && !pg_txn_manager_->IsDdlMode() /* && !catalog_read_time_ */ &&
       NumOfFlushes() == 0) {
     buffer_.ConvertToSingleShardTxn();
+    ConvertToSingleShardTxn();
   } else {
     buffer_.ResetSingleShardTxnConversionFlag();
+    ResetSingleShardTxnConversionFlag();
   }
   should_increment_flush_counter_ = false;
   ResetNumOfFlushes();
@@ -635,6 +637,13 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
 
     ProcessPerformOnTxnSerialNo(txn_serial_no, ops_options.ensure_read_time_is_set, &options);
   }
+
+  if (!options.ddl_mode() && IsSingleShardTxn()) {
+    options.set_allow_single_shard_conversion(true);
+  } else {
+    options.set_allow_single_shard_conversion(false);
+  }
+
   bool global_transaction = yb_force_global_transaction;
   for (auto i = ops.operations.begin(); !global_transaction && i != ops.operations.end(); ++i) {
     global_transaction = !(*i)->is_region_local();
@@ -917,6 +926,12 @@ Result<bool> PgSession::CheckIfPitrActive() {
 void PgSession::IncrementNumOfFlushes() { ++num_of_flushes_; }
 void PgSession::ResetNumOfFlushes() { num_of_flushes_ = 0; }
 uint32_t PgSession::NumOfFlushes() { return num_of_flushes_; }
+
+void PgSession::ConvertToSingleShardTxn() { convert_to_single_shard_txn_ = true; }
+
+bool PgSession::IsSingleShardTxn() { return convert_to_single_shard_txn_; }
+
+void PgSession::ResetSingleShardTxnConversionFlag() { convert_to_single_shard_txn_ = false; }
 
 }  // namespace pggate
 }  // namespace yb

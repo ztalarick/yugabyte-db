@@ -832,6 +832,19 @@ Status PgClientSession::FinishTransaction(
     return Status::OK();
   }
 
+  auto session = Session(kind);
+  session->ResetDDLMode();
+  session->ResetSingleShardConversionFlag();
+  LOG(INFO) << "RKNRKN session kind: " << kind
+            << " num of tablets involved: " << session->GetNumTabletsInvolvedInTxn()
+            << " txn: " << txn;
+  if (kind == PgClientSessionKind::kPlain && session->GetNumTabletsInvolvedInTxn() == 1) {
+    session->ResetNumTabletsInvolvedInTxn();
+    const auto txn_value = std::move(txn);
+    Session(kind)->SetTransaction(nullptr);
+    return Status::OK();
+  }
+
   const TransactionMetadata* metadata = nullptr;
   if (FLAGS_report_ysql_ddl_txn_status_to_master && req.has_docdb_schema_changes()) {
     metadata = VERIFY_RESULT(GetDdlTransactionMetadata(true, context->GetClientDeadline()));
@@ -928,6 +941,17 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
   auto session_info = VERIFY_RESULT(SetupSession(data->req, deadline, in_txn_limit));
   auto* session = session_info.first.session.get();
   auto& transaction = session_info.first.transaction;
+  if (transaction && options.ddl_mode()) {
+    session->SetDDLMode();
+  } else {
+    session->ResetDDLMode();
+  }
+
+  if (transaction && options.allow_single_shard_conversion()) {
+    session->SetSingleShardConversionFlag();
+  } else {
+    session->ResetSingleShardConversionFlag();
+  }
 
   if (context) {
     if (options.trace_requested()) {

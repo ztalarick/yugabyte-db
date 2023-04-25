@@ -351,7 +351,12 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   void IncrementNumOfFlushes();
   void ResetNumOfFlushes();
   uint32_t NumOfFlushes();
+  void ConvertToSingleShardTxn();
+  bool IsSingleShardTxn();
+  void ResetSingleShardTxnConversionFlag();
+
   bool should_increment_flush_counter_ = false;
+  bool convert_to_single_shard_txn_ = false;
 
  private:
   Result<PgTableDescPtr> DoLoadTable(const PgObjectId& table_id, bool fail_on_cache_hit);

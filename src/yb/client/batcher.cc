@@ -478,6 +478,8 @@ void Batcher::AllLookupsDone() {
     return lhs.tablet.get() < rhs.tablet.get();
   });
 
+  YBSessionPtr session = weak_session_.lock();
+
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
   const auto* current_tablet = (*group_start).tablet.get();
@@ -494,6 +496,11 @@ void Batcher::AllLookupsDone() {
           it_tablet->partition_list_version()));
       return;
     }
+
+    if (session) {
+      session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
+    }
+
     if (current_tablet != it_tablet || current_group != it_group) {
       ops_info_.groups.emplace_back(group_start, it);
       group_start = it;
@@ -502,6 +509,14 @@ void Batcher::AllLookupsDone() {
     }
   }
   ops_info_.groups.emplace_back(group_start, ops_queue_.end());
+
+  if (this->transaction() && !session->IsDDLMode() && session->IsSingleShardConversion() &&
+      session->GetNumTabletsInvolvedInTxn() == 1) {
+    session->batcher_config_.transaction = nullptr;
+    this->transaction_ = nullptr;
+  } else {
+    session->ResetNumTabletsInvolvedInTxn();
+  }
 
   ExecuteOperations(Initial::kTrue);
 }
