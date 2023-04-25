@@ -119,9 +119,7 @@ public class CheckXUniverseAutoFlags extends ServerSubTaskBase {
       Universe universe, ServerType serverType) throws IOException {
     AutoFlagsConfigPB autoFlagsConfigPB = getAutoFlagConfigForUniverse(universe);
     List<String> promotedAutoFlagsList =
-        autoFlagsConfigPB
-            .getPromotedFlagsList()
-            .stream()
+        autoFlagsConfigPB.getPromotedFlagsList().stream()
             .filter(
                 promotedFlagsPerProcessPB -> {
                   return promotedFlagsPerProcessPB
@@ -133,13 +131,13 @@ public class CheckXUniverseAutoFlags extends ServerSubTaskBase {
             .getFlagsList();
     String version = universe.getUniverseDetails().getPrimaryCluster().userIntent.ybSoftwareVersion;
     Map<String, GFlagDetails> autoFlagsMetadataMap =
-        gFlagsValidation
-            .listAllAutoFlags(version, serverType.name())
-            .stream()
+        gFlagsValidation.listAllAutoFlags(version, serverType.name()).stream()
             .collect(Collectors.toMap(flagDetails -> flagDetails.name, Function.identity()));
     Map<String, String> promotedAutoFlagsWithValues = new HashMap<>();
     for (String flag : promotedAutoFlagsList) {
-      promotedAutoFlagsWithValues.put(flag, autoFlagsMetadataMap.get(flag).target);
+      if (autoFlagsMetadataMap.containsKey(flag)) {
+        promotedAutoFlagsWithValues.put(flag, autoFlagsMetadataMap.get(flag).target);
+      }
     }
     for (Map.Entry<String, String> entry :
         GFlagsUtil.getBaseGFlags(
@@ -176,9 +174,7 @@ public class CheckXUniverseAutoFlags extends ServerSubTaskBase {
     String targetUniverseVersion =
         targetUniverse.getUniverseDetails().getPrimaryCluster().userIntent.ybSoftwareVersion;
     Set<String> supportedAutoFlags =
-        gFlagsValidation
-            .listAllAutoFlags(targetUniverseVersion, serverType.name())
-            .stream()
+        gFlagsValidation.listAllAutoFlags(targetUniverseVersion, serverType.name()).stream()
             .map(flagDetails -> flagDetails.name)
             .collect(Collectors.toSet());
     // Compare.

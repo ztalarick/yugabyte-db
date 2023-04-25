@@ -464,6 +464,7 @@ Tablet::Tablet(const TabletInitData& data)
       retention_policy_(std::make_shared<TabletRetentionPolicy>(
           clock_, data.allowed_history_cutoff_provider, metadata_.get())),
       full_compaction_pool_(data.full_compaction_pool),
+      admin_triggered_compaction_pool_(data.admin_triggered_compaction_pool),
       ts_post_split_compaction_added_(std::move(data.post_split_compaction_added)) {
   CHECK(schema()->has_column_ids());
   LOG_WITH_PREFIX(INFO) << "Schema version for " << metadata_->table_name() << " is "
@@ -2143,13 +2144,17 @@ Status Tablet::AlterSchema(ChangeMetadataOperation *operation) {
         operation->new_table_name().ToBuffer(),
         operation->op_id(),
         current_table_info->table_id);
-    if (table_metrics_entity_) {
-      table_metrics_entity_->SetAttribute("table_name", operation->new_table_name().ToBuffer());
-      table_metrics_entity_->SetAttribute("namespace_name", current_table_info->namespace_name);
-    }
-    if (tablet_metrics_entity_) {
-      tablet_metrics_entity_->SetAttribute("table_name", operation->new_table_name().ToBuffer());
-      tablet_metrics_entity_->SetAttribute("namespace_name", current_table_info->namespace_name);
+    // We shouldn't update the attributes of the colocation parent table's metrics when we alter
+    // a colocated table.
+    if (!metadata_->colocated()) {
+      if (table_metrics_entity_) {
+        table_metrics_entity_->SetAttribute("table_name", operation->new_table_name().ToBuffer());
+        table_metrics_entity_->SetAttribute("namespace_name", current_table_info->namespace_name);
+      }
+      if (tablet_metrics_entity_) {
+        tablet_metrics_entity_->SetAttribute("table_name", operation->new_table_name().ToBuffer());
+        tablet_metrics_entity_->SetAttribute("namespace_name", current_table_info->namespace_name);
+      }
     }
   } else {
     metadata_->SetSchema(
@@ -3907,6 +3912,33 @@ Status Tablet::TriggerFullCompactionIfNeeded(rocksdb::CompactionReason compactio
 
   return full_compaction_task_pool_token_->SubmitFunc(
       std::bind(&Tablet::TriggerFullCompactionSync, this, compaction_reason));
+}
+
+Status Tablet::TriggerAdminFullCompactionIfNeededHelper(
+    std::function<void()> on_compaction_completion) {
+  if (!admin_triggered_compaction_pool_ || state_ != State::kOpen) {
+    return STATUS(ServiceUnavailable, "Admin triggered compaction thread pool unavailable.");
+  }
+
+  std::lock_guard<std::mutex> lock(full_compaction_token_mutex_);
+  if (!admin_full_compaction_task_pool_token_) {
+    admin_full_compaction_task_pool_token_ =
+        admin_triggered_compaction_pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
+  }
+
+  return admin_full_compaction_task_pool_token_->SubmitFunc([this, on_compaction_completion]() {
+    TriggerFullCompactionSync(rocksdb::CompactionReason::kAdminCompaction);
+    on_compaction_completion();
+  });
+}
+
+Status Tablet::TriggerAdminFullCompactionIfNeeded() {
+  return TriggerAdminFullCompactionIfNeededHelper();
+}
+
+Status Tablet::TriggerAdminFullCompactionWithCallbackIfNeeded(
+    std::function<void()> on_compaction_completion) {
+  return TriggerAdminFullCompactionIfNeededHelper(on_compaction_completion);
 }
 
 void Tablet::TriggerFullCompactionSync(rocksdb::CompactionReason reason) {

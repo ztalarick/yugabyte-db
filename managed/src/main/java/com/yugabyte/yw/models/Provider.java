@@ -106,6 +106,10 @@ public class Provider extends Model {
   @JsonManagedReference(value = "provider-regions")
   private List<Region> regions;
 
+  @OneToMany(cascade = CascadeType.ALL)
+  @JsonManagedReference(value = "provider-image-bundles")
+  private List<ImageBundle> imageBundles;
+
   @ApiModelProperty(required = false)
   @OneToMany(cascade = CascadeType.ALL)
   @JsonManagedReference(value = "provider-accessKey")
@@ -443,6 +447,10 @@ public class Provider extends Model {
     return provider;
   }
 
+  public static List<Provider> getAll() {
+    return find.query().where().findList();
+  }
+
   /**
    * Get all the providers for a given customer uuid
    *
@@ -583,9 +591,7 @@ public class Provider extends Model {
 
   @JsonIgnore
   public long getUniverseCount() {
-    return Customer.get(this.getCustomerUUID())
-        .getUniversesForProvider(this.getUuid())
-        .stream()
+    return Customer.get(this.getCustomerUUID()).getUniversesForProvider(this.getUuid()).stream()
         .count();
   }
 }
