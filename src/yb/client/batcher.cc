@@ -483,6 +483,9 @@ void Batcher::AllLookupsDone() {
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
   const auto* current_tablet = (*group_start).tablet.get();
+  if (session && current_tablet) {
+    session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
+  }
   for (auto it = group_start; it != ops_queue_.end(); ++it) {
     const auto it_group = (*it).yb_op->group();
     const auto* it_tablet = (*it).tablet.get();
@@ -497,8 +500,8 @@ void Batcher::AllLookupsDone() {
       return;
     }
 
-    if (session) {
-      session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
+    if (session && current_tablet != it_tablet) {
+      session->AddTabletInvolvedInTxn(it_tablet->tablet_id());
     }
 
     if (current_tablet != it_tablet || current_group != it_group) {

@@ -835,9 +835,6 @@ Status PgClientSession::FinishTransaction(
   auto session = Session(kind);
   session->ResetDDLMode();
   session->ResetSingleShardConversionFlag();
-  LOG(INFO) << "RKNRKN session kind: " << kind
-            << " num of tablets involved: " << session->GetNumTabletsInvolvedInTxn()
-            << " txn: " << txn;
   if (kind == PgClientSessionKind::kPlain && session->GetNumTabletsInvolvedInTxn() == 1) {
     session->ResetNumTabletsInvolvedInTxn();
     const auto txn_value = std::move(txn);
