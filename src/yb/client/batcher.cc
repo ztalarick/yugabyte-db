@@ -483,7 +483,8 @@ void Batcher::AllLookupsDone() {
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
   const auto* current_tablet = (*group_start).tablet.get();
-  if (session && current_tablet) {
+  if (this->transaction() && session && !session->IsDDLMode() &&
+      session->IsSingleShardConversion() && current_tablet) {
     session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
   }
   for (auto it = group_start; it != ops_queue_.end(); ++it) {
@@ -500,7 +501,8 @@ void Batcher::AllLookupsDone() {
       return;
     }
 
-    if (session && current_tablet != it_tablet) {
+    if (session && this->transaction() && !session->IsDDLMode() &&
+        session->IsSingleShardConversion() && current_tablet != it_tablet) {
       session->AddTabletInvolvedInTxn(it_tablet->tablet_id());
     }
 
@@ -513,12 +515,13 @@ void Batcher::AllLookupsDone() {
   }
   ops_info_.groups.emplace_back(group_start, ops_queue_.end());
 
-  if (this->transaction() && !session->IsDDLMode() && session->IsSingleShardConversion() &&
-      session->GetNumTabletsInvolvedInTxn() == 1) {
-    session->batcher_config_.transaction = nullptr;
-    this->transaction_ = nullptr;
-  } else {
-    session->ResetNumTabletsInvolvedInTxn();
+  if (this->transaction() && !session->IsDDLMode() && session->IsSingleShardConversion()) {
+    if (session->GetNumTabletsInvolvedInTxn() == 1) {
+      session->batcher_config_.transaction = nullptr;
+      this->transaction_ = nullptr;
+    } else {
+      session->ResetNumTabletsInvolvedInTxn();
+    }
   }
 
   ExecuteOperations(Initial::kTrue);
