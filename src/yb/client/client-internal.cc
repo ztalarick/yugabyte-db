@@ -53,11 +53,11 @@
 #include "yb/client/meta_cache.h"
 #include "yb/client/table_info.h"
 
-#include "yb/common/index.h"
+#include "yb/qlexpr/index.h"
 #include "yb/common/redis_constants_common.h"
 #include "yb/common/placement_info.h"
 #include "yb/common/schema.h"
-#include "yb/common/ql_wire_protocol.h"
+#include "yb/common/schema_pbutil.h"
 
 #include "yb/gutil/bind.h"
 #include "yb/gutil/map-util.h"
@@ -906,7 +906,7 @@ Status YBClient::Data::IsBackfillIndexInProgress(YBClient* client,
                                table_id,
                                deadline,
                                &yb_table_info));
-  const IndexInfo* index_info = VERIFY_RESULT(yb_table_info.index_map.FindIndex(index_id));
+  const auto* index_info = VERIFY_RESULT(yb_table_info.index_map.FindIndex(index_id));
 
   *backfill_in_progress = true;
   if (!index_info->backfill_error_message().empty()) {
@@ -1153,7 +1153,7 @@ Status YBClient::Data::WaitForFlushTableToFinish(YBClient* client,
 }
 
 Result<TableCompactionStatus> YBClient::Data::GetCompactionStatus(
-    const YBTableName& table_name, const CoarseTimePoint deadline) {
+    const YBTableName& table_name, bool show_tablets, const CoarseTimePoint deadline) {
   GetCompactionStatusRequestPB req;
   GetCompactionStatusResponsePB resp;
 
@@ -1164,12 +1164,33 @@ Result<TableCompactionStatus> YBClient::Data::GetCompactionStatus(
   }
   table_name.SetIntoTableIdentifierPB(req.mutable_table());
 
+  if (show_tablets) {
+    req.set_show_tablets(true);
+  }
+
   RETURN_NOT_OK(SyncLeaderMasterRpc(
       deadline, req, &resp, "GetCompactionStatus",
       &master::MasterAdminProxy::GetCompactionStatusAsync));
 
+  if (!resp.has_full_compaction_state()) {
+    return STATUS(InternalError, "Missing full compaction state in table full compaction status");
+  }
+
+  std::vector<TabletReplicaFullCompactionStatus> replica_statuses;
+  for (const auto& replica_status : resp.replica_statuses()) {
+    if (!replica_status.has_ts_id() || !replica_status.has_tablet_id() ||
+        !replica_status.has_full_compaction_state()) {
+      return STATUS(InternalError, "Missing field(s) in tablet replica full compaction status");
+    }
+
+    replica_statuses.push_back(TabletReplicaFullCompactionStatus{
+        replica_status.ts_id(), replica_status.tablet_id(), replica_status.full_compaction_state(),
+        HybridTime(replica_status.last_full_compaction_time())});
+  }
+
   return TableCompactionStatus{
-      resp.full_compaction_state(), MonoTime::FromUint64(resp.last_request_time())};
+      resp.full_compaction_state(), HybridTime(resp.last_full_compaction_time()),
+      HybridTime(resp.last_request_time()), std::move(replica_statuses)};
 }
 
 bool YBClient::Data::IsTabletServerLocal(const RemoteTabletServer& rts) const {
@@ -1969,7 +1990,7 @@ Result<IndexPermissions> YBClient::Data::GetIndexPermissions(
                                deadline,
                                &yb_table_info));
 
-  const IndexInfo* index_info = VERIFY_RESULT(yb_table_info.index_map.FindIndex(index_id));
+  const auto* index_info = VERIFY_RESULT(yb_table_info.index_map.FindIndex(index_id));
   return index_info->index_permissions();
 }
 
@@ -1985,7 +2006,7 @@ Result<IndexPermissions> YBClient::Data::GetIndexPermissions(
                                deadline,
                                &yb_table_info));
 
-  const IndexInfo* index_info = VERIFY_RESULT(yb_table_info.index_map.FindIndex(index_id));
+  const auto* index_info = VERIFY_RESULT(yb_table_info.index_map.FindIndex(index_id));
   return index_info->index_permissions();
 }
 

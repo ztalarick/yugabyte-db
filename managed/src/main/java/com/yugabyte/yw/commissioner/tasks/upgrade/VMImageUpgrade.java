@@ -77,7 +77,8 @@ public class VMImageUpgrade extends UpgradeTaskBase {
   public void run() {
     runUpgrade(
         () -> {
-          Set<NodeDetails> nodeSet = fetchAllNodes(taskParams().upgradeOption);
+          Set<NodeDetails> nodeSet = fetchNodesForCluster();
+
           // Verify the request params and fail if invalid
           taskParams().verifyParams(getUniverse());
 
@@ -99,7 +100,9 @@ public class VMImageUpgrade extends UpgradeTaskBase {
                   Collections.singleton(taskParams().getUniverseUUID()),
                   Collections.singleton(taskParams().getUniverseUUID()),
                   xClusterUniverseService,
-                  new HashSet<>());
+                  new HashSet<>(),
+                  getUniverse(),
+                  newVersion);
             }
 
             // Update software version in the universe metadata.

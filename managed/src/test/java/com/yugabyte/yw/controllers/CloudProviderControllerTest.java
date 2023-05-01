@@ -86,7 +86,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 import play.libs.Json;
 import play.mvc.Result;
 
@@ -530,9 +529,6 @@ public class CloudProviderControllerTest extends FakeDBApplication {
     } else {
       assertValueAtPath(json, "/config/KUBECONFIG_IMAGE_PULL_SECRET_NAME", pullSecretName);
       assertValueAtPath(json, "/config/KUBECONFIG_PULL_SECRET_NAME", pullSecretName);
-      Yaml ya = new Yaml();
-      String one = ya.dump(ya.load(json.at("/config/KUBECONFIG_PULL_SECRET_CONTENT").toString()));
-      assertTrue(one.trim().endsWith("\".dockerconfigjson\": \"sec-key\""));
       String registryPath = "quay.io/yugabyte/yugabyte-itest";
       assertValueAtPath(json, "/config/KUBECONFIG_IMAGE_REGISTRY", registryPath);
     }
@@ -840,22 +836,6 @@ public class CloudProviderControllerTest extends FakeDBApplication {
     Result result = editProvider(bodyJson, p.getUuid());
     assertOk(result);
     assertFalse("Region is deleted", Region.get(r.getUuid()).isActive());
-  }
-
-  @Test
-  public void testEditProviderTryUnDeleteRegion() {
-    Provider p = ModelFactory.newProvider(customer, Common.CloudType.aws);
-    Region r = Region.create(p, "region-1", "PlacementRegion 1", "default-image");
-    r.setActiveFlag(false);
-    r.update();
-    AccessKey.create(p.getUuid(), AccessKey.getDefaultKeyCode(p), new AccessKey.KeyInfo());
-    Result providerRes = getProvider(p.getUuid());
-    ObjectNode bodyJson = (ObjectNode) Json.parse(contentAsString(providerRes));
-    ArrayNode regions = (ArrayNode) bodyJson.get("regions");
-    ObjectNode regionNode = (ObjectNode) regions.get(0);
-    regionNode.put("active", true);
-    Result result = assertPlatformException(() -> editProvider(bodyJson, p.getUuid()));
-    assertBadRequest(result, "No changes to be made for provider type: aws");
   }
 
   @Test

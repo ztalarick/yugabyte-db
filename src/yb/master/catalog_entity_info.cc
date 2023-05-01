@@ -37,7 +37,7 @@
 #include "yb/common/colocated_util.h"
 #include "yb/common/doc_hybrid_time.h"
 #include "yb/dockv/partition.h"
-#include "yb/common/ql_wire_protocol.h"
+#include "yb/common/schema_pbutil.h"
 #include "yb/common/wire_protocol.h"
 
 #include "yb/master/cdc_rpc_tasks.h"
@@ -73,17 +73,27 @@ namespace master {
 // ================================================================================================
 
 string TabletReplica::ToString() const {
-  return Format("{ ts_desc: $0, state: $1, role: $2, member_type: $3, "
-                "should_disable_lb_move: $4, fs_data_dir: $5, "
-                "total_space_used: $6, full_compaction_state: $7, time since update: $8ms }",
-                ts_desc->permanent_uuid(),
-                tablet::RaftGroupStatePB_Name(state),
-                PeerRole_Name(role),
-                consensus::PeerMemberType_Name(member_type),
-                should_disable_lb_move, fs_data_dir,
-                drive_info.sst_files_size + drive_info.wal_files_size,
-                tablet::FullCompactionState_Name(full_compaction_state),
-                MonoTime::Now().GetDeltaSince(time_updated).ToMilliseconds());
+  return Format(
+      "{ ts_desc: $0, "
+      "state: $1, "
+      "role: $2, "
+      "member_type: $3, "
+      "should_disable_lb_move: $4, "
+      "fs_data_dir: $5, "
+      "total_space_used: $6, "
+      "full_compaction_state: $7, "
+      "last_full_compaction_time: $8, "
+      "time since update: $9ms }",
+      ts_desc->permanent_uuid(),
+      tablet::RaftGroupStatePB_Name(state),
+      PeerRole_Name(role),
+      consensus::PeerMemberType_Name(member_type),
+      should_disable_lb_move,
+      fs_data_dir,
+      drive_info.sst_files_size + drive_info.wal_files_size,
+      tablet::FullCompactionState_Name(full_compaction_status.full_compaction_state),
+      full_compaction_status.last_full_compaction_time,
+      MonoTime::Now().GetDeltaSince(time_updated).ToMilliseconds());
 }
 
 void TabletReplica::UpdateFrom(const TabletReplica& source) {
@@ -92,7 +102,7 @@ void TabletReplica::UpdateFrom(const TabletReplica& source) {
   member_type = source.member_type;
   should_disable_lb_move = source.should_disable_lb_move;
   fs_data_dir = source.fs_data_dir;
-  full_compaction_state = source.full_compaction_state;
+  full_compaction_status = source.full_compaction_status;
   time_updated = MonoTime::Now();
 }
 
@@ -356,8 +366,8 @@ void TabletInfo::GetLeaderStepDownFailureTimes(MonoTime forget_failures_before,
   *dest = leader_stepdown_failure_times_;
 }
 
-void TabletInfo::UpdateReplicaFullCompactionState(
-    const std::string& ts_uuid, const tablet::FullCompactionState full_compaction_state) {
+void TabletInfo::UpdateReplicaFullCompactionStatus(
+    const TabletServerId& ts_uuid, const FullCompactionStatus& full_compaction_status) {
   std::lock_guard<simple_spinlock> l(lock_);
   // Make a new shared_ptr, copying the data, to ensure we don't race against access to data from
   // clients that already have the old shared_ptr.
@@ -366,7 +376,7 @@ void TabletInfo::UpdateReplicaFullCompactionState(
   if (it == replica_locations_->end()) {
     return;
   }
-  it->second.full_compaction_state = full_compaction_state;
+  it->second.full_compaction_status = full_compaction_status;
 }
 
 void PersistentTabletInfo::set_state(SysTabletsEntryPB::State state, const string& msg) {
@@ -998,14 +1008,14 @@ TabletInfoPtr TableInfo::GetColocatedUserTablet() const {
   return nullptr;
 }
 
-IndexInfo TableInfo::GetIndexInfo(const TableId& index_id) const {
+qlexpr::IndexInfo TableInfo::GetIndexInfo(const TableId& index_id) const {
   auto l = LockForRead();
   for (const auto& index_info_pb : l->pb.indexes()) {
     if (index_info_pb.table_id() == index_id) {
-      return IndexInfo(index_info_pb);
+      return qlexpr::IndexInfo(index_info_pb);
     }
   }
-  return IndexInfo();
+  return qlexpr::IndexInfo();
 }
 
 bool TableInfo::UsesTablespacesForPlacement() const {

@@ -41,7 +41,7 @@
 
 #include "yb/common/common_net.pb.h"
 #include "yb/common/entity_ids.h"
-#include "yb/common/index.h"
+#include "yb/qlexpr/index.h"
 #include "yb/common/transaction.h"
 
 #include "yb/master/master_fwd.h"
@@ -237,7 +237,7 @@ class YBClient::Data {
                                    const CoarseTimePoint deadline);
 
   Result<TableCompactionStatus> GetCompactionStatus(
-      const YBTableName& table_name, const CoarseTimePoint deadline);
+      const YBTableName& table_name, bool show_tablets, const CoarseTimePoint deadline);
 
   Status GetTableSchema(YBClient* client,
                         const YBTableName& table_name,
