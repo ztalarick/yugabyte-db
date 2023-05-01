@@ -513,7 +513,8 @@ void Batcher::AllLookupsDone() {
   }
   ops_info_.groups.emplace_back(group_start, ops_queue_.end());
 
-  if (this->transaction() && !session->IsDDLMode() && session->IsSingleShardConversion()) {
+  if (this->transaction() && session && !session->IsDDLMode() &&
+      session->IsSingleShardConversion()) {
     if (session->GetNumTabletsInvolvedInTxn() == 1) {
       session->batcher_config_.transaction = nullptr;
       this->transaction_ = nullptr;
