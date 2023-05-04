@@ -477,6 +477,7 @@ void Batcher::AllLookupsDone() {
   });
 
   YBSessionPtr session = weak_session_.lock();
+  bool non_write_op_involved = false;
 
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
@@ -484,6 +485,9 @@ void Batcher::AllLookupsDone() {
   if (this->transaction() && session && !session->IsDDLMode() &&
       session->IsSingleShardConversion() && current_tablet) {
     session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
+    if (current_group != OpGroup::kWrite) {
+      non_write_op_involved = true;
+    }
   }
   for (auto it = group_start; it != ops_queue_.end(); ++it) {
     const auto it_group = (*it).yb_op->group();
@@ -499,12 +503,16 @@ void Batcher::AllLookupsDone() {
       return;
     }
 
-    if (session && this->transaction() && !session->IsDDLMode() &&
-        session->IsSingleShardConversion() && current_tablet != it_tablet) {
-      session->AddTabletInvolvedInTxn(it_tablet->tablet_id());
-    }
-
     if (current_tablet != it_tablet || current_group != it_group) {
+      if (session && this->transaction() && !session->IsDDLMode() &&
+          session->IsSingleShardConversion() && current_tablet != it_tablet &&
+          !non_write_op_involved) {
+        session->AddTabletInvolvedInTxn(it_tablet->tablet_id());
+      }
+      if (current_group != it_group && current_group != OpGroup::kWrite && !non_write_op_involved) {
+        non_write_op_involved = true;
+      }
+
       ops_info_.groups.emplace_back(group_start, it);
       group_start = it;
       current_group = it_group;
@@ -515,7 +523,7 @@ void Batcher::AllLookupsDone() {
 
   if (this->transaction() && session && !session->IsDDLMode() &&
       session->IsSingleShardConversion()) {
-    if (session->GetNumTabletsInvolvedInTxn() == 1) {
+    if (session->GetNumTabletsInvolvedInTxn() == 1 && !non_write_op_involved) {
       session->batcher_config_.transaction = nullptr;
       this->transaction_ = nullptr;
     } else {
