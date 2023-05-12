@@ -281,6 +281,8 @@ InitProcGlobal(void)
 		 */
 		pg_atomic_init_u32(&(procs[i].procArrayGroupNext), INVALID_PGPROCNO);
 		pg_atomic_init_u32(&(procs[i].clogGroupNext), INVALID_PGPROCNO);
+		pg_atomic_init_u32(&(procs[i].isOtelTracingEnabled), 0);
+		pg_atomic_init_u32(&(procs[i].traceVerbosity), 0);
 	}
 
 	/*
@@ -438,6 +440,11 @@ InitProcess(void)
 	Assert(pg_atomic_read_u32(&MyProc->clogGroupNext) == INVALID_PGPROCNO);
 
 	MyProc->ybAnyLockAcquired = false;
+
+	/* Initialize traceableQueries array */
+	MyProc->numQueries = 0;
+	MyProc->traceableQueries = (OtelTraceableQueries *) ShmemAlloc(
+				MAX_TRACEABLE_QUERIES * sizeof(OtelTraceableQueries));
 
 	/*
 	 * Acquire ownership of the PGPROC's latch, so that we can use WaitLatch

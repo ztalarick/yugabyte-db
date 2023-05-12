@@ -10435,4 +10435,19 @@
   prorettype => 'cstring', proargtypes => '',
   prosrc => 'yb_get_effective_transaction_isolation_level' },
 
+{ oid => '8059', descr => 'Enable Otel tracing',
+  proname => 'yb_pg_enable_tracing', provolatile => 's', proisstrict => 'f',
+  prorettype => 'bool', proargtypes => 'int4 int8 int4', prosrc => 'yb_pg_enable_tracing',
+  proargnames => '{pid,query_id,trace_verbosity}' },
+
+{ oid => '8060', descr => 'Disable Otel tracing',
+  proname => 'yb_pg_disable_tracing', provolatile => 's', proisstrict => 'f',
+  prorettype => 'bool', proargtypes => 'int4 int8', prosrc => 'yb_pg_disable_tracing',
+  proargnames => '{pid,query_id}' },
+
+{ oid => '8061', descr => 'Check if Otel tracing is enabled',
+  proname => 'is_yb_pg_tracing_enabled', provolatile => 's', proisstrict => 'f',
+  prorettype => 'bool', proargtypes => 'int4 int8 int4', prosrc => 'is_yb_pg_tracing_enabled',
+  proargnames => '{pid,query_id,trace_verbosity}' },
+
 ]

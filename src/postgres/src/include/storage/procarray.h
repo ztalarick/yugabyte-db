@@ -125,4 +125,7 @@ extern void ProcArraySetReplicationSlotXmin(TransactionId xmin,
 extern void ProcArrayGetReplicationSlotXmin(TransactionId *xmin,
 								TransactionId *catalog_xmin);
 
+extern int SignalOtelTracing(uint32 signal, int pid, int64 query_id, bool is_query_id_null, uint32 trace_verbosity);
+extern int IsOtelTracingEnabled(int pid, int64 query_id,  bool is_query_id_null, uint32 trace_verbosity);
+
 #endif							/* PROCARRAY_H */

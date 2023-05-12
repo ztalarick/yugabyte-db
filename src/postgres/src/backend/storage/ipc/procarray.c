@@ -4132,3 +4132,258 @@ KnownAssignedXidsReset(void)
 
 	LWLockRelease(ProcArrayLock);
 }
+
+int
+SignalOtelTracingWithoutQueryId(uint32 signal, int pid, uint32 trace_verbosity)
+{
+	ProcArrayStruct *arrayP = procArray;
+	int 		index;
+	bool 		is_tracing_toggled = false;
+	bool 		backend_found = pid ? false : true;
+
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	for (index = 0; index < arrayP->numProcs; index++)
+	{
+		int			pgprocno = arrayP->pgprocnos[index];
+		volatile PGPROC *proc = &allProcs[pgprocno];
+
+		if (proc->pid == 0)
+			continue;	/* ignore prepared xacts */
+		if (proc->isBackgroundWorker)
+			continue;	/* ignore background workers*/
+
+		if (pid == 0 || proc->pid == pid)
+		{
+			pg_atomic_write_u32(&proc->isOtelTracingEnabled, signal);
+			pg_atomic_write_u32(&proc->traceVerbosity, trace_verbosity);
+			is_tracing_toggled = true;
+
+			if (!signal)
+			{
+				LWLockAcquire((LWLock *)&proc->backendLock, LW_EXCLUSIVE);
+				proc->numQueries = 0; /* Reset traceableQueries when disabling tracing */
+				LWLockRelease((LWLock *)&proc->backendLock);
+			}
+
+			if (pid != 0)
+			{
+				backend_found = true;
+				break;
+			}
+		}
+	}
+	LWLockRelease(ProcArrayLock);
+
+	if (!backend_found)
+		return -1; /* Backend doesn't exist */
+
+	return is_tracing_toggled;
+}
+
+bool
+AddQueryId(int64 query_id, uint32 trace_verbosity, int pgprocno)
+{
+	PGPROC *proc = &allProcs[pgprocno];
+	int 		traceable_index;
+	bool 		query_already_enabled = false;
+
+	LWLockAcquire((LWLock *)&proc->backendLock, LW_EXCLUSIVE);
+	for (traceable_index = 0; traceable_index < proc->numQueries; traceable_index++)
+	{
+		if (proc->traceableQueries[traceable_index].query_id == query_id)
+		{
+			query_already_enabled = true;
+			break;
+		}
+	}
+	if (!query_already_enabled)
+	{
+		if (proc->numQueries != MAX_TRACEABLE_QUERIES)
+		{
+			proc->traceableQueries[proc->numQueries].query_id = query_id;
+			proc->traceableQueries[proc->numQueries].trace_verbosity = trace_verbosity;
+			proc->numQueries++;
+		}
+	}
+	LWLockRelease((LWLock *)&proc->backendLock);
+
+	return !query_already_enabled;
+}
+
+bool
+RemoveQueryId(int64 query_id, int pgprocno)
+{
+	PGPROC *proc = &allProcs[pgprocno];
+	int 		traceable_index;
+	bool 		query_already_disabled = true;
+
+	LWLockAcquire((LWLock *)&proc->backendLock, LW_EXCLUSIVE);
+	for (traceable_index = 0; traceable_index < proc->numQueries; traceable_index++)
+	{
+		if (proc->traceableQueries[traceable_index].query_id == query_id)
+		{
+			memmove(&proc->traceableQueries[traceable_index], &proc->traceableQueries[traceable_index + 1],
+					(proc->numQueries - traceable_index - 1) * sizeof(uint64));
+			proc->numQueries--;
+			query_already_disabled = false;
+			break;
+		}
+	}
+	LWLockRelease((LWLock *)&proc->backendLock);
+
+	return !query_already_disabled;
+}
+
+int
+SignalOtelTracingWithQueryId(uint32 signal, int pid, int64 query_id, uint32 trace_verbosity)
+{
+	ProcArrayStruct *arrayP = procArray;
+	int 		index;
+	int 		pgprocno;
+	bool 		backend_found = pid ? false : true;
+	bool 		is_tracing_toggled = signal ? true : false;
+
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	for (index = 0; index < arrayP->numProcs; index++)
+	{
+		pgprocno = arrayP->pgprocnos[index];
+		volatile PGPROC *proc = &allProcs[pgprocno];
+
+		if (proc->pid == 0)
+			continue;	/* ignore prepared xacts */
+		if (proc->isBackgroundWorker)
+			continue;	/* ignore background workers*/
+
+		if (pid == 0 || proc->pid == pid)
+		{
+			if (signal)
+				is_tracing_toggled &= AddQueryId(query_id, trace_verbosity, pgprocno);
+			else
+				is_tracing_toggled |= RemoveQueryId(query_id, pgprocno);
+
+			if (pid != 0)
+			{
+				backend_found = true;
+				break;	
+			}
+		}
+	}
+	LWLockRelease(ProcArrayLock);
+
+	if (!backend_found)
+		return -1; /* Backend doesn't exist */
+
+	return is_tracing_toggled ? is_tracing_toggled : -2;
+}
+
+int
+SignalOtelTracing(uint32 signal, int pid, int64 query_id, bool is_query_id_null, uint32 trace_verbosity)
+{
+	return (is_query_id_null ? SignalOtelTracingWithoutQueryId(signal, pid, trace_verbosity) :
+			SignalOtelTracingWithQueryId(signal, pid, query_id, trace_verbosity));
+}
+
+int
+IsOtelTracingEnabledWithoutQueryId(int pid, uint32 trace_verbosity)
+{
+	ProcArrayStruct *arrayP = procArray;
+	int 		index;
+	int 		pgprocno;
+	bool 		is_tracing_enabled = true;
+	bool 		backend_found = pid ? false : true;
+
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	for (index = 0; index < arrayP->numProcs; index++)
+	{
+		pgprocno = arrayP->pgprocnos[index];
+		volatile PGPROC *proc = &allProcs[pgprocno];
+
+		if (proc->pid == 0)
+			continue;	/* ignore prepared xacts */
+		if (proc->isBackgroundWorker)
+			continue;	/* ignore background workers*/
+
+		if (pid == 0 || proc->pid == pid)
+		{
+			is_tracing_enabled = pg_atomic_read_u32(&proc->isOtelTracingEnabled);
+			is_tracing_enabled &= (pg_atomic_read_u32(&proc->traceVerbosity) == trace_verbosity);
+			if (pid != 0 || !is_tracing_enabled)
+			{
+				backend_found = true;
+				break;
+			}
+		}
+	}
+	LWLockRelease(ProcArrayLock);
+
+	if (!backend_found)
+		return -1; /* Backend doesn't exist */
+
+	return is_tracing_enabled;
+}
+
+int
+IsOtelTracingEnabledForQueryId(int64 query_id, uint32 trace_verbosity, int pgprocno)
+{
+	PGPROC *proc = &allProcs[pgprocno];
+	int 		traceable_index;
+	bool		is_tracing_enabled = false;
+
+	LWLockAcquire((LWLock *)&proc->backendLock, LW_SHARED);
+	for (traceable_index = 0; traceable_index < proc->numQueries; traceable_index++)
+	{
+		if (proc->traceableQueries[traceable_index].query_id == query_id &&
+				proc->traceableQueries[traceable_index].trace_verbosity == trace_verbosity)
+		{
+			is_tracing_enabled = true;
+			break;
+		}
+	}
+	LWLockRelease((LWLock *)&proc->backendLock);
+
+	return is_tracing_enabled;
+}
+
+int
+IsOtelTracingEnabledWithQueryId(int pid, int64 query_id, uint32 trace_verbosity)
+{
+	ProcArrayStruct *arrayP = procArray;
+	int 		index;
+	bool 		is_tracing_enabled = false;
+	bool 		backend_found = pid ? false : true;
+
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	for (index = 0; index < arrayP->numProcs; index++)
+	{
+		int			pgprocno = arrayP->pgprocnos[index];
+		volatile PGPROC *proc = &allProcs[pgprocno];
+
+		if (proc->pid == 0)
+			continue;	/* ignore prepared xacts */
+		if (proc->isBackgroundWorker)
+			continue;	/* ignore background workers*/
+
+		if (pid == 0 || proc->pid == pid)
+		{
+			is_tracing_enabled = IsOtelTracingEnabledForQueryId(query_id, trace_verbosity, pgprocno);
+			if (pid != 0 || !is_tracing_enabled)
+			{
+				backend_found = true;
+				break;
+			}
+		}
+	}
+	LWLockRelease(ProcArrayLock);
+
+	if (!backend_found)
+		return -1; /* Backend doesn't exist */
+
+	return is_tracing_enabled;
+}
+
+int
+IsOtelTracingEnabled(int pid, int64 query_id, bool is_query_id_null, uint32 trace_verbosity)
+{
+	return (is_query_id_null ? IsOtelTracingEnabledWithoutQueryId(pid, trace_verbosity) :
+			IsOtelTracingEnabledWithQueryId(pid, query_id, trace_verbosity));
+}
