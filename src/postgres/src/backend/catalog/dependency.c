@@ -184,6 +184,7 @@ static const Oid object_classes[] = {
 	YbProfileRelationId,		/* OCLASS_YBPROFILE */
 	YbRoleProfileRelationId,	/* OCLASS_YBROLE_PROFILE */
 	YbTablegroupRelationId,		/* OCLASS_TBLGROUP */
+	YbTracingRelationID,		/* OCLASS_QUERY_TRACING */
 };
 
 
@@ -1331,6 +1332,7 @@ doDeletion(const ObjectAddress *object, int flags)
 		case OCLASS_SUBSCRIPTION:
 		case OCLASS_YBPROFILE:
 		case OCLASS_YBROLE_PROFILE:
+		case OCLASS_QUERY_TRACING:
 			elog(ERROR, "global objects cannot be deleted by doDeletion");
 			break;
 

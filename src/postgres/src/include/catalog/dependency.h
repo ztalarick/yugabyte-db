@@ -197,6 +197,7 @@ typedef enum ObjectClass
 	OCLASS_TRANSFORM,			/* pg_transform */
 	OCLASS_YBPROFILE,			/* pg_yb_profile */
 	OCLASS_YBROLE_PROFILE,		/* pg_yb_role_profile */
+	OCLASS_QUERY_TRACING,		/* pg_yb_query_tracing */
 } ObjectClass;
 
 #define LAST_OCLASS		OCLASS_YBROLE_PROFILE

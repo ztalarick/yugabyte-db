@@ -11715,6 +11715,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			case OCLASS_TRANSFORM:
 			case OCLASS_YBPROFILE:
 			case OCLASS_YBROLE_PROFILE:
+			case OCLASS_QUERY_TRACING:
 
 				/*
 				 * We don't expect any of these sorts of objects to depend on

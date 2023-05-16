@@ -3682,6 +3682,8 @@ getObjectDescription(const ObjectAddress *object)
 								 yb_get_profile_name(rolprfform->rolprfprofile));
 				break;
 			}
+		case OCLASS_QUERY_TRACING:
+			break;
 			/*
 			 * There's intentionally no default: case here; we want the
 			 * compiler to warn if a new OCLASS hasn't been handled above.
@@ -4195,6 +4197,10 @@ getObjectTypeDescription(const ObjectAddress *object)
 
 		case OCLASS_YBROLE_PROFILE:
 			appendStringInfoString(&buffer, "role profile");
+			break;
+
+		case OCLASS_QUERY_TRACING:
+			appendStringInfoString(&buffer, "query tracing");
 			break;
 			/*
 			 * There's intentionally no default: case here; we want the
@@ -5289,6 +5295,9 @@ getObjectIdentityParts(const ObjectAddress *object,
 								 yb_get_profile_name(rolprfform->rolprfprofile));
 				break;
 			}
+
+		case OCLASS_QUERY_TRACING:
+			break;
 
 			/*
 			 * There's intentionally no default: case here; we want the
