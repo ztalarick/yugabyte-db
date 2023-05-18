@@ -392,6 +392,55 @@ TEST_F_EX(PgBackendsTest, YB_DISABLE_TEST_IN_TSAN(ConnectionLimit), PgBackendsTe
   ASSERT_EQ(0, num_backends);
 }
 
+class PgBackendsTestPgTimeout : public PgBackendsTest {
+ public:
+  void UpdateMiniClusterOptions(ExternalMiniClusterOptions* options) override {
+    PgBackendsTest::UpdateMiniClusterOptions(options);
+    options->extra_tserver_flags.insert(
+        options->extra_tserver_flags.end(),
+        {
+          Format("--wait_for_ysql_backends_catalog_version_client_master_rpc_timeout_ms=$0",
+                 kRpcTimeout.ToMilliseconds()),
+          Format("--ysql_yb_wait_for_backends_catalog_version_timeout=$0",
+                 kTimeout.ToMilliseconds()),
+        });
+  }
+
+ protected:
+  const MonoDelta kRpcTimeout = 1s;
+  const MonoDelta kTimeout = 3s;
+};
+
+// Test ysql_yb_wait_for_backends_catalog_version_timeout.
+TEST_F_EX(PgBackendsTest,
+          YB_DISABLE_TEST_IN_TSAN(PgTimeout),
+          PgBackendsTestPgTimeout) {
+  LOG(INFO) << "Start connection that will be behind";
+  PGConn conn_begin = ASSERT_RESULT(Connect());
+  ASSERT_OK(conn_begin.Execute("BEGIN"));
+
+  LOG(INFO) << "Start create index connection";
+  PGConn conn_index = ASSERT_RESULT(Connect());
+  ASSERT_OK(conn_index.Execute("CREATE TABLE t (i int)"));
+
+  LOG(INFO) << "Do create index";
+  const auto start = MonoTime::Now();
+  Status s = conn_index.Execute("CREATE INDEX ON t (i)");
+  const auto end = MonoTime::Now();
+  ASSERT_NOK(s);
+  ASSERT_TRUE(s.IsNetworkError()) << s;
+  LOG(INFO) << "Error message: " << s.message().ToBuffer();
+  ASSERT_STR_CONTAINS(s.message().ToBuffer(), "timed out waiting for postgres backends");
+
+  const auto time_spent = end - start;
+  LOG(INFO) << "Time spent: " << time_spent;
+  // Add margin to cover time spent in setup (and teardown), such as creating the docdb index.  The
+  // timeout timer starts on the first wait-for-backends call, which is after committing the initial
+  // state.
+  constexpr auto kMargin = 5s;
+  ASSERT_LT(time_spent, kTimeout + kRpcTimeout + kMargin);
+}
+
 class PgBackendsTestRf3 : public PgBackendsTest {
  public:
   int GetNumMasters() const override {
@@ -1214,6 +1263,61 @@ TEST_F(PgBackendsTestRf3Block, YB_DISABLE_TEST_IN_TSAN(LeaderChangeInFlightLater
   LOG(INFO) << "Time taken: " << time_taken;
 
   thread_holder.Stop();
+}
+
+// Instead of introducing test sleeps in the code, PgBackendsTestStatementTimeout uses
+// wait-on-conflict feature to make testing the timeout functionality easier.
+class PgBackendsTestStatementTimeout : public PgBackendsTest {
+ protected:
+  void UpdateMiniClusterOptions(ExternalMiniClusterOptions* options) override {
+    PgBackendsTest::UpdateMiniClusterOptions(options);
+    options->extra_tserver_flags.push_back(
+        Format("--ysql_pg_conf_csv=statement_timeout=$0", kClientStatementTimeoutSeconds * 1000));
+    options->extra_tserver_flags.push_back("--enable_wait_queues=true");
+    options->extra_tserver_flags.push_back("--enable_deadlock_detection=true");
+  }
+
+  Result<std::future<Status>> ExpectBlockedAsync(
+      pgwrapper::PGConn* conn, const std::string& query) {
+    auto status = std::async(std::launch::async, [&conn, query]() {
+      return conn->Execute(query);
+    });
+
+    RETURN_NOT_OK(WaitFor([&conn] () {
+      return conn->IsBusy();
+    }, 1s * kTimeMultiplier, "Wait for blocking request to be submitted to the query layer"));
+    return status;
+  }
+
+ protected:
+  static constexpr int kClientStatementTimeoutSeconds = 4;
+};
+
+TEST_F_EX(
+    PgBackendsTest, YB_DISABLE_TEST_IN_TSAN(TestStatementTimeout), PgBackendsTestStatementTimeout) {
+  auto setup_conn = ASSERT_RESULT(Connect());
+
+  ASSERT_OK(setup_conn.Execute("CREATE TABLE foo (k INT PRIMARY KEY, v INT)"));
+  ASSERT_OK(setup_conn.Execute("insert into foo VALUES (1, 1)"));
+
+  auto conn1 = ASSERT_RESULT(Connect());
+  auto conn2 = ASSERT_RESULT(Connect());
+
+  ASSERT_OK(conn1.StartTransaction(IsolationLevel::SNAPSHOT_ISOLATION));
+  ASSERT_OK(conn2.StartTransaction(IsolationLevel::SNAPSHOT_ISOLATION));
+
+  ASSERT_OK(conn1.Execute("UPDATE foo SET v=v+10 WHERE k=1"));
+
+  auto status_future =
+      ASSERT_RESULT(ExpectBlockedAsync(&conn2, "UPDATE foo SET v=v+100 WHERE k=1"));
+
+  SleepFor(MonoDelta::FromSeconds(kClientStatementTimeoutSeconds * 2));
+  // conn2 should not wait on conn1 to release the lock, for reporting back the
+  // timeout error to the client.
+  ASSERT_OK(WaitFor([&status_future] () {
+    return status_future.wait_for(0s) == std::future_status::ready;
+  }, 1s, "Wait for status_future to be available"));
+  ASSERT_NOK(status_future.get());
 }
 
 } // namespace pgwrapper

@@ -38,6 +38,7 @@
  */
 Portal		ActivePortal = NULL;
 
+int			yb_pg_batch_detection_mechanism;
 
 static void ProcessQuery(PlannedStmt *plan,
 			 const char *sourceText,
@@ -1257,7 +1258,8 @@ PortalRunMulti(Portal portal,
 	if (altdest->mydest == DestRemoteExecute)
 		altdest = None_Receiver;
 
-	if (IsYugaByteEnabled())
+	if (IsYugaByteEnabled() &&
+		!YbIsBatchedExecution())
 	{
 		if (!IsTransactionBlock() && list_length(portal->stmts) == 1)
 		{

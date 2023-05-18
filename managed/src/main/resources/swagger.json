@@ -25,7 +25,7 @@
         },
         "vpcType" : {
           "description" : "New/Existing VPC for provider creation",
-          "enum" : [ "EXISTING", "NEW" ],
+          "enum" : [ "EXISTING", "NEW", "HOSTVPC" ],
           "readOnly" : true,
           "type" : "string"
         }
@@ -1508,7 +1508,7 @@
         },
         "vpcType" : {
           "description" : "New/Existing VPC for provider creation",
-          "enum" : [ "EXISTING", "NEW" ],
+          "enum" : [ "EXISTING", "NEW", "HOSTVPC" ],
           "readOnly" : true,
           "type" : "string"
         }
@@ -1769,7 +1769,7 @@
         },
         "backupType" : {
           "description" : "Backup type",
-          "enum" : [ "YQL_TABLE_TYPE", "REDIS_TABLE_TYPE", "PGSQL_TABLE_TYPE", "TRANSACTION_STATUS_TABLE_TYPE" ],
+          "enum" : [ "PGSQL_TABLE_TYPE", "YQL_TABLE_TYPE", "REDIS_TABLE_TYPE" ],
           "type" : "string"
         },
         "backupUUID" : {
@@ -1794,13 +1794,6 @@
         },
         "cronExpression" : {
           "description" : "Cron expression for a recurring backup",
-          "type" : "string"
-        },
-        "currentIdx" : {
-          "format" : "int32",
-          "type" : "integer"
-        },
-        "currentYbcTaskId" : {
           "type" : "string"
         },
         "customerUUID" : {
@@ -1965,6 +1958,10 @@
           "format" : "uuid",
           "type" : "string"
         },
+        "tableByTableBackup" : {
+          "description" : "Take table by table backups",
+          "type" : "boolean"
+        },
         "targetXClusterConfigs" : {
           "description" : "The target universe's xcluster replication relationships",
           "items" : {
@@ -1999,7 +1996,7 @@
           "type" : "string"
         }
       },
-      "required" : [ "backupUUID", "creatingUser", "currentIdx", "currentYbcTaskId", "platformUrl", "platformVersion", "sleepAfterMasterRestartMillis", "sleepAfterTServerRestartMillis", "storageConfigUUID", "universeUUID" ],
+      "required" : [ "backupUUID", "creatingUser", "platformUrl", "platformVersion", "sleepAfterMasterRestartMillis", "sleepAfterTServerRestartMillis", "storageConfigUUID", "universeUUID" ],
       "type" : "object"
     },
     "BackupResp" : {
@@ -2351,6 +2348,10 @@
         "storageLocation" : {
           "description" : "Storage location",
           "type" : "string"
+        },
+        "tableByTableBackup" : {
+          "description" : "Table by table backup",
+          "type" : "boolean"
         },
         "tableName" : {
           "description" : "Table name",
@@ -3322,6 +3323,9 @@
           "format" : "uuid",
           "type" : "string"
         },
+        "tableByTableBackup" : {
+          "type" : "boolean"
+        },
         "taskUUID" : {
           "format" : "uuid",
           "type" : "string"
@@ -3337,7 +3341,7 @@
           "type" : "string"
         }
       },
-      "required" : [ "backupUUID", "baseBackupUUID", "kmsConfigUUID", "responseList", "sse", "state", "storageConfigUUID", "taskUUID", "totalBackupSizeInBytes" ],
+      "required" : [ "backupUUID", "baseBackupUUID", "kmsConfigUUID", "responseList", "sse", "state", "storageConfigUUID", "tableByTableBackup", "taskUUID", "totalBackupSizeInBytes" ],
       "type" : "object"
     },
     "CommunicationPorts" : {
@@ -3456,6 +3460,24 @@
         }
       },
       "required" : [ "dataType", "displayName", "helpTxt", "key", "scope", "tags" ],
+      "type" : "object"
+    },
+    "Config" : {
+      "properties" : {
+        "certPath" : {
+          "type" : "string"
+        },
+        "offloadable" : {
+          "type" : "boolean"
+        },
+        "serverCert" : {
+          "type" : "string"
+        },
+        "serverKey" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "certPath", "offloadable", "serverCert", "serverKey" ],
       "type" : "object"
     },
     "ConfigEntry" : {
@@ -4355,7 +4377,7 @@
         },
         "vpcType" : {
           "description" : "New/Existing VPC for provider creation",
-          "enum" : [ "EXISTING", "NEW" ],
+          "enum" : [ "EXISTING", "NEW", "HOSTVPC" ],
           "readOnly" : true,
           "type" : "string"
         },
@@ -4939,6 +4961,9 @@
         "showSetUpChrony" : {
           "type" : "boolean"
         },
+        "skipKeyValidateAndUpload" : {
+          "type" : "boolean"
+        },
         "skipProvisioning" : {
           "type" : "boolean"
         },
@@ -5012,15 +5037,13 @@
             "format" : "uuid",
             "type" : "string"
           },
-          "type" : "array",
-          "uniqueItems" : true
+          "type" : "array"
         },
         "tablesList" : {
           "items" : {
             "type" : "string"
           },
-          "type" : "array",
-          "uniqueItems" : true
+          "type" : "array"
         }
       },
       "required" : [ "allTables", "backupSizeInBytes", "defaultLocation", "keyspace", "perRegionLocations", "tableUUIDList", "tablesList" ],
@@ -5637,6 +5660,10 @@
           "format" : "int64",
           "type" : "integer"
         },
+        "streamId" : {
+          "description" : "Stream id",
+          "type" : "string"
+        },
         "tableId" : {
           "description" : "Table id",
           "type" : "string"
@@ -5943,6 +5970,10 @@
           "description" : "Storage location",
           "type" : "string"
         },
+        "tableByTableBackup" : {
+          "description" : "Table by table backup",
+          "type" : "boolean"
+        },
         "tableName" : {
           "description" : "Table name",
           "type" : "string"
@@ -6051,6 +6082,162 @@
       "required" : [ "nodeAction" ],
       "type" : "object"
     },
+    "NodeAgent" : {
+      "description" : "Node agent details",
+      "properties" : {
+        "archType" : {
+          "description" : "Node agent host machine arch",
+          "enum" : [ "ARM64", "AMD64" ],
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "config" : {
+          "$ref" : "#/definitions/Config",
+          "description" : "Node agent configuration",
+          "readOnly" : true
+        },
+        "customerUuid" : {
+          "description" : "Customer UUID",
+          "format" : "uuid",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "home" : {
+          "description" : "Node agent installation directory",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "ip" : {
+          "description" : "Node agent server IP",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "description" : "Node agent name",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "osType" : {
+          "description" : "Node agent host OS",
+          "enum" : [ "DARWIN", "LINUX" ],
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "port" : {
+          "description" : "Node agent server port",
+          "format" : "int32",
+          "readOnly" : true,
+          "type" : "integer"
+        },
+        "state" : {
+          "description" : "Node agent state",
+          "enum" : [ "REGISTERING", "UPGRADE", "UPGRADED", "READY" ],
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "description" : "Updated time",
+          "example" : "2022-12-21T13:07:18Z",
+          "format" : "date-time",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "uuid" : {
+          "description" : "Node agent UUID",
+          "format" : "uuid",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "version" : {
+          "description" : "Node agent installed version",
+          "readOnly" : true,
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "NodeAgentResp" : {
+      "description" : "Node agent details",
+      "properties" : {
+        "archType" : {
+          "description" : "Node agent host machine arch",
+          "enum" : [ "ARM64", "AMD64" ],
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "config" : {
+          "$ref" : "#/definitions/Config",
+          "description" : "Node agent configuration",
+          "readOnly" : true
+        },
+        "customerUuid" : {
+          "description" : "Customer UUID",
+          "format" : "uuid",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "home" : {
+          "description" : "Node agent installation directory",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "ip" : {
+          "description" : "Node agent server IP",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "name" : {
+          "description" : "Node agent name",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "osType" : {
+          "description" : "Node agent host OS",
+          "enum" : [ "DARWIN", "LINUX" ],
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "port" : {
+          "description" : "Node agent server port",
+          "format" : "int32",
+          "readOnly" : true,
+          "type" : "integer"
+        },
+        "reachable" : {
+          "readOnly" : true,
+          "type" : "boolean"
+        },
+        "state" : {
+          "description" : "Node agent state",
+          "enum" : [ "REGISTERING", "UPGRADE", "UPGRADED", "READY" ],
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "description" : "Updated time",
+          "example" : "2022-12-21T13:07:18Z",
+          "format" : "date-time",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "uuid" : {
+          "description" : "Node agent UUID",
+          "format" : "uuid",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "version" : {
+          "description" : "Node agent installed version",
+          "readOnly" : true,
+          "type" : "string"
+        },
+        "versionMatched" : {
+          "readOnly" : true,
+          "type" : "boolean"
+        }
+      },
+      "type" : "object"
+    },
     "NodeConfig" : {
       "description" : "A node configuration.",
       "properties" : {
@@ -6154,6 +6341,13 @@
         "isYsqlServer" : {
           "description" : "True if this node is a YSQL server",
           "type" : "boolean"
+        },
+        "lastVolumeUpdateTime" : {
+          "description" : "Store last volume update time",
+          "example" : "2022-12-12T13:07:18Z",
+          "format" : "date-time",
+          "readOnly" : true,
+          "type" : "string"
         },
         "machineImage" : {
           "description" : "Machine image name",
@@ -6325,6 +6519,13 @@
           "type" : "boolean"
         },
         "kubernetesOverrides" : {
+          "type" : "string"
+        },
+        "lastVolumeUpdateTime" : {
+          "description" : "Store last volume update time",
+          "example" : "2022-12-12T13:07:18Z",
+          "format" : "date-time",
+          "readOnly" : true,
           "type" : "string"
         },
         "machineImage" : {
@@ -6744,14 +6945,14 @@
           "minimum" : 1,
           "type" : "integer"
         },
-        "hot_shard_minimal_reads" : {
-          "description" : "Perf advisor hot shard minimal reads",
+        "hot_shard_min_node_reads" : {
+          "description" : "Perf advisor hot shard minimal node reads",
           "format" : "int32",
           "minimum" : 1,
           "type" : "integer"
         },
-        "hot_shard_minimal_writes" : {
-          "description" : "Perf advisor hot shard minimal writes",
+        "hot_shard_min_node_writes" : {
+          "description" : "Perf advisor hot shard minimal node writes",
           "format" : "int32",
           "minimum" : 1,
           "type" : "integer"
@@ -7323,6 +7524,9 @@
         },
         "cloudInfo" : {
           "$ref" : "#/definitions/CloudInfo"
+        },
+        "enableNodeAgent" : {
+          "type" : "boolean"
         },
         "installNodeExporter" : {
           "type" : "boolean"
@@ -8682,6 +8886,18 @@
         "frequencyTimeUnit" : {
           "description" : "Time unit of frequency",
           "enum" : [ "NANOSECONDS", "MICROSECONDS", "MILLISECONDS", "SECONDS", "MINUTES", "HOURS", "DAYS", "MONTHS", "YEARS" ],
+          "type" : "string"
+        },
+        "incrementBacklogStatus" : {
+          "description" : "Backlog status of schedule of incremental backups arose due to conflicts",
+          "readOnly" : true,
+          "type" : "boolean"
+        },
+        "nextIncrementScheduleTaskTime" : {
+          "description" : "Time on which schedule is expected to run for incremental backups",
+          "example" : "2022-12-12T13:07:18Z",
+          "format" : "date-time",
+          "readOnly" : true,
           "type" : "string"
         },
         "nextScheduleTaskTime" : {
@@ -15577,6 +15793,72 @@
         } ],
         "summary" : "Add metrics to a customer",
         "tags" : [ "Customer management" ]
+      }
+    },
+    "/api/v1/customers/{cUUID}/node_agents" : {
+      "get" : {
+        "description" : "",
+        "operationId" : "ListNodeAgents",
+        "parameters" : [ {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "cUUID",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "query",
+          "name" : "nodeIp",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "items" : {
+                "$ref" : "#/definitions/NodeAgentResp"
+              },
+              "type" : "array"
+            }
+          }
+        },
+        "security" : [ {
+          "apiKeyAuth" : [ ]
+        } ],
+        "summary" : "List Node Agents",
+        "tags" : [ "Node Agents" ]
+      }
+    },
+    "/api/v1/customers/{cUUID}/node_agents/{nUUID}" : {
+      "get" : {
+        "description" : "",
+        "operationId" : "GetNodeAgent",
+        "parameters" : [ {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "cUUID",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "format" : "uuid",
+          "in" : "path",
+          "name" : "nUUID",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "$ref" : "#/definitions/NodeAgentResp"
+            }
+          }
+        },
+        "security" : [ {
+          "apiKeyAuth" : [ ]
+        } ],
+        "summary" : "Get Node Agent",
+        "tags" : [ "Node Agents" ]
       }
     },
     "/api/v1/customers/{cUUID}/nodes/{nodeUUID}/list" : {
@@ -22666,6 +22948,43 @@
         "tags" : [ "Table management" ]
       }
     },
+    "/api/v1/node_agents/download" : {
+      "get" : {
+        "description" : "",
+        "operationId" : "DownloadNodeAgentInstaller",
+        "parameters" : [ {
+          "default" : "INSTALLER",
+          "in" : "query",
+          "name" : "downloadType",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "in" : "query",
+          "name" : "os",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "in" : "query",
+          "name" : "arch",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "produces" : [ "application/gzip", "application/x-sh" ],
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        },
+        "security" : [ {
+          "apiKeyAuth" : [ ]
+        } ],
+        "summary" : "Download Node Agent Installer or Package",
+        "tags" : [ "Node Agents" ]
+      }
+    },
     "/api/v1/prometheus_metrics" : {
       "get" : {
         "description" : "",
@@ -22866,6 +23185,8 @@
     "name" : "Maintenance windows"
   }, {
     "name" : "Metrics"
+  }, {
+    "name" : "Node Agents"
   }, {
     "name" : "Node instances"
   }, {
