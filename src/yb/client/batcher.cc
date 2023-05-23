@@ -490,8 +490,7 @@ void Batcher::AllLookupsDone() {
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
   const auto* current_tablet = (*group_start).tablet.get();
-  if (this->transaction() && session && !session->IsDDLMode() &&
-      session->IsSingleShardConversion() && current_tablet) {
+  if (this->transaction() && session && !session->IsDDLMode() && current_tablet) {
     session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
   }
 
@@ -510,8 +509,7 @@ void Batcher::AllLookupsDone() {
     }
 
     if (current_tablet != it_tablet || current_group != it_group) {
-      if (session && this->transaction() && !session->IsDDLMode() &&
-          session->IsSingleShardConversion() && current_tablet != it_tablet) {
+      if (session && this->transaction() && !session->IsDDLMode() && current_tablet != it_tablet) {
         session->AddTabletInvolvedInTxn(it_tablet->tablet_id());
       }
 
@@ -528,8 +526,6 @@ void Batcher::AllLookupsDone() {
     if (session->GetNumTabletsInvolvedInTxn() == 1 && only_write_ops_involved) {
       session->batcher_config_.transaction = nullptr;
       this->transaction_ = nullptr;
-    } else {
-      session->ResetNumTabletsInvolvedInTxn();
     }
   }
 

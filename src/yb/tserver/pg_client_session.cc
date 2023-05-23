@@ -843,14 +843,17 @@ Status PgClientSession::FinishTransaction(
 
   auto session = Session(kind);
   session->ResetDDLMode();
-  session->ResetSingleShardConversionFlag();
-  if (kind == PgClientSessionKind::kPlain && session->GetNumTabletsInvolvedInTxn() == 1) {
+  if (kind == PgClientSessionKind::kPlain && session->GetNumTabletsInvolvedInTxn() == 1 &&
+      session->IsSingleShardConversion()) {
+    session->ResetSingleShardConversionFlag();
     session->ResetNumTabletsInvolvedInTxn();
     const auto txn_value = std::move(txn);
     Session(kind)->SetTransaction(nullptr);
     return Status::OK();
   }
 
+  session->ResetSingleShardConversionFlag();
+  session->ResetNumTabletsInvolvedInTxn();
   const TransactionMetadata* metadata = nullptr;
   if (FLAGS_report_ysql_ddl_txn_status_to_master && req.has_docdb_schema_changes()) {
     metadata = VERIFY_RESULT(GetDdlTransactionMetadata(true, context->GetClientDeadline()));
