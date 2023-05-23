@@ -23,6 +23,7 @@ import com.yugabyte.yw.commissioner.BaseTaskDependencies;
 import com.yugabyte.yw.commissioner.UserTaskDetails;
 import com.yugabyte.yw.commissioner.tasks.UniverseTaskBase;
 import com.yugabyte.yw.commissioner.tasks.XClusterConfigTaskBase;
+import com.yugabyte.yw.common.FileHelperService;
 import com.yugabyte.yw.common.KubernetesManagerFactory;
 import com.yugabyte.yw.common.KubernetesUtil;
 import com.yugabyte.yw.common.PlacementInfoUtil;
@@ -160,14 +161,18 @@ public class KubernetesCommandExecutor extends UniverseTaskBase {
 
   private final ReleaseManager releaseManager;
 
+  private final FileHelperService fileHelperService;
+
   @Inject
   protected KubernetesCommandExecutor(
       BaseTaskDependencies baseTaskDependencies,
       KubernetesManagerFactory kubernetesManagerFactory,
-      ReleaseManager releaseManager) {
+      ReleaseManager releaseManager,
+      FileHelperService fileHelperService) {
     super(baseTaskDependencies);
     this.kubernetesManagerFactory = kubernetesManagerFactory;
     this.releaseManager = releaseManager;
+    this.fileHelperService = fileHelperService;
   }
 
   static final Pattern nodeNamePattern = Pattern.compile(".*-n(\\d+)+");
@@ -382,7 +387,7 @@ public class KubernetesCommandExecutor extends UniverseTaskBase {
                 taskParams().getUniverseUUID(), taskParams().ybcServerName);
         try {
           Path confFilePath =
-              Files.createTempFile(
+              fileHelperService.createTempFile(
                   taskParams().getUniverseUUID().toString() + "_" + taskParams().ybcServerName,
                   ".conf");
           Files.write(
@@ -804,21 +809,20 @@ public class KubernetesCommandExecutor extends UniverseTaskBase {
     Map<String, Object> masterResource = new HashMap<>();
     Map<String, Object> masterLimit = new HashMap<>();
 
-    tserverResource.put("cpu", instanceType.getNumCores());
+    tserverResource.put(
+        "cpu", KubernetesUtil.getCoreCountFromInstanceType(instanceType, false /* isMaster */));
     tserverResource.put("memory", String.format("%.2fGi", instanceType.getMemSizeGB()));
     tserverLimit.put("cpu", instanceType.getNumCores() * burstVal);
     tserverLimit.put("memory", String.format("%.2fGi", instanceType.getMemSizeGB()));
 
     // If the instance type is not xsmall or dev, we would bump the master resource.
     if (!instanceTypeCode.equals("xsmall") && !instanceTypeCode.equals("dev")) {
-      masterResource.put("cpu", 2);
       masterResource.put("memory", "4Gi");
       masterLimit.put("cpu", 2 * burstVal);
       masterLimit.put("memory", "4Gi");
     }
     // For testing with multiple deployments locally.
     if (instanceTypeCode.equals("dev")) {
-      masterResource.put("cpu", 0.5);
       masterResource.put("memory", "0.5Gi");
       masterLimit.put("cpu", 0.5);
       masterLimit.put("memory", "0.5Gi");
@@ -833,6 +837,9 @@ public class KubernetesCommandExecutor extends UniverseTaskBase {
       masterLimit.put("cpu", 0.6);
       masterLimit.put("memory", "1Gi");
     }
+
+    masterResource.put(
+        "cpu", KubernetesUtil.getCoreCountFromInstanceType(instanceType, true /* isMaster */));
 
     Map<String, Object> resourceOverrides = new HashMap();
     if (!masterResource.isEmpty() && !masterLimit.isEmpty()) {
@@ -1142,7 +1149,8 @@ public class KubernetesCommandExecutor extends UniverseTaskBase {
     }
 
     try {
-      Path tempFile = Files.createTempFile(taskParams().getUniverseUUID().toString(), ".yml");
+      Path tempFile =
+          fileHelperService.createTempFile(taskParams().getUniverseUUID().toString(), ".yml");
       try (BufferedWriter bw = new BufferedWriter(new FileWriter(tempFile.toFile())); ) {
         yaml.dump(overrides, bw);
         return tempFile.toAbsolutePath().toString();
