@@ -361,28 +361,6 @@ class PgOperationBuffer::Impl {
     txn_ops_.Swap(&txn_ops);
     keys_.swap(keys);
 
-    // if (IsSingleShardTxn()) {
-    //   if (!txn_ops.empty() && ops.empty()) {
-    //     bool non_colocated_table_involved = false;
-    //     ResetSingleShardTxnConversionFlag();
-    //     for (auto& relation : txn_ops.relations) {
-    //       YBCPgTableDesc ybc_table_desc = NULL;
-    //       YbTablePropertiesData yb_table_properties;
-    //       YBCPgGetTableDesc(relation.database_oid, relation.object_oid, &ybc_table_desc);
-    //       YBCPgGetTableProperties(ybc_table_desc, &yb_table_properties);
-    //       if (!yb_table_properties.is_colocated) {
-    //         non_colocated_table_involved = true;
-    //         break;
-    //       }
-    //     }
-    //     if (!non_colocated_table_involved) {
-    //       txn_ops.Swap(&ops);
-    //     }
-    //   } else {
-    //     ResetSingleShardTxnConversionFlag();
-    //   }
-    // }
-
     const auto ops_count = keys.size();
     bool ops_sent = VERIFY_RESULT(SendOperations(
       interceptor, std::move(txn_ops), true /* transactional */, ops_count));
