@@ -355,7 +355,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   bool IsSingleShardTxn();
   void ResetSingleShardTxnConversionFlag();
 
-  bool should_increment_flush_counter_ = false;
+  bool from_stop_ops_buffering_ = false;
   bool convert_to_single_shard_txn_ = false;
 
  private:

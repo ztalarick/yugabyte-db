@@ -417,6 +417,7 @@ void Batcher::AllLookupsDone() {
     return;
   }
 
+  bool only_write_ops_involved = true;
   auto errors_pair = CollectOpsErrors();
   const auto& errors_by_partition_key = errors_pair.first;
   const auto& errors_by_request_id = errors_pair.second;
@@ -462,6 +463,12 @@ void Batcher::AllLookupsDone() {
     return;
   }
 
+  for (auto it = ops_queue_.begin(); it != ops_queue_.end(); ++it) {
+    if (it->yb_op->type() == YBOperation::PGSQL_READ) {
+        only_write_ops_involved = false;
+      }
+  }
+
   // All operations were added, and tablets for them were resolved.
   // So we could sort them.
   std::sort(ops_queue_.begin(),
@@ -479,7 +486,6 @@ void Batcher::AllLookupsDone() {
   });
 
   YBSessionPtr session = weak_session_.lock();
-  bool non_write_op_involved = false;
 
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
@@ -487,10 +493,8 @@ void Batcher::AllLookupsDone() {
   if (this->transaction() && session && !session->IsDDLMode() &&
       session->IsSingleShardConversion() && current_tablet) {
     session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
-    if (current_group != OpGroup::kWrite) {
-      non_write_op_involved = true;
-    }
   }
+
   for (auto it = group_start; it != ops_queue_.end(); ++it) {
     const auto it_group = (*it).yb_op->group();
     const auto* it_tablet = (*it).tablet.get();
@@ -507,12 +511,8 @@ void Batcher::AllLookupsDone() {
 
     if (current_tablet != it_tablet || current_group != it_group) {
       if (session && this->transaction() && !session->IsDDLMode() &&
-          session->IsSingleShardConversion() && current_tablet != it_tablet &&
-          !non_write_op_involved) {
+          session->IsSingleShardConversion() && current_tablet != it_tablet) {
         session->AddTabletInvolvedInTxn(it_tablet->tablet_id());
-      }
-      if (current_group != it_group && current_group != OpGroup::kWrite && !non_write_op_involved) {
-        non_write_op_involved = true;
       }
 
       ops_info_.groups.emplace_back(group_start, it);
@@ -525,7 +525,7 @@ void Batcher::AllLookupsDone() {
 
   if (this->transaction() && session && !session->IsDDLMode() &&
       session->IsSingleShardConversion()) {
-    if (session->GetNumTabletsInvolvedInTxn() == 1 && !non_write_op_involved) {
+    if (session->GetNumTabletsInvolvedInTxn() == 1 && only_write_ops_involved) {
       session->batcher_config_.transaction = nullptr;
       this->transaction_ = nullptr;
     } else {

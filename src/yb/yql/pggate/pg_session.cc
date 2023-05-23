@@ -537,6 +537,7 @@ Status PgSession::StartOperationsBuffering() {
   }
   Update(&buffering_settings_);
   buffering_enabled_ = true;
+  from_stop_ops_buffering_ = false;
   return Status::OK();
 }
 
@@ -552,7 +553,7 @@ Status PgSession::StopOperationsBuffering(bool is_explicit_txn) {
     buffer_.ResetSingleShardTxnConversionFlag();
     ResetSingleShardTxnConversionFlag();
   }
-  should_increment_flush_counter_ = false;
+  from_stop_ops_buffering_ = true;
   ResetNumOfFlushes();
   return FlushBufferedOperations();
 }
@@ -628,10 +629,10 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     }
 
     if (!options.ddl_mode()) {
-      if (should_increment_flush_counter_) {
-        IncrementNumOfFlushes();
+      if (from_stop_ops_buffering_) {
+        ResetNumOfFlushes();
       } else {
-        should_increment_flush_counter_ = true;
+        IncrementNumOfFlushes();
       }
     }
 
