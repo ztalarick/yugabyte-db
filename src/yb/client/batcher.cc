@@ -464,9 +464,11 @@ void Batcher::AllLookupsDone() {
   }
 
   for (auto it = ops_queue_.begin(); it != ops_queue_.end(); ++it) {
-    if (it->yb_op->type() == YBOperation::PGSQL_READ) {
-        only_write_ops_involved = false;
-      }
+    if (it->yb_op->type() == YBOperation::PGSQL_WRITE && only_write_ops_involved) {
+      only_write_ops_involved = true;
+    } else {
+      only_write_ops_involved = false;
+    }
   }
 
   // All operations were added, and tablets for them were resolved.

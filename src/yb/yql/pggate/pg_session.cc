@@ -615,7 +615,15 @@ Result<PerformFuture> PgSession::FlushOperations(BufferableOperations ops, bool 
 Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOptions&& ops_options) {
   DCHECK(!ops.empty());
   tserver::PgPerformOptionsPB options;
-  bool convert_to_single_shard = !options.ddl_mode() && IsSingleShardTxn();
+  bool contains_read_op = false;
+  for (auto i = ops.operations.begin(); i != ops.operations.end(); ++i) {
+    if ((*i)->is_read()) {
+      contains_read_op = true;
+      break;
+    }
+  }
+
+  options.set_allow_single_shard_conversion(false);
   if (ops_options.use_catalog_session) {
     if (catalog_read_time_) {
       catalog_read_time_.ToPB(options.mutable_read_time());
@@ -628,10 +636,9 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     }
 
     if (!options.ddl_mode()) {
-      if (from_stop_ops_buffering_) {
-        ResetNumOfFlushes();
-        ResetSingleShardTxnConversionFlag();
-      } else {
+      (IsSingleShardTxn() && !contains_read_op) ? options.set_allow_single_shard_conversion(true)
+                                                : options.set_allow_single_shard_conversion(false);
+      if (!from_stop_ops_buffering_) {
         IncrementNumOfFlushes();
       }
     }
@@ -639,10 +646,9 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     ProcessPerformOnTxnSerialNo(txn_serial_no, ops_options.ensure_read_time_is_set, &options);
   }
 
-  if (convert_to_single_shard) {
-    options.set_allow_single_shard_conversion(true);
-  } else {
-    options.set_allow_single_shard_conversion(false);
+  if (from_stop_ops_buffering_) {
+    ResetSingleShardTxnConversionFlag();
+    from_stop_ops_buffering_ = false;
   }
 
   bool global_transaction = yb_force_global_transaction;
