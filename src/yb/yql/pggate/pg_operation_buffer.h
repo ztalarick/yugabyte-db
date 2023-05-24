@@ -58,9 +58,6 @@ class PgOperationBuffer {
   size_t Size() const;
   void Clear();
   void GetAndResetRpcStats(uint64_t* count, uint64_t* wait_time);
-  void ConvertToSingleShardTxn();
-  bool IsSingleShardTxn();
-  void ResetSingleShardTxnConversionFlag();
 
  private:
   class Impl;

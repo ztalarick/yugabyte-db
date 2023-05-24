@@ -547,7 +547,6 @@ Status PgSession::StopOperationsBuffering(bool is_explicit_txn) {
 
   if (!is_explicit_txn && !pg_txn_manager_->IsDdlMode() /* && !catalog_read_time_ */ &&
       NumOfFlushes() == 0) {
-    buffer_.ConvertToSingleShardTxn();
     ConvertToSingleShardTxn();
   } else {
     ResetSingleShardTxnConversionFlag();

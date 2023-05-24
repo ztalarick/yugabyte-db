@@ -245,18 +245,6 @@ class PgOperationBuffer::Impl {
     rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
   }
 
-  void ConvertToSingleShardTxn() {
-    convert_to_single_shard_txn_ = true;
-  }
-
-  bool IsSingleShardTxn() {
-    return convert_to_single_shard_txn_;
-  }
-
-  void ResetSingleShardTxnConversionFlag() {
-    convert_to_single_shard_txn_ = false;
-  }
-
  private:
   template<class Res>
   Res ClearOnError(Res res) {
@@ -423,7 +411,6 @@ class PgOperationBuffer::Impl {
   InFlightOps in_flight_ops_;
   uint64_t rpc_count_ = 0;
   MonoDelta rpc_wait_time_ = MonoDelta::FromNanoseconds(0);
-  bool convert_to_single_shard_txn_ = false;
 };
 
 PgOperationBuffer::PgOperationBuffer(const Flusher& flusher,
@@ -457,18 +444,6 @@ void PgOperationBuffer::Clear() {
 void PgOperationBuffer::GetAndResetRpcStats(uint64_t* count,
                                             uint64_t* wait_time) {
   impl_->GetAndResetRpcStats(count, wait_time);
-}
-
-void PgOperationBuffer::ConvertToSingleShardTxn() {
-  impl_->ConvertToSingleShardTxn();
-}
-
-void PgOperationBuffer::ResetSingleShardTxnConversionFlag() {
-  impl_->ResetSingleShardTxnConversionFlag();
-}
-
-bool PgOperationBuffer::IsSingleShardTxn() {
-  return impl_->IsSingleShardTxn();
 }
 
 } // namespace pggate
