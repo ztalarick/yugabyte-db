@@ -46,8 +46,7 @@ static void ProcessQuery(PlannedStmt *plan,
 			 QueryEnvironment *queryEnv,
 			 DestReceiver *dest,
 			 char *completionTag,
-			 bool isSingleRowModifyTxn,
-			 bool is_explicit_txn);
+			 bool isSingleRowModifyTxn);
 static void FillPortalStore(Portal portal, bool isTopLevel);
 static uint64 RunFromStore(Portal portal, ScanDirection direction, uint64 count,
 			 DestReceiver *dest);
@@ -149,8 +148,7 @@ ProcessQuery(PlannedStmt *plan,
 			 QueryEnvironment *queryEnv,
 			 DestReceiver *dest,
 			 char *completionTag,
-			 bool isSingleRowModifyTxn,
-			 bool is_explicit_txn)
+			 bool isSingleRowModifyTxn)
 {
 	QueryDesc  *queryDesc;
 
@@ -172,7 +170,7 @@ ProcessQuery(PlannedStmt *plan,
 		(plan->commandType == CMD_UPDATE ||
 		 YBCIsSingleRowTxnCapableRel(&queryDesc->estate->es_result_relations[0]));
 
-	queryDesc->estate->yb_es_is_explicit_txn = is_explicit_txn;
+	queryDesc->estate->yb_es_is_explicit_txn =  plan->is_explicit_transaction;
 
 	/*
 	 * Run the plan to completion.
@@ -1258,10 +1256,10 @@ PortalRunMulti(Portal portal,
 	if (altdest->mydest == DestRemoteExecute)
 		altdest = None_Receiver;
 
-	if (IsYugaByteEnabled() &&
-		!YbIsBatchedExecution())
+	if (IsYugaByteEnabled())
 	{
-		if (!IsTransactionBlock() && list_length(portal->stmts) == 1)
+		if (!IsTransactionBlock() && list_length(portal->stmts) == 1 &&
+			!YbIsBatchedExecution())
 		{
 			PlannedStmt *pstmt = linitial_node(PlannedStmt, portal->stmts);
 			is_single_row_modify_txn = YBCIsSingleRowModify(pstmt);
@@ -1282,6 +1280,7 @@ PortalRunMulti(Portal portal,
 	foreach(stmtlist_item, portal->stmts)
 	{
 		PlannedStmt *pstmt = lfirst_node(PlannedStmt, stmtlist_item);
+		pstmt->is_explicit_transaction = is_explicit_txn;
 
 		/*
 		 * If we got a cancel signal in prior command, quit
@@ -1339,8 +1338,7 @@ PortalRunMulti(Portal portal,
 							 portal->queryEnv,
 							 dest,
 							 completionTag,
-							 is_single_row_modify_txn,
-							 is_explicit_txn);
+							 is_single_row_modify_txn);
 			}
 			else
 			{
@@ -1351,8 +1349,7 @@ PortalRunMulti(Portal portal,
 							 portal->queryEnv,
 							 altdest,
 							 NULL,
-							 is_single_row_modify_txn,
-							 is_explicit_txn);
+							 is_single_row_modify_txn);
 			}
 
 			if (log_executor_stats)

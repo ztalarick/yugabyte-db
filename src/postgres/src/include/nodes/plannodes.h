@@ -107,6 +107,7 @@ typedef struct PlannedStmt
 	 * constraint exclusion and partition pruning.
 	 */
 	int		yb_num_referenced_relations;
+	bool    is_explicit_transaction;
 } PlannedStmt;
 
 /* macro for fetching the Plan associated with a SubPlan node */
@@ -751,7 +752,7 @@ typedef struct NestLoop
  */
 typedef struct YbBNLHashClauseInfo
 {
-	Oid hashOp;				/* Operator to hash the outer side of this clause 
+	Oid hashOp;				/* Operator to hash the outer side of this clause
 							   with. */
 	int innerHashAttNo;		/* Attno of inner side variable. */
 	Expr *outerParamExpr;	/* Outer expression of this clause. */

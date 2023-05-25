@@ -3608,7 +3608,7 @@ YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
 			IsA(pstmt->utilityStmt, ExplainStmt))) {
 		YBBeginOperationsBuffering();
 		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
-		YBEndOperationsBuffering(YBCIsSingleRowModify(pstmt));
+		YBEndOperationsBuffering(pstmt->is_explicit_transaction);
   } else {
 		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
 	}
