@@ -382,7 +382,7 @@ typedef struct PushdownExprs
 typedef struct YbSeqScan
 {
 	Scan		scan;
-	PushdownExprs remote;
+	PushdownExprs yb_pushdown;
 } YbSeqScan;
 
 /* ----------------
@@ -444,8 +444,8 @@ typedef struct IndexScan
 	List	   *indexorderbyops;	/* OIDs of sort ops for ORDER BY exprs */
 	List	   *indextlist;		/* TargetEntry list describing index's cols */
 	ScanDirection indexorderdir;	/* forward or backward or don't care */
-	PushdownExprs index_remote;
-	PushdownExprs rel_remote;
+	PushdownExprs yb_idx_pushdown;
+	PushdownExprs yb_rel_pushdown;
 } IndexScan;
 
 /* ----------------
@@ -473,7 +473,7 @@ typedef struct IndexOnlyScan
 	List	   *indexorderby;	/* list of index ORDER BY exprs */
 	List	   *indextlist;		/* TargetEntry list describing index's cols */
 	ScanDirection indexorderdir;	/* forward or backward or don't care */
-	PushdownExprs remote;
+	PushdownExprs yb_pushdown;
 	/*
 	 * yb_indexqual_for_recheck is the modified version of indexqual.
 	 * It is used in tuple recheck step only.
