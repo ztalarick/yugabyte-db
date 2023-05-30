@@ -545,8 +545,7 @@ Status PgSession::StopOperationsBuffering(bool is_explicit_txn) {
   SCHECK(buffering_enabled_, IllegalState, "Buffering hasn't been started");
   buffering_enabled_ = false;
 
-  if (!is_explicit_txn && !pg_txn_manager_->IsDdlMode() /* && !catalog_read_time_ */ &&
-      NumOfFlushes() == 0) {
+  if (!is_explicit_txn && pg_txn_manager_ && !pg_txn_manager_->IsDdlMode() && NumOfFlushes() == 0) {
     ConvertToSingleShardTxn();
   } else {
     ResetSingleShardTxnConversionFlag();
@@ -636,8 +635,9 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     }
 
     if (!options.ddl_mode()) {
-      (IsSingleShardTxn() && !contains_read_op) ? options.set_allow_single_shard_conversion(true)
-                                                : options.set_allow_single_shard_conversion(false);
+      pg_txn_manager_->IsTxnInProgress() && (IsSingleShardTxn() && !contains_read_op)
+          ? options.set_allow_single_shard_conversion(true)
+          : options.set_allow_single_shard_conversion(false);
       if (!from_stop_ops_buffering_) {
         IncrementNumOfFlushes();
       }
@@ -930,15 +930,27 @@ Result<bool> PgSession::CheckIfPitrActive() {
   return pg_client_.CheckIfPitrActive();
 }
 
-void PgSession::IncrementNumOfFlushes() { ++num_of_flushes_; }
-void PgSession::ResetNumOfFlushes() { num_of_flushes_ = 0; }
-uint32_t PgSession::NumOfFlushes() { return num_of_flushes_; }
+void PgSession::IncrementNumOfFlushes() {
+  ++num_of_flushes_;
+}
+void PgSession::ResetNumOfFlushes() {
+  num_of_flushes_ = 0;
+}
+uint32_t PgSession::NumOfFlushes() {
+  return num_of_flushes_;
+}
 
-void PgSession::ConvertToSingleShardTxn() { convert_to_single_shard_txn_ = true; }
+void PgSession::ConvertToSingleShardTxn() {
+  convert_to_single_shard_txn_ = true;
+}
 
-bool PgSession::IsSingleShardTxn() { return convert_to_single_shard_txn_; }
+bool PgSession::IsSingleShardTxn() {
+  return convert_to_single_shard_txn_;
+}
 
-void PgSession::ResetSingleShardTxnConversionFlag() { convert_to_single_shard_txn_ = false; }
+void PgSession::ResetSingleShardTxnConversionFlag() {
+  convert_to_single_shard_txn_ = false;
+}
 
 }  // namespace pggate
 }  // namespace yb

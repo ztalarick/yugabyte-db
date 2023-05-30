@@ -170,8 +170,6 @@ ProcessQuery(PlannedStmt *plan,
 		(plan->commandType == CMD_UPDATE ||
 		 YBCIsSingleRowTxnCapableRel(&queryDesc->estate->es_result_relations[0]));
 
-	queryDesc->estate->yb_es_is_explicit_txn =  plan->is_explicit_transaction;
-
 	/*
 	 * Run the plan to completion.
 	 */
@@ -1238,7 +1236,6 @@ PortalRunMulti(Portal portal,
 {
 	bool		active_snapshot_set = false;
 	bool        is_single_row_modify_txn = false;
-	bool        is_explicit_txn = false;
 	ListCell   *stmtlist_item;
 
 	/*
@@ -1256,21 +1253,13 @@ PortalRunMulti(Portal portal,
 	if (altdest->mydest == DestRemoteExecute)
 		altdest = None_Receiver;
 
-	if (IsYugaByteEnabled())
+	if (IsYugaByteEnabled() &&
+		!IsTransactionBlock() &&
+		!YbIsBatchedExecution() &&
+		list_length(portal->stmts) == 1)
 	{
-		if (!IsTransactionBlock() && list_length(portal->stmts) == 1 &&
-			!YbIsBatchedExecution())
-		{
-			PlannedStmt *pstmt = linitial_node(PlannedStmt, portal->stmts);
-			is_single_row_modify_txn = YBCIsSingleRowModify(pstmt);
-		}
-		else
-		{
-			if (IsTransactionBlock())
-			{
-				is_explicit_txn = true;
-			}
-		}
+		PlannedStmt *pstmt = linitial_node(PlannedStmt, portal->stmts);
+		is_single_row_modify_txn = YBCIsSingleRowModify(pstmt);
 	}
 
 	/*
@@ -1280,7 +1269,6 @@ PortalRunMulti(Portal portal,
 	foreach(stmtlist_item, portal->stmts)
 	{
 		PlannedStmt *pstmt = lfirst_node(PlannedStmt, stmtlist_item);
-		pstmt->is_explicit_transaction = is_explicit_txn;
 
 		/*
 		 * If we got a cancel signal in prior command, quit

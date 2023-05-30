@@ -952,13 +952,13 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
   auto session_info = VERIFY_RESULT(SetupSession(data->req, deadline, in_txn_limit));
   auto* session = session_info.first.session.get();
   auto& transaction = session_info.first.transaction;
-  if (transaction && (options.ddl_mode() || options.use_catalog_session())) {
+  if (options.ddl_mode() || options.use_catalog_session()) {
     session->SetDDLMode();
   } else {
     session->ResetDDLMode();
   }
 
-  if (transaction && options.allow_single_shard_conversion()) {
+  if (transaction && !session->IsDDLMode() && options.allow_single_shard_conversion()) {
     session->SetSingleShardConversionFlag();
   } else {
     session->ResetSingleShardConversionFlag();

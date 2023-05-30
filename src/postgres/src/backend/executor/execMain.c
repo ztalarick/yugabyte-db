@@ -433,7 +433,7 @@ standard_ExecutorFinish(QueryDesc *queryDesc)
 
 	// Flush buffered operations straight before elapsed time calculation.
 	if (IsYugaByteEnabled())
-		YBEndOperationsBuffering(queryDesc->estate->yb_es_is_explicit_txn);
+		    YBEndOperationsBuffering(IsTransactionBlock());
 
 	if (queryDesc->totaltime)
 		InstrStopNode(queryDesc->totaltime, 0);
