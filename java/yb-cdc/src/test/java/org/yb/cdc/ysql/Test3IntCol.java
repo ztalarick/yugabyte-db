@@ -84,11 +84,9 @@ public class Test3IntCol extends CDCBaseClass {
     try {
       ExpectedRecord3Proto[] expectedRecords = {
         new ExpectedRecord3Proto(7, 8, 9, Op.INSERT),
-        new ExpectedRecord3Proto(-1, -1, -1, Op.BEGIN),
         new ExpectedRecord3Proto(4, 5, 6, Op.INSERT),
         new ExpectedRecord3Proto(34, 35, 45, Op.INSERT),
-        new ExpectedRecord3Proto(1000, 1001, 1004, Op.INSERT),
-        new ExpectedRecord3Proto(-1, -1, -1, Op.COMMIT)
+        new ExpectedRecord3Proto(1000, 1001, 1004, Op.INSERT)
       };
 
       executeScriptAssertRecords(expectedRecords, "cdc_insert_in_batch_outside_txn.sql");
@@ -268,10 +266,8 @@ public class Test3IntCol extends CDCBaseClass {
         new ExpectedRecord3Proto(-1, -1, -1, CdcService.RowMessage.Op.COMMIT),
 
         // insert into test values (404, 405, 406), (104, 204, 304);
-        new ExpectedRecord3Proto(-1, -1, -1, CdcService.RowMessage.Op.BEGIN),
         new ExpectedRecord3Proto(404, 405, 406, CdcService.RowMessage.Op.INSERT),
         new ExpectedRecord3Proto(104, 204, 304, CdcService.RowMessage.Op.INSERT),
-        new ExpectedRecord3Proto(-1, -1, -1, CdcService.RowMessage.Op.COMMIT),
 
         // insert into test values(41,43,44);
         new ExpectedRecord3Proto(41, 43, 44, CdcService.RowMessage.Op.INSERT),

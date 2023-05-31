@@ -139,7 +139,8 @@ Status AssembleDocWriteBatch(
     std::atomic<int64_t>* monotonic_counter,
     HybridTime* restart_read_ht,
     const std::string& table_name,
-    bool* duplicate_detected);
+    bool* duplicate_detected,
+    IsolationLevel isolation_level);
 
 struct ExternalTxnApplyStateData {
   HybridTime commit_ht;

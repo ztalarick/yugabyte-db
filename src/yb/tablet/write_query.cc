@@ -658,7 +658,7 @@ Status WriteQuery::DoCompleteExecute() {
         doc_ops_, deadline(), real_read_time, tablet->doc_db(), scoped_read_operation_,
         request().mutable_write_batch(), init_marker_behavior,
         tablet->monotonic_counter(), &restart_read_ht_,
-        tablet->metadata()->table_name(), &duplicate_detected));
+        tablet->metadata()->table_name(), &duplicate_detected, isolation_level_));
 
     // For serializable isolation we don't fix read time, so could do read restart locally,
     // instead of failing whole transaction.
@@ -681,7 +681,7 @@ Status WriteQuery::DoCompleteExecute() {
       doc_op->ClearResponse();
     }
 
-    if (duplicate_detected) {
+    if (isolation_level_ == IsolationLevel::NON_TRANSACTIONAL && duplicate_detected) {
       Complete(Status::OK());
     }
   }

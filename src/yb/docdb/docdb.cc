@@ -278,7 +278,8 @@ Status AssembleDocWriteBatch(const vector<unique_ptr<DocOperation>>& doc_write_o
                              std::atomic<int64_t>* monotonic_counter,
                              HybridTime* restart_read_ht,
                              const string& table_name,
-                             bool* duplicate_detected) {
+                             bool* duplicate_detected,
+                             IsolationLevel isolation_level) {
   DCHECK_ONLY_NOTNULL(restart_read_ht);
   DocWriteBatch doc_write_batch(doc_db, init_marker_behavior, pending_op, monotonic_counter);
   DocOperationApplyData data = {&doc_write_batch, deadline, read_time, restart_read_ht};
@@ -300,7 +301,7 @@ Status AssembleDocWriteBatch(const vector<unique_ptr<DocOperation>>& doc_write_o
       continue;
     }
 
-    if (doc_op->IsDuplicate()) {
+    if (doc_op->IsDuplicate() && isolation_level == IsolationLevel::NON_TRANSACTIONAL) {
       *duplicate_detected = true;
       write_batch->clear_write_pairs();
       write_batch->clear_ttl();
