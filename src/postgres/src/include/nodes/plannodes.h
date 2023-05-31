@@ -107,7 +107,6 @@ typedef struct PlannedStmt
 	 * constraint exclusion and partition pruning.
 	 */
 	int		yb_num_referenced_relations;
-	bool    is_explicit_transaction;
 } PlannedStmt;
 
 /* macro for fetching the Plan associated with a SubPlan node */

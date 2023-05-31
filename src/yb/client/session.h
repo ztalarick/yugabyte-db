@@ -218,23 +218,41 @@ class YBSession : public std::enable_shared_from_this<YBSession> {
 
   YBClient* client() const;
 
-  void ResetNumTabletsInvolvedInTxn() { tablets_involved_in_txn.clear(); }
+  void ResetNumTabletsInvolvedInTxn() {
+    tablets_involved_in_txn.clear();
+  }
 
-  void AddTabletInvolvedInTxn(std::string tablet_id) { tablets_involved_in_txn.insert(tablet_id); }
+  void AddTabletInvolvedInTxn(std::string tablet_id) {
+    tablets_involved_in_txn.insert(tablet_id);
+  }
 
-  uint64_t GetNumTabletsInvolvedInTxn() { return tablets_involved_in_txn.size(); }
+  uint64_t GetNumTabletsInvolvedInTxn() {
+    return tablets_involved_in_txn.size();
+  }
 
-  void ResetDDLMode() { is_ddl_mode_ = false; }
+  void ResetDDLMode() {
+    is_ddl_mode_ = false;
+  }
 
-  void SetDDLMode() { is_ddl_mode_ = true; }
+  void SetDDLMode() {
+    is_ddl_mode_ = true;
+  }
 
-  bool IsDDLMode() { return is_ddl_mode_; }
+  bool IsDDLMode() {
+    return is_ddl_mode_;
+  }
 
-  void ResetSingleShardConversionFlag() { convert_to_single_shard_txn_ = false; }
+  void ResetSingleShardConversionFlag() {
+    convert_to_single_shard_txn_ = false;
+  }
 
-  void SetSingleShardConversionFlag() { convert_to_single_shard_txn_ = true; }
+  void SetSingleShardConversionFlag() {
+    convert_to_single_shard_txn_ = true;
+  }
 
-  bool IsSingleShardConversion() { return convert_to_single_shard_txn_; }
+  bool IsSingleShardConversion() {
+    return convert_to_single_shard_txn_;
+  }
 
   // Sets force consistent read mode, if true then consistent read point will be used even we have
   // only one command to flush.

@@ -464,10 +464,9 @@ void Batcher::AllLookupsDone() {
   }
 
   for (auto it = ops_queue_.begin(); it != ops_queue_.end(); ++it) {
-    if (it->yb_op->type() == YBOperation::PGSQL_WRITE && only_write_ops_involved) {
-      only_write_ops_involved = true;
-    } else {
+    if (it->yb_op->type() != YBOperation::PGSQL_WRITE) {
       only_write_ops_involved = false;
+      break;
     }
   }
 
@@ -492,7 +491,7 @@ void Batcher::AllLookupsDone() {
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
   const auto* current_tablet = (*group_start).tablet.get();
-  if (this->transaction() && session && !session->IsDDLMode() && current_tablet) {
+  if (this->transaction() && session && !session->IsDDLMode()) {
     session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
   }
 
@@ -511,7 +510,7 @@ void Batcher::AllLookupsDone() {
     }
 
     if (current_tablet != it_tablet || current_group != it_group) {
-      if (session && this->transaction() && !session->IsDDLMode() && current_tablet != it_tablet) {
+      if (this->transaction() && session && !session->IsDDLMode() && current_tablet != it_tablet) {
         session->AddTabletInvolvedInTxn(it_tablet->tablet_id());
       }
 
