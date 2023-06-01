@@ -517,12 +517,21 @@ Status WriteQuery::DoExecute() {
   auto* transaction_participant = tablet->transaction_participant();
   docdb::WaitQueue* wait_queue = nullptr;
 
-  if (transaction_participant) {
+  if (transaction_participant && execute_mode_ != ExecuteMode::kCql) {
+    // TODO(wait-queues): https://github.com/yugabyte/yugabyte-db/issues/17557
+    // For now, we disable this behavior in YCQL, both because many tests depend on FAIL_ON_CONFLICT
+    // behavior and because we do not want to change the behavior of existing CQL clusters. We may
+    // revisit this in the future in case there are performance benefits to enabling
+    // WAIT_ON_CONFLICT in YCQL as well.
+    //
+    // Note that we do not check execute_mode_ == ExecuteMode::kPgsql, since this condition is not
+    // sufficient to include all YSQL traffic -- some YSQL traffic may have ExecuteMode::kSimple,
+    // such as writes performed as part of an explicit lock read.
     wait_queue = transaction_participant->wait_queue();
   }
 
   if (!tablet->txns_enabled() || !transactional_table) {
-    CompleteExecute();
+    CompleteExecute(HybridTime::kInvalid);
     return Status::OK();
   }
 
@@ -596,7 +605,7 @@ void WriteQuery::NonTransactionalConflictsResolved(HybridTime now, HybridTime re
     tablet->clock()->Update(result);
   }
 
-  CompleteExecute();
+  CompleteExecute(HybridTime::kInvalid);
 }
 
 void WriteQuery::TransactionalConflictsResolved() {
@@ -608,9 +617,10 @@ void WriteQuery::TransactionalConflictsResolved() {
 }
 
 Status WriteQuery::DoTransactionalConflictsResolved() {
-  auto tablet = VERIFY_RESULT(tablet_safe());
+  HybridTime safe_time;
   if (!read_time_) {
-    auto safe_time = VERIFY_RESULT(tablet->SafeTime(RequireLease::kTrue));
+    auto tablet = VERIFY_RESULT(tablet_safe());
+    safe_time = VERIFY_RESULT(tablet->SafeTime(RequireLease::kTrue));
     read_time_ = ReadHybridTime::FromHybridTimeRange(
         {safe_time, tablet->clock()->NowRange().second});
   } else if (prepare_result_.need_read_snapshot &&
@@ -621,26 +631,29 @@ Status WriteQuery::DoTransactionalConflictsResolved() {
         read_time_);
   }
 
-  CompleteExecute();
+  CompleteExecute(safe_time);
   return Status::OK();
 }
 
-void WriteQuery::CompleteExecute() {
-  ExecuteDone(DoCompleteExecute());
+void WriteQuery::CompleteExecute(HybridTime safe_time) {
+  ExecuteDone(DoCompleteExecute(safe_time));
 }
 
-Status WriteQuery::DoCompleteExecute() {
+Status WriteQuery::DoCompleteExecute(HybridTime safe_time) {
   auto tablet = VERIFY_RESULT(tablet_safe());
   auto read_op = prepare_result_.need_read_snapshot
       ? VERIFY_RESULT(ScopedReadOperation::Create(tablet.get(),
                                                   RequireLease::kTrue,
                                                   read_time_))
       : ScopedReadOperation();
-  // Actual read hybrid time used for read-modify-write operation.
-  auto real_read_time = prepare_result_.need_read_snapshot
-      ? read_op.read_time()
-      // When need_read_snapshot is false, this time is used only to write TTL field of record.
-      : ReadHybridTime::SingleTime(tablet->clock()->Now());
+
+  docdb::ReadOperationData read_operation_data {
+    .deadline = deadline(),
+    .read_time = prepare_result_.need_read_snapshot
+        ? read_op.read_time()
+        // When need_read_snapshot is false, this time is used only to write TTL field of record.
+        : ReadHybridTime::SingleTime(tablet->clock()->Now()),
+  };
 
   // We expect all read operations for this transaction to be done in AssembleDocWriteBatch. Once
   // read_txn goes out of scope, the read point is deregistered.
@@ -655,7 +668,7 @@ Status WriteQuery::DoCompleteExecute() {
       : docdb::InitMarkerBehavior::kOptional;
   for (;;) {
     RETURN_NOT_OK(docdb::AssembleDocWriteBatch(
-        doc_ops_, deadline(), real_read_time, tablet->doc_db(), scoped_read_operation_,
+        doc_ops_, read_operation_data, tablet->doc_db(), scoped_read_operation_,
         request().mutable_write_batch(), init_marker_behavior,
         tablet->monotonic_counter(), &restart_read_ht_,
         tablet->metadata()->table_name(), &duplicate_detected, isolation_level_));
@@ -666,11 +679,13 @@ Status WriteQuery::DoCompleteExecute() {
       break;
     }
 
-    real_read_time.read = restart_read_ht_;
+    read_operation_data.read_time.read = restart_read_ht_;
     if (!local_limit_updated) {
       local_limit_updated = true;
-      real_read_time.local_limit = std::min(
-          real_read_time.local_limit, VERIFY_RESULT(tablet->SafeTime(RequireLease::kTrue)));
+      safe_time = VERIFY_RESULT(tablet->SafeTime(RequireLease::kTrue));
+      read_operation_data.read_time.local_limit = std::min(
+          read_operation_data.read_time.local_limit,
+          safe_time);
     }
 
     restart_read_ht_ = HybridTime();
@@ -689,7 +704,7 @@ Status WriteQuery::DoCompleteExecute() {
   if (allow_immediate_read_restart_ &&
       isolation_level_ != IsolationLevel::NON_TRANSACTIONAL &&
       response_) {
-    real_read_time.ToPB(response_->mutable_used_read_time());
+    read_operation_data.read_time.ToPB(response_->mutable_used_read_time());
   }
 
   if (restart_read_ht_.is_valid()) {
