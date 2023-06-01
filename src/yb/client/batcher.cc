@@ -524,7 +524,7 @@ void Batcher::AllLookupsDone() {
 
   if (this->transaction() && session && !session->IsDDLMode() &&
       session->IsSingleShardConversion() && session->GetNumTabletsInvolvedInTxn() == 1 &&
-      only_write_ops_involved) {
+      only_write_ops_involved && ops_.size() == ops_queue_.size()) {
     session->batcher_config_.transaction = nullptr;
     this->transaction_ = nullptr;
   }

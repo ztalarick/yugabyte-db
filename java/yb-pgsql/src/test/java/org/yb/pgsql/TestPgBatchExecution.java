@@ -114,6 +114,21 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
     expectRowCount(10);
   }
 
+  @Test(expected = com.yugabyte.util.PSQLException.class)
+  public void testMultiValueInsertWithError() throws Exception {
+    // Multi-value insert leading to UniqueContraintViolation exception and rollback
+    try (Statement stmt = connection.createStatement()) {
+      insertValues(5);
+      stmt.execute(String.format("INSERT INTO %s VALUES (5), (6), (7), (7), (8), (9)", TABLE_NAME));
+    } catch(SQLException e) {
+      isUniqueConstraintViolation(e);
+
+      // Entire batch should be reverted.
+      expectRowCount(5);
+      throw e;
+    }
+  }
+
   @Test(expected = BatchUpdateException.class)
   public void testBatchInsertWithError() throws Exception {
     // Batch insert leading to UniqueContraintViolation exception and rollback

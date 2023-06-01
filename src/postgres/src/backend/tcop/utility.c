@@ -3604,12 +3604,19 @@ YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
                             char *completionTag)
 {
 	if (IsYugaByteEnabled() && !(IsA(pstmt->utilityStmt, ExecuteStmt) ||
-			IsA(pstmt->utilityStmt, PrepareStmt) || IsA(pstmt->utilityStmt, DeallocateStmt) ||
-			IsA(pstmt->utilityStmt, ExplainStmt))) {
+								 IsA(pstmt->utilityStmt, PrepareStmt) ||
+								 IsA(pstmt->utilityStmt, DeallocateStmt) ||
+								 IsA(pstmt->utilityStmt, ExplainStmt)))
+	{
 		YBBeginOperationsBuffering();
-		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
-		YBEndOperationsBuffering(IsTransactionBlock());
-  } else {
-		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
+		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv,
+								dest, completionTag);
+		YBEndOperationsBuffering(IsTransactionBlock() ||
+								 YbIsBatchedExecution());
+	}
+	else
+	{
+		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv,
+								dest, completionTag);
 	}
 }

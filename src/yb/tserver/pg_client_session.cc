@@ -958,10 +958,12 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
     session->ResetDDLMode();
   }
 
-  if (transaction && !session->IsDDLMode() && options.allow_single_shard_conversion()) {
-    session->SetSingleShardConversionFlag();
-  } else {
-    session->ResetSingleShardConversionFlag();
+  if (transaction && !session->IsDDLMode()) {
+    if (options.allow_single_shard_conversion()) {
+      session->SetSingleShardConversionFlag();
+    } else {
+      session->ResetSingleShardConversionFlag();
+    }
   }
 
   if (context) {
