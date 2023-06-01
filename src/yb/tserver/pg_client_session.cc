@@ -845,9 +845,21 @@ Status PgClientSession::FinishTransaction(
   session->ResetDDLMode();
   if (kind == PgClientSessionKind::kPlain && session->GetNumTabletsInvolvedInTxn() == 1 &&
       session->IsSingleShardConversion()) {
+    const auto txn_value = std::move(txn);
+
+    if (GetAtomicFlag(&FLAGS_ysql_enable_table_mutation_counter) &&
+               pg_node_level_mutation_counter_) {
+      // Gather # of mutated rows for each table (count only the committed sub-transactions).
+      auto table_mutations = txn_value->GetTableMutationCounts();
+      VLOG_WITH_PREFIX(4) << "Incrementing global mutation count using table to mutations map: "
+                          << AsString(table_mutations) << " for txn: " << txn_value->id();
+      for(const auto& [table_id, mutation_count] : table_mutations) {
+        pg_node_level_mutation_counter_->Increase(table_id, mutation_count);
+      }
+    }
+
     session->ResetSingleShardConversionFlag();
     session->ResetNumTabletsInvolvedInTxn();
-    const auto txn_value = std::move(txn);
     Session(kind)->SetTransaction(nullptr);
     return Status::OK();
   }
