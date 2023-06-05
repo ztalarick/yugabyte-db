@@ -218,40 +218,16 @@ class YBSession : public std::enable_shared_from_this<YBSession> {
 
   YBClient* client() const;
 
-  void ResetNumTabletsInvolvedInTxn() {
-    tablets_involved_in_txn.clear();
-  }
-
-  void AddTabletInvolvedInTxn(std::string tablet_id) {
-    tablets_involved_in_txn.insert(tablet_id);
-  }
-
-  uint64_t GetNumTabletsInvolvedInTxn() {
-    return tablets_involved_in_txn.size();
-  }
-
-  void ResetDDLMode() {
-    is_ddl_mode_ = false;
-  }
-
-  void SetDDLMode() {
-    is_ddl_mode_ = true;
-  }
-
-  bool IsDDLMode() {
-    return is_ddl_mode_;
-  }
-
   void ResetSingleShardConversionFlag() {
-    convert_to_single_shard_txn_ = false;
+    converted_to_single_shard_txn_ = false;
   }
 
   void SetSingleShardConversionFlag() {
-    convert_to_single_shard_txn_ = true;
+    converted_to_single_shard_txn_ = true;
   }
 
   bool IsSingleShardConversion() {
-    return convert_to_single_shard_txn_;
+    return converted_to_single_shard_txn_;
   }
 
   // Sets force consistent read mode, if true then consistent read point will be used even we have
@@ -309,11 +285,7 @@ class YBSession : public std::enable_shared_from_this<YBSession> {
   // pointers stay valid.
   std::unordered_set<internal::BatcherPtr> flushed_batchers_;
 
-  std::unordered_set<std::string> tablets_involved_in_txn;
-
-  bool is_ddl_mode_ = false;
-
-  bool convert_to_single_shard_txn_ = false;
+  bool converted_to_single_shard_txn_ = false;
 
   // Session only one of deadline and timeout could be active.
   // When new batcher is created its deadline is set as session deadline or

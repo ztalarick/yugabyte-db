@@ -297,7 +297,7 @@ Status GetTable(const TableId& table_id, PgTableCache* cache, client::YBTablePtr
 
 Result<PgClientSessionOperations> PrepareOperations(
     PgPerformRequestPB* req, client::YBSession* session, rpc::Sidecars* sidecars,
-    PgTableCache* table_cache) {
+    PgTableCache* table_cache, bool* only_colocated_tables_involved) {
   auto write_time = HybridTime::FromPB(req->write_time());
   std::vector<std::shared_ptr<client::YBPgsqlOp>> ops;
   ops.reserve(req->ops().size());
@@ -313,22 +313,28 @@ Result<PgClientSessionOperations> PrepareOperations(
     if (op.has_read()) {
       auto& read = *op.mutable_read();
       RETURN_NOT_OK(GetTable(read.table_id(), table_cache, &table));
+      if (*only_colocated_tables_involved) {
+        *only_colocated_tables_involved = false;
+      }
+
       auto read_op = std::make_shared<client::YBPgsqlReadOp>(table, sidecars, &read);
       if (read_from_followers) {
         read_op->set_yb_consistency_level(YBConsistencyLevel::CONSISTENT_PREFIX);
       }
       ops.push_back(read_op);
-      session->Apply(std::move(read_op));
     } else {
       auto& write = *op.mutable_write();
       RETURN_NOT_OK(GetTable(write.table_id(), table_cache, &table));
+      if (*only_colocated_tables_involved && !table->colocated()) {
+        *only_colocated_tables_involved = false;
+      }
+
       auto write_op = std::make_shared<client::YBPgsqlWriteOp>(table, sidecars, &write);
       if (write_time) {
         write_op->SetWriteTime(write_time);
         write_time = HybridTime::kInvalid;
       }
       ops.push_back(write_op);
-      session->Apply(std::move(write_op));
     }
   }
   finished = true;
@@ -814,7 +820,9 @@ Status PgClientSession::SetActiveSubTransaction(
     if (req.options().ddl_mode()) {
       kind = PgClientSessionKind::kDdl;
     } else {
-      RETURN_NOT_OK(BeginTransactionIfNecessary(req.options(), context->GetClientDeadline()));
+      auto options = req.options();
+      RETURN_NOT_OK(
+          BeginTransactionIfNecessary(&options, context->GetClientDeadline(), false));
       txn_serial_no_ = req.options().txn_serial_no();
     }
   }
@@ -836,36 +844,18 @@ Status PgClientSession::FinishTransaction(
   saved_priority_ = std::nullopt;
   auto kind = req.ddl_mode() ? PgClientSessionKind::kDdl : PgClientSessionKind::kPlain;
   auto& txn = Transaction(kind);
+  auto session = Session(kind);
   if (!txn) {
+    if (kind == PgClientSessionKind::kPlain && session->IsSingleShardConversion()) {
+      Session(kind)->SetTransaction(nullptr);
+      session->ResetSingleShardConversionFlag();
+      return Status::OK();
+    }
+
     VLOG_WITH_PREFIX_AND_FUNC(2) << "ddl: " << req.ddl_mode() << ", no running transaction";
     return Status::OK();
   }
 
-  auto session = Session(kind);
-  session->ResetDDLMode();
-  if (kind == PgClientSessionKind::kPlain && session->GetNumTabletsInvolvedInTxn() == 1 &&
-      session->IsSingleShardConversion()) {
-    const auto txn_value = std::move(txn);
-
-    if (GetAtomicFlag(&FLAGS_ysql_enable_table_mutation_counter) &&
-               pg_node_level_mutation_counter_) {
-      // Gather # of mutated rows for each table (count only the committed sub-transactions).
-      auto table_mutations = txn_value->GetTableMutationCounts();
-      VLOG_WITH_PREFIX(4) << "Incrementing global mutation count using table to mutations map: "
-                          << AsString(table_mutations) << " for txn: " << txn_value->id();
-      for(const auto& [table_id, mutation_count] : table_mutations) {
-        pg_node_level_mutation_counter_->Increase(table_id, mutation_count);
-      }
-    }
-
-    session->ResetSingleShardConversionFlag();
-    session->ResetNumTabletsInvolvedInTxn();
-    Session(kind)->SetTransaction(nullptr);
-    return Status::OK();
-  }
-
-  session->ResetSingleShardConversionFlag();
-  session->ResetNumTabletsInvolvedInTxn();
   const TransactionMetadata* metadata = nullptr;
   if (FLAGS_report_ysql_ddl_txn_status_to_master && req.has_docdb_schema_changes()) {
     metadata = VERIFY_RESULT(GetDdlTransactionMetadata(true, context->GetClientDeadline()));
@@ -961,22 +951,10 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
 
   const auto in_txn_limit = GetInTxnLimit(options, clock_.get());
   VLOG_WITH_PREFIX(5) << "using in_txn_limit_ht: " << in_txn_limit;
-  auto session_info = VERIFY_RESULT(SetupSession(data->req, deadline, in_txn_limit));
+  auto session_info = VERIFY_RESULT(
+      SetupSession(&data->req, deadline, in_txn_limit, &data->ops, &data->sidecars, &table_cache_));
   auto* session = session_info.first.session.get();
   auto& transaction = session_info.first.transaction;
-  if (options.ddl_mode() || options.use_catalog_session()) {
-    session->SetDDLMode();
-  } else {
-    session->ResetDDLMode();
-  }
-
-  if (transaction && !session->IsDDLMode()) {
-    if (options.allow_single_shard_conversion()) {
-      session->SetSingleShardConversionFlag();
-    } else {
-      session->ResetSingleShardConversionFlag();
-    }
-  }
 
   if (context) {
     if (options.trace_requested()) {
@@ -998,8 +976,9 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
   data->pg_node_level_mutation_counter = pg_node_level_mutation_counter_;
   data->subtxn_id = options.active_sub_transaction_id();
 
-  data->ops = VERIFY_RESULT(PrepareOperations(
-      &data->req, session, &data->sidecars, &table_cache_));
+  for (std::shared_ptr<client::YBOperation> op : data->ops) {
+    session->Apply(op);
+  }
 
   session->FlushAsync([this, data](client::FlushStatus* flush_status) {
     data->FlushDone(flush_status);
@@ -1094,25 +1073,38 @@ Status PgClientSession::UpdateReadPointForXClusterConsistentReads(
 
 Result<std::pair<PgClientSession::SessionData, PgClientSession::UsedReadTimePtr>>
 PgClientSession::SetupSession(
-    const PgPerformRequestPB& req, CoarseTimePoint deadline, HybridTime in_txn_limit) {
-  const auto& options = req.options();
+    PgPerformRequestPB* req, CoarseTimePoint deadline, HybridTime in_txn_limit,
+    PgClientSessionOperations* ops, rpc::Sidecars* sidecars, PgTableCache* table_cache) {
+  auto& options = *req->mutable_options();
   PgClientSessionKind kind;
+  bool only_colocated_tables_involved = false;
+  client::YBSession* session;
   if (options.use_catalog_session()) {
     SCHECK(!options.read_from_followers(),
            InvalidArgument,
            "Reading catalog from followers is not allowed");
     kind = PgClientSessionKind::kCatalog;
     EnsureSession(kind);
+    session = Session(kind).get();
+    *ops = VERIFY_RESULT(
+        PrepareOperations(req, session, sidecars, &table_cache_, &only_colocated_tables_involved));
   } else if (options.ddl_mode()) {
     kind = PgClientSessionKind::kDdl;
     EnsureSession(kind);
+    session = Session(kind).get();
     RETURN_NOT_OK(GetDdlTransactionMetadata(true /* use_transaction */, deadline));
+    *ops = VERIFY_RESULT(
+        PrepareOperations(req, session, sidecars, &table_cache_, &only_colocated_tables_involved));
   } else {
+    only_colocated_tables_involved = true;
     kind = PgClientSessionKind::kPlain;
-    RETURN_NOT_OK(BeginTransactionIfNecessary(options, deadline));
+    EnsureSession(kind);
+    session = Session(kind).get();
+    *ops = VERIFY_RESULT(
+        PrepareOperations(req, session, sidecars, &table_cache_, &only_colocated_tables_involved));
+    RETURN_NOT_OK(BeginTransactionIfNecessary(&options, deadline, only_colocated_tables_involved));
   }
 
-  auto session = Session(kind).get();
   client::YBTransaction* transaction = Transaction(kind).get();
 
   VLOG_WITH_PREFIX(4) << __func__ << ": " << options.ShortDebugString();
@@ -1191,18 +1183,18 @@ std::string PgClientSession::LogPrefix() {
 }
 
 Status PgClientSession::BeginTransactionIfNecessary(
-    const PgPerformOptionsPB& options, CoarseTimePoint deadline) {
-  const auto isolation = static_cast<IsolationLevel>(options.isolation());
+    PgPerformOptionsPB* options, CoarseTimePoint deadline, const bool& only_colocated_tables_involved) {
+  const auto isolation = static_cast<IsolationLevel>(options->isolation());
 
-  auto priority = options.priority();
+  auto priority = options->priority();
   auto& session = EnsureSession(PgClientSessionKind::kPlain);
   auto& txn = Transaction(PgClientSessionKind::kPlain);
-  if (txn && txn_serial_no_ != options.txn_serial_no()) {
+  if (txn && txn_serial_no_ != options->txn_serial_no()) {
     VLOG_WITH_PREFIX(2)
-        << "Abort previous transaction, use existing priority: " << options.use_existing_priority()
+        << "Abort previous transaction, use existing priority: " << options->use_existing_priority()
         << ", new isolation: " << IsolationLevel_Name(isolation);
 
-    if (options.use_existing_priority()) {
+    if (options->use_existing_priority()) {
       saved_priority_ = txn->GetPriority();
     }
     txn->Abort();
@@ -1212,6 +1204,19 @@ Status PgClientSession::BeginTransactionIfNecessary(
 
   if (isolation == IsolationLevel::NON_TRANSACTIONAL) {
     return Status::OK();
+  }
+
+  if (only_colocated_tables_involved && options->allow_single_shard_conversion()) {
+    options->set_isolation(IsolationLevel::NON_TRANSACTIONAL);
+    options->mutable_in_txn_limit_ht()->set_value(kInvalidHybridTimeValue);
+    options->set_priority(0);
+    options->set_read_time_manipulation(tserver::ReadTimeManipulation::NONE);
+    options->set_active_sub_transaction_id(0);
+    session->SetSingleShardConversionFlag();
+
+    return Status::OK();
+  } else {
+    session->ResetSingleShardConversionFlag();
   }
 
   if (txn) {
@@ -1224,11 +1229,11 @@ Status PgClientSession::BeginTransactionIfNecessary(
   }
 
   txn = transaction_pool_provider_().Take(
-      client::ForceGlobalTransaction(options.force_global_transaction()), deadline);
+      client::ForceGlobalTransaction(options->force_global_transaction()), deadline);
   txn->SetLogPrefixTag(kTxnLogPrefixTag, id_);
   if ((isolation == IsolationLevel::SNAPSHOT_ISOLATION ||
            isolation == IsolationLevel::READ_COMMITTED) &&
-      txn_serial_no_ == options.txn_serial_no()) {
+      txn_serial_no_ == options->txn_serial_no()) {
     RETURN_NOT_OK(CheckPlainSessionReadTime());
     txn->InitWithReadPoint(isolation, std::move(*session->read_point()));
     VLOG_WITH_PREFIX(2) << "Start transaction " << IsolationLevel_Name(isolation)
@@ -1241,7 +1246,7 @@ Status PgClientSession::BeginTransactionIfNecessary(
     RETURN_NOT_OK(txn->Init(isolation));
   }
 
-  RETURN_NOT_OK(UpdateReadPointForXClusterConsistentReads(options, deadline, &txn->read_point()));
+  RETURN_NOT_OK(UpdateReadPointForXClusterConsistentReads(*options, deadline, &txn->read_point()));
 
   if (saved_priority_) {
     priority = *saved_priority_;

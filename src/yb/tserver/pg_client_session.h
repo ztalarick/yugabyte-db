@@ -122,12 +122,15 @@ class PgClientSession : public std::enable_shared_from_this<PgClientSession> {
   Result<const TransactionMetadata*> GetDdlTransactionMetadata(
       bool use_transaction, CoarseTimePoint deadline);
   Status BeginTransactionIfNecessary(
-      const PgPerformOptionsPB& options, CoarseTimePoint deadline);
+      PgPerformOptionsPB* options, CoarseTimePoint deadline,
+      const bool& only_colocated_tables_involved);
   Result<client::YBTransactionPtr> RestartTransaction(
       client::YBSession* session, client::YBTransaction* transaction);
 
   Result<std::pair<SessionData, PgClientSession::UsedReadTimePtr>> SetupSession(
-      const PgPerformRequestPB& req, CoarseTimePoint deadline, HybridTime in_txn_limit);
+      PgPerformRequestPB* req, CoarseTimePoint deadline, HybridTime in_txn_limit,
+      PgClientSessionOperations* ops, rpc::Sidecars* sidecars, PgTableCache* table_cache);
+
   Status ProcessResponse(
       const PgClientSessionOperations& operations, const PgPerformRequestPB& req,
       PgPerformResponsePB* resp, rpc::RpcContext* context);

@@ -417,7 +417,6 @@ void Batcher::AllLookupsDone() {
     return;
   }
 
-  bool only_write_ops_involved = true;
   auto errors_pair = CollectOpsErrors();
   const auto& errors_by_partition_key = errors_pair.first;
   const auto& errors_by_request_id = errors_pair.second;
@@ -463,13 +462,6 @@ void Batcher::AllLookupsDone() {
     return;
   }
 
-  for (auto it = ops_queue_.begin(); it != ops_queue_.end(); ++it) {
-    if (it->yb_op->type() != YBOperation::PGSQL_WRITE) {
-      only_write_ops_involved = false;
-      break;
-    }
-  }
-
   // All operations were added, and tablets for them were resolved.
   // So we could sort them.
   std::sort(ops_queue_.begin(),
@@ -491,9 +483,6 @@ void Batcher::AllLookupsDone() {
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
   const auto* current_tablet = (*group_start).tablet.get();
-  if (this->transaction() && session && !session->IsDDLMode()) {
-    session->AddTabletInvolvedInTxn(current_tablet->tablet_id());
-  }
 
   for (auto it = group_start; it != ops_queue_.end(); ++it) {
     const auto it_group = (*it).yb_op->group();
@@ -510,10 +499,6 @@ void Batcher::AllLookupsDone() {
     }
 
     if (current_tablet != it_tablet || current_group != it_group) {
-      if (this->transaction() && session && !session->IsDDLMode() && current_tablet != it_tablet) {
-        session->AddTabletInvolvedInTxn(it_tablet->tablet_id());
-      }
-
       ops_info_.groups.emplace_back(group_start, it);
       group_start = it;
       current_group = it_group;
@@ -521,13 +506,6 @@ void Batcher::AllLookupsDone() {
     }
   }
   ops_info_.groups.emplace_back(group_start, ops_queue_.end());
-
-  if (this->transaction() && session && !session->IsDDLMode() &&
-      session->IsSingleShardConversion() && session->GetNumTabletsInvolvedInTxn() == 1 &&
-      only_write_ops_involved && ops_.size() == ops_queue_.size()) {
-    session->batcher_config_.transaction = nullptr;
-    this->transaction_ = nullptr;
-  }
 
   ExecuteOperations(Initial::kTrue);
 }
