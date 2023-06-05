@@ -1183,7 +1183,8 @@ std::string PgClientSession::LogPrefix() {
 }
 
 Status PgClientSession::BeginTransactionIfNecessary(
-    PgPerformOptionsPB* options, CoarseTimePoint deadline, const bool& only_colocated_tables_involved) {
+    PgPerformOptionsPB* options, CoarseTimePoint deadline,
+    const bool& only_colocated_tables_involved) {
   const auto isolation = static_cast<IsolationLevel>(options->isolation());
 
   auto priority = options->priority();
