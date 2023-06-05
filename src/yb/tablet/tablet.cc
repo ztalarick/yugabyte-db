@@ -1422,9 +1422,6 @@ Status Tablet::ApplyKeyValueRowOperations(
   if (put_batch.has_transaction()) {
     RETURN_NOT_OK(WriteTransactionalBatch(batch_idx, put_batch, hybrid_time, frontiers));
   } else {
-    rocksdb::WriteBatch regular_write_batch;
-    auto* regular_write_batch_ptr = !already_applied_to_regular_db ? &regular_write_batch : nullptr;
-
     // See comments for PrepareExternalWriteBatch.
     if (put_batch.enable_replicate_transaction_status_table()) {
       if (!metadata_->IsUnderXClusterReplication()) {
@@ -1444,26 +1441,24 @@ Status Tablet::ApplyKeyValueRowOperations(
       return Status::OK();
     }
 
+    // This should be only set when we are replicating the transaction status table (since this is
+    // only used for UPDATE_TRANSACTION_OP).
+    DCHECK(!already_applied_to_regular_db);
+
     rocksdb::WriteBatch intents_write_batch;
-    auto* intents_write_batch_ptr = !put_batch.enable_replicate_transaction_status_table() ?
-        &intents_write_batch : nullptr;
-    bool has_non_external_records = PrepareExternalWriteBatch(
-        put_batch, hybrid_time, intents_db_.get(), regular_write_batch_ptr, intents_write_batch_ptr,
+    docdb::ExternalIntentsBatchWriter batcher(
+        put_batch, hybrid_time, intents_db_.get(), &intents_write_batch,
         external_txn_intents_state_.get());
+
+    rocksdb::WriteBatch regular_write_batch;
+    regular_write_batch.SetDirectWriter(&batcher);
+    WriteToRocksDB(frontiers, &regular_write_batch, StorageDbType::kRegular);
 
     if (intents_write_batch.Count() != 0) {
       if (!metadata_->IsUnderXClusterReplication()) {
         RETURN_NOT_OK(metadata_->SetIsUnderXClusterReplicationAndFlush(true));
       }
       WriteToRocksDB(frontiers, &intents_write_batch, StorageDbType::kIntents);
-    }
-
-    docdb::NonTransactionalWriter writer(put_batch, hybrid_time);
-    if (!already_applied_to_regular_db && has_non_external_records) {
-      regular_write_batch.SetDirectWriter(&writer);
-    }
-    if (regular_write_batch.Count() != 0 || regular_write_batch.HasDirectWriter()) {
-      WriteToRocksDB(frontiers, &regular_write_batch, StorageDbType::kRegular);
     }
 
     if (snapshot_coordinator_) {
@@ -1947,7 +1942,7 @@ Result<docdb::ApplyTransactionState> Tablet::ApplyIntents(const TransactionApply
   AtomicFlagSleepMs(&FLAGS_TEST_inject_sleep_before_applying_intents_ms);
   docdb::ApplyIntentsContext context(
       data.transaction_id, data.apply_state, data.aborted, data.commit_ht, data.log_ht,
-      &key_bounds_, intents_db_.get());
+      &key_bounds_, metadata_.get(), intents_db_.get());
   docdb::IntentsWriter intents_writer(
       data.apply_state ? data.apply_state->key : Slice(), intents_db_.get(), &context);
   rocksdb::WriteBatch regular_write_batch;
@@ -2499,17 +2494,6 @@ void SleepToThrottleRate(
   }
 }
 
-Result<client::YBTablePtr> GetTable(
-    const TableId& table_id, const std::shared_ptr<client::YBMetaDataCache>& metadata_cache) {
-  // TODO create async version of GetTable.
-  // It is ok to have sync call here, because we use cache and it should not take too long.
-  client::YBTablePtr index_table;
-  bool cache_used_ignored = false;
-  DCHECK_ONLY_NOTNULL(metadata_cache.get());
-  RETURN_NOT_OK(metadata_cache->GetTable(table_id, &index_table, &cache_used_ignored));
-  return index_table;
-}
-
 }  // namespace
 
 Result<RequestScope> Tablet::CreateRequestScope() {
@@ -2691,8 +2675,7 @@ Status Tablet::FlushWriteIndexBatch(
   SCHECK(metadata_cache, IllegalState, "Table metadata cache is not present for index update");
 
   for (auto& pair : *index_requests) {
-    client::YBTablePtr index_table =
-        VERIFY_RESULT(GetTable(pair.first->table_id(), metadata_cache));
+    auto index_table = VERIFY_RESULT(metadata_cache->GetTable(pair.first->table_id()));
 
     shared_ptr<client::YBqlWriteOp> index_op(index_table->NewQLWrite());
     index_op->set_write_time_for_backfill(write_time);
