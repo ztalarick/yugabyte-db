@@ -1220,7 +1220,7 @@ Status PgClientSession::BeginTransactionIfNecessary(
     return Status::OK();
   }
 
-  if (// GetAtomicFlag(&FLAGS_ysql_allow_single_shard_conversion_colocated_inserts) &&
+  if (  // GetAtomicFlag(&FLAGS_ysql_allow_single_shard_conversion_colocated_inserts) &&
       only_colocated_tables_involved && options->allow_single_shard_conversion()) {
     options->set_isolation(IsolationLevel::NON_TRANSACTIONAL);
     options->mutable_in_txn_limit_ht()->set_value(kInvalidHybridTimeValue);

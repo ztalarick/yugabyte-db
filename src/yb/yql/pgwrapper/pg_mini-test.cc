@@ -1768,7 +1768,8 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(SingleShardConversionForColocatedTabl
   ASSERT_OK(conn.ExecuteFormat("CREATE DATABASE $0 with colocated=true", kDatabaseName));
 
   conn = ASSERT_RESULT(ConnectToDB(kDatabaseName));
-  ASSERT_OK(conn.Execute("CREATE TABLE test (key INT PRIMARY KEY, value1 INT, value2 INT, value3 INT)"));
+  ASSERT_OK(
+      conn.Execute("CREATE TABLE test (key INT PRIMARY KEY, value1 INT, value2 INT, value3 INT)"));
   ASSERT_OK(conn.Execute("CREATE INDEX test_index_value1 on test(value1)"));
   ASSERT_OK(conn.Execute("CREATE UNIQUE INDEX test_index_value2 on test(value2)"));
   ASSERT_OK(conn.Execute("CREATE INDEX test_index_value3 on test(value3)"));
