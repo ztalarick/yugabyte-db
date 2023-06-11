@@ -72,6 +72,12 @@ DEFINE_RUNTIME_bool(ysql_enable_table_mutation_counter, false,
                     "ysql_auto_analyze_scale_factor).");
 TAG_FLAG(ysql_enable_table_mutation_counter, experimental);
 
+DEFINE_RUNTIME_bool(
+    ysql_allow_single_shard_conversion_colocated_inserts, true,
+    "Enable the optimization of converting an insert operation on colocated tables into single "
+    "shard transaction if possible.");
+TAG_FLAG(ysql_allow_single_shard_conversion_colocated_inserts, advanced);
+
 DEFINE_RUNTIME_string(ysql_sequence_cache_method, "connection",
     "Where sequence values are cached for both existing and new sequences. Valid values are "
     "\"connection\" and \"server\"");
@@ -1207,7 +1213,8 @@ Status PgClientSession::BeginTransactionIfNecessary(
     return Status::OK();
   }
 
-  if (only_colocated_tables_involved && options->allow_single_shard_conversion()) {
+  if (// GetAtomicFlag(&FLAGS_ysql_allow_single_shard_conversion_colocated_inserts) &&
+      only_colocated_tables_involved && options->allow_single_shard_conversion()) {
     options->set_isolation(IsolationLevel::NON_TRANSACTIONAL);
     options->mutable_in_txn_limit_ht()->set_value(kInvalidHybridTimeValue);
     options->set_priority(0);

@@ -22,6 +22,7 @@
 #include "yb/common/common_flags.h"
 #include "yb/common/pgsql_error.h"
 
+#include "yb/consensus/consensus.h"
 #include "yb/dockv/value_type.h"
 
 #include "yb/integration-tests/mini_cluster.h"
@@ -106,6 +107,7 @@ DECLARE_uint64(pg_client_heartbeat_interval_ms);
 
 METRIC_DECLARE_entity(tablet);
 METRIC_DECLARE_gauge_uint64(aborted_transactions_pending_cleanup);
+METRIC_DECLARE_histogram(handler_latency_yb_tserver_TabletServerService_UpdateTransaction);
 
 namespace yb::pgwrapper {
 namespace {
@@ -1751,6 +1753,44 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(ColocatedCompaction)) {
     }
   }
   VerifyFileSizeAfterCompaction(&conn, kNumTables);
+}
+
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(SingleShardConversionForColocatedTables)) {
+  const std::string kDatabaseName = "testdb";
+  const auto& tserver = *cluster_->mini_tablet_server(0)->server();
+
+  std::unique_ptr<MetricWatcher> update_transaction_rpc_watcher_;
+  update_transaction_rpc_watcher_ = std::make_unique<MetricWatcher>(
+        tserver,
+        METRIC_handler_latency_yb_tserver_TabletServerService_UpdateTransaction);
+
+  PGConn conn = ASSERT_RESULT(Connect());
+  ASSERT_OK(conn.ExecuteFormat("CREATE DATABASE $0 with colocated=true", kDatabaseName));
+
+  conn = ASSERT_RESULT(ConnectToDB(kDatabaseName));
+  ASSERT_OK(conn.Execute("CREATE TABLE test (key INT PRIMARY KEY, value1 INT, value2 INT, value3 INT)"));
+  ASSERT_OK(conn.Execute("CREATE INDEX test_index_value1 on test(value1)"));
+  ASSERT_OK(conn.Execute("CREATE UNIQUE INDEX test_index_value2 on test(value2)"));
+  ASSERT_OK(conn.Execute("CREATE INDEX test_index_value3 on test(value3)"));
+  auto update_txn_rpc_count = ASSERT_RESULT(update_transaction_rpc_watcher_->Delta([&conn]() {
+    return conn.ExecuteFormat(
+      "INSERT INTO $0 VALUES(1, 1, 1, 1)", "test");
+  }));
+  ASSERT_EQ(update_txn_rpc_count, 0);
+
+  update_txn_rpc_count = ASSERT_RESULT(update_transaction_rpc_watcher_->Delta([&conn]() {
+    return conn.ExecuteFormat(
+      "INSERT INTO $0 VALUES(2, 2, 2, 2), (3, 3, 3, 3), (4, 4, 4, 4)", "test");
+  }));
+  ASSERT_EQ(update_txn_rpc_count, 0);
+
+  auto res =
+        ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 4);
+
+  auto result = conn.ExecuteFormat("INSERT INTO $0 VALUES(5, 5, 5, 5), (6, 6, 4, 6)", "test");
+  res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 4);
 }
 
 void PgMiniTest::CreateDBWithTablegroupAndTables(

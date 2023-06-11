@@ -77,6 +77,8 @@ using namespace yb::size_literals;
 
 DECLARE_uint64(rpc_max_message_size);
 
+DECLARE_bool(ysql_allow_single_shard_conversion_colocated_inserts);
+
 // We expect that consensus_max_batch_size_bytes + 1_KB would be less than rpc_max_message_size.
 // Otherwise such batch would be rejected by RPC layer.
 DEFINE_RUNTIME_uint64(consensus_max_batch_size_bytes, 4_MB,
@@ -153,6 +155,7 @@ static bool RpcThrottleThresholdBytesValidator(const char* flagname, int64_t val
     } else if (implicit_cast<size_t>(value) >= FLAGS_consensus_max_batch_size_bytes) {
       LOG(ERROR) << "Expect " << flagname << " to be less than consensus_max_batch_size_bytes "
                  << "value (" << FLAGS_consensus_max_batch_size_bytes << ")";
+      // FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
       return false;
     }
   }
