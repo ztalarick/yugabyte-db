@@ -16,6 +16,7 @@ package org.yb.pgsql;
 import static org.yb.AssertionWrappers.assertTrue;
 
 import java.sql.Statement;
+import java.sql.Connection;
 import java.sql.BatchUpdateException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -116,8 +117,14 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
 
   @Test(expected = com.yugabyte.util.PSQLException.class)
   public void testMultiValueInsertWithError() throws Exception {
-    // Multi-value insert leading to UniqueContraintViolation exception and rollback
     try (Statement stmt = connection.createStatement()) {
+      stmt.executeUpdate("CREATE DATABASE clc WITH colocation = true");
+    }
+
+    // Multi-value insert leading to UniqueContraintViolation exception and rollback
+    try (Connection conn2 = getConnectionBuilder().withDatabase("clc").connect();
+        Statement stmt = conn2.createStatement()) {
+      stmt.execute(String.format("CREATE TABLE %s (i INT PRIMARY KEY)", TABLE_NAME));
       insertValues(5);
       stmt.execute(String.format("INSERT INTO %s VALUES (5), (6), (7), (7), (8), (9)", TABLE_NAME));
     } catch(SQLException e) {

@@ -616,8 +616,8 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
   DCHECK(!ops.empty());
   tserver::PgPerformOptionsPB options;
   bool contains_read_op = false;
-  for (auto i = ops.operations.begin(); i != ops.operations.end(); ++i) {
-    if ((*i)->is_read()) {
+  for (auto op_iter = ops.operations.begin(); op_iter != ops.operations.end(); ++op_iter) {
+    if ((*op_iter)->is_read()) {
       contains_read_op = true;
       break;
     }

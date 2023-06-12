@@ -41,7 +41,6 @@
 #include "yb/yql/pggate/pg_doc_metrics.h"
 #include "yb/yql/pggate/pg_op.h"
 #include "yb/yql/pggate/pg_tabledesc.h"
-#include "yb/yql/pggate/ybc_pggate.h"
 
 namespace yb {
 namespace pggate {

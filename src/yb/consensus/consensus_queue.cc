@@ -155,7 +155,7 @@ static bool RpcThrottleThresholdBytesValidator(const char* flagname, int64_t val
     } else if (implicit_cast<size_t>(value) >= FLAGS_consensus_max_batch_size_bytes) {
       LOG(ERROR) << "Expect " << flagname << " to be less than consensus_max_batch_size_bytes "
                  << "value (" << FLAGS_consensus_max_batch_size_bytes << ")";
-      // FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
+      FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
       return false;
     }
   }

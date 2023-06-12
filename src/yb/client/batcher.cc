@@ -478,12 +478,9 @@ void Batcher::AllLookupsDone() {
     return lhs.tablet.get() < rhs.tablet.get();
   });
 
-  YBSessionPtr session = weak_session_.lock();
-
   auto group_start = ops_queue_.begin();
   auto current_group = (*group_start).yb_op->group();
   const auto* current_tablet = (*group_start).tablet.get();
-
   for (auto it = group_start; it != ops_queue_.end(); ++it) {
     const auto it_group = (*it).yb_op->group();
     const auto* it_tablet = (*it).tablet.get();
@@ -497,7 +494,6 @@ void Batcher::AllLookupsDone() {
           it_tablet->partition_list_version()));
       return;
     }
-
     if (current_tablet != it_tablet || current_group != it_group) {
       ops_info_.groups.emplace_back(group_start, it);
       group_start = it;

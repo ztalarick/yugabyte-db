@@ -43,6 +43,7 @@
 
 #include "yb/rpc/rpc_header.pb.h"
 
+#include "yb/util/flags.h"
 #include "yb/util/faststring.h"
 #include "yb/util/ref_cnt_buffer.h"
 #include "yb/util/result.h"
@@ -50,7 +51,11 @@
 #include "yb/util/status_format.h"
 
 DECLARE_uint64(rpc_max_message_size);
-DECLARE_bool(ysql_allow_single_shard_conversion_colocated_inserts);
+DEFINE_RUNTIME_bool(
+    ysql_allow_single_shard_conversion_colocated_inserts, true,
+    "Enable the optimization of converting an insert operation on colocated tables into single "
+    "shard transaction if possible.");
+TAG_FLAG(ysql_allow_single_shard_conversion_colocated_inserts, advanced);
 
 using google::protobuf::MessageLite;
 using google::protobuf::io::CodedInputStream;
@@ -72,7 +77,7 @@ Status SerializeMessage(
 
   auto total_size = size + additional_size;
   if (total_size > FLAGS_rpc_max_message_size) {
-    // FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
+    FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
     return STATUS_FORMAT(InvalidArgument, "Sending too long RPC message ($0 bytes)", total_size);
   }
 
