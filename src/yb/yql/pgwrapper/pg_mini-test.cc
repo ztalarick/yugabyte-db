@@ -1776,33 +1776,32 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocated
   ASSERT_EQ(CountIntents(cluster_.get()), 0);
 
   FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
-  ASSERT_OK(
-      conn.ExecuteFormat("INSERT INTO $0 VALUES(2, 2, 2, 2)", "test"));
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(2, 2, 2, 2)", "test"));
   ASSERT_NE(CountIntents(cluster_.get()), 0);
 
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(cluster_->FlushTablets());
   ASSERT_OK(WaitFor(
-      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime, "Intents cleaned"));
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime,
+      "Intents cleaned"));
 
   auto res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
   ASSERT_EQ(res, 2);
 
   FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
-  ASSERT_OK(
-      conn.ExecuteFormat("INSERT INTO $0 VALUES(3, 3, 3, 3), (4, 4, 4, 4)", "test"));
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(3, 3, 3, 3), (4, 4, 4, 4)", "test"));
   ASSERT_EQ(CountIntents(cluster_.get()), 0);
 
   FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
-  ASSERT_OK(
-      conn.ExecuteFormat("INSERT INTO $0 VALUES(5, 5, 5, 5), (6, 6, 6, 6)", "test"));
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(5, 5, 5, 5), (6, 6, 6, 6)", "test"));
   ASSERT_NE(CountIntents(cluster_.get()), 0);
 
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(cluster_->FlushTablets());
   ASSERT_OK(WaitFor(
-      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime, "Intents cleaned"));
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime,
+      "Intents cleaned"));
 
   res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
   ASSERT_EQ(res, 6);
@@ -1837,7 +1836,8 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithExplicit
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(cluster_->FlushTablets());
   ASSERT_OK(WaitFor(
-      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime, "Intents cleaned"));
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime,
+      "Intents cleaned"));
 
   auto res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
   ASSERT_EQ(res, 1);
@@ -1887,10 +1887,12 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithForeignK
   ASSERT_EQ(res, 1);
 
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, 'reference_$1'), ($2, 'reference_$2')", kReferenceTable, 2, 3));
+  ASSERT_OK(conn.ExecuteFormat(
+      "INSERT INTO $0 VALUES ($1, 'reference_$1'), ($2, 'reference_$2')", kReferenceTable, 2, 3));
   ASSERT_EQ(CountIntents(cluster_.get()), 0);
 
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, $2, 'data_$2'), ($1, $3, 'data_$3')", kDataTable, 1, 2, 3));
+  ASSERT_OK(conn.ExecuteFormat(
+      "INSERT INTO $0 VALUES ($1, $2, 'data_$2'), ($1, $3, 'data_$3')", kDataTable, 1, 2, 3));
   ASSERT_NE(CountIntents(cluster_.get()), 0);
 
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
@@ -1899,8 +1901,7 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithForeignK
       [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime,
       "Intents cleaned"));
 
-  res =
-      ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM reference")));
+  res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM reference")));
   ASSERT_EQ(res, 3);
 
   res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM data")));
