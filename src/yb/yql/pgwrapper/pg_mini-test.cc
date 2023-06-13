@@ -104,6 +104,7 @@ DECLARE_string(time_source);
 DECLARE_bool(rocksdb_disable_compactions);
 DECLARE_uint64(pg_client_session_expiration_ms);
 DECLARE_uint64(pg_client_heartbeat_interval_ms);
+DECLARE_bool(ysql_allow_single_shard_conversion_colocated_inserts);
 
 METRIC_DECLARE_entity(tablet);
 METRIC_DECLARE_gauge_uint64(aborted_transactions_pending_cleanup);
@@ -1755,14 +1756,9 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(ColocatedCompaction)) {
   VerifyFileSizeAfterCompaction(&conn, kNumTables);
 }
 
-TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(SingleShardConversionForColocatedTables)) {
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocatedTables)) {
   const std::string kDatabaseName = "testdb";
-  const auto& tserver = *cluster_->mini_tablet_server(0)->server();
-
-  std::unique_ptr<MetricWatcher> update_transaction_rpc_watcher_;
-  update_transaction_rpc_watcher_ = std::make_unique<MetricWatcher>(
-        tserver,
-        METRIC_handler_latency_yb_tserver_TabletServerService_UpdateTransaction);
+  const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
 
   PGConn conn = ASSERT_RESULT(Connect());
   ASSERT_OK(conn.ExecuteFormat("CREATE DATABASE $0 with colocated=true", kDatabaseName));
@@ -1773,25 +1769,142 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(SingleShardConversionForColocatedTabl
   ASSERT_OK(conn.Execute("CREATE INDEX test_index_value1 on test(value1)"));
   ASSERT_OK(conn.Execute("CREATE UNIQUE INDEX test_index_value2 on test(value2)"));
   ASSERT_OK(conn.Execute("CREATE INDEX test_index_value3 on test(value3)"));
-  auto update_txn_rpc_count = ASSERT_RESULT(update_transaction_rpc_watcher_->Delta([&conn]() {
-    return conn.ExecuteFormat(
-      "INSERT INTO $0 VALUES(1, 1, 1, 1)", "test");
-  }));
-  ASSERT_EQ(update_txn_rpc_count, 0);
 
-  update_txn_rpc_count = ASSERT_RESULT(update_transaction_rpc_watcher_->Delta([&conn]() {
-    return conn.ExecuteFormat(
-      "INSERT INTO $0 VALUES(2, 2, 2, 2), (3, 3, 3, 3), (4, 4, 4, 4)", "test");
-  }));
-  ASSERT_EQ(update_txn_rpc_count, 0);
+  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1, 1, 1)", "test"));
+  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+
+  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
+  ASSERT_OK(
+      conn.ExecuteFormat("INSERT INTO $0 VALUES(2, 2, 2, 2)", "test"));
+  ASSERT_NE(CountIntents(cluster_.get()), 0);
+
+  SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(cluster_->FlushTablets());
+  ASSERT_OK(WaitFor(
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime, "Intents cleaned"));
+
+  auto res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 2);
+
+  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(
+      conn.ExecuteFormat("INSERT INTO $0 VALUES(3, 3, 3, 3), (4, 4, 4, 4)", "test"));
+  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+
+  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
+  ASSERT_OK(
+      conn.ExecuteFormat("INSERT INTO $0 VALUES(5, 5, 5, 5), (6, 6, 6, 6)", "test"));
+  ASSERT_NE(CountIntents(cluster_.get()), 0);
+
+  SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(cluster_->FlushTablets());
+  ASSERT_OK(WaitFor(
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime, "Intents cleaned"));
+
+  res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 6);
+
+  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  auto result = conn.ExecuteFormat("INSERT INTO $0 VALUES(7, 7, 7, 7), (8, 8, 4, 8)", "test");
+  res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 6);
+  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+}
+
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithExplicitTxn)) {
+  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  const std::string kDatabaseName = "testdb";
+  const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
+
+  PGConn conn = ASSERT_RESULT(Connect());
+  ASSERT_OK(conn.ExecuteFormat("CREATE DATABASE $0 with colocated=true", kDatabaseName));
+
+  conn = ASSERT_RESULT(ConnectToDB(kDatabaseName));
+  ASSERT_OK(conn.Execute("CREATE TABLE test (key INT PRIMARY KEY, value1 INT)"));
+  ASSERT_OK(conn.Execute("CREATE INDEX test_index_value1 on test(value1)"));
+
+  SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(conn.Execute("BEGIN"));
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1)", "test"));
+  ASSERT_OK(conn.Execute("COMMIT"));
+
+  ASSERT_NE(CountIntents(cluster_.get()), 0);
+
+  SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(cluster_->FlushTablets());
+  ASSERT_OK(WaitFor(
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime, "Intents cleaned"));
+
+  auto res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 1);
+}
+
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithForeignKey)) {
+  const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
+  const std::string kDatabaseName = "testdb";
+  const std::string kDataTable = "data";
+  const std::string kReferenceTable = "reference";
+  PGConn conn = ASSERT_RESULT(Connect());
+  ASSERT_OK(conn.ExecuteFormat("CREATE DATABASE $0 with colocated=true", kDatabaseName));
+
+  conn = ASSERT_RESULT(ConnectToDB(kDatabaseName));
+
+  ASSERT_OK(conn.ExecuteFormat(
+      "CREATE TABLE $0 (id int NOT NULL, name VARCHAR, PRIMARY KEY (id))", kReferenceTable));
+  ASSERT_OK(conn.ExecuteFormat(
+      "CREATE TABLE $0 (ref_id INTEGER, data_id INTEGER, name VARCHAR, "
+      "PRIMARY KEY (ref_id, data_id))",
+      kDataTable));
+  ASSERT_OK(conn.ExecuteFormat(
+      "ALTER TABLE $0 ADD CONSTRAINT fk FOREIGN KEY(ref_id) REFERENCES $1(id) "
+      "ON DELETE CASCADE",
+      kDataTable, kReferenceTable));
+
+  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
+
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, 'reference_$1')", kReferenceTable, 1));
+  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, $2, 'data_$2')", kDataTable, 1, 1));
+  ASSERT_NE(CountIntents(cluster_.get()), 0);
+
+  SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(cluster_->FlushTablets());
+  ASSERT_OK(WaitFor(
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime,
+      "Intents cleaned"));
 
   auto res =
-        ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
-  ASSERT_EQ(res, 4);
+      ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM reference")));
+  ASSERT_EQ(res, 1);
 
-  auto result = conn.ExecuteFormat("INSERT INTO $0 VALUES(5, 5, 5, 5), (6, 6, 4, 6)", "test");
-  res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
-  ASSERT_EQ(res, 4);
+  res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM data")));
+  ASSERT_EQ(res, 1);
+
+  SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, 'reference_$1'), ($2, 'reference_$2')", kReferenceTable, 2, 3));
+  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, $2, 'data_$2'), ($1, $3, 'data_$3')", kDataTable, 1, 2, 3));
+  ASSERT_NE(CountIntents(cluster_.get()), 0);
+
+  SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(cluster_->FlushTablets());
+  ASSERT_OK(WaitFor(
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime,
+      "Intents cleaned"));
+
+  res =
+      ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM reference")));
+  ASSERT_EQ(res, 3);
+
+  res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM data")));
+  ASSERT_EQ(res, 3);
 }
 
 void PgMiniTest::CreateDBWithTablegroupAndTables(
