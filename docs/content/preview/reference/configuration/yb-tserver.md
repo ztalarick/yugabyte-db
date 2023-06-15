@@ -311,29 +311,23 @@ Default: `64`
 
 The number of shards per YB-TServer for each YCQL table when a user table is created.
 
-Default: `-1` (the value is calculated at runtime). For servers with up to two CPU cores, the default value is considered as `4`. For three or more CPU cores, the default value is considered as `8`. Local cluster installations, created with `yb-ctl` and `yb-docker-ctl`, use a value of `2` for this flag. Clusters created with `yugabyted` use a default value of `1`.
+Default: `-1` (the value based on the CPU cores is calculated at runtime).
+\
+For servers with up to two CPU cores, the default value is considered as `4`.
+\
+For three or more CPU cores, the default value is considered as `8`.
+\
+If [`enable_automatic_tablet_splitting`](#enable-automatic-tablet-splitting) is `true`, then the default value is considered as `1` and tables will begin with 1 tablet *per node*; for version `2.18` and later, for servers with up to 4 CPU cores, the value *is not defined* and tables will begin with 1 tablet (for servers with up to 2 CPU cores), or 2 tablets (for servers with up to 4 CPU cores) *per cluster*.
 
-{{< note title="Important" >}}
-
-This value must match on all `yb-master` and `yb-tserver` configurations of a YugabyteDB cluster.
-
-{{< /note >}}
-
-{{< note title="Important" >}}
-
-When the value is set to *Default* (`-1`), then the server internally *updates* the flag with intended value during startup prior to version `2.18` and the flag remains *unchanged* starting from version `2.18`.
-
-{{< /note >}}
+Local cluster installations created with `yb-ctl` and `yb-docker-ctl` use a default value of `2` for this flag.
+\
+Clusters created with `yugabyted` always use a default value of `1`.
 
 {{< note title="Note" >}}
 
-On a per-table basis, the [`CREATE TABLE ... WITH TABLETS = <num>`](../../../api/ycql/ddl_create_table/#create-a-table-specifying-the-number-of-tablets) clause can be used to override the `yb_num_shards_per_tserver` value.
-
-{{< /note >}}
-
-{{< note title="Note" >}}
-
-If [`enable_automatic_tablet_splitting`](#enable-automatic-tablet-splitting) is `true`: the default value is considered as `1` and tables will begin with 1 tablet *per node*; from version `2.18` for servers with up to 4 CPU cores, the value *is not defined* and tables will begin with 1 tablet (for servers with up to 2 CPU cores) or 2 tablets (for servers with up to 4 CPU cores) *per cluster*.
+- This value must match on all `yb-master` and `yb-tserver` configurations of a YugabyteDB cluster.
+- If the value is set to *Default* (`-1`), then the system automatically determines an appropriate value based on the number of CPU cores and internally *updates* the flag with the intended value during startup prior to version `2.18` and the flag remains *unchanged* starting from version `2.18`.
+- The [`CREATE TABLE ... WITH TABLETS = <num>`](../../../api/ycql/ddl_create_table/#create-a-table-specifying-the-number-of-tablets) clause can be used on a per-table basis to override the `yb_num_shards_per_tserver` value.
 
 {{< /note >}}
 
@@ -341,29 +335,25 @@ If [`enable_automatic_tablet_splitting`](#enable-automatic-tablet-splitting) is 
 
 The number of shards per YB-TServer for each YSQL table when a user table is created.
 
-Default: `-1` (the value is calculated at runtime). For servers with up to two CPU cores, the default value is considered as `2`. For servers with three or four CPU cores, the default value is considered as `4`. Beyond four cores, the default value is considered as `8`. Local cluster installations, created with `yb-ctl` and `yb-docker-ctl`, use a value of `2` for this flag. Clusters created with `yugabyted` use a default value of `1`.
+Default: `-1` (the value based on the CPU cores is calculated at runtime).
+\
+For servers with up to two CPU cores, the default value is considered as `2`.
+\
+For servers with three or four CPU cores, the default value is considered as `4`.
+\
+Beyond four cores, the default value is considered as `8`.
+\
+If [enable_automatic_tablet_splitting](#enable-automatic-tablet-splitting) is `true`, then the default value is *considered* as `1` and tables will begin with 1 tablet *per node*; for versions `2.18` and later, for servers with up to 4 CPU cores, the value *is not defined* and tables will begin with 1 tablet (for servers with up to 2 CPU cores), or 2 tablets (for servers with up to 4 CPU cores) *per cluster*.
 
-{{< note title="Important" >}}
-
-This value must match on all `yb-master` and `yb-tserver` configurations of a YugabyteDB cluster.
-
-{{< /note >}}
-
-{{< note title="Important" >}}
-
-When the value is set to *Default* (`-1`), then the server internally *updates* the flag with intended value during startup prior to version `2.18` and the flag remains *unchanged* starting from version `2.18`.
-
-{{< /note >}}
-
-{{< note title="Note" >}}
-
-On a per-table basis, the [`CREATE TABLE ...SPLIT INTO`](../../../api/ysql/the-sql-language/statements/ddl_create_table/#split-into) clause can be used to override the `ysql_num_shards_per_tserver` value.
-
-{{< /note >}}
+Local cluster installations created with `yb-ctl` and `yb-docker-ctl` use a default value of `2`.
+\
+Clusters created with `yugabyted` always use a default value of `1`.
 
 {{< note title="Note" >}}
 
-If [`enable_automatic_tablet_splitting`](#enable-automatic-tablet-splitting) is `true`: the default value is considered as `1` and tables will begin with 1 tablet *per node*; from version `2.18` for servers with up to 4 CPU cores, the value *is not defined* and tables will begin with 1 tablet (for servers with up to 2 CPU cores) or 2 tablets (for servers with up to 4 CPU cores) *per cluster*.
+- This value must match on all `yb-master` and `yb-tserver` configurations of a YugabyteDB cluster.
+- If the value is set to *Default* (`-1`), the system automatically determines an appropriate value based on the number of CPU cores and internally *updates* the flag with the intended value during startup prior to version `2.18.0` and the flag remains *unchanged* starting from version `2.18.0`.
+- The [`CREATE TABLE ...SPLIT INTO`](../../../api/ysql/the-sql-language/statements/ddl_create_table/#split-into) clause can be used on a per-table basis to override the `ysql_num_shards_per_tserver` value.
 
 {{< /note >}}
 
@@ -375,7 +365,7 @@ Default: `60`
 
 ##### --enable_automatic_tablet_splitting
 
-Enables YugabyteDB to [automatically split tablets](../../../architecture/docdb-sharding/tablet-splitting/#automatic-tablet-splitting), based on the specified tablet threshold sizes configured below.
+Enables YugabyteDB to [automatically split tablets](../../../architecture/docdb-sharding/tablet-splitting/#automatic-tablet-splitting).
 
 Default: `true`
 
@@ -387,15 +377,73 @@ This value must match on all `yb-master` and `yb-tserver` configurations of a Yu
 
 ##### --post_split_trigger_compaction_pool_max_threads
 
-The maximum number of threads allowed for post-split compactions (that is, compactions that remove irrelevant data from new tablets after splits).
-
-Default: `1`
+Deprecated. Use `full_compaction_pool_max_threads`.
 
 ##### --post_split_trigger_compaction_pool_max_queue_size
 
-The maximum number of post-split compaction tasks that can be queued simultaneously (compactions that remove irrelevant data from new tablets after splits).
+Deprecated. Use `full_compaction_pool_max_queue_size`.
 
-Default: `16`
+##### --full_compaction_pool_max_threads
+
+The maximum number of threads allowed for non-admin full compactions. This includes post-split compactions (compactions that remove irrelevant data from new tablets after splits) and scheduled full compactions.
+
+Default: `1`
+
+##### --full_compaction_pool_max_queue_size
+
+The maximum number of full compaction tasks that can be queued simultaneously. This includes post-split compactions (compactions that remove irrelevant data from new tablets after splits) and scheduled full compactions.
+
+Default: `200`
+
+##### --auto_compact_check_interval_sec
+
+The interval at which the full compaction task will check for tablets eligible for compaction (both for the statistics-based full compaction and scheduled full compaction features). `0` indicates that the statistics-based full compactions feature is disabled.
+
+Default: `60`
+
+##### --auto_compact_stat_window_seconds
+
+Window of time in seconds over which DocDB read statistics are analyzed for the purpose of triggering full compactions to improve read performance. Both `auto_compact_percent_obsolete` and `auto_compact_min_obsolete_keys_found` are evaluated over this period of time.
+
+`auto_compact_stat_window_seconds` must be evaluated as a multiple of `auto_compact_check_interval_sec`, and will be rounded up to meet this constraint. For example, if `auto_compact_stat_window_seconds` is set to `100` and `auto_compact_check_interval_sec` is set to `60`, it will be rounded up to `120` at runtime.
+
+Default: `300`
+
+##### --auto_compact_percent_obsolete
+
+The percentage of obsolete keys (over total keys) read over the `auto_compact_stat_window_seconds` window of time required to trigger an automatic full compaction on a tablet. Only keys that are past their history retention (and thus can be garbage collected) are counted towards this threshold.
+
+For example, if the flag is set to `99` and 100000 keys are read over that window of time, and 99900 of those are obsolete and past their history retention, a full compaction will be triggered (subject to other conditions).
+
+Default: `99`
+
+##### --auto_compact_min_obsolete_keys_found
+
+Minimum number of keys that must be read over the last `auto_compact_stat_window_seconds` to trigger a statistics-based full compaction.
+
+Default: `10000`
+
+##### --auto_compact_min_wait_between_seconds
+
+Minimum wait time between statistics-based and scheduled full compactions. To be used if statistics-based compactions are triggering too frequently.
+
+Default: `0`
+
+##### --scheduled_full_compaction_frequency_hours
+
+The frequency with which full compactions should be scheduled on tablets. `0` indicates that the feature is disabled. Recommended value: `720` hours or greater (that is, 30 days).
+
+Default: `0`
+
+##### --scheduled_full_compaction_jitter_factor_percentage
+
+Percentage of `scheduled_full_compaction_frequency_hours` to be used as jitter when determining full compaction schedule per tablet. Must be a value between `0` and `100`. Jitter is introduced to prevent many tablets from being scheduled for full compactions at the same time.
+
+Jitter is deterministically computed when scheduling a compaction, between 0 and (frequency * jitter factor) hours. Once computed, the jitter is subtracted from the intended compaction frequency to determine the tablet's next compaction time.
+
+Example: If `scheduled_full_compaction_frequency_hours` is `720` hours (that is, 30 days), and `scheduled_full_compaction_jitter_factor_percentage` is `33` percent, each tablet will be scheduled for compaction every `482` hours to `720` hours.
+
+Default: `33`
 
 ##### --automatic_compaction_extra_priority
 
@@ -761,7 +809,7 @@ Default: `2GB`
 
 Number of files to trigger level-0 compaction. Set to `-1` if compaction should not be triggered by number of files at all.
 
-Default: `5`. 
+Default: `5`.
 
 ##### --rocksdb_universal_compaction_size_ratio
 

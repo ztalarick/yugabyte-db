@@ -1624,7 +1624,7 @@ void TSTabletManager::OpenTablet(const RaftGroupMetadataPtr& meta,
         auto peer = peer_weak_ptr.lock();
         if (peer) {
           Status s = peer->SubmitFlushRetryableRequestsTask();
-          LOG_IF(WARNING, !s.ok()) << kLogPrefix
+          LOG_IF(WARNING, !s.ok() && !s.IsNotSupported()) << kLogPrefix
               <<  "Failed to submit retryable requests task: " << s.ToString();
         }
       },
@@ -1661,6 +1661,9 @@ void TSTabletManager::OpenTablet(const RaftGroupMetadataPtr& meta,
       tablet_peer->SetFailed(s);
       return;
     }
+
+    // Enable flush retryable requests after the peer is fully initialized.
+    tablet_peer->EnableFlushRetryableRequests();
 
     TRACE("Starting tablet peer");
     s = tablet_peer->Start(bootstrap_info);
@@ -2013,6 +2016,23 @@ void TSTabletManager::GetTabletPeersUnlocked(TabletPeers* tablet_peers) const {
       tablet_peers->push_back(entry.second);
     }
   }
+}
+
+TSTabletManager::TabletPeers TSTabletManager::GetStatusTabletPeers() {
+  // Currently, there is no better way to get all the status tablets hosted at a TabletServer.
+  // Hence we iterate though all the tablets and consider only the ones that have a non-null
+  // transaction coordinator.
+  TabletPeers status_tablet_peers;
+  SharedLock<RWMutex> shared_lock(mutex_);
+
+  for (const auto& entry : tablet_map_) {
+    // shared_tablet() might return nullptr during initialization of the tablet_peer.
+    const auto& tablet_ptr = entry.second == nullptr ? nullptr : entry.second->shared_tablet();
+    if (tablet_ptr && tablet_ptr->transaction_coordinator()) {
+      status_tablet_peers.push_back(entry.second);
+    }
+  }
+  return status_tablet_peers;
 }
 
 void TSTabletManager::PreserveLocalLeadersOnly(std::vector<const TabletId*>* tablet_ids) const {
