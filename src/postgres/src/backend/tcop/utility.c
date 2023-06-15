@@ -60,7 +60,6 @@
 #include "commands/view.h"
 #include "libpq/libpq-be.h"
 #include "miscadmin.h"
-#include "optimizer/ybcplan.h"
 #include "parser/parse_utilcmd.h"
 #include "postmaster/bgwriter.h"
 #include "rewrite/rewriteDefine.h"
@@ -3607,19 +3606,12 @@ YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
                             char *completionTag)
 {
 	if (IsYugaByteEnabled() && !(IsA(pstmt->utilityStmt, ExecuteStmt) ||
-								 IsA(pstmt->utilityStmt, PrepareStmt) ||
-								 IsA(pstmt->utilityStmt, DeallocateStmt) ||
-								 IsA(pstmt->utilityStmt, ExplainStmt)))
-	{
+			IsA(pstmt->utilityStmt, PrepareStmt) || IsA(pstmt->utilityStmt, DeallocateStmt) ||
+			IsA(pstmt->utilityStmt, ExplainStmt))) {
 		YBBeginOperationsBuffering();
-		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv,
-								dest, completionTag);
-		YBEndOperationsBuffering(IsTransactionBlock() ||
-								 YbIsBatchedExecution());
-	}
-	else
-	{
-		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv,
-								dest, completionTag);
+		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
+		YBEndOperationsBuffering(IsTransactionBlock() || YbIsBatchedExecution());
+  } else {
+		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
 	}
 }

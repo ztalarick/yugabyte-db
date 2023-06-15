@@ -932,13 +932,13 @@ Result<bool> PgSession::CheckIfPitrActive() {
 }
 
 void PgSession::IncrementNumOfFlushes() {
-  ++num_of_flushes_;
+  ++num_flushes_;
 }
 void PgSession::ResetNumOfFlushes() {
-  num_of_flushes_ = 0;
+  num_flushes_ = 0;
 }
 uint32_t PgSession::NumOfFlushes() {
-  return num_of_flushes_;
+  return num_flushes_;
 }
 
 void PgSession::ConvertToSingleShardTxn() {

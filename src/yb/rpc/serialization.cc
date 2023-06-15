@@ -43,8 +43,8 @@
 
 #include "yb/rpc/rpc_header.pb.h"
 
-#include "yb/util/flags.h"
 #include "yb/util/faststring.h"
+#include "yb/util/flags.h"
 #include "yb/util/ref_cnt_buffer.h"
 #include "yb/util/result.h"
 #include "yb/util/slice.h"

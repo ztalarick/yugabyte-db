@@ -72,8 +72,6 @@ DEFINE_RUNTIME_bool(ysql_enable_table_mutation_counter, false,
                     "ysql_auto_analyze_scale_factor).");
 TAG_FLAG(ysql_enable_table_mutation_counter, experimental);
 
-
-
 DEFINE_RUNTIME_string(ysql_sequence_cache_method, "connection",
     "Where sequence values are cached for both existing and new sequences. Valid values are "
     "\"connection\" and \"server\"");
