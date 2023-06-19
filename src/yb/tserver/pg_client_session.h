@@ -127,7 +127,7 @@ class PgClientSession : public std::enable_shared_from_this<PgClientSession> {
   Result<client::YBTransactionPtr> RestartTransaction(
       client::YBSession* session, client::YBTransaction* transaction);
 
-  Result<std::pair<SessionData, PgClientSession::UsedReadTimePtr>> SetupSession(
+  Result<std::pair<SessionData, PgClientSession::UsedReadTimePtr>> SetupSessionAndPrepareOps(
       PgPerformRequestPB* req, CoarseTimePoint deadline, HybridTime in_txn_limit,
       PgClientSessionOperations* ops, rpc::Sidecars* sidecars, PgTableCache* table_cache);
 

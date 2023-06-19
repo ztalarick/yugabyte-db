@@ -155,6 +155,10 @@ static bool RpcThrottleThresholdBytesValidator(const char* flagname, int64_t val
     } else if (implicit_cast<size_t>(value) >= FLAGS_consensus_max_batch_size_bytes) {
       LOG(ERROR) << "Expect " << flagname << " to be less than consensus_max_batch_size_bytes "
                  << "value (" << FLAGS_consensus_max_batch_size_bytes << ")";
+
+      // Disable convertion of a multi-shard txn to single sharded to make sure
+      // that the optimization is not the root cause for reaching the max batch size limit and
+      // subsequent retires (if any) succeeds
       FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
       return false;
     }
