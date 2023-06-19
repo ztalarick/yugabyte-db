@@ -314,6 +314,30 @@ public class GlobalConfKeys extends RuntimeConfigKeysModule {
           "YBC client timeout in milliseconds for operations",
           ConfDataType.IntegerType,
           ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<String> javaxNetSslTrustStore =
+      new ConfKeyInfo<>(
+          "yb.wellKnownCA.trustStore.path",
+          ScopeType.GLOBAL,
+          "Javax Net SSL TrustStore",
+          "Java property javax.net.ssl.trustStore",
+          ConfDataType.StringType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<String> javaxNetSslTrustStoreType =
+      new ConfKeyInfo<>(
+          "yb.wellKnownCA.trustStore.type",
+          ScopeType.GLOBAL,
+          "Javax Net SSL TrustStore Type",
+          "Java property javax.net.ssl.trustStoreType",
+          ConfDataType.StringType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<String> javaxNetSslTrustStorePassword =
+      new ConfKeyInfo<>(
+          "yb.wellKnownCA.trustStore.password",
+          ScopeType.GLOBAL,
+          "Javax Net SSL TrustStore Password",
+          "Java property javax.net.ssl.trustStorePassword",
+          ConfDataType.StringType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
   public static final ConfKeyInfo<Boolean> enableCertReload =
       new ConfKeyInfo<>(
           "yb.features.cert_reload.enabled",
@@ -759,4 +783,29 @@ public class GlobalConfKeys extends RuntimeConfigKeysModule {
           "Listening port for node agent servers",
           ConfDataType.IntegerType,
           ImmutableList.of(ConfKeyTags.INTERNAL));
+  public static final ConfKeyInfo<Boolean> useLegacyPayloadForRegionAndAZs =
+      new ConfKeyInfo<>(
+          "yb.provider.use_legacy_payload_region_zones",
+          ScopeType.GLOBAL,
+          "If required to use v1 api payload for region & az's",
+          "When enabled YBA will expect v1 API payload for region & az's",
+          ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.INTERNAL));
+  public static final ConfKeyInfo<Boolean> KubernetesOperatorEnabled =
+      new ConfKeyInfo<>(
+          "yb.kubernetes.operator.enabled",
+          ScopeType.GLOBAL,
+          "Enable Kubernentes Operator",
+          "Enable Kubernentes Operator, requires restart to take effect",
+          ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.BETA));
+  public static final ConfKeyInfo<String> KubernetesOperatorNamespace =
+      new ConfKeyInfo<>(
+          "yb.kubernetes.operator.namespace",
+          ScopeType.GLOBAL,
+          "Change the namespace kubernetes operator listens on",
+          "Change the namespace kubernetes operator listens on. By default, all namespaces "
+              + "are watched. Requires restart to take effect",
+          ConfDataType.StringType,
+          ImmutableList.of(ConfKeyTags.BETA));
 }

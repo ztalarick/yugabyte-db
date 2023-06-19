@@ -197,8 +197,8 @@ class QLTabletTest : public QLDmlTestBase<MiniCluster> {
       const YBTableName& table_name, TableHandle* table, int num_tablets = 0,
       bool transactional = false) {
     YBSchemaBuilder builder;
-    builder.AddColumn(kKeyColumn)->Type(INT32)->HashPrimaryKey()->NotNull();
-    builder.AddColumn(kValueColumn)->Type(INT32);
+    builder.AddColumn(kKeyColumn)->Type(DataType::INT32)->HashPrimaryKey()->NotNull();
+    builder.AddColumn(kValueColumn)->Type(DataType::INT32);
 
     if (num_tablets == 0) {
       num_tablets = CalcNumTablets(3);
@@ -658,8 +658,8 @@ TEST_F(QLTabletTest, TransactionsTableTablets) {
   FLAGS_transaction_table_num_tablets_per_tserver = 4;
 
   YBSchemaBuilder builder;
-  builder.AddColumn(kKeyColumn)->Type(INT32)->HashPrimaryKey()->NotNull();
-  builder.AddColumn(kValueColumn)->Type(INT32);
+  builder.AddColumn(kKeyColumn)->Type(DataType::INT32)->HashPrimaryKey()->NotNull();
+  builder.AddColumn(kValueColumn)->Type(DataType::INT32);
 
   // Create transactional table.
   TableProperties table_properties;
@@ -1015,11 +1015,11 @@ TEST_F(QLTabletTest, LeaderChange) {
     for (const auto& peer : peers) {
       if (peer->LeaderStatus() != consensus::LeaderStatus::NOT_LEADER) {
         LOG(INFO) << "Request step down: " << server->permanent_uuid() << " => " << leader_id;
-        consensus::LeaderStepDownRequestPB req;
-        req.set_tablet_id(peer->tablet_id());
-        req.set_new_leader_uuid(leader_id);
+        consensus::LeaderStepDownRequestPB stepdown_request;
+        stepdown_request.set_tablet_id(peer->tablet_id());
+        stepdown_request.set_new_leader_uuid(leader_id);
         consensus::LeaderStepDownResponsePB resp;
-        ASSERT_OK(peer->consensus()->StepDown(&req, &resp));
+        ASSERT_OK(peer->consensus()->StepDown(&stepdown_request, &resp));
         found = true;
         break;
       }
@@ -1037,17 +1037,16 @@ TEST_F(QLTabletTest, LeaderChange) {
 
 void QLTabletTest::TestDeletePartialKey(int num_range_keys_in_delete) {
   YBSchemaBuilder builder;
-  builder.AddColumn(kKeyColumn)->Type(INT32)->HashPrimaryKey()->NotNull();
-  builder.AddColumn(kRangeKey1Column)->Type(INT32)->PrimaryKey()->NotNull();
-  builder.AddColumn(kRangeKey2Column)->Type(INT32)->PrimaryKey()->NotNull();
-  builder.AddColumn(kValueColumn)->Type(INT32);
+  builder.AddColumn(kKeyColumn)->Type(DataType::INT32)->HashPrimaryKey()->NotNull();
+  builder.AddColumn(kRangeKey1Column)->Type(DataType::INT32)->PrimaryKey()->NotNull();
+  builder.AddColumn(kRangeKey2Column)->Type(DataType::INT32)->PrimaryKey()->NotNull();
+  builder.AddColumn(kValueColumn)->Type(DataType::INT32);
 
   TableHandle table;
   ASSERT_OK(table.Create(kTable1Name, 1 /* num_tablets */, client_.get(), &builder));
 
   const auto kValue1 = 2;
   const auto kValue2 = 3;
-  const auto kTotalKeys = 200;
 
   auto session1 = CreateSession();
   auto session2 = CreateSession();
@@ -1190,8 +1189,8 @@ TEST_F(QLTabletTest, OperationMemTracking) {
   const auto kWaitInterval = 50ms;
 
   YBSchemaBuilder builder;
-  builder.AddColumn(kKeyColumn)->Type(INT32)->HashPrimaryKey()->NotNull();
-  builder.AddColumn(kValueColumn)->Type(STRING);
+  builder.AddColumn(kKeyColumn)->Type(DataType::INT32)->HashPrimaryKey()->NotNull();
+  builder.AddColumn(kValueColumn)->Type(DataType::STRING);
 
   TableHandle table;
   ASSERT_OK(table.Create(kTable1Name, CalcNumTablets(3), client_.get(), &builder));
@@ -1794,7 +1793,7 @@ TEST_F_EX(QLTabletTest, CompactDeletedColumn, QLTabletRf1Test) {
   const std::string kStringColumn = "str_column";
 
   YBSchemaBuilder builder;
-  builder.AddColumn(kKeyColumn)->Type(INT32)->HashPrimaryKey()->NotNull();
+  builder.AddColumn(kKeyColumn)->Type(DataType::INT32)->HashPrimaryKey()->NotNull();
   builder.AddColumn(kValueColumn)->Type(DataType::INT32);
   builder.AddColumn(kStringColumn)->Type(DataType::STRING);
   TableHandle table;
@@ -1838,7 +1837,7 @@ TEST_F_EX(QLTabletTest, ShortPKCompactionTime, QLTabletRf1Test) {
   constexpr int kTabletFlushStep = kKeys / kFiles;
 
   YBSchemaBuilder builder;
-  builder.AddColumn(kKeyColumn)->Type(INT32)->HashPrimaryKey()->NotNull();
+  builder.AddColumn(kKeyColumn)->Type(DataType::INT32)->HashPrimaryKey()->NotNull();
   builder.AddColumn(kValueColumn)->Type(DataType::INT32);
   TableHandle table;
   ASSERT_OK(table.Create(kTable1Name, 1, client_.get(), &builder));

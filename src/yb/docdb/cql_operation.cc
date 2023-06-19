@@ -557,7 +557,7 @@ Status QLWriteOperation::PopulateConditionalDmlRow(
   // (value_map is not empty).
   const bool return_present_values = !should_apply && !table_row.IsEmpty();
   std::vector<ColumnSchema> columns;
-  columns.emplace_back(ColumnSchema("[applied]", BOOL));
+  columns.emplace_back(ColumnSchema("[applied]", DataType::BOOL));
   if (return_present_values) {
     RETURN_NOT_OK(EnumProjectedColumns(
         static_projection, non_static_projection,
@@ -586,8 +586,8 @@ Status QLWriteOperation::PopulateStatusRow(const DocOperationApplyData& data,
                                            const QLTableRow& table_row,
                                            std::unique_ptr<qlexpr::QLRowBlock>* rowblock) {
   std::vector<ColumnSchema> columns;
-  columns.emplace_back(ColumnSchema("[applied]", BOOL));
-  columns.emplace_back(ColumnSchema("[message]", STRING));
+  columns.emplace_back(ColumnSchema("[applied]", DataType::BOOL));
+  columns.emplace_back(ColumnSchema("[message]", DataType::STRING));
   columns.insert(
       columns.end(), doc_read_context_->schema().columns().begin(),
       doc_read_context_->schema().columns().end());
@@ -617,23 +617,19 @@ Result<bool> QLWriteOperation::HasDuplicateUniqueIndexValue(const DocOperationAp
       data.doc_write_batch->doc_db(), doc_read_context_->schema_packing_storage);
   // We need to check backwards only for backfilled entries.
   bool ret =
-      VERIFY_RESULT(HasDuplicateUniqueIndexValue(data, Direction::kForward)) ||
+      VERIFY_RESULT(HasDuplicateUniqueIndexValue(data, data.read_time())) ||
       (request_.is_backfill() &&
-       VERIFY_RESULT(HasDuplicateUniqueIndexValue(data, Direction::kBackward)));
+       VERIFY_RESULT(HasDuplicateUniqueIndexValueBackward(data)));
   if (!ret) {
     VLOG(3) << "No collisions found";
   }
   return ret;
 }
 
-Result<bool> QLWriteOperation::HasDuplicateUniqueIndexValue(
-    const DocOperationApplyData& data, Direction direction) {
-  VLOG(2) << "Looking for collision while going " << yb::ToString(direction)
-          << ". Trying to insert " << *pk_doc_key_;
+Result<bool> QLWriteOperation::HasDuplicateUniqueIndexValueBackward(
+    const DocOperationApplyData& data) {
+  VLOG(2) << "Looking for collision while going backward. Trying to insert " << *pk_doc_key_;
   auto requested_read_time = data.read_time();
-  if (direction == Direction::kForward) {
-    return HasDuplicateUniqueIndexValue(data, requested_read_time);
-  }
 
   auto iter = CreateIntentAwareIterator(
       data.doc_write_batch->doc_db(),
@@ -710,7 +706,7 @@ Result<HybridTime> QLWriteOperation::FindOldestOverwrittenTimestamp(
   HybridTime result;
   VLOG(3) << "Doing iter->Seek " << *pk_doc_key_;
   iter->Seek(*pk_doc_key_);
-  if (!iter->IsOutOfRecords()) {
+  if (VERIFY_RESULT(iter->Fetch())) {
     const auto bytes = sub_doc_key.EncodeWithoutHt();
     const Slice& sub_key_slice = bytes.AsSlice();
     result = VERIFY_RESULT(
@@ -858,7 +854,7 @@ Status QLWriteOperation::ApplyForSubscriptArgs(const QLColumnValuePB& column_val
   DCHECK(column_value.subscript_args(0).has_value()) << "An index must be a constant";
   auto sub_path = MakeSubPath(column, column_id);
   switch (column.type()->main()) {
-    case MAP: {
+    case DataType::MAP: {
       sub_path.AddSubKey(KeyEntryValue::FromQLValuePB(
           column_value.subscript_args(0).value(), SortingType::kNotSpecified));
       RETURN_NOT_OK(context.data->doc_write_batch->InsertSubDocument(
@@ -866,7 +862,7 @@ Status QLWriteOperation::ApplyForSubscriptArgs(const QLColumnValuePB& column_val
           request_.query_id(), context.control_fields.ttl, context.control_fields.timestamp));
       break;
     }
-    case LIST: {
+    case DataType::LIST: {
       MonoDelta default_ttl = doc_read_context_->schema().table_properties().HasDefaultTimeToLive()
           ? MonoDelta::FromMilliseconds(
                 doc_read_context_->schema().table_properties().DefaultTimeToLive())
@@ -1268,14 +1264,14 @@ Status QLWriteOperation::DeleteSubscriptedColumnElement(
   LOG_IF(DFATAL, !column_value.subscript_args(0).has_value()) << "An index must be a constant";
   auto sub_path = MakeSubPath(column_schema, column_id);
   switch (column_schema.type()->main()) {
-    case MAP: {
+    case DataType::MAP: {
       sub_path.AddSubKey(KeyEntryValue::FromQLValuePB(
           column_value.subscript_args(0).value(), SortingType::kNotSpecified));
       RETURN_NOT_OK(data.doc_write_batch->DeleteSubDoc(
           sub_path, data.read_operation_data, request_.query_id(), user_timestamp()));
       break;
     }
-    case LIST: {
+    case DataType::LIST: {
       const MonoDelta default_ttl =
           doc_read_context_->schema().table_properties().HasDefaultTimeToLive()
               ? MonoDelta::FromMilliseconds(
