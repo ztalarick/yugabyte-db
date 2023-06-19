@@ -953,8 +953,8 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
 
   const auto in_txn_limit = GetInTxnLimit(options, clock_.get());
   VLOG_WITH_PREFIX(5) << "using in_txn_limit_ht: " << in_txn_limit;
-  auto session_info = VERIFY_RESULT(
-      SetupSessionAndPrepareOps(&data->req, deadline, in_txn_limit, &data->ops, &data->sidecars, &table_cache_));
+  auto session_info = VERIFY_RESULT(SetupSessionAndPrepareOps(
+      &data->req, deadline, in_txn_limit, &data->ops, &data->sidecars, &table_cache_));
   auto* session = session_info.first.session.get();
   auto& transaction = session_info.first.transaction;
 
@@ -1088,23 +1088,24 @@ PgClientSession::SetupSessionAndPrepareOps(
     kind = PgClientSessionKind::kCatalog;
     EnsureSession(kind);
     session = Session(kind).get();
-    *ops = VERIFY_RESULT(
-        PrepareOperations(req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
+    *ops = VERIFY_RESULT(PrepareOperations(
+        req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
   } else if (options.ddl_mode()) {
     kind = PgClientSessionKind::kDdl;
     EnsureSession(kind);
     session = Session(kind).get();
     RETURN_NOT_OK(GetDdlTransactionMetadata(true /* use_transaction */, deadline));
-    *ops = VERIFY_RESULT(
-        PrepareOperations(req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
+    *ops = VERIFY_RESULT(PrepareOperations(
+        req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
   } else {
     only_writes_on_colocated_tables_involved = true;
     kind = PgClientSessionKind::kPlain;
     EnsureSession(kind);
     session = Session(kind).get();
-    *ops = VERIFY_RESULT(
-        PrepareOperations(req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
-    RETURN_NOT_OK(BeginTransactionIfNecessary(&options, deadline, only_writes_on_colocated_tables_involved));
+    *ops = VERIFY_RESULT(PrepareOperations(
+        req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
+    RETURN_NOT_OK(
+        BeginTransactionIfNecessary(&options, deadline, only_writes_on_colocated_tables_involved));
   }
 
   client::YBTransaction* transaction = Transaction(kind).get();
