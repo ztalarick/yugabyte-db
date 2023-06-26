@@ -31,10 +31,13 @@
 #include "yb/tserver/tserver_service.proxy.h"
 
 #include "yb/util/async_util.h"
+#include "yb/util/backoff_waiter.h"
 #include "yb/util/monotime.h"
 #include "yb/yql/pgwrapper/pg_locks_test_base.h"
 
 DECLARE_int32(heartbeat_interval_ms);
+DECLARE_bool(enable_wait_queues);
+DECLARE_bool(enable_deadlock_detection);
 
 using namespace std::literals;
 using std::string;
@@ -55,6 +58,10 @@ using client::internal::RemoteTabletPtr;
 using tserver::TabletServerServiceProxy;
 
 void PgLocksTestBase::SetUp() {
+  // Enable wait-queues and deadlock detection.
+  FLAGS_enable_wait_queues = true;
+  FLAGS_enable_deadlock_detection = true;
+
   PgMiniTestBase::SetUp();
   InitTSProxies();
 }
@@ -139,20 +146,17 @@ Result<TransactionId> PgLocksTestBase::GetSingularTransactionOnTablet(const Tabl
     return StatusFromPB(resp.error().status());
   }
 
-  std::string txn_id_str = "";
-  for (const auto& tablet_lock_info : resp.tablet_lock_infos()) {
-    for (const auto& lock : tablet_lock_info.locks()) {
-      if (txn_id_str.empty()) {
-        txn_id_str = lock.transaction_id();
-        continue;
-      }
+  RETURN_ON_FALSE(resp.tablet_lock_infos_size() == 1,
+                  IllegalState,
+                  "Expected to see single tablet, bot found mpore than one.");
+  const auto& tablet_lock_info = resp.tablet_lock_infos(0);
 
-      RETURN_ON_FALSE(txn_id_str == lock.transaction_id(),
-                      IllegalState,
-                      "Expected to see single transaction, but found more than one.");
-    }
-  }
+  RETURN_ON_FALSE(tablet_lock_info.transaction_locks().size() == 1,
+                  IllegalState,
+                  "Expected to see single transaction, but found more than one.");
+  const auto& it = tablet_lock_info.transaction_locks().begin();
 
+  std::string txn_id_str = it->first;
   RETURN_ON_FALSE(!txn_id_str.empty(), IllegalState, "Expected to see one txn, but found none.");
   return TransactionId::FromString(txn_id_str);
 }
@@ -192,6 +196,18 @@ std::vector<TabletServerServiceProxy*> PgLocksTestBase::get_ts_proxies(const std
   }
 
   return ts_proxies;
+}
+
+Result<std::future<Status>> PgLocksTestBase::ExpectBlockedAsync(
+    pgwrapper::PGConn* conn, const std::string& query) {
+  auto status = std::async(std::launch::async, [&conn, query]() {
+    return conn->Execute(query);
+  });
+
+  RETURN_NOT_OK(WaitFor([&conn] () {
+    return conn->IsBusy();
+  }, 1s * kTimeMultiplier, "Wait for blocking request to be submitted to the query layer"));
+  return status;
 }
 
 } // namespace pgwrapper

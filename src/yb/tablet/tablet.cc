@@ -193,6 +193,9 @@ DEFINE_RUNTIME_bool(disable_alter_vs_write_mutual_exclusion, false,
     "operation take an exclusive lock making all write operations wait for it.");
 TAG_FLAG(disable_alter_vs_write_mutual_exclusion, advanced);
 
+DEFINE_RUNTIME_bool(ysql_analyze_dump_metrics, false,
+    "Whether to return changed metrics for YSQL queries in RPC response.");
+
 DEFINE_UNKNOWN_bool(cleanup_intents_sst_files, true,
     "Cleanup intents files that are no more relevant to any running transaction.");
 
@@ -584,7 +587,7 @@ Tablet::~Tablet() {
 
 Status Tablet::Open() {
   TRACE_EVENT0("tablet", "Tablet::Open");
-  std::lock_guard<rw_spinlock> lock(component_lock_);
+  std::lock_guard lock(component_lock_);
   CHECK_EQ(state_, kInitialized) << "already open";
   CHECK(schema()->has_column_ids());
 
@@ -773,7 +776,7 @@ Status Tablet::OpenKeyValueTablet() {
 
   rocksdb_options.mem_table_flush_filter_factory = MakeMemTableFlushFilterFactory([this] {
     {
-      std::lock_guard<std::mutex> lock(flush_filter_mutex_);
+      std::lock_guard lock(flush_filter_mutex_);
       if (mem_table_flush_filter_factory_) {
         return mem_table_flush_filter_factory_();
       }
@@ -878,7 +881,7 @@ Status Tablet::OpenKeyValueTablet() {
 }
 
 void Tablet::RegularDbFilesChanged() {
-  std::lock_guard<std::mutex> lock(num_sst_files_changed_listener_mutex_);
+  std::lock_guard lock(num_sst_files_changed_listener_mutex_);
   if (num_sst_files_changed_listener_) {
     num_sst_files_changed_listener_();
   }
@@ -1077,7 +1080,7 @@ void Tablet::CompleteShutdown(
   }
 
   {
-    std::lock_guard<simple_spinlock> lock(operation_filters_mutex_);
+    std::lock_guard lock(operation_filters_mutex_);
 
     if (completed_split_log_anchor_) {
       WARN_NOT_OK(log_anchor_registry_->Unregister(completed_split_log_anchor_.get()),
@@ -1093,7 +1096,7 @@ void Tablet::CompleteShutdown(
     }
   }
 
-  std::lock_guard<rw_spinlock> lock(component_lock_);
+  std::lock_guard lock(component_lock_);
 
   // Shutdown the RocksDB instance for this tablet, if present.
   // Destruct intents DB and regular DB in-memory objects in reverse order to their creation.
@@ -1101,7 +1104,7 @@ void Tablet::CompleteShutdown(
   CompleteShutdownRocksDBs(op_pauses);
 
   {
-    std::lock_guard<std::mutex> lock(full_compaction_token_mutex_);
+    std::lock_guard lock(full_compaction_token_mutex_);
     if (full_compaction_task_pool_token_) {
       full_compaction_task_pool_token_->Shutdown();
     }
@@ -1675,6 +1678,9 @@ Status Tablet::HandlePgsqlReadRequest(
       pgsql_read_request, table_info, *txn_op_ctx, statistics, scoped_read_operation, result);
 
   if (statistics) {
+    if (GetAtomicFlag(&FLAGS_ysql_analyze_dump_metrics)) {
+      statistics->CopyToPgsqlResponse(&result->response);
+    }
     statistics->MergeAndClear(regulardb_statistics_.get(), intentsdb_statistics_.get());
   }
 
@@ -3506,7 +3512,7 @@ Result<size_t> Tablet::TEST_CountRegularDBRecords() {
 template <class F>
 auto Tablet::GetRegularDbStat(const F& func, const decltype(func())& default_value) const {
   auto scoped_operation = CreateScopedRWOperationBlockingRocksDbShutdownStart();
-  std::lock_guard<rw_spinlock> lock(component_lock_);
+  std::lock_guard lock(component_lock_);
 
   // In order to get actual stats we would have to wait.
   // This would give us correct stats but would make this request slower.
@@ -3549,7 +3555,7 @@ std::pair<int, int> Tablet::GetNumMemtables() const {
     if (!scoped_operation.ok()) {
       return std::make_pair(0, 0);
     }
-    std::lock_guard<rw_spinlock> lock(component_lock_);
+    std::lock_guard lock(component_lock_);
     if (intents_db_) {
       // NOTE: 1 is added on behalf of cfd->mem().
       intents_num_memtables = 1 + intents_db_->GetCfdImmNumNotFlushed();
@@ -3764,7 +3770,7 @@ Status Tablet::ReadIntents(std::vector<std::string>* intents) {
 }
 
 void Tablet::ListenNumSSTFilesChanged(std::function<void()> listener) {
-  std::lock_guard<std::mutex> lock(num_sst_files_changed_listener_mutex_);
+  std::lock_guard lock(num_sst_files_changed_listener_mutex_);
   bool has_new_listener = listener != nullptr;
   bool has_old_listener = num_sst_files_changed_listener_ != nullptr;
   LOG_IF_WITH_PREFIX(DFATAL, has_new_listener == has_old_listener)
@@ -3871,7 +3877,7 @@ Result<std::string> Tablet::GetEncodedMiddleSplitKey(std::string *partition_spli
 }
 
 bool Tablet::HasActiveFullCompaction() {
-  std::lock_guard<std::mutex> lock(full_compaction_token_mutex_);
+  std::lock_guard lock(full_compaction_token_mutex_);
   return HasActiveFullCompactionUnlocked();
 }
 
@@ -3897,7 +3903,7 @@ Status Tablet::TriggerFullCompactionIfNeeded(rocksdb::CompactionReason compactio
     return STATUS(ServiceUnavailable, "Full compaction thread pool unavailable.");
   }
 
-  std::lock_guard<std::mutex> lock(full_compaction_token_mutex_);
+  std::lock_guard lock(full_compaction_token_mutex_);
   if (HasActiveFullCompactionUnlocked()) {
     return STATUS(
         ServiceUnavailable, "Full compaction already running on this tablet.");
@@ -3918,7 +3924,7 @@ Status Tablet::TriggerAdminFullCompactionIfNeededHelper(
     return STATUS(ServiceUnavailable, "Admin triggered compaction thread pool unavailable.");
   }
 
-  std::lock_guard<std::mutex> lock(full_compaction_token_mutex_);
+  std::lock_guard lock(full_compaction_token_mutex_);
   if (!admin_full_compaction_task_pool_token_) {
     admin_full_compaction_task_pool_token_ =
         admin_triggered_compaction_pool_->NewToken(ThreadPool::ExecutionMode::SERIAL);
@@ -4009,7 +4015,7 @@ Status Tablet::OpenDbAndCheckIntegrity(const std::string& db_dir) {
 
 void Tablet::SplitDone() {
   {
-    std::lock_guard<simple_spinlock> lock(operation_filters_mutex_);
+    std::lock_guard lock(operation_filters_mutex_);
     if (completed_split_operation_filter_) {
       LOG_WITH_PREFIX(DFATAL) << "Already have split operation filter";
       return;
@@ -4034,7 +4040,7 @@ void Tablet::SplitDone() {
 }
 
 void Tablet::SyncRestoringOperationFilter(ResetSplit reset_split) {
-  std::lock_guard<simple_spinlock> lock(operation_filters_mutex_);
+  std::lock_guard lock(operation_filters_mutex_);
 
   if (reset_split) {
     if (completed_split_log_anchor_) {
@@ -4118,7 +4124,7 @@ Status Tablet::CheckRestorations(const RestorationCompleteTimeMap& restoration_c
 }
 
 Status Tablet::CheckOperationAllowed(const OpId& op_id, consensus::OperationType op_type) {
-  std::lock_guard<simple_spinlock> lock(operation_filters_mutex_);
+  std::lock_guard lock(operation_filters_mutex_);
   for (const auto& filter : operation_filters_) {
     RETURN_NOT_OK(filter.CheckOperationAllowed(op_id, op_type));
   }
@@ -4127,7 +4133,7 @@ Status Tablet::CheckOperationAllowed(const OpId& op_id, consensus::OperationType
 }
 
 void Tablet::RegisterOperationFilter(OperationFilter* filter) {
-  std::lock_guard<simple_spinlock> lock(operation_filters_mutex_);
+  std::lock_guard lock(operation_filters_mutex_);
   operation_filters_.push_back(*filter);
 }
 
@@ -4142,7 +4148,7 @@ std::shared_ptr<dockv::SchemaPackingStorage> Tablet::PrimarySchemaPackingStorage
 }
 
 void Tablet::UnregisterOperationFilter(OperationFilter* filter) {
-  std::lock_guard<simple_spinlock> lock(operation_filters_mutex_);
+  std::lock_guard lock(operation_filters_mutex_);
   UnregisterOperationFilterUnlocked(filter);
 }
 
@@ -4220,54 +4226,16 @@ Status Tablet::ApplyAutoFlagsConfig(const AutoFlagsConfigPB& config) {
   return auto_flags_manager_->LoadFromConfig(config, ApplyNonRuntimeAutoFlags::kFalse);
 }
 
-Status AddLockInfo(Slice key, Slice val, const SchemaPtr& schema, LockInfoPB* lock_info) {
+Status PopulateLockInfoFromIntent(
+    Slice key, Slice val, const SchemaPtr& schema,
+    ::google::protobuf::Map<std::string, TabletLockInfoPB_TransactionLockInfoPB>* txn_locks) {
   auto parsed_intent = VERIFY_RESULT(docdb::ParseIntentKey(key, val));
   auto decoded_value = VERIFY_RESULT(dockv::DecodeIntentValue(
-      val, nullptr /* verify_transaction_id_slice */,
-      HasStrong(parsed_intent.types)));
+      val, nullptr /* verify_transaction_id_slice */, HasStrong(parsed_intent.types)));
 
-  dockv::SubDocKey subdoc_key;
-  RETURN_NOT_OK(subdoc_key.FullyDecodeFrom(
-      parsed_intent.doc_path, dockv::HybridTimeRequired::kFalse));
-  DCHECK(!subdoc_key.has_hybrid_time());
-
-  auto doc_ht = VERIFY_RESULT(DocHybridTime::DecodeFromEnd(parsed_intent.doc_ht));
-  lock_info->set_wait_end_ht(doc_ht.hybrid_time().ToUint64());
-  for (const auto& hash_key : subdoc_key.doc_key().hashed_group()) {
-    lock_info->add_hash_cols(hash_key.ToString());
-  }
-  for (const auto& range_key : subdoc_key.doc_key().range_group()) {
-    lock_info->add_range_cols(range_key.ToString());
-  }
-  if (subdoc_key.num_subkeys() > 0 && subdoc_key.last_subkey().IsColumnId()) {
-    lock_info->set_column_id(subdoc_key.last_subkey().GetColumnId());
-  }
-
-  lock_info->set_transaction_id(decoded_value.transaction_id.ToString());
-  lock_info->set_subtransaction_id(decoded_value.subtransaction_id);
-  lock_info->set_is_explicit(
-      decoded_value.body.starts_with(dockv::ValueEntryTypeAsChar::kRowLock));
-  lock_info->set_is_full_pk(
-      schema->num_hash_key_columns() == subdoc_key.doc_key().hashed_group().size() &&
-      schema->num_range_key_columns() == subdoc_key.doc_key().range_group().size());
-
-  for (const auto& intent_type : parsed_intent.types) {
-    switch (intent_type) {
-      case dockv::IntentType::kWeakRead:
-        lock_info->add_modes(LockMode::WEAK_READ);
-        break;
-      case dockv::IntentType::kWeakWrite:
-        lock_info->add_modes(LockMode::WEAK_WRITE);
-        break;
-      case dockv::IntentType::kStrongRead:
-        lock_info->add_modes(LockMode::STRONG_READ);
-        break;
-      case dockv::IntentType::kStrongWrite:
-        lock_info->add_modes(LockMode::STRONG_WRITE);
-        break;
-    }
-  }
-  return Status::OK();
+  auto& lock_entry = (*txn_locks)[decoded_value.transaction_id.ToString()];
+  return docdb::PopulateLockInfoFromParsedIntent(
+      parsed_intent, decoded_value, schema, lock_entry.add_locks());
 }
 
 Status Tablet::GetLockStatus(const std::set<TransactionId>& transaction_ids,
@@ -4304,64 +4272,66 @@ Status Tablet::GetLockStatus(const std::set<TransactionId>& transaction_ids,
         continue;
       }
 
-      RETURN_NOT_OK(
-          AddLockInfo(key, intent_iter->value(), schema(), tablet_lock_info->add_locks()));
+      RETURN_NOT_OK(PopulateLockInfoFromIntent(
+          key, intent_iter->value(), schema(), tablet_lock_info->mutable_transaction_locks()));
 
       intent_iter->Next();
     }
 
-    return intent_iter->status();
-  }
-
-  DCHECK(!transaction_ids.empty());
-  // While fetching intents of transactions below, we assume that the 'transaction_ids' set is
-  // sorted following the encoded string notation order of TransactionId. This assumption helps us
-  // avoid repeated SeekToFirst calls on the rocksdb iterator and we fetch relevants intents in one
-  // forward pass.
-  DCHECK(std::is_sorted(transaction_ids.begin(), transaction_ids.end(), IsSortedAscendingEncoded));
-
-  // If transaction_ids is set, use txn reverse mapping of intents_db to find all intent keys
-  // efficiently.
-  std::vector<dockv::KeyBytes> txn_intent_keys;
-  static constexpr size_t kReverseKeySize = 1 + sizeof(TransactionId);
-  char reverse_key_data[kReverseKeySize];
-  reverse_key_data[0] = dockv::KeyEntryTypeAsChar::kTransactionId;
-  for (auto& txn_id : transaction_ids) {
-    memcpy(&reverse_key_data[1], txn_id.data(), sizeof(TransactionId));
-    auto reverse_key = Slice(reverse_key_data, kReverseKeySize);
-    intent_iter->Seek(reverse_key);
-
-    // Skip the transaction metadata entry.
-    if (intent_iter->Valid() && intent_iter->key().compare(reverse_key) == 0) {
-      intent_iter->Next();
-    }
-
-    while (intent_iter->Valid() && intent_iter->key().compare_prefix(reverse_key) == 0) {
-      DCHECK_EQ(intent_iter->key()[0], dockv::KeyEntryTypeAsChar::kTransactionId);
-      txn_intent_keys.emplace_back(intent_iter->value());
-      intent_iter->Next();
-    }
     RETURN_NOT_OK(intent_iter->status());
-  }
+  } else {
+    DCHECK(!transaction_ids.empty());
+    // While fetching intents of transactions below, we assume that the 'transaction_ids' set is
+    // sorted following the encoded string notation order of TransactionId. This assumption helps us
+    // avoid repeated SeekToFirst calls on the rocksdb iterator and we fetch relevants intents in
+    // one forward pass.
+    DCHECK(std::is_sorted(
+        transaction_ids.begin(), transaction_ids.end(), IsSortedAscendingEncoded));
 
-  if (txn_intent_keys.empty()) {
-    return Status::OK();
-  }
+    // If transaction_ids is set, use txn reverse mapping of intents_db to find all intent keys
+    // efficiently.
+    std::vector<dockv::KeyBytes> txn_intent_keys;
+    static constexpr size_t kReverseKeySize = 1 + sizeof(TransactionId);
+    char reverse_key_data[kReverseKeySize];
+    reverse_key_data[0] = dockv::KeyEntryTypeAsChar::kTransactionId;
+    for (auto& txn_id : transaction_ids) {
+      memcpy(&reverse_key_data[1], txn_id.data(), sizeof(TransactionId));
+      auto reverse_key = Slice(reverse_key_data, kReverseKeySize);
+      intent_iter->Seek(reverse_key);
 
-  std::sort(txn_intent_keys.begin(), txn_intent_keys.end());
+      // Skip the transaction metadata entry.
+      if (intent_iter->Valid() && intent_iter->key().compare(reverse_key) == 0) {
+        intent_iter->Next();
+      }
 
-  intent_iter->SeekToFirst();
-  RETURN_NOT_OK(intent_iter->status());
+      while (intent_iter->Valid() && intent_iter->key().compare_prefix(reverse_key) == 0) {
+        DCHECK_EQ(intent_iter->key()[0], dockv::KeyEntryTypeAsChar::kTransactionId);
+        txn_intent_keys.emplace_back(intent_iter->value());
+        intent_iter->Next();
+      }
+      RETURN_NOT_OK(intent_iter->status());
+    }
 
-  for (const auto& intent_key : txn_intent_keys) {
-    intent_iter->Seek(intent_key);
+    std::sort(txn_intent_keys.begin(), txn_intent_keys.end());
+    intent_iter->SeekToFirst();
     RETURN_NOT_OK(intent_iter->status());
 
-    auto key = intent_iter->key();
-    DCHECK_EQ(intent_iter->key(), key);
+    for (const auto& intent_key : txn_intent_keys) {
+      intent_iter->Seek(intent_key);
+      RETURN_NOT_OK(intent_iter->status());
 
-    auto val = intent_iter->value();
-    RETURN_NOT_OK(AddLockInfo(key, val, schema(), tablet_lock_info->add_locks()));
+      auto key = intent_iter->key();
+      DCHECK_EQ(intent_iter->key(), key);
+
+      auto val = intent_iter->value();
+      RETURN_NOT_OK(PopulateLockInfoFromIntent(
+          key, val, schema(), tablet_lock_info->mutable_transaction_locks()));
+    }
+  }
+
+  const auto& wait_queue = transaction_participant()->wait_queue();
+  if (wait_queue) {
+    RETURN_NOT_OK(wait_queue->GetLockStatus(transaction_ids, schema(), tablet_lock_info));
   }
 
   return Status::OK();

@@ -136,6 +136,12 @@ std::string TransactionApplyData::ToString() const {
       apply_state, is_external);
 }
 
+void UpdateHistoricalMaxOpId(std::atomic<OpId>* historical_max_op_id, OpId const& op_id) {
+  OpId prev_value = (*historical_max_op_id);
+  while (prev_value < op_id && !historical_max_op_id->compare_exchange_weak(prev_value, op_id)) {
+  }
+}
+
 class TransactionParticipant::Impl
     : public RunningTransactionContext, public TransactionLoaderContext {
  public:
@@ -242,7 +248,7 @@ class TransactionParticipant::Impl
     RETURN_NOT_OK(loader_.WaitLoaded(metadata.transaction_id));
 
     MinRunningNotifier min_running_notifier(&applier_);
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = transactions_.find(metadata.transaction_id);
     if (it != transactions_.end()) {
       return false;
@@ -259,6 +265,9 @@ class TransactionParticipant::Impl
       return STATUS(InvalidArgument, Format("For external transaction $0, status tablet is empty",
                                              metadata.transaction_id));
     }
+
+    VLOG_WITH_PREFIX(3) << "Adding a new transaction txn_id: " << metadata.transaction_id
+                        << " with begin_time: " << metadata.start_time.ToUint64();
     transactions_.insert(std::make_shared<RunningTransaction>(
         metadata, TransactionalBatchData(), OneWayBitmap(), metadata.start_time, this));
     mem_tracker_->Consume(kRunningTransactionSize);
@@ -267,7 +276,7 @@ class TransactionParticipant::Impl
   }
 
   HybridTime LocalCommitTime(const TransactionId& id) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = transactions_.find(id);
     if (it == transactions_.end()) {
       return HybridTime::kInvalid;
@@ -276,7 +285,7 @@ class TransactionParticipant::Impl
   }
 
   boost::optional<TransactionLocalState> LocalTxnData(const TransactionId& id) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = transactions_.find(id);
     if (it == transactions_.end()) {
       return boost::none;
@@ -290,7 +299,7 @@ class TransactionParticipant::Impl
   Result<std::pair<size_t, size_t>> TEST_CountIntents() {
     {
       MinRunningNotifier min_running_notifier(&applier_);
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
       ProcessRemoveQueueUnlocked(&min_running_notifier);
     }
 
@@ -370,7 +379,7 @@ class TransactionParticipant::Impl
   }
 
   void BatchReplicated(const TransactionId& id, const TransactionalBatchData& data) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = transactions_.find(id);
     if (it == transactions_.end()) {
       LOG_IF_WITH_PREFIX(DFATAL, !WasTransactionRecentlyRemoved(id))
@@ -403,7 +412,7 @@ class TransactionParticipant::Impl
       return STATUS_FORMAT(ShutdownInProgress, "Tablet is shutting down");
     }
 
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto result = NextRequestIdUnlocked();
     running_requests_.push_back(result);
     return result;
@@ -414,7 +423,7 @@ class TransactionParticipant::Impl
     MinRunningNotifier min_running_notifier(&applier_);
     bool notify_completed;
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
       DCHECK(!running_requests_.empty());
       if (running_requests_.front() != request) {
         complete_requests_.push(request);
@@ -439,7 +448,7 @@ class TransactionParticipant::Impl
   // Cleans the intents those are consumed by consumers.
   void SetIntentRetainOpIdAndTime(const OpId& op_id, const MonoDelta& cdc_sdk_op_id_expiration) {
     MinRunningNotifier min_running_notifier(&applier_);
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     VLOG(1) << "Setting RetainOpId: " << op_id
             << ", previous cdc_sdk_min_checkpoint_op_id_: " << cdc_sdk_min_checkpoint_op_id_;
 
@@ -470,13 +479,30 @@ class TransactionParticipant::Impl
     return min_checkpoint;
   }
 
-  OpId GetRetainOpId() {
+  HybridTime GetMinStartTimeAmongAllRunningTransactions() {
     std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& transaction : transactions_.get<StartTimeTag>()) {
+      auto const& transaction_status = transaction->last_known_status();
+      if (transaction->local_commit_time() == HybridTime::kInvalid &&
+          transaction_status != TransactionStatus::ABORTED) {
+        return transaction->start_ht();
+      }
+    }
+
+    return HybridTime::kInvalid;
+  }
+
+  OpId GetHistoricalMaxOpId() {
+    return historical_max_op_id.load();
+  }
+
+  OpId GetRetainOpId() {
+    std::lock_guard lock(mutex_);
     return cdc_sdk_min_checkpoint_op_id_;
   }
 
   CoarseTimePoint GetCheckpointExpirationTime() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     return cdc_sdk_min_checkpoint_op_id_expiration_;
   }
 
@@ -642,7 +668,7 @@ class TransactionParticipant::Impl
 
   Status Cleanup(TransactionIdSet&& set, TransactionStatusManager* status_manager) {
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
       const OpId& cdcsdk_checkpoint_op_id = GetLatestCheckPoint();
 
       if (cdcsdk_checkpoint_op_id != OpId::Max()) {
@@ -717,6 +743,9 @@ class TransactionParticipant::Impl
             << "Transaction was previously applied with another commit ht: " << existing_commit_ht
             << ", new commit ht: " << data.commit_ht;
       } else {
+        UpdateHistoricalMaxOpId(&historical_max_op_id, data.op_id);
+        VLOG_WITH_PREFIX(3) << "Committed a transaction with txn_id: " << data.transaction_id
+                            << " with commit_time: " << data.commit_ht.ToUint64();
         CHECK(transactions_.modify(lock_and_iterator.iterator, [&data](auto& txn) {
           txn->SetLocalCommitData(data.commit_ht, data.aborted);
         }));
@@ -819,7 +848,7 @@ class TransactionParticipant::Impl
     RETURN_NOT_OK(loader_.WaitLoaded(data.transaction_id));
 
     MinRunningNotifier min_running_notifier(&applier_);
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = transactions_.find(data.transaction_id);
     if (it == transactions_.end()) {
       if (cleanup_type == CleanupType::kImmediate) {
@@ -827,6 +856,10 @@ class TransactionParticipant::Impl
         return Status::OK();
       }
     } else {
+      // Make sure it's a committed transaction.
+      if (data.commit_ht.is_valid()) {
+        UpdateHistoricalMaxOpId(&historical_max_op_id, data.op_id);
+      }
       CHECK(transactions_.modify(it, [&data](auto& txn) {
         txn->SetApplyOpId(data.op_id);
       }));
@@ -874,7 +907,7 @@ class TransactionParticipant::Impl
 
     RETURN_NOT_OK(loader_.WaitAllLoaded());
     MinRunningNotifier min_running_notifier(&applier_);
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     DumpClear(RemoveReason::kSetDB);
     transactions_.clear();
     mem_tracker_->Release(mem_tracker_->consumption());
@@ -888,7 +921,7 @@ class TransactionParticipant::Impl
       int64_t term,
       tserver::GetTransactionStatusAtParticipantResponsePB* response,
       rpc::RpcContext* context) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = transactions_.find(transaction_id);
     if (it == transactions_.end()) {
       response->set_num_replicated_batches(0);
@@ -996,7 +1029,7 @@ class TransactionParticipant::Impl
             }
             if (!aborted.empty()) {
               MinRunningNotifier min_running_notifier(&applier_);
-              std::lock_guard<std::mutex> lock(mutex_);
+              std::lock_guard lock(mutex_);
               for (const auto& id : aborted) {
                 EnqueueRemoveUnlocked(id, RemoveReason::kStatusReceived, &min_running_notifier);
               }
@@ -1051,7 +1084,7 @@ class TransactionParticipant::Impl
   }
 
   size_t TEST_GetNumRunningTransactions() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto txn_to_id = [](const RunningTransactionPtr& txn) {
       return txn->id();
     };
@@ -1061,14 +1094,14 @@ class TransactionParticipant::Impl
   }
 
   OneWayBitmap TEST_TransactionReplicatedBatches(const TransactionId& id) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = transactions_.find(id);
     return it != transactions_.end() ? (**it).replicated_batches() : OneWayBitmap();
   }
 
   std::string DumpTransactions() {
     std::string result;
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
 
     result += Format(
         "{ safe_time_for_participant: $0 remove_queue_size: $1 ",
@@ -1092,7 +1125,7 @@ class TransactionParticipant::Impl
       HybridTime cutoff, CoarseTimePoint deadline, TransactionId* exclude_txn_id) {
     vector<TransactionId> ids_to_abort;
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
       for (const auto& txn : transactions_.get<StartTimeTag>()) {
         if (txn->start_ht() > cutoff ||
             (exclude_txn_id != nullptr && txn->id() == *exclude_txn_id)) {
@@ -1144,7 +1177,7 @@ class TransactionParticipant::Impl
   }
 
   void IgnoreAllTransactionsStartedBefore(HybridTime limit) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     ignore_all_transactions_started_before_ =
         std::max(ignore_all_transactions_started_before_, limit);
   }
@@ -1157,7 +1190,7 @@ class TransactionParticipant::Impl
     TransactionMetadata metadata;
     TransactionStatusResult txn_status_res;
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
       auto it = transactions_.find(transaction_id);
       if (it == transactions_.end()) {
         // This case may happen if the transaction gets aborted due to conflict or expired
@@ -1223,7 +1256,7 @@ class TransactionParticipant::Impl
 
   void CompleteLoad(const std::function<void()>& functor) override {
     MinRunningNotifier min_running_notifier(&applier_);
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     functor();
     TransactionsModifiedUnlocked(&min_running_notifier);
   }
@@ -1262,7 +1295,7 @@ class TransactionParticipant::Impl
     if (!pending_applies.empty()) {
       LOG_WITH_PREFIX(INFO)
           << __func__ << ": starting " << pending_applies.size() << " pending applies";
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
       size_t idx = 0;
       for (const auto& p : pending_applies) {
         auto it = transactions_.find(p.first);
@@ -1281,7 +1314,7 @@ class TransactionParticipant::Impl
 
     {
       LOG_WITH_PREFIX(INFO) << __func__ << ": starting transaction status resolution";
-      std::lock_guard<std::mutex> lock(status_resolvers_mutex_);
+      std::lock_guard lock(status_resolvers_mutex_);
       for (auto& status_resolver : status_resolvers_) {
         status_resolver.Start(CoarseTimePoint::max());
       }
@@ -1500,7 +1533,7 @@ class TransactionParticipant::Impl
       OneWayBitmap&& replicated_batches,
       const ApplyStateWithCommitHt* pending_apply) override {
     MinRunningNotifier min_running_notifier(&applier_);
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto txn = std::make_shared<RunningTransaction>(
         std::move(metadata), std::move(last_batch_data), std::move(replicated_batches),
         participant_context_.Now().AddDelta(1ms * FLAGS_transaction_abort_check_timeout_ms), this);
@@ -1573,7 +1606,7 @@ class TransactionParticipant::Impl
   void TransactionsStatus(
       const std::vector<TransactionStatusInfo>& status_infos) {
     MinRunningNotifier min_running_notifier(&applier_);
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     HybridTime now = participant_context_.Now();
     for (const auto& info : status_infos) {
       auto it = transactions_.find(info.transaction_id);
@@ -1668,7 +1701,7 @@ class TransactionParticipant::Impl
 
   Status ReplicatedAborted(const TransactionId& id, const ReplicatedData& data) {
     MinRunningNotifier min_running_notifier(&applier_);
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     auto it = transactions_.find(id);
     if (it == transactions_.end()) {
       TransactionMetadata metadata = {
@@ -1694,7 +1727,7 @@ class TransactionParticipant::Impl
   void Poll() {
     {
       MinRunningNotifier min_running_notifier(&applier_);
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
 
       ProcessRemoveQueueUnlocked(&min_running_notifier);
       CleanTransactionsQueue(&graceful_cleanup_queue_, &min_running_notifier);
@@ -1713,7 +1746,7 @@ class TransactionParticipant::Impl
   void CheckForAbortedTransactions() EXCLUDES(mutex_) {
     TransactionStatusResolver* resolver = nullptr;
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard lock(mutex_);
       if (transactions_.empty()) {
         return;
       }
@@ -1750,7 +1783,7 @@ class TransactionParticipant::Impl
   }
 
   void CleanupStatusResolvers() EXCLUDES(status_resolvers_mutex_) {
-    std::lock_guard<std::mutex> lock(status_resolvers_mutex_);
+    std::lock_guard lock(status_resolvers_mutex_);
     while (!status_resolvers_.empty() && !status_resolvers_.front().Running()) {
       status_resolvers_.front().Shutdown();
       status_resolvers_.pop_front();
@@ -1758,7 +1791,7 @@ class TransactionParticipant::Impl
   }
 
   TransactionStatusResolver& AddStatusResolver() override EXCLUDES(status_resolvers_mutex_) {
-    std::lock_guard<std::mutex> lock(status_resolvers_mutex_);
+    std::lock_guard lock(status_resolvers_mutex_);
     status_resolvers_.emplace_back(
         &participant_context_, &rpcs_, FLAGS_max_transactions_in_status_request,
         std::bind(&Impl::TransactionsStatus, this, _1));
@@ -1863,6 +1896,7 @@ class TransactionParticipant::Impl
   rpc::Poller wait_queue_poller_;
 
   OpId cdc_sdk_min_checkpoint_op_id_ = OpId::Invalid();
+  std::atomic<OpId> historical_max_op_id = OpId::Invalid();
   CoarseTimePoint cdc_sdk_min_checkpoint_op_id_expiration_ = CoarseTimePoint::min();
 
   std::condition_variable requests_completed_cond_;
@@ -2084,6 +2118,14 @@ CoarseTimePoint TransactionParticipant::GetCheckpointExpirationTime() const {
 
 OpId TransactionParticipant::GetLatestCheckPoint() const {
   return impl_->GetLatestCheckPointUnlocked();
+}
+
+HybridTime TransactionParticipant::GetMinStartTimeAmongAllRunningTransactions() const {
+  return impl_->GetMinStartTimeAmongAllRunningTransactions();
+}
+
+OpId TransactionParticipant::GetHistoricalMaxOpId() const {
+  return impl_->GetHistoricalMaxOpId();
 }
 
 }  // namespace tablet

@@ -213,10 +213,11 @@ Status ProcessUsedReadTime(uint64_t session_id,
                            const client::YBPgsqlOp& op,
                            PgPerformResponsePB* resp,
                            const PgClientSession::UsedReadTimePtr& used_read_time_weak_ptr) {
-  const auto op_used_read_time = op.type() == client::YBOperation::PGSQL_READ
-      ? down_cast<const client::YBPgsqlReadOp&>(op).used_read_time()
-      : ReadHybridTime();
-  if (!op_used_read_time) {
+  if (op.type() != client::YBOperation::PGSQL_READ) {
+    return Status::OK();
+  }
+  const auto& read_op = down_cast<const client::YBPgsqlReadOp&>(op);
+  if (!read_op.used_read_time()) {
     return Status::OK();
   }
 
@@ -224,7 +225,7 @@ Status ProcessUsedReadTime(uint64_t session_id,
     // Non empty used_read_time field in catalog read operation means this is the very first
     // catalog read operation after catalog read time resetting. read_time for the operation
     // has been chosen by master. All further reads from catalog must use same read point.
-    auto catalog_read_time = op_used_read_time;
+    auto catalog_read_time = read_op.used_read_time();
 
     // We set global limit to read time to avoid read restart errors because they are
     // disruptive to system catalog reads and it is not always possible to handle them there.
@@ -240,16 +241,18 @@ Status ProcessUsedReadTime(uint64_t session_id,
   if (used_read_time_ptr) {
     auto& used_read_time = *used_read_time_ptr;
     {
-      std::lock_guard<simple_spinlock> guard(used_read_time.lock);
+      std::lock_guard guard(used_read_time.lock);
       if (PREDICT_FALSE(static_cast<bool>(used_read_time.value))) {
         return STATUS_FORMAT(IllegalState,
                              "Session read time already set $0 used read time is $1",
                              used_read_time.value,
-                             op_used_read_time);
+                             read_op.used_read_time());
       }
-      used_read_time.value = op_used_read_time;
+      used_read_time.value = read_op.used_read_time();
+      used_read_time.tablet_id = read_op.used_tablet();
     }
-    VLOG(3) << SessionLogPrefix(session_id) << "Update used read time: " << op_used_read_time;
+    VLOG(3)
+        << SessionLogPrefix(session_id) << "Update used read time: " << read_op.used_read_time();
   }
   return Status::OK();
 }
@@ -1149,7 +1152,7 @@ PgClientSession::SetupSessionAndPrepareOps(
       if (kind == PgClientSessionKind::kPlain) {
         used_read_time = std::weak_ptr<UsedReadTime>(
             std::shared_ptr<UsedReadTime>(shared_from_this(), &plain_session_used_read_time_));
-        std::lock_guard<simple_spinlock>  guard(plain_session_used_read_time_.lock);
+        std::lock_guard  guard(plain_session_used_read_time_.lock);
         plain_session_used_read_time_.value = ReadHybridTime();
       }
       VLOG_WITH_PREFIX(3) << "Reset read time: " << session->read_point()->GetReadTime();
@@ -1652,12 +1655,14 @@ Status PgClientSession::CheckPlainSessionReadTime() {
   auto session = Session(PgClientSessionKind::kPlain);
   if (!session->read_point()->GetReadTime()) {
     ReadHybridTime used_read_time;
+    TabletId tablet_id;
     {
-      std::lock_guard<simple_spinlock> guard(plain_session_used_read_time_.lock);
+      std::lock_guard guard(plain_session_used_read_time_.lock);
       used_read_time = plain_session_used_read_time_.value;
+      tablet_id = plain_session_used_read_time_.tablet_id;
     }
     RSTATUS_DCHECK(used_read_time, IllegalState, "Used read time is not set");
-    session->SetReadPoint(used_read_time);
+    session->SetReadPoint(used_read_time, tablet_id);
     VLOG_WITH_PREFIX(3)
         << "Update read time from used read time: " << session->read_point()->GetReadTime();
   }

@@ -1022,7 +1022,6 @@ public class PlacementInfoUtilTest extends FakeDBApplication {
     "aws, 0, 10, m3.medium, c4.medium, true",
     "aws, 0, -10, m3.medium, m3.medium, true", // decrease volume still true (not checked here)
     "aws, 1, 10, m3.medium, m3.medium, false", // change num of volumes
-    "azu, 0, 10, m3.medium, m3.medium, false", // wrong provider
     "aws, 0, 10, m3.medium, fake_type, false", // unknown instance type
     "aws, 0, 10, i3.instance, m3.medium, false", // ephemeral instance type
     "aws, 0, 10, c5d.instance, m3.medium, false", // ephemeral instance type
@@ -1979,6 +1978,7 @@ public class PlacementInfoUtilTest extends FakeDBApplication {
 
     // Some additional tests for raised problems.
     "Case 21, 1, r1-az1-1-1-0;r1-az2-3-0-1, 1",
+    "Case 22, 5, r1-az1-3-0-3;r2-az2-3-0-2, 0",
   })
   // @formatter:on
   public void testSelectMasters_Extended(String name, int rf, String zones, int removedCount) {

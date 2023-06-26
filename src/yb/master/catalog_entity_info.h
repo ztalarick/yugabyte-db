@@ -60,6 +60,7 @@
 #include "yb/util/format.h"
 #include "yb/util/monotime.h"
 #include "yb/util/status_fwd.h"
+#include "yb/util/shared_lock.h"
 
 DECLARE_bool(use_parent_table_id_field);
 
@@ -468,6 +469,16 @@ struct PersistentTableInfo : public Persistent<SysTablesEntryPB, SysRowEntryType
       ysql_ddl_txn_verifier_state().contains_create_table_op();
   }
 
+  std::vector<std::string> cols_marked_for_deletion() const {
+    std::vector<std::string> columns;
+    for (const auto& col : pb.schema().columns()) {
+      if (col.marked_for_deletion()) {
+        columns.push_back(col.name());
+      }
+    }
+    return columns;
+  }
+
   Result<bool> is_being_modified_by_ddl_transaction(const TransactionId& txn) const;
 
   const std::string& state_name() const {
@@ -667,14 +678,14 @@ class TableInfo : public RefCountedThreadSafe<TableInfo>,
 
   // Returns true if the table is backfilling an index.
   bool IsBackfilling() const {
-    std::shared_lock<decltype(lock_)> l(lock_);
+    SharedLock l(lock_);
     return is_backfilling_;
   }
 
   Status SetIsBackfilling();
 
   void ClearIsBackfilling() {
-    std::lock_guard<decltype(lock_)> l(lock_);
+    std::lock_guard l(lock_);
     is_backfilling_ = false;
   }
 

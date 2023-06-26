@@ -65,8 +65,12 @@ void YBSession::RestartNonTxnReadPoint(const Restart restart) {
   }
 }
 
-void YBSession::SetReadPoint(const ReadHybridTime& read_time) {
-  read_point()->SetReadTime(read_time, {} /* local_limits */);
+void YBSession::SetReadPoint(const ReadHybridTime& read_time, const TabletId& tablet_id) {
+  ConsistentReadPoint::HybridTimeMap local_limits;
+  if (!tablet_id.empty()) {
+    local_limits.emplace(tablet_id, read_time.local_limit);
+  }
+  read_point()->SetReadTime(read_time, std::move(local_limits));
 }
 
 bool YBSession::IsRestartRequired() {
@@ -244,12 +248,12 @@ YBClient* YBSession::client() const {
 }
 
 void YBSession::FlushStarted(internal::BatcherPtr batcher) {
-  std::lock_guard<simple_spinlock> l(lock_);
+  std::lock_guard l(lock_);
   flushed_batchers_.insert(batcher);
 }
 
 void YBSession::FlushFinished(internal::BatcherPtr batcher) {
-  std::lock_guard<simple_spinlock> l(lock_);
+  std::lock_guard l(lock_);
   CHECK_EQ(flushed_batchers_.erase(batcher), 1);
 }
 
@@ -310,7 +314,7 @@ bool YBSession::IsInProgress(YBOperationPtr yb_op) const {
   if (batcher_ && batcher_->Has(yb_op)) {
     return true;
   }
-  std::lock_guard<simple_spinlock> l(lock_);
+  std::lock_guard l(lock_);
   for (const auto& b : flushed_batchers_) {
     if (b->Has(yb_op)) {
       return true;
@@ -364,7 +368,12 @@ Status YBSession::ApplyAndFlushSync(const std::vector<YBOperationPtr>& ops) {
 
   auto future_status = future.wait_until(deadline);
   SCHECK(future_status == std::future_status::ready, TimedOut, "Timed out waiting for Flush");
-  return future.get().status;
+  auto flush_status = future.get();
+  for (auto& error : flush_status.errors) {
+    VLOG(2) << "Flush of operation " << error->failed_op().ToString()
+            << " failed: " << error->status();
+  }
+  return flush_status.status;
 }
 
 Status YBSession::ApplyAndFlushSync(YBOperationPtr ops) {
@@ -393,7 +402,7 @@ bool YBSession::TEST_HasPendingOperations() const {
   if (batcher_ && batcher_->HasPendingOperations()) {
     return true;
   }
-  std::lock_guard<simple_spinlock> l(lock_);
+  std::lock_guard l(lock_);
   for (const auto& b : flushed_batchers_) {
     if (b->HasPendingOperations()) {
       return true;
