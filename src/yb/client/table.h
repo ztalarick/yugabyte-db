@@ -114,6 +114,8 @@ class YBTable : public std::enable_shared_from_this<YBTable> {
   // True if the table is colocated (including tablegroups, excluding YSQL system tables).
   bool colocated() const;
 
+  std::string GetTablegroupId() const;
+
   // Returns the replication info for the table.
   const boost::optional<master::ReplicationInfoPB>& replication_info() const;
 
@@ -156,6 +158,8 @@ class YBTable : public std::enable_shared_from_this<YBTable> {
   // Mutex protecting partitions_.
   mutable rw_spinlock mutex_;
   VersionedTablePartitionListPtr partitions_ GUARDED_BY(mutex_);
+
+  std::string tablegroup_id_;
 
   std::atomic<bool> partitions_are_stale_{false};
 

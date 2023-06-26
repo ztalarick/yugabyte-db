@@ -305,6 +305,7 @@ Result<PgClientSessionOperations> PrepareOperations(
   ops.reserve(req->ops().size());
   client::YBTablePtr table;
   bool finished = false;
+  std::unordered_set<std::string> tablegroup_ids;
   auto se = ScopeExit([&finished, session] {
     if (!finished) {
       session->Abort();
@@ -327,6 +328,8 @@ Result<PgClientSessionOperations> PrepareOperations(
       RETURN_NOT_OK(GetTable(write.table_id(), table_cache, &table));
       if (*only_writes_on_colocated_tables_involved && !table->colocated()) {
         *only_writes_on_colocated_tables_involved = false;
+      } else {
+        tablegroup_ids.insert(table->GetTablegroupId());
       }
 
       auto write_op = std::make_shared<client::YBPgsqlWriteOp>(table, sidecars, &write);
@@ -337,6 +340,11 @@ Result<PgClientSessionOperations> PrepareOperations(
       ops.push_back(write_op);
     }
   }
+
+  if (*only_writes_on_colocated_tables_involved && tablegroup_ids.size() > 1) {
+    *only_writes_on_colocated_tables_involved = false;
+  }
+
   finished = true;
   return ops;
 }

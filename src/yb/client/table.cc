@@ -125,6 +125,10 @@ bool YBTable::colocated() const {
   return info_->colocated;
 }
 
+std::string YBTable::GetTablegroupId() const {
+  return tablegroup_id_;
+}
+
 const boost::optional<master::ReplicationInfoPB>& YBTable::replication_info() const {
   return info_->replication_info;
 }
