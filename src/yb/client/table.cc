@@ -129,6 +129,10 @@ std::string YBTable::GetTablegroupId() const {
   return tablegroup_id_;
 }
 
+void YBTable::SetTablegroupId(const std::string tablegroup_id) {
+  tablegroup_id_ = tablegroup_id;
+}
+
 const boost::optional<master::ReplicationInfoPB>& YBTable::replication_info() const {
   return info_->replication_info;
 }

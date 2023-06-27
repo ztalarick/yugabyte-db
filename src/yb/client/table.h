@@ -116,6 +116,8 @@ class YBTable : public std::enable_shared_from_this<YBTable> {
 
   std::string GetTablegroupId() const;
 
+  void SetTablegroupId(const std::string tablegroup_id);
+
   // Returns the replication info for the table.
   const boost::optional<master::ReplicationInfoPB>& replication_info() const;
 
