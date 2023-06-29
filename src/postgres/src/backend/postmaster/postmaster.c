@@ -3429,7 +3429,9 @@ static void CleanupKilledProcess(PGPROC *proc)
 
 						int new_proclist_size = GetProcListSize(procgloballist);
 
-						YBC_LOG_INFO("Removing lock group leader increased freeProc size from %d to %d", old_proclist_size, new_proclist_size);
+						YBC_LOG_INFO(
+							"Removing lock group leader increased freeProc size from %d to %d (freeProc diff: %d)",
+							old_proclist_size, new_proclist_size, new_proclist_size - old_proclist_size);
 					}
 				}
 				else if (leader != proc)
@@ -3449,7 +3451,7 @@ static void CleanupKilledProcess(PGPROC *proc)
 		*/
 		if (proc->lockGroupLeader == NULL)
 		{
-			YBC_LOG_INFO("Proc %d has a lockGroupLeader - cleaning up lock group", proc->pid);
+			YBC_LOG_INFO("Proc %d has no lockGroupLeader", proc->pid);
 
 			/* Since lockGroupLeader is NULL, lockGroupMembers should be empty. */
 			Assert(dlist_is_empty(&proc->lockGroupMembers));
@@ -3459,8 +3461,9 @@ static void CleanupKilledProcess(PGPROC *proc)
 			*procgloballist = proc;
 		}
 		int new_proclist_size = GetProcListSize(procgloballist);
-		YBC_LOG_INFO("Cleaning up after proc %d: procgloballist changed size from %d to %d",
-					 proc->pid, old_proclist_size, new_proclist_size);
+		YBC_LOG_INFO(
+			"Cleaning up after proc %d: procgloballist changed size from %d to %d  (freeProc diff: %d)",
+			proc->pid, old_proclist_size, new_proclist_size, new_proclist_size - old_proclist_size);
 	}
 }
 
