@@ -743,13 +743,7 @@ Status DoUpdateCDCConsumerOpId(
     const std::shared_ptr<tablet::TabletPeer>& tablet_peer,
     const OpId& checkpoint,
     const TabletId& tablet_id) {
-  std::shared_ptr<consensus::Consensus> shared_consensus = tablet_peer->shared_consensus();
-
-  if (shared_consensus == nullptr) {
-    return STATUS_FORMAT(InternalError, "Failed to get tablet $0 peer consensus", tablet_id);
-  }
-
-  shared_consensus->UpdateCDCConsumerOpId(checkpoint);
+  VERIFY_RESULT(tablet_peer->GetConsensus())->UpdateCDCConsumerOpId(checkpoint);
   return Status::OK();
 }
 
@@ -1775,7 +1769,8 @@ void CDCServiceImpl::GetChanges(
   bool snapshot_bootstrap = IsCDCSDKSnapshotBootstrapRequest(cdc_sdk_from_op_id);
   if (record.GetCheckpointType() == IMPLICIT ||
       (record.GetCheckpointType() == EXPLICIT &&
-       (got_explicit_checkpoint_from_request || snapshot_bootstrap))) {
+       ((got_explicit_checkpoint_from_request && explicit_op_id != OpId::Invalid()) ||
+        snapshot_bootstrap))) {
     bool is_snapshot = false;
     bool is_colocated = tablet_peer->tablet_metadata()->colocated();
     OpId snapshot_op_id = OpId::Invalid();
@@ -3995,19 +3990,20 @@ Status CDCServiceImpl::UpdateCheckpointAndActiveTime(
   }
 
   // If we update the colocated snapshot row, we still need to do one of two things:
-  // 1. Update the "safe_time" in the row used for streaming, if it is not set
-  // 2. Update active time on the row used for streaming
+  // 1. Update the "safe_time" in the row used for streaming, if the checkpoint is not set
+  // 2. Else, Only update the active time on the row used for streaming
   if (update_colocated_snapshot_row) {
-    auto streaming_safe_time =
-        VERIFY_RESULT(GetSafeTime(producer_tablet.stream_id, producer_tablet.tablet_id));
-    if (snapshot_bootstrap && (streaming_safe_time == 0)) {
+    auto checkpoint = VERIFY_RESULT(GetLastCheckpointFromCdcState(
+        producer_tablet.stream_id, producer_tablet.tablet_id, CDCRequestSource::CDCSDK));
+
+    if (snapshot_bootstrap && checkpoint.term() == 0 && checkpoint.index() == 0) {
       RETURN_NOT_OK(UpdateCheckpointAndActiveTime(
           producer_tablet, sent_op_id, commit_op_id, last_record_hybrid_time, request_source,
           snapshot_bootstrap, cdc_sdk_safe_time, is_snapshot, "", ""));
     } else {
       CDCStateTableEntry entry(producer_tablet.tablet_id, producer_tablet.stream_id);
       entry.active_time = last_active_time;
-      entry.cdc_sdk_safe_time = streaming_safe_time;
+      entry.cdc_sdk_safe_time = checkpoint.has_snapshot_time() ? checkpoint.snapshot_time() : 0;
       RETURN_NOT_OK(cdc_state_table_->UpdateEntries({entry}));
     }
   }
@@ -4028,7 +4024,6 @@ Status CDCServiceImpl::UpdateSnapshotDone(
     entry.cdc_sdk_safe_time =
         !cdc_sdk_checkpoint.has_snapshot_time() ? 0 : cdc_sdk_checkpoint.snapshot_time();
     entry.active_time = current_time;
-    entry.checkpoint = OpId(cdc_sdk_checkpoint.term(), cdc_sdk_checkpoint.index());
     entry.last_replication_time = 0;
     // Insert if row not found, Update if row already exists.
     RETURN_NOT_OK(cdc_state_table_->UpsertEntries({entry}));

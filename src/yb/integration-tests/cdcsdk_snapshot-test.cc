@@ -360,10 +360,10 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSnapshotWithInvalidFromOpId))
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestCompactionDuringSnapshot)) {
-  FLAGS_enable_load_balancing = false;
-  FLAGS_cdc_snapshot_batch_size = 100;
-  FLAGS_update_min_cdc_indices_interval_secs = 1;
-  FLAGS_cdc_state_checkpoint_update_interval_ms = 0;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_enable_load_balancing) = false;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_snapshot_batch_size) = 100;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_update_min_cdc_indices_interval_secs) = 1;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_state_checkpoint_update_interval_ms) = 0;
   auto tablets = ASSERT_RESULT(SetUpCluster());
   ASSERT_EQ(tablets.size(), 1);
   // Table having key:value_1 column
@@ -424,8 +424,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestCompactionDuringSnapshot)) {
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultipleTableAlterWithSnapshot)) {
-  FLAGS_enable_load_balancing = false;
-  FLAGS_cdc_snapshot_batch_size = 100;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_enable_load_balancing) = false;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_snapshot_batch_size) = 100;
   auto tablets = ASSERT_RESULT(SetUpCluster());
   ASSERT_EQ(tablets.size(), 1);
   // Table having key:value_1 column
@@ -487,7 +487,7 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestMultipleTableAlterWithSnapsho
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestLeadershipChangeDuringSnapshot)) {
-  FLAGS_enable_load_balancing = false;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_enable_load_balancing) = false;
   auto tablets = ASSERT_RESULT(SetUpCluster());
   ASSERT_EQ(tablets.size(), 1);
   ASSERT_OK(WriteRows(1 /* start */, 1001 /* end */, &test_cluster_));
@@ -537,9 +537,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestLeadershipChangeDuringSnapsho
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestServerFailureDuringSnapshot)) {
-  FLAGS_enable_load_balancing = false;
-  FLAGS_cdc_snapshot_batch_size = 100;
-  FLAGS_enable_single_record_update = false;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_enable_load_balancing) = false;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_snapshot_batch_size) = 100;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_enable_single_record_update) = false;
   ASSERT_OK(SetUpWithParams(3, 1, false));
   auto table = EXPECT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
   google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
@@ -595,9 +595,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestServerFailureDuringSnapshot))
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(InsertedRowInbetweenSnapshot)) {
-  FLAGS_update_min_cdc_indices_interval_secs = 1;
-  FLAGS_cdc_state_checkpoint_update_interval_ms = 0;
-  FLAGS_cdc_snapshot_batch_size = 10;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_update_min_cdc_indices_interval_secs) = 1;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_state_checkpoint_update_interval_ms) = 0;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_snapshot_batch_size) = 10;
   ASSERT_OK(SetUpWithParams(3, 1, false));
   auto table = ASSERT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
   google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
@@ -676,9 +676,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestStreamActiveWithSnapshot)) {
   // This testcase is to verify during snapshot operation, active time needs to be updated in
   // cdc_state table, so that stream should not expire if the snapshot operation takes longer than
   // the stream expiry time.
-  FLAGS_cdc_state_checkpoint_update_interval_ms = 0;
-  FLAGS_cdc_snapshot_batch_size = 10;
-  FLAGS_cdc_intent_retention_ms = 20000;  // 20 seconds
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_state_checkpoint_update_interval_ms) = 0;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_snapshot_batch_size) = 10;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_intent_retention_ms) = 20000;  // 20 seconds
   ASSERT_OK(SetUpWithParams(1, 1, false));
   auto table = ASSERT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
   google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
@@ -722,10 +722,10 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestStreamActiveWithSnapshot)) {
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestLeadershipChangeAndSnapshotAffectsCheckpoint)) {
-  FLAGS_update_min_cdc_indices_interval_secs = 1;
-  FLAGS_cdc_state_checkpoint_update_interval_ms = 0;
-  FLAGS_aborted_intent_cleanup_ms = 1000;
-  FLAGS_enable_load_balancing = false;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_update_min_cdc_indices_interval_secs) = 1;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_state_checkpoint_update_interval_ms) = 0;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_aborted_intent_cleanup_ms) = 1000;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_enable_load_balancing) = false;
   ASSERT_OK(SetUpWithParams(3, 1, false));
 
   auto table = ASSERT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
@@ -796,8 +796,8 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestLeadershipChangeAndSnapshotAf
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestCheckpointUpdatedDuringSnapshot)) {
-  FLAGS_cdc_state_checkpoint_update_interval_ms = 0;
-  FLAGS_cdc_snapshot_batch_size = 10;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_state_checkpoint_update_interval_ms) = 0;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_snapshot_batch_size) = 10;
 
   ASSERT_OK(SetUpWithParams(1, 1, false));
   auto table = ASSERT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
@@ -861,7 +861,7 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestCheckpointUpdatedDuringSnapsh
 
   // Call GetChanges after snapshot done. We should no loner see snapshot key and snasphot save_time
   // in cdc_state table.
-  change_resp_updated = ASSERT_RESULT(UpdateSnapshotDone(stream_id, tablets, &change_resp));
+  change_resp_updated = ASSERT_RESULT(UpdateSnapshotDone(stream_id, tablets));
 
   // We should no longer be able to get the snapshot key and safe_time from 'cdc_state' table.
   ASSERT_NOK(
@@ -901,10 +901,10 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSnapshotNoData)) {
 }
 
 TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSnapshotForColocatedTablet)) {
-  FLAGS_cdc_snapshot_batch_size = 100;
-  FLAGS_enable_update_local_peer_min_index = false;
-  FLAGS_update_min_cdc_indices_interval_secs = 1;
-  FLAGS_cdc_state_checkpoint_update_interval_ms = 1;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_snapshot_batch_size) = 100;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_enable_update_local_peer_min_index) = false;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_update_min_cdc_indices_interval_secs) = 1;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_state_checkpoint_update_interval_ms) = 1;
   ASSERT_OK(SetUpWithParams(3, 1, true /* colocated */));
 
   // ASSERT_OK(CreateColocatedObjects(&test_cluster_));
@@ -982,9 +982,9 @@ TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSnapshotForColocatedTablet)) 
 TEST_F(
     CDCSDKYsqlTest,
     YB_DISABLE_TEST_IN_TSAN(TestCommitTimeRecordTimeAndSafepointRecordForSnapshot)) {
-  FLAGS_cdc_populate_safepoint_record = true;
-  FLAGS_cdc_state_checkpoint_update_interval_ms = 0;
-  FLAGS_cdc_snapshot_batch_size = 10;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_populate_safepoint_record) = true;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_state_checkpoint_update_interval_ms) = 0;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_snapshot_batch_size) = 10;
 
   ASSERT_OK(SetUpWithParams(1, 1, false));
   auto table = ASSERT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
@@ -1039,9 +1039,9 @@ TEST_F(
 
 TEST_F(
     CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestGetCheckpointOnAddedColocatedTableWithNoSnapshot)) {
-  FLAGS_enable_update_local_peer_min_index = false;
-  FLAGS_update_min_cdc_indices_interval_secs = 1;
-  FLAGS_cdc_state_checkpoint_update_interval_ms = 0;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_enable_update_local_peer_min_index) = false;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_update_min_cdc_indices_interval_secs) = 1;
+  ANNOTATE_UNPROTECTED_WRITE(FLAGS_cdc_state_checkpoint_update_interval_ms) = 0;
   ASSERT_OK(SetUpWithParams(1, 1, true /* colocated */));
 
   auto conn = ASSERT_RESULT(test_cluster_.ConnectToDB(kNamespaceName));
@@ -1074,7 +1074,7 @@ TEST_F(
       break;
     }
   }
-  ASSERT_RESULT(UpdateSnapshotDone(stream_id, tablets, &change_resp, req_table_id));
+  ASSERT_RESULT(UpdateSnapshotDone(stream_id, tablets, req_table_id));
   LOG(INFO) << "Streamed snapshot records for table: test1";
 
   for (int i = snapshot_recrods_per_table; i < 2 * snapshot_recrods_per_table; ++i) {
@@ -1115,6 +1115,47 @@ TEST_F(
   ASSERT_EQ(
       OpId::FromPB(streaming_checkpoint_resp.checkpoint().op_id()),
       OpId::FromPB(added_table_checkpoint_resp.checkpoint().op_id()));
+}
+
+TEST_F(CDCSDKYsqlTest, YB_DISABLE_TEST_IN_TSAN(TestSnapshotRecordSnapshotKey)) {
+  FLAGS_cdc_state_checkpoint_update_interval_ms = 0;
+  FLAGS_cdc_snapshot_batch_size = 10;
+
+  ASSERT_OK(SetUpWithParams(1, 1, false));
+  auto table = ASSERT_RESULT(CreateTable(&test_cluster_, kNamespaceName, kTableName));
+  google::protobuf::RepeatedPtrField<master::TabletLocationsPB> tablets;
+  ASSERT_OK(test_client()->GetTablets(table, 0, &tablets, nullptr));
+  ASSERT_EQ(tablets.size(), 1);
+  CDCStreamId stream_id = ASSERT_RESULT(CreateDBStream(IMPLICIT));
+  auto set_resp = ASSERT_RESULT(SetCDCCheckpoint(stream_id, tablets, OpId::Invalid()));
+  ASSERT_FALSE(set_resp.has_error());
+
+  ASSERT_OK(WriteRows(1 /* start */, 1001 /* end */, &test_cluster_));
+
+  GetChangesResponsePB change_resp = ASSERT_RESULT(GetChangesFromCDCSnapshot(stream_id, tablets));
+  int count = 0;
+  GetChangesResponsePB change_resp_updated;
+
+  while (true) {
+    change_resp_updated = ASSERT_RESULT(UpdateCheckpoint(stream_id, tablets, &change_resp));
+
+    for (int32_t i = 0; i < change_resp_updated.cdc_sdk_proto_records_size(); ++i) {
+      const CDCSDKProtoRecordPB& record = change_resp_updated.cdc_sdk_proto_records(i);
+      if (record.row_message().op() == RowMessage::READ) {
+        count += 1;
+        ASSERT_EQ(record.cdc_sdk_op_id().term(), change_resp.cdc_sdk_checkpoint().term());
+        ASSERT_EQ(record.cdc_sdk_op_id().index(), change_resp.cdc_sdk_checkpoint().index());
+        ASSERT_EQ(record.cdc_sdk_op_id().write_id_key(), change_resp.cdc_sdk_checkpoint().key());
+      }
+    }
+    change_resp = change_resp_updated;
+    if (change_resp_updated.cdc_sdk_checkpoint().key().empty() &&
+        change_resp_updated.cdc_sdk_checkpoint().write_id() == 0 &&
+        change_resp_updated.cdc_sdk_checkpoint().snapshot_time() == 0) {
+      break;
+    }
+  }
+  ASSERT_EQ(count, 1000);
 }
 
 }  // namespace cdc
