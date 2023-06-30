@@ -79,7 +79,7 @@ DEFINE_RUNTIME_string(ysql_sequence_cache_method, "connection",
 DECLARE_bool(ysql_serializable_isolation_for_ddl_txn);
 DECLARE_bool(ysql_ddl_rollback_enabled);
 
-DECLARE_bool(ysql_allow_single_shard_conversion_colocated_inserts);
+DECLARE_bool(ysql_force_distributed_txn_for_colocated_tablet_writes);
 
 namespace yb {
 namespace tserver {
@@ -302,7 +302,7 @@ Status GetTable(const TableId& table_id, PgTableCache* cache, client::YBTablePtr
 
 Result<PgClientSessionOperations> PrepareOperations(
     PgPerformRequestPB* req, client::YBSession* session, rpc::Sidecars* sidecars,
-    PgTableCache* table_cache, bool* only_writes_on_colocated_tables_involved) {
+    PgTableCache* table_cache, bool* only_writes_on_single_colocated_tablet) {
   auto write_time = HybridTime::FromPB(req->write_time());
   std::vector<std::shared_ptr<client::YBPgsqlOp>> ops;
   ops.reserve(req->ops().size());
@@ -319,7 +319,7 @@ Result<PgClientSessionOperations> PrepareOperations(
     if (op.has_read()) {
       auto& read = *op.mutable_read();
       RETURN_NOT_OK(GetTable(read.table_id(), table_cache, &table));
-      *only_writes_on_colocated_tables_involved = false;
+      *only_writes_on_single_colocated_tablet = false;
 
       auto read_op = std::make_shared<client::YBPgsqlReadOp>(table, sidecars, &read);
       if (read_from_followers) {
@@ -329,8 +329,8 @@ Result<PgClientSessionOperations> PrepareOperations(
     } else {
       auto& write = *op.mutable_write();
       RETURN_NOT_OK(GetTable(write.table_id(), table_cache, &table));
-      if (*only_writes_on_colocated_tables_involved && !table->colocated()) {
-        *only_writes_on_colocated_tables_involved = false;
+      if (*only_writes_on_single_colocated_tablet && !table->colocated()) {
+        *only_writes_on_single_colocated_tablet = false;
       } else {
         tablegroup_ids.insert(table->GetTablegroupId());
       }
@@ -344,8 +344,8 @@ Result<PgClientSessionOperations> PrepareOperations(
     }
   }
 
-  if (*only_writes_on_colocated_tables_involved && tablegroup_ids.size() > 1) {
-    *only_writes_on_colocated_tables_involved = false;
+  if (*only_writes_on_single_colocated_tablet && tablegroup_ids.size() > 1) {
+    *only_writes_on_single_colocated_tablet = false;
   }
 
   finished = true;
@@ -857,14 +857,8 @@ Status PgClientSession::FinishTransaction(
   auto kind = req.ddl_mode() ? PgClientSessionKind::kDdl : PgClientSessionKind::kPlain;
   auto& txn = Transaction(kind);
   auto session = Session(kind);
-  if (!txn) {
-    if (kind == PgClientSessionKind::kPlain && session->IsSingleShardConversion()) {
-      VLOG_WITH_PREFIX_AND_FUNC(1) << "Resetting the single shard conversion flag";
-      Session(kind)->SetTransaction(nullptr);
-      session->ResetSingleShardConversionFlag();
-      return Status::OK();
-    }
 
+  if (!txn) {
     VLOG_WITH_PREFIX_AND_FUNC(2) << "ddl: " << req.ddl_mode() << ", no running transaction";
     return Status::OK();
   }
@@ -962,11 +956,25 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
     }
   }
 
+  PgClientSessionKind kind;
+  bool only_writes_on_single_colocated_tablet = false;
+  if (options.use_catalog_session()) {
+    kind = PgClientSessionKind::kCatalog;
+  } else if (options.ddl_mode()) {
+    kind = PgClientSessionKind::kDdl;
+  } else {
+    only_writes_on_single_colocated_tablet = true;
+    kind = PgClientSessionKind::kPlain;
+  }
+  auto *session = Session(kind).get();
   const auto in_txn_limit = GetInTxnLimit(options, clock_.get());
   VLOG_WITH_PREFIX(5) << "using in_txn_limit_ht: " << in_txn_limit;
-  auto session_info = VERIFY_RESULT(SetupSessionAndPrepareOps(
-      &data->req, deadline, in_txn_limit, &data->ops, &data->sidecars, &table_cache_));
-  auto* session = session_info.first.session.get();
+  data->ops = VERIFY_RESULT(PrepareOperations(
+      &data->req, session, &data->sidecars, &table_cache_,
+      &only_writes_on_single_colocated_tablet));
+  auto session_info = VERIFY_RESULT(
+      SetupSession(&data->req, deadline, in_txn_limit, only_writes_on_single_colocated_tablet));
+  session = session_info.first.session.get();
   auto& transaction = session_info.first.transaction;
 
   if (context) {
@@ -1085,40 +1093,28 @@ Status PgClientSession::UpdateReadPointForXClusterConsistentReads(
 }
 
 Result<std::pair<PgClientSession::SessionData, PgClientSession::UsedReadTimePtr>>
-PgClientSession::SetupSessionAndPrepareOps(
+PgClientSession::SetupSession(
     PgPerformRequestPB* req, CoarseTimePoint deadline, HybridTime in_txn_limit,
-    PgClientSessionOperations* ops, rpc::Sidecars* sidecars, PgTableCache* table_cache) {
+    bool only_writes_on_single_colocated_tablet) {
   auto& options = *req->mutable_options();
   PgClientSessionKind kind;
-  bool only_writes_on_colocated_tables_involved = false;
-  client::YBSession* session;
   if (options.use_catalog_session()) {
     SCHECK(!options.read_from_followers(),
            InvalidArgument,
            "Reading catalog from followers is not allowed");
     kind = PgClientSessionKind::kCatalog;
     EnsureSession(kind);
-    session = Session(kind).get();
-    *ops = VERIFY_RESULT(PrepareOperations(
-        req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
   } else if (options.ddl_mode()) {
     kind = PgClientSessionKind::kDdl;
     EnsureSession(kind);
-    session = Session(kind).get();
     RETURN_NOT_OK(GetDdlTransactionMetadata(true /* use_transaction */, deadline));
-    *ops = VERIFY_RESULT(PrepareOperations(
-        req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
   } else {
-    only_writes_on_colocated_tables_involved = true;
     kind = PgClientSessionKind::kPlain;
-    EnsureSession(kind);
-    session = Session(kind).get();
-    *ops = VERIFY_RESULT(PrepareOperations(
-        req, session, sidecars, &table_cache_, &only_writes_on_colocated_tables_involved));
     RETURN_NOT_OK(
-        BeginTransactionIfNecessary(&options, deadline, only_writes_on_colocated_tables_involved));
+        BeginTransactionIfNecessary(&options, deadline, only_writes_on_single_colocated_tablet));
   }
 
+  auto session = Session(kind).get();
   client::YBTransaction* transaction = Transaction(kind).get();
 
   VLOG_WITH_PREFIX(4) << __func__ << ": " << options.ShortDebugString();
@@ -1205,7 +1201,7 @@ std::string PgClientSession::LogPrefix() {
 
 Status PgClientSession::BeginTransactionIfNecessary(
     PgPerformOptionsPB* options, CoarseTimePoint deadline,
-    const bool& only_writes_on_colocated_tables_involved) {
+    const bool& only_writes_on_single_colocated_tablet) {
   const auto isolation = static_cast<IsolationLevel>(options->isolation());
 
   auto priority = options->priority();
@@ -1221,7 +1217,6 @@ Status PgClientSession::BeginTransactionIfNecessary(
     }
     txn->Abort();
     session->SetTransaction(nullptr);
-    session->ResetSingleShardConversionFlag();
     txn = nullptr;
   }
 
@@ -1229,21 +1224,15 @@ Status PgClientSession::BeginTransactionIfNecessary(
     return Status::OK();
   }
 
-  if (GetAtomicFlag(&FLAGS_ysql_allow_single_shard_conversion_colocated_inserts) &&
-      only_writes_on_colocated_tables_involved && options->allow_single_shard_conversion()) {
+  if (!GetAtomicFlag(&FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes) &&
+      only_writes_on_single_colocated_tablet && options->allow_single_shard_conversion()) {
     options->set_isolation(IsolationLevel::NON_TRANSACTIONAL);
     options->mutable_in_txn_limit_ht()->set_value(kInvalidHybridTimeValue);
     options->set_priority(0);
     options->set_read_time_manipulation(tserver::ReadTimeManipulation::NONE);
     options->set_active_sub_transaction_id(0);
-    session->SetSingleShardConversionFlag();
 
     return Status::OK();
-  } else {
-    // In cases where the optimization flag is not turned on, or read ops involved, or non-colocated
-    // tables involved, or pggate doesn't hint that the txn could be single sharded, reset the
-    // single shard conversion flag which would be referred in finish transaction
-    session->ResetSingleShardConversionFlag();
   }
 
   if (txn) {

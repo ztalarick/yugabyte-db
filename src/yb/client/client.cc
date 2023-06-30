@@ -2353,7 +2353,7 @@ Status YBClient::DoOpenTable(
   DoOpenTableAsync(
       id, [&result](const auto& res) { result.set_value(res); }, resp);
   *table = VERIFY_RESULT(result.get_future().get());
-  if (*table && resp) {
+  if (*table && resp && resp->has_tablegroup_id()) {
     (*table)->SetTablegroupId(resp->tablegroup_id());
   }
   return Status::OK();

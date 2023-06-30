@@ -104,7 +104,7 @@ DECLARE_string(time_source);
 DECLARE_bool(rocksdb_disable_compactions);
 DECLARE_uint64(pg_client_session_expiration_ms);
 DECLARE_uint64(pg_client_heartbeat_interval_ms);
-DECLARE_bool(ysql_allow_single_shard_conversion_colocated_inserts);
+DECLARE_bool(ysql_force_distributed_txn_for_colocated_tablet_writes);
 
 METRIC_DECLARE_entity(tablet);
 METRIC_DECLARE_gauge_uint64(aborted_transactions_pending_cleanup);
@@ -1770,12 +1770,12 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocated
   ASSERT_OK(conn.Execute("CREATE UNIQUE INDEX test_index_value2 on test(value2)"));
   ASSERT_OK(conn.Execute("CREATE INDEX test_index_value3 on test(value3)"));
 
-  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1, 1, 1)", "test"));
   ASSERT_EQ(CountIntents(cluster_.get()), 0);
 
-  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
   ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(2, 2, 2, 2)", "test"));
   ASSERT_NE(CountIntents(cluster_.get()), 0);
 
@@ -1788,12 +1788,12 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocated
   auto res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
   ASSERT_EQ(res, 2);
 
-  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(3, 3, 3, 3), (4, 4, 4, 4)", "test"));
   ASSERT_EQ(CountIntents(cluster_.get()), 0);
 
-  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
   ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(5, 5, 5, 5), (6, 6, 6, 6)", "test"));
   ASSERT_NE(CountIntents(cluster_.get()), 0);
 
@@ -1806,7 +1806,7 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocated
   res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
   ASSERT_EQ(res, 6);
 
-  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
   auto result = conn.ExecuteFormat("INSERT INTO $0 VALUES(7, 7, 7, 7), (8, 8, 4, 8)", "test");
   res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
@@ -1815,7 +1815,7 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocated
 }
 
 TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithExplicitTxn)) {
-  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   const std::string kDatabaseName = "testdb";
   const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
 
@@ -1864,7 +1864,7 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithForeignK
       "ON DELETE CASCADE",
       kDataTable, kReferenceTable));
 
-  FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = true;
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
 
   ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, 'reference_$1')", kReferenceTable, 1));

@@ -216,18 +216,6 @@ class YBSession : public std::enable_shared_from_this<YBSession> {
 
   YBClient* client() const;
 
-  void ResetSingleShardConversionFlag() {
-    converted_to_single_shard_txn_ = false;
-  }
-
-  void SetSingleShardConversionFlag() {
-    converted_to_single_shard_txn_ = true;
-  }
-
-  bool IsSingleShardConversion() {
-    return converted_to_single_shard_txn_;
-  }
-
   // Sets force consistent read mode, if true then consistent read point will be used even we have
   // only one command to flush.
   // It is useful when whole statement is executed using multiple flushes.
@@ -282,8 +270,6 @@ class YBSession : public std::enable_shared_from_this<YBSession> {
   // call FlushFinished() before it destructs itself, so we're guaranteed that these
   // pointers stay valid.
   std::unordered_set<internal::BatcherPtr> flushed_batchers_;
-
-  bool converted_to_single_shard_txn_ = false;
 
   // Session only one of deadline and timeout could be active.
   // When new batcher is created its deadline is set as session deadline or

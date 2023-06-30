@@ -78,7 +78,7 @@ using namespace yb::size_literals;
 
 DECLARE_uint64(rpc_max_message_size);
 
-DECLARE_bool(ysql_allow_single_shard_conversion_colocated_inserts);
+DECLARE_bool(ysql_force_distributed_txn_for_colocated_tablet_writes);
 
 // We expect that consensus_max_batch_size_bytes + 1_KB would be less than rpc_max_message_size.
 // Otherwise such batch would be rejected by RPC layer.
@@ -160,7 +160,7 @@ static bool RpcThrottleThresholdBytesValidator(const char* flagname, int64_t val
       // Disable convertion of a multi-shard txn to single sharded to make sure
       // that the optimization is not the root cause for reaching the max batch size limit and
       // subsequent retires (if any) succeeds
-      FLAGS_ysql_allow_single_shard_conversion_colocated_inserts = false;
+      FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
       return false;
     }
   }
