@@ -856,8 +856,6 @@ Status PgClientSession::FinishTransaction(
   saved_priority_ = std::nullopt;
   auto kind = req.ddl_mode() ? PgClientSessionKind::kDdl : PgClientSessionKind::kPlain;
   auto& txn = Transaction(kind);
-  auto session = Session(kind);
-
   if (!txn) {
     VLOG_WITH_PREFIX_AND_FUNC(2) << "ddl: " << req.ddl_mode() << ", no running transaction";
     return Status::OK();
