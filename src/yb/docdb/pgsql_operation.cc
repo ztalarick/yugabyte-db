@@ -568,7 +568,7 @@ Result<bool> PgsqlWriteOperation::HasDuplicateUniqueIndexValueBackward(
   auto iter = CreateIntentAwareIterator(
       data.doc_write_batch->doc_db(),
       BloomFilterMode::USE_BLOOM_FILTER,
-      doc_key_->Encode().AsSlice(),
+      encoded_doc_key_.as_slice(),
       rocksdb::kDefaultQueryId,
       txn_op_context_,
       data.read_operation_data.WithAlteredReadTime(ReadHybridTime::Max()));
@@ -663,11 +663,10 @@ Result<HybridTime> PgsqlWriteOperation::FindOldestOverwrittenTimestamp(
   HybridTime result;
   VLOG(3) << "Doing iter->Seek " << *doc_key_;
   iter->Seek(*doc_key_);
-  if (VERIFY_RESULT(iter->Fetch())) {
+  if (VERIFY_RESULT_REF(iter->Fetch())) {
     const auto bytes = sub_doc_key.EncodeWithoutHt();
     const Slice& sub_key_slice = bytes.AsSlice();
-    result = VERIFY_RESULT(
-        iter->FindOldestRecord(sub_key_slice, min_read_time));
+    result = VERIFY_RESULT(iter->FindOldestRecord(sub_key_slice, min_read_time));
     VLOG(2) << "iter->FindOldestRecord returned " << result << " for "
             << SubDocKey::DebugSliceToString(sub_key_slice);
   } else {
@@ -1121,6 +1120,44 @@ const dockv::ReaderProjection& PgsqlWriteOperation::projection() const {
   return projection_;
 }
 
+const dockv::DocKey* PgsqlWriteOperation::DocKey() {
+  return doc_key_ ? &*doc_key_ : nullptr;
+}
+
+Status PgsqlWriteOperation::CreateIterator(
+    const DocOperationApplyData& data, const dockv::DocKey* key,
+    std::optional<DocRowwiseIterator>* iterator) {
+  iterator->emplace(
+      projection(),
+      *doc_read_context_,
+      txn_op_context_,
+      data.doc_write_batch->doc_db(),
+      data.read_operation_data,
+      data.doc_write_batch->pending_op());
+
+  static const dockv::DocKey kEmptyDocKey;
+  if (!key) {
+    key = &kEmptyDocKey;
+  }
+  static const dockv::KeyEntryValues kEmptyVec;
+  DocPgsqlScanSpec scan_spec(
+      doc_read_context_->schema(),
+      request_.stmt_id(),
+      /* hashed_components= */ kEmptyVec,
+      /* range_components= */ kEmptyVec,
+      /* condition= */ nullptr ,
+      /* hash_code= */ boost::none,
+      /* max_hash_code= */ boost::none,
+      *key,
+      /* is_forward_scan= */ true ,
+      *key,
+      *key,
+      0,
+      AddHighestToUpperDocKey::kTrue);
+
+  return (**iterator).Init(scan_spec, SkipSeek::kTrue);
+}
+
 Result<bool> PgsqlWriteOperation::ReadColumns(
     const DocOperationApplyData& data, dockv::PgTableRow* table_row) {
   // Filter the columns using primary key.
@@ -1128,19 +1165,11 @@ Result<bool> PgsqlWriteOperation::ReadColumns(
     return false;
   }
 
-  DocPgsqlScanSpec spec(doc_read_context_->schema(), request_.stmt_id(), *doc_key_);
-  auto iterator = DocRowwiseIterator(
-      projection(),
-      *doc_read_context_,
-      txn_op_context_,
-      data.doc_write_batch->doc_db(),
-      data.read_operation_data,
-      data.doc_write_batch->pending_op());
-  RETURN_NOT_OK(iterator.Init(spec));
-  if (!VERIFY_RESULT(iterator.PgFetchNext(table_row))) {
+  if (!VERIFY_RESULT(data.iterator->PgFetchRow(
+          encoded_doc_key_.as_slice(), data.restart_seek, table_row))) {
     return false;
   }
-  data.restart_read_ht->MakeAtLeast(VERIFY_RESULT(iterator.RestartReadHt()));
+  data.restart_read_ht->MakeAtLeast(VERIFY_RESULT(data.iterator->RestartReadHt()));
 
   return true;
 }

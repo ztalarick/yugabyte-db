@@ -34,6 +34,7 @@ DECLARE_bool(ysql_enable_packed_row);
 DECLARE_bool(ysql_enable_packed_row_for_colocated_table);
 
 METRIC_DECLARE_histogram(handler_latency_yb_tserver_TabletServerService_Read);
+METRIC_DECLARE_histogram(handler_latency_yb_tserver_TabletServerService_Write);
 
 namespace yb::pgwrapper {
 
@@ -55,11 +56,22 @@ class PgSingleTServerTest : public PgMiniTestBase {
     conn = ASSERT_RESULT(ConnectToDB(kDatabaseName));
 
     ASSERT_OK(conn.Execute(create_table_cmd));
-    auto last_row = 0;
-    while (last_row < rows) {
-      auto first_row = last_row + 1;
-      last_row = std::min(rows, last_row + block_size);
-      ASSERT_OK(conn.ExecuteFormat(insert_cmd, first_row, last_row));
+
+    {
+      auto write_histogram = cluster_->mini_tablet_server(0)->metric_entity().FindOrCreateHistogram(
+          &METRIC_handler_latency_yb_tserver_TabletServerService_Write)->histogram();
+      auto metric_start = write_histogram->TotalSum();
+      auto start = MonoTime::Now();
+      auto last_row = 0;
+      while (last_row < rows) {
+        auto first_row = last_row + 1;
+        last_row = std::min(rows, last_row + block_size);
+        ASSERT_OK(conn.ExecuteFormat(insert_cmd, first_row, last_row));
+      }
+      auto finish = MonoTime::Now();
+      auto metric_finish = write_histogram->TotalSum();
+      LOG(INFO) << "Insert time: " << finish - start << ", tserver time: "
+                << MonoDelta::FromMicroseconds(metric_finish - metric_start);
     }
 
     auto peers = ListTabletPeers(cluster_.get(), ListPeersFilter::kAll);
@@ -347,9 +359,9 @@ TEST_F_EX(
 
   constexpr auto kWriteNumIterations = 1000u;
 
-  TestThreadHolder thread_holder;
   CountDownLatch sync_start_latch(2);
   std::atomic<size_t> num_write_iterations{0};
+  TestThreadHolder thread_holder;
   thread_holder.AddThreadFunctor(
       [this, &stop = thread_holder.stop_flag(), &num_write_iterations, &sync_start_latch]() {
         auto write_conn = ASSERT_RESULT(Connect());

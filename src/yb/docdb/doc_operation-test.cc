@@ -25,7 +25,7 @@
 #include "yb/docdb/doc_read_context.h"
 #include "yb/docdb/doc_rowwise_iterator.h"
 #include "yb/docdb/docdb_debug.h"
-#include "yb/docdb/docdb_rocksdb_util.h"
+#include "yb/docdb/iter_util.h"
 #include "yb/docdb/docdb_test_base.h"
 #include "yb/docdb/docdb_test_util.h"
 #include "yb/docdb/ql_rocksdb_storage.h"
@@ -194,7 +194,13 @@ class DocOperationTest : public DocDBTestBase {
     ASSERT_OK(ql_write_op.Init(ql_writeresp_pb));
     auto doc_write_batch = MakeDocWriteBatch();
     HybridTime restart_read_ht;
-    ASSERT_OK(ql_write_op.Apply({&doc_write_batch, ReadOperationData(), &restart_read_ht}));
+    ASSERT_OK(ql_write_op.Apply({
+      .doc_write_batch = &doc_write_batch,
+      .read_operation_data = ReadOperationData(),
+      .restart_read_ht = &restart_read_ht,
+      .iterator = nullptr,
+      .restart_seek = true
+    }));
     ASSERT_OK(WriteToRocksDB(doc_write_batch, hybrid_time));
   }
 
@@ -378,7 +384,10 @@ TEST_F(DocOperationTest, TestRedisSetKVWithTTL) {
   ASSERT_OK(redis_write_operation.Apply(docdb::DocOperationApplyData{
       .doc_write_batch = &doc_write_batch,
       .read_operation_data = {},
-      .restart_read_ht = nullptr}));
+      .restart_read_ht = nullptr,
+      .iterator = nullptr,
+      .restart_seek = true
+  }));
 
   ASSERT_OK(WriteToRocksDB(doc_write_batch, HybridTime::FromMicros(1000)));
 
@@ -889,7 +898,7 @@ class DocOperationScanTest : public DocOperationTest {
     std::sort(ordered_rows.begin(), ordered_rows.end());
 
     for (const auto op : operators) {
-      LOG(INFO) << "Testing: " << QLOperator_Name(op);
+      LOG(INFO) << "Testing: " << QLOperator_Name(op) << ", is_forward_scan: " << is_forward_scan;
       for (const auto& row : rows_) {
         QLConditionPB condition;
         condition.add_operands()->set_column_id(1_ColId);
