@@ -353,13 +353,6 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   PgDocMetrics& metrics() { return metrics_; }
 
-  void IncrementNumOfFlushes();
-  void ResetNumOfFlushes();
-  uint32_t NumOfFlushes();
-  void ConvertToSingleShardTxn();
-  bool IsSingleShardTxn();
-  void ResetSingleShardTxnConversionFlag();
-
  private:
   Result<PgTableDescPtr> DoLoadTable(const PgObjectId& table_id, bool fail_on_cache_hit);
   Result<PerformFuture> FlushOperations(BufferableOperations ops, bool transactional);
@@ -430,7 +423,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   bool has_write_ops_in_ddl_mode_ = false;
   std::variant<TxnSerialNoPerformInfo> last_perform_on_txn_serial_no_;
 
-  bool from_stop_ops_buffering_ = false;
+  bool no_more_flushes_expected_ = false;
   bool convert_to_single_shard_txn_ = false;
   uint32_t num_flushes_ = 0;
 };

@@ -602,7 +602,6 @@ Status PgSession::StartOperationsBuffering() {
   }
   Update(&buffering_settings_);
   buffering_enabled_ = true;
-  from_stop_ops_buffering_ = false;
   return Status::OK();
 }
 
@@ -610,13 +609,9 @@ Status PgSession::StopOperationsBuffering(bool is_explicit_txn) {
   SCHECK(buffering_enabled_, IllegalState, "Buffering hasn't been started");
   buffering_enabled_ = false;
 
-  if (!is_explicit_txn && pg_txn_manager_ && !pg_txn_manager_->IsDdlMode() && NumOfFlushes() == 0) {
-    ConvertToSingleShardTxn();
-  } else {
-    ResetSingleShardTxnConversionFlag();
+  if (!is_explicit_txn && pg_txn_manager_ && !pg_txn_manager_->IsDdlMode()) {
+    pg_txn_manager_->SetNoMoreOpsInCurrentTxnFlag();
   }
-  from_stop_ops_buffering_ = true;
-  ResetNumOfFlushes();
   return FlushBufferedOperations();
 }
 
@@ -695,11 +690,12 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     }
 
     if (!options.ddl_mode()) {
-      pg_txn_manager_->IsTxnInProgress() && (IsSingleShardTxn() && !contains_read_op)
+      (pg_txn_manager_->IsTxnInProgress() && pg_txn_manager_->NoMoreOpsInCurrentTxn() &&
+       pg_txn_manager_->NumOfFlushes() == 0 && !contains_read_op)
           ? options.set_last_perform_for_plain_txn_serial_no(true)
           : options.set_last_perform_for_plain_txn_serial_no(false);
-      if (!from_stop_ops_buffering_) {
-        IncrementNumOfFlushes();
+      if (!pg_txn_manager_->NoMoreOpsInCurrentTxn()) {
+        pg_txn_manager_->IncrementNumOfFlushes();
       }
     }
 
@@ -710,9 +706,9 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     ProcessPerformOnTxnSerialNo(txn_serial_no, ops_options.ensure_read_time_is_set, &options);
   }
 
-  if (from_stop_ops_buffering_) {
-    ResetSingleShardTxnConversionFlag();
-    from_stop_ops_buffering_ = false;
+  if (pg_txn_manager_->NoMoreOpsInCurrentTxn()) {
+    pg_txn_manager_->ResetNumOfFlushes();
+    pg_txn_manager_->ResetNoMoreOpsInCurrentTxnFlag();
   }
 
   bool global_transaction = yb_force_global_transaction;
@@ -1007,28 +1003,6 @@ Result<PerformFuture> PgSession::RunAsync(
 
 Result<bool> PgSession::CheckIfPitrActive() {
   return pg_client_.CheckIfPitrActive();
-}
-
-void PgSession::IncrementNumOfFlushes() {
-  ++num_flushes_;
-}
-void PgSession::ResetNumOfFlushes() {
-  num_flushes_ = 0;
-}
-uint32_t PgSession::NumOfFlushes() {
-  return num_flushes_;
-}
-
-void PgSession::ConvertToSingleShardTxn() {
-  convert_to_single_shard_txn_ = true;
-}
-
-bool PgSession::IsSingleShardTxn() {
-  return convert_to_single_shard_txn_;
-}
-
-void PgSession::ResetSingleShardTxnConversionFlag() {
-  convert_to_single_shard_txn_ = false;
 }
 
 }  // namespace pggate
