@@ -429,7 +429,7 @@ message PgPerformOptionsPB {
   CachingInfoPB caching_info = 17;
   bool read_from_followers = 18;
   bool trace_requested = 19;
-  bool allow_single_shard_conversion = 20;
+  bool last_perform_for_plain_txn_serial_no = 20;
 }
 
 message PgPerformRequestPB {

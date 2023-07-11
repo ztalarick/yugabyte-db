@@ -116,7 +116,7 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
   }
 
   @Test(expected = com.yugabyte.util.PSQLException.class)
-  public void testMultiValueInsertWithError() throws Exception {
+  public void testMultiValueFastPathInsertWithError() throws Exception {
     try (Statement stmt = connection.createStatement()) {
       stmt.executeUpdate("CREATE DATABASE clc WITH colocation = true");
     }

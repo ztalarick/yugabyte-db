@@ -124,7 +124,7 @@ class PgClientSession : public std::enable_shared_from_this<PgClientSession> {
       bool use_transaction, CoarseTimePoint deadline);
   Status BeginTransactionIfNecessary(
       PgPerformOptionsPB* options, CoarseTimePoint deadline,
-      const bool& only_colocated_tables_involved);
+      const bool only_colocated_tables_involved);
   Result<client::YBTransactionPtr> RestartTransaction(
       client::YBSession* session, client::YBTransaction* transaction);
 
@@ -135,7 +135,8 @@ class PgClientSession : public std::enable_shared_from_this<PgClientSession> {
   Status ProcessResponse(
       const PgClientSessionOperations& operations, const PgPerformRequestPB& req,
       PgPerformResponsePB* resp, rpc::RpcContext* context);
-  void ProcessReadTimeManipulation(ReadTimeManipulation manipulation);
+  Result<PgClientSession::UsedReadTimePtr> ProcessReadTimeManipulation(
+      ReadTimeManipulation manipulation);
 
   client::YBClient& client();
   client::YBSessionPtr& EnsureSession(PgClientSessionKind kind);
@@ -174,6 +175,13 @@ class PgClientSession : public std::enable_shared_from_this<PgClientSession> {
 
   template <class DataPtr>
   Status DoPerform(const DataPtr& data, CoarseTimePoint deadline, rpc::RpcContext* context);
+
+  // Resets the session's current read point.
+  //
+  // For kPlain sessions, also reset the plain session used read time since the tserver will pick a
+  // read time and send back as "used read time" in the response for use by future rpcs of the
+  // session.
+  Result<PgClientSession::UsedReadTimePtr> ResetReadPoint(PgClientSessionKind kind);
 
   const uint64_t id_;
   client::YBClient& client_;

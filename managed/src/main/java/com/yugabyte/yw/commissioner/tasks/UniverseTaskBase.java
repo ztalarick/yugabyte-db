@@ -86,6 +86,7 @@ import com.yugabyte.yw.commissioner.tasks.subtasks.UpdateUniverseYbcDetails;
 import com.yugabyte.yw.commissioner.tasks.subtasks.UpgradeYbc;
 import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForClockSync;
 import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForDataMove;
+import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForDuration;
 import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForEncryptionKeyInMemory;
 import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForFollowerLag;
 import com.yugabyte.yw.commissioner.tasks.subtasks.WaitForLeaderBlacklistCompletion;
@@ -2189,7 +2190,7 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
               log.info(
                   "Queuing backup for table {}:{}",
                   tableSchema.getNamespace(),
-                  tableSchema.getTableName());
+                  CommonUtils.logTableName(tableSchema.getTableName()));
               if (tablesToBackup != null) {
                 tablesToBackup.add(
                     String.format("%s:%s", tableSchema.getNamespace(), tableSchema.getTableName()));
@@ -2225,7 +2226,7 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
                   keyspaceMap.put(tableKeySpace, backupParams);
                   backupTableParamsList.add(backupParams);
                   if (tablesToBackup != null) {
-                    tablesToBackup.add(String.format("%s:%s", tableKeySpace, table.getName()));
+                    tablesToBackup.add(String.format("%s:%s", tableKeySpace, tableName));
                   }
                 }
               } else if (tableType.equals(TableType.YQL_TABLE_TYPE)
@@ -2238,13 +2239,19 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
                 currentBackup.tableNameList.add(tableName);
                 currentBackup.tableUUIDList.add(tableUUID);
                 if (tablesToBackup != null) {
-                  tablesToBackup.add(String.format("%s:%s", tableKeySpace, table.getName()));
+                  tablesToBackup.add(String.format("%s:%s", tableKeySpace, tableName));
                 }
               } else {
                 log.error(
-                    "Unrecognized table type {} for {}:{}", tableType, tableKeySpace, tableName);
+                    "Unrecognized table type {} for {}:{}",
+                    tableType,
+                    tableKeySpace,
+                    CommonUtils.logTableName(tableName));
               }
-              log.info("Queuing backup for table {}:{}", tableKeySpace, tableName);
+              log.info(
+                  "Queuing backup for table {}:{}",
+                  tableKeySpace,
+                  CommonUtils.logTableName(tableName));
             }
           }
         }
@@ -2274,7 +2281,7 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
               keyspaceMap.put(tableKeySpace, backupParams);
               backupTableParamsList.add(backupParams);
               if (tablesToBackup != null) {
-                tablesToBackup.add(String.format("%s:%s", tableKeySpace, table.getName()));
+                tablesToBackup.add(String.format("%s:%s", tableKeySpace, tableName));
               }
             }
           } else if (tableType.equals(TableType.YQL_TABLE_TYPE)
@@ -2289,12 +2296,17 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
             currentBackup.tableNameList.add(tableName);
             currentBackup.tableUUIDList.add(tableUUID);
             if (tablesToBackup != null) {
-              tablesToBackup.add(String.format("%s:%s", tableKeySpace, table.getName()));
+              tablesToBackup.add(String.format("%s:%s", tableKeySpace, tableName));
             }
           } else {
-            log.error("Unrecognized table type {} for {}:{}", tableType, tableKeySpace, tableName);
+            log.error(
+                "Unrecognized table type {} for {}:{}",
+                tableType,
+                tableKeySpace,
+                CommonUtils.logTableName(tableName));
           }
-          log.info("Queuing backup for table {}:{}", tableKeySpace, tableName);
+          log.info(
+              "Queuing backup for table {}:{}", tableKeySpace, CommonUtils.logTableName(tableName));
         }
       }
     } catch (Exception e) {
@@ -2489,8 +2501,7 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
     taskInfo.save();
   }
 
-  private void restoreActionPreflightCheck(RestoreBackupParams restoreParams) {
-    TaskInfo taskInfo = TaskInfo.getOrBadRequest(userTaskUUID);
+  private void restoreActionPreflightCheck(RestoreBackupParams restoreParams, TaskInfo taskInfo) {
     RestorePreflightResponse preflightResponse = getRestorePreflightResponse(restoreParams);
 
     saveRestoreBackupCategory(restoreParams, preflightResponse.getBackupCategory(), taskInfo);
@@ -2529,7 +2540,13 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
 
   protected Restore createAllRestoreSubtasks(
       RestoreBackupParams restoreBackupParams, SubTaskGroupType subTaskGroupType) {
-    restoreActionPreflightCheck(restoreBackupParams);
+    TaskInfo taskInfo = TaskInfo.getOrBadRequest(userTaskUUID);
+
+    // No validation for xcluster type tasks, since the backup
+    // itself is used for populating restore task.
+    if (taskInfo.getTaskType().equals(TaskType.RestoreBackup)) {
+      restoreActionPreflightCheck(restoreBackupParams, taskInfo);
+    }
     if (restoreBackupParams.alterLoadBalancer) {
       createLoadBalancerStateChangeTask(false).setSubTaskGroupType(subTaskGroupType);
     }
@@ -2570,7 +2587,7 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
                   restoreBackupParams, backupStorageInfo, RestoreBackupParams.ActionType.RESTORE);
           String backupLocation = restoreDataParams.backupStorageInfoList.get(0).storageLocation;
           YbcBackupResponse successMarker =
-              restoreBackupParams.getSuccessMarkerMap().get(backupLocation);
+              restoreBackupParams.getSuccessMarkerMap().getOrDefault(backupLocation, null);
           createRestoreBackupYbcTask(restoreDataParams, successMarker, idx)
               .setSubTaskGroupType(subTaskGroupType);
         }
@@ -3173,11 +3190,16 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
 
   protected void createNodePrecheckTasks(
       NodeDetails node, Set<ServerType> processTypes, SubTaskGroupType subGroupType) {
-
-    createCheckUnderReplicatedTabletsTask().setSubTaskGroupType(subGroupType);
+    boolean underReplicatedTabletsCheckEnabled =
+        confGetter.getConfForScope(
+            getUniverse(), UniverseConfKeys.underReplicatedTabletsCheckEnabled);
+    if (underReplicatedTabletsCheckEnabled) {
+      createCheckUnderReplicatedTabletsTask().setSubTaskGroupType(subGroupType);
+    }
 
     // TODO: Add follower lag tablet level check.
   }
+
   /**
    * Checks whether cluster contains any under replicated tablets before proceeding.
    *
@@ -3954,6 +3976,19 @@ public abstract class UniverseTaskBase extends AbstractTaskBase {
             .getGlobalConf(GlobalConfKeys.waitForClockSyncMaxAcceptableClockSkew)
             .toNanos(),
         this.confGetter.getGlobalConf(GlobalConfKeys.waitForClockSyncTimeout).toMillis());
+  }
+
+  protected SubTaskGroup createWaitForDurationSubtask(Universe universe, Duration waitTime) {
+    SubTaskGroup subTaskGroup = createSubTaskGroup("WaitForDuration");
+    WaitForDuration.Params params = new WaitForDuration.Params();
+    params.setUniverseUUID(universe.getUniverseUUID());
+    params.waitTime = waitTime;
+
+    WaitForDuration task = createTask(WaitForDuration.class);
+    task.initialize(params);
+    subTaskGroup.addSubTask(task);
+    getRunnableTask().addSubTaskGroup(subTaskGroup);
+    return subTaskGroup;
   }
 
   // XCluster: All the xCluster related code resides in this section.

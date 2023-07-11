@@ -76,6 +76,12 @@ DEFINE_RUNTIME_string(ysql_sequence_cache_method, "connection",
     "Where sequence values are cached for both existing and new sequences. Valid values are "
     "\"connection\" and \"server\"");
 
+DEFINE_NON_RUNTIME_bool(ysql_rc_force_pick_read_time_on_pg_client, false,
+                        "When resetting read time for a statement in Read Commited isolation level,"
+                        " pick read time on the PgClientService instead of allowing the tserver to"
+                        " pick one.");
+TAG_FLAG(ysql_rc_force_pick_read_time_on_pg_client, advanced);
+
 DECLARE_bool(ysql_serializable_isolation_for_ddl_txn);
 DECLARE_bool(ysql_ddl_rollback_enabled);
 
@@ -308,7 +314,7 @@ Result<PgClientSessionOperations> PrepareOperations(
   ops.reserve(req->ops().size());
   client::YBTablePtr table;
   bool finished = false;
-  std::unordered_set<std::string> tablegroup_ids;
+  std::string prev_tablegroup_id;
   auto se = ScopeExit([&finished, session] {
     if (!finished) {
       session->Abort();
@@ -329,10 +335,14 @@ Result<PgClientSessionOperations> PrepareOperations(
     } else {
       auto& write = *op.mutable_write();
       RETURN_NOT_OK(GetTable(write.table_id(), table_cache, &table));
-      if (*only_writes_on_single_colocated_tablet && !table->colocated()) {
-        *only_writes_on_single_colocated_tablet = false;
-      } else {
-        tablegroup_ids.insert(table->GetTablegroupId());
+      if (*only_writes_on_single_colocated_tablet) {
+        if (!table->colocated()) {
+          *only_writes_on_single_colocated_tablet = false;
+        } else if (prev_tablegroup_id.empty()) {
+          prev_tablegroup_id = table->GetTablegroupId();
+        } else if (prev_tablegroup_id != table->GetTablegroupId()) {
+          *only_writes_on_single_colocated_tablet = false;
+        }
       }
 
       auto write_op = std::make_shared<client::YBPgsqlWriteOp>(table, sidecars, &write);
@@ -342,10 +352,6 @@ Result<PgClientSessionOperations> PrepareOperations(
       }
       ops.push_back(write_op);
     }
-  }
-
-  if (*only_writes_on_single_colocated_tablet && tablegroup_ids.size() > 1) {
-    *only_writes_on_single_colocated_tablet = false;
   }
 
   finished = true;
@@ -972,7 +978,9 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
       &only_writes_on_single_colocated_tablet));
   auto session_info = VERIFY_RESULT(
       SetupSession(&data->req, deadline, in_txn_limit, only_writes_on_single_colocated_tablet));
-  session = session_info.first.session.get();
+  if (!session) {
+    session = session_info.first.session.get();
+  }
   auto& transaction = session_info.first.transaction;
 
   if (context) {
@@ -995,7 +1003,7 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
   data->pg_node_level_mutation_counter = pg_node_level_mutation_counter_;
   data->subtxn_id = options.active_sub_transaction_id();
 
-  for (std::shared_ptr<client::YBOperation> op : data->ops) {
+  for (auto op : data->ops) {
     session->Apply(op);
   }
 
@@ -1015,25 +1023,30 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
   return Status::OK();
 }
 
-void PgClientSession::ProcessReadTimeManipulation(ReadTimeManipulation manipulation) {
+Result<PgClientSession::UsedReadTimePtr> PgClientSession::ProcessReadTimeManipulation(
+    ReadTimeManipulation manipulation) {
   switch (manipulation) {
     case ReadTimeManipulation::RESET: {
-        // If a txn_ has been created, session_->read_point() returns the read point stored in txn_.
-        ConsistentReadPoint* rp = Session(PgClientSessionKind::kPlain)->read_point();
-        rp->SetCurrentReadTime();
-
-        VLOG(1) << "Setting current ht as read point " << rp->GetReadTime();
+        auto* read_point = Session(PgClientSessionKind::kPlain)->read_point();
+        if (FLAGS_ysql_rc_force_pick_read_time_on_pg_client ||
+            Transaction(PgClientSessionKind::kPlain)) {
+          // If a txn_ has been created, session_->read_point() returns the read point stored in
+          // txn_.
+          read_point->SetCurrentReadTime();
+          VLOG(1) << "Setting current ht as read point " << read_point->GetReadTime();
+          return PgClientSession::UsedReadTimePtr();
+        }
+        return VERIFY_RESULT(ResetReadPoint(PgClientSessionKind::kPlain));
       }
-      return;
     case ReadTimeManipulation::RESTART: {
-        ConsistentReadPoint* rp = Session(PgClientSessionKind::kPlain)->read_point();
+        auto* rp = Session(PgClientSessionKind::kPlain)->read_point();
         rp->Restart();
 
         VLOG(1) << "Restarted read point " << rp->GetReadTime();
       }
-      return;
+      return PgClientSession::UsedReadTimePtr();
     case ReadTimeManipulation::NONE:
-      return;
+      return PgClientSession::UsedReadTimePtr();
     case ReadTimeManipulation::ReadTimeManipulation_INT_MIN_SENTINEL_DO_NOT_USE_:
     case ReadTimeManipulation::ReadTimeManipulation_INT_MAX_SENTINEL_DO_NOT_USE_:
       break;
@@ -1119,37 +1132,29 @@ PgClientSession::SetupSession(
 
   UsedReadTimePtr used_read_time;
   if (options.restart_transaction()) {
-    if(options.ddl_mode()) {
-      return STATUS(NotSupported, "Not supported to restart DDL transaction");
-    }
+    RSTATUS_DCHECK(!options.ddl_mode(), NotSupported, "Restarting a DDL transaction not supported");
     Transaction(kind) = VERIFY_RESULT(RestartTransaction(session, transaction));
     transaction = Transaction(kind).get();
   } else {
+    const auto has_time_manipulation =
+        options.read_time_manipulation() != ReadTimeManipulation::NONE;
     RSTATUS_DCHECK(
-        kind == PgClientSessionKind::kPlain ||
-        options.read_time_manipulation() == ReadTimeManipulation::NONE,
-        IllegalState,
-        "Read time manipulation can't be specified for kDdl/ kCatalog transactions");
-    ProcessReadTimeManipulation(options.read_time_manipulation());
-    if (options.has_read_time() || options.use_catalog_session()) {
-      const auto read_time = options.has_read_time() && options.read_time().has_read_ht()
-          ? ReadHybridTime::FromPB(options.read_time()) : ReadHybridTime();
+        !(has_time_manipulation && options.has_read_time()),
+        IllegalState, "read_time_manipulation and read_time fields can't be satisfied together");
+
+    if (has_time_manipulation) {
+      RSTATUS_DCHECK(
+          kind == PgClientSessionKind::kPlain, IllegalState,
+          "Read time manipulation can't be specified for non kPlain sessions");
+      used_read_time = VERIFY_RESULT(ProcessReadTimeManipulation(options.read_time_manipulation()));
+    } else if (options.has_read_time() && options.read_time().has_read_ht()) {
+      const auto read_time = ReadHybridTime::FromPB(options.read_time());
       session->SetReadPoint(read_time);
-      if (read_time) {
-        VLOG_WITH_PREFIX(3) << "Read time: " << read_time;
-      } else {
-        VLOG_WITH_PREFIX(3) << "Reset read time: " << session->read_point()->GetReadTime();
-      }
-    } else if (!transaction &&
-               (options.ddl_mode() || txn_serial_no_ != options.txn_serial_no())) {
-      session->SetReadPoint(ReadHybridTime());
-      if (kind == PgClientSessionKind::kPlain) {
-        used_read_time = std::weak_ptr<UsedReadTime>(
-            std::shared_ptr<UsedReadTime>(shared_from_this(), &plain_session_used_read_time_));
-        std::lock_guard  guard(plain_session_used_read_time_.lock);
-        plain_session_used_read_time_.value = ReadHybridTime();
-      }
-      VLOG_WITH_PREFIX(3) << "Reset read time: " << session->read_point()->GetReadTime();
+      VLOG_WITH_PREFIX(3) << "Read time: " << read_time;
+    } else if (options.has_read_time() ||
+               options.use_catalog_session() ||
+               (!transaction && (txn_serial_no_ != options.txn_serial_no()))) {
+      used_read_time = VERIFY_RESULT(ResetReadPoint(kind));
     } else {
       if (!transaction && kind == PgClientSessionKind::kPlain) {
         RETURN_NOT_OK(CheckPlainSessionReadTime());
@@ -1193,13 +1198,32 @@ PgClientSession::SetupSession(
   return std::make_pair(sessions_[to_underlying(kind)], used_read_time);
 }
 
+Result<PgClientSession::UsedReadTimePtr> PgClientSession::ResetReadPoint(PgClientSessionKind kind) {
+  auto& data = sessions_[to_underlying(kind)];
+  RSTATUS_DCHECK(
+      !data.transaction, IllegalState,
+      "Can't reset read time in case distributed transaction has started");
+  auto& session = *data.session;
+  session.SetReadPoint(ReadHybridTime());
+  VLOG_WITH_PREFIX(3) << "Reset read time: " << session.read_point()->GetReadTime();
+
+  UsedReadTimePtr used_read_time;
+  if (kind == PgClientSessionKind::kPlain) {
+    used_read_time = std::weak_ptr(
+        std::shared_ptr<UsedReadTime>(shared_from_this(), &plain_session_used_read_time_));
+    std::lock_guard guard(plain_session_used_read_time_.lock);
+    plain_session_used_read_time_.value = ReadHybridTime();
+  }
+  return used_read_time;
+}
+
 std::string PgClientSession::LogPrefix() {
   return SessionLogPrefix(id_);
 }
 
 Status PgClientSession::BeginTransactionIfNecessary(
     PgPerformOptionsPB* options, CoarseTimePoint deadline,
-    const bool& only_writes_on_single_colocated_tablet) {
+    const bool only_writes_on_single_colocated_tablet) {
   const auto isolation = static_cast<IsolationLevel>(options->isolation());
 
   auto priority = options->priority();
@@ -1223,13 +1247,7 @@ Status PgClientSession::BeginTransactionIfNecessary(
   }
 
   if (!GetAtomicFlag(&FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes) &&
-      only_writes_on_single_colocated_tablet && options->allow_single_shard_conversion()) {
-    options->set_isolation(IsolationLevel::NON_TRANSACTIONAL);
-    options->mutable_in_txn_limit_ht()->set_value(kInvalidHybridTimeValue);
-    options->set_priority(0);
-    options->set_read_time_manipulation(tserver::ReadTimeManipulation::NONE);
-    options->set_active_sub_transaction_id(0);
-
+      only_writes_on_single_colocated_tablet && options->last_perform_for_plain_txn_serial_no()) {
     return Status::OK();
   }
 
