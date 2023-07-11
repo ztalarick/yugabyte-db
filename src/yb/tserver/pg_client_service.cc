@@ -347,7 +347,8 @@ class PgClientServiceImpl::Impl {
       GetLockStatusRequestPB node_req;
       // GetLockStatusRequestPB supports providing multiple transaction ids, but postgres sends
       // only one transaction id in PgGetLockStatusRequestPB for now.
-      node_req.add_transaction_ids(req.transaction_id());
+      if (!req.transaction_id().empty())
+        node_req.add_transaction_ids(req.transaction_id());
       GetLockStatusResponsePB node_resp;
       controller.Reset();
       RETURN_NOT_OK(proxy->GetLockStatus(node_req, &node_resp, &controller));
@@ -480,6 +481,18 @@ class PgClientServiceImpl::Impl {
       DCHECK_LE(info.entries_size(), 1);
     }
     resp->mutable_entries()->Swap(info.mutable_entries());
+    return Status::OK();
+  }
+
+  Status IsObjectPartOfXRepl(
+    const PgIsObjectPartOfXReplRequestPB& req, PgIsObjectPartOfXReplResponsePB* resp,
+    rpc::RpcContext* context) {
+    auto res = client().IsObjectPartOfXRepl(PgObjectId::GetYbTableIdFromPB(req.table_id()));
+    if (!res.ok()) {
+      StatusToPB(res.status(), resp->mutable_status());
+    } else {
+      resp->set_is_object_part_of_xrepl(*res);
+    }
     return Status::OK();
   }
 

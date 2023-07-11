@@ -599,6 +599,24 @@ class PgClient::Impl {
     return Status::OK();
   }
 
+  Result<yb::tserver::PgGetLockStatusResponsePB> GetLockStatusData(
+      const std::string& table_id, const std::string& transaction_id) {
+    tserver::PgGetLockStatusRequestPB req;
+    tserver::PgGetLockStatusResponsePB resp;
+
+    if (!table_id.empty()) {
+      req.set_table_id(table_id);
+    }
+    if (!transaction_id.empty()) {
+      req.set_transaction_id(transaction_id);
+    }
+
+    RETURN_NOT_OK(proxy_->GetLockStatus(req, &resp, PrepareController()));
+    RETURN_NOT_OK(ResponseStatus(resp));
+
+    return resp;
+  }
+
   Result<int32> TabletServerCount(bool primary_only) {
     if (tablet_server_count_cache_[primary_only] > 0) {
       return tablet_server_count_cache_[primary_only];
@@ -657,6 +675,17 @@ class PgClient::Impl {
       return StatusFromPB(resp.status());
     }
     return resp.is_pitr_active();
+  }
+
+  Result<bool> IsObjectPartOfXRepl(const PgObjectId& table_id) {
+    tserver::PgIsObjectPartOfXReplRequestPB req;
+    tserver::PgIsObjectPartOfXReplResponsePB resp;
+    table_id.ToPB(req.mutable_table_id());
+    RETURN_NOT_OK(proxy_->IsObjectPartOfXRepl(req, &resp, PrepareController()));
+    if (resp.has_status()) {
+      return StatusFromPB(resp.status());
+    }
+    return resp.is_object_part_of_xrepl();
   }
 
   Result<tserver::PgGetTserverCatalogVersionInfoResponsePB> GetTserverCatalogVersionInfo(
@@ -806,6 +835,11 @@ Status PgClient::GetIndexBackfillProgress(
   return impl_->GetIndexBackfillProgress(index_ids, backfill_statuses);
 }
 
+Result<yb::tserver::PgGetLockStatusResponsePB> PgClient::GetLockStatusData(
+    const std::string& table_id, const std::string& transaction_id) {
+  return impl_->GetLockStatusData(table_id, transaction_id);
+}
+
 Result<int32> PgClient::TabletServerCount(bool primary_only) {
   return impl_->TabletServerCount(primary_only);
 }
@@ -896,6 +930,10 @@ void PgClient::PerformAsync(
 
 Result<bool> PgClient::CheckIfPitrActive() {
   return impl_->CheckIfPitrActive();
+}
+
+Result<bool> PgClient::IsObjectPartOfXRepl(const PgObjectId& table_id) {
+  return impl_->IsObjectPartOfXRepl(table_id);
 }
 
 Result<tserver::PgGetTserverCatalogVersionInfoResponsePB> PgClient::GetTserverCatalogVersionInfo(

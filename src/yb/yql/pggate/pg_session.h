@@ -268,6 +268,11 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   Result<PerformFuture> RunAsync(const ReadOperationGenerator& generator, CacheOptions&& options);
 
+  // Lock functions.
+  // -------------
+  Result<yb::tserver::PgGetLockStatusResponsePB> GetLockStatusData(
+      const std::string& table_id, const std::string& transaction_id);
+
   // Smart driver functions.
   // -------------
   Result<client::TabletServersInfo> ListTabletServers();
@@ -352,6 +357,9 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   Result<bool> CheckIfPitrActive();
 
   PgDocMetrics& metrics() { return metrics_; }
+
+  // Check whether the specified table has a CDC stream.
+  Result<bool> IsObjectPartOfXRepl(const PgObjectId& table_id);
 
  private:
   Result<PgTableDescPtr> DoLoadTable(const PgObjectId& table_id, bool fail_on_cache_hit);

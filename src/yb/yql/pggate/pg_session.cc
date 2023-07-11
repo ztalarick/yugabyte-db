@@ -865,6 +865,11 @@ Result<int> PgSession::TabletServerCount(bool primary_only) {
   return pg_client_.TabletServerCount(primary_only);
 }
 
+Result<yb::tserver::PgGetLockStatusResponsePB> PgSession::GetLockStatusData(
+    const std::string& table_id, const std::string& transaction_id) {
+  return pg_client_.GetLockStatusData(table_id, transaction_id);
+}
+
 Result<client::TabletServersInfo> PgSession::ListTabletServers() {
   return pg_client_.ListLiveTabletServers(false);
 }
@@ -1003,6 +1008,10 @@ Result<PerformFuture> PgSession::RunAsync(
 
 Result<bool> PgSession::CheckIfPitrActive() {
   return pg_client_.CheckIfPitrActive();
+}
+
+Result<bool> PgSession::IsObjectPartOfXRepl(const PgObjectId& table_id) {
+  return pg_client_.IsObjectPartOfXRepl(table_id);
 }
 
 }  // namespace pggate
