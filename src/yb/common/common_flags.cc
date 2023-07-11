@@ -102,7 +102,11 @@ DEFINE_UNKNOWN_int64(rpc_throttle_threshold_bytes, 1_MB,
     "Throttling is disabled if negative value is specified. The value must be at least 16 and less "
     "than the strictly enforced consensus_max_batch_size_bytes.");
 
-DECLARE_bool(ysql_force_distributed_txn_for_colocated_tablet_writes);
+DEFINE_RUNTIME_bool(
+    ysql_force_distributed_txn_for_colocated_tablet_writes, false,
+    "Enable the optimization of converting an insert operation on colocated tables into single "
+    "shard transaction if possible.");
+TAG_FLAG(ysql_force_distributed_txn_for_colocated_tablet_writes, advanced);
 
 namespace {
 

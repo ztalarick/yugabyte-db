@@ -52,11 +52,8 @@
 #include "yb/util/status_format.h"
 
 DECLARE_uint64(rpc_max_message_size);
-DEFINE_RUNTIME_bool(
-    ysql_force_distributed_txn_for_colocated_tablet_writes, false,
-    "Enable the optimization of converting an insert operation on colocated tables into single "
-    "shard transaction if possible.");
-TAG_FLAG(ysql_force_distributed_txn_for_colocated_tablet_writes, advanced);
+
+DECLARE_bool(ysql_force_distributed_txn_for_colocated_tablet_writes);
 
 using google::protobuf::MessageLite;
 using google::protobuf::io::CodedInputStream;
