@@ -1858,6 +1858,36 @@ TEST_F(PgMiniTest, CompactionAfterDBDrop) {
   ASSERT_LE(new_file_size, base_file_size + 100_KB);
 }
 
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestDuplicateInsertSingleShardConversion)) {
+  const std::string kDatabaseName = "testdb";
+  const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
+
+  PGConn conn = ASSERT_RESULT(Connect());
+  ASSERT_OK(conn.ExecuteFormat("CREATE DATABASE $0 with colocated=true", kDatabaseName));
+
+  conn = ASSERT_RESULT(ConnectToDB(kDatabaseName));
+  ASSERT_OK(
+      conn.Execute("CREATE TABLE test (key INT PRIMARY KEY, value1 INT, value2 INT, value3 INT)"));
+  ASSERT_OK(conn.Execute("CREATE INDEX test_index_value1 on test(value1)"));
+  ASSERT_OK(conn.Execute("CREATE UNIQUE INDEX test_index_value2 on test(value2)"));
+  ASSERT_OK(conn.Execute("CREATE INDEX test_index_value3 on test(value3)"));
+
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1, 1, 1)", "test"));
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(2, 2, 2, 2)", "test"));
+
+  ASSERT_OK(cluster_->FlushTablets());
+  ASSERT_OK(WaitFor(
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime,
+      "Intents cleaned"));
+
+  auto res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 2);
+
+  auto result = conn.ExecuteFormat("INSERT INTO $0 VALUES(3, 3, 3, 3), (4, 4, 2, 4)", "test");
+  res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 2);
+}
+
 // The test checks that YSQL doesn't wait for sent RPC response in case of process termination.
 TEST_F(PgMiniTest, NoWaitForRPCOnTermination) {
   auto conn = ASSERT_RESULT(Connect());

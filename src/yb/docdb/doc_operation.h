@@ -53,6 +53,8 @@ const int kNilSubkeyIndex = -1;
 
 typedef boost::container::small_vector_base<RefCntPrefix> DocPathsToLock;
 
+YB_STRONGLY_TYPED_BOOL(DocOpDuplicate);
+
 YB_DEFINE_ENUM(GetDocPathsMode, (kLock)(kIntents));
 YB_DEFINE_ENUM(DocOperationType,
                (PGSQL_WRITE_OPERATION)(QL_WRITE_OPERATION)(REDIS_WRITE_OPERATION));
@@ -61,6 +63,12 @@ YB_STRONGLY_TYPED_BOOL(SingleOperation);
 class DocOperation {
  public:
   typedef DocOperationType Type;
+
+  DocOpDuplicate is_duplicate_ = DocOpDuplicate::kFalse;
+
+  DocOpDuplicate IsDuplicate() {
+    return is_duplicate_;
+  }
 
   virtual ~DocOperation() {}
 
