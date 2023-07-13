@@ -134,9 +134,7 @@ Status AssembleDocWriteBatch(
     InitMarkerBehavior init_marker_behavior,
     std::atomic<int64_t>* monotonic_counter,
     HybridTime* restart_read_ht,
-    const std::string& table_name,
-    bool* duplicate_detected,
-    IsolationLevel isolation_level);
+    const std::string& table_name);
 
 struct ExternalTxnApplyStateData {
   HybridTime commit_ht;

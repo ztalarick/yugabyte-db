@@ -770,7 +770,6 @@ Status PgsqlWriteOperation::ApplyInsert(const DocOperationApplyData& data, IsUps
         // Primary key or unique index value found.
         response_->set_status(PgsqlResponsePB::PGSQL_STATUS_DUPLICATE_KEY_ERROR);
         response_->set_error_message("Duplicate key found in primary key or unique index");
-        is_duplicate_ = DocOpDuplicate::kTrue;
         return Status::OK();
       }
     }

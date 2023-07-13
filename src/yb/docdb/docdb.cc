@@ -275,9 +275,7 @@ Status AssembleDocWriteBatch(const vector<unique_ptr<DocOperation>>& doc_write_o
                              InitMarkerBehavior init_marker_behavior,
                              std::atomic<int64_t>* monotonic_counter,
                              HybridTime* restart_read_ht,
-                             const string& table_name,
-                             bool* duplicate_detected,
-                             IsolationLevel isolation_level) {
+                             const string& table_name) {
   DCHECK_ONLY_NOTNULL(restart_read_ht);
   DocWriteBatch doc_write_batch(doc_db, init_marker_behavior, pending_op, monotonic_counter);
 
@@ -310,13 +308,6 @@ Status AssembleDocWriteBatch(const vector<unique_ptr<DocOperation>>& doc_write_o
       resp->set_status(QLResponsePB::YQL_STATUS_QUERY_ERROR);
       resp->set_error_message(std::move(error_msg));
       continue;
-    }
-
-    if (doc_op->IsDuplicate() && isolation_level == IsolationLevel::NON_TRANSACTIONAL) {
-      *duplicate_detected = true;
-      write_batch->clear_write_pairs();
-      write_batch->clear_ttl();
-      return Status::OK();
     }
 
     RETURN_NOT_OK(s);

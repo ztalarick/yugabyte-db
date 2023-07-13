@@ -659,7 +659,6 @@ Status WriteQuery::DoCompleteExecute(HybridTime safe_time) {
   // We expect all read operations for this transaction to be done in AssembleDocWriteBatch. Once
   // read_txn goes out of scope, the read point is deregistered.
   bool local_limit_updated = false;
-  bool duplicate_detected = false;
 
   // This loop may be executed multiple times multiple times only for serializable isolation or
   // when read_time was not yet picked for snapshot isolation.
@@ -672,7 +671,7 @@ Status WriteQuery::DoCompleteExecute(HybridTime safe_time) {
         doc_ops_, read_operation_data, tablet->doc_db(), scoped_read_operation_,
         request().mutable_write_batch(), init_marker_behavior,
         tablet->monotonic_counter(), &restart_read_ht_,
-        tablet->metadata()->table_name(), &duplicate_detected, isolation_level_));
+        tablet->metadata()->table_name()));
 
     // For serializable isolation we don't fix read time, so could do read restart locally,
     // instead of failing whole transaction.
@@ -695,10 +694,6 @@ Status WriteQuery::DoCompleteExecute(HybridTime safe_time) {
 
     for (auto& doc_op : doc_ops_) {
       doc_op->ClearResponse();
-    }
-
-    if (isolation_level_ == IsolationLevel::NON_TRANSACTIONAL && duplicate_detected) {
-      Complete(Status::OK());
     }
   }
 

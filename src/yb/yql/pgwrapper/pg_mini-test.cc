@@ -1818,12 +1818,45 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocated
 
   res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
   ASSERT_EQ(res, 6);
+}
+
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestDuplicateInsertSingleShardConversion)) {
+  const std::string kDatabaseName = "testdb";
+  const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
+
+  PGConn conn = ASSERT_RESULT(Connect());
+  ASSERT_OK(conn.ExecuteFormat("CREATE DATABASE $0 with colocated=true", kDatabaseName));
+
+  conn = ASSERT_RESULT(ConnectToDB(kDatabaseName));
+  ASSERT_OK(
+      conn.Execute("CREATE TABLE test (key INT PRIMARY KEY, value1 INT, value2 INT, value3 INT)"));
+  ASSERT_OK(conn.Execute("CREATE INDEX test_index_value1 on test(value1)"));
+  ASSERT_OK(conn.Execute("CREATE UNIQUE INDEX test_index_value2 on test(value2)"));
+  ASSERT_OK(conn.Execute("CREATE INDEX test_index_value3 on test(value3)"));
 
   FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
-  auto result = conn.ExecuteFormat("INSERT INTO $0 VALUES(7, 7, 7, 7), (8, 8, 4, 8)", "test");
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1, 1, 1)", "test"));
+  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
+  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(2, 2, 2, 2)", "test"));
+  ASSERT_NE(CountIntents(cluster_.get()), 0);
+
+  SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  ASSERT_OK(cluster_->FlushTablets());
+  ASSERT_OK(WaitFor(
+      [this] { return CountIntents(cluster_.get()) == 0; }, kIntentsCleanupTime,
+      "Intents cleaned"));
+
+  auto res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
+  ASSERT_EQ(res, 2);
+
+  FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
+  SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
+  auto result = conn.ExecuteFormat("INSERT INTO $0 VALUES(3, 3, 3, 3), (4, 4, 2, 4)", "test");
   res = ASSERT_RESULT(conn.template FetchValue<PGUint64>(Format("SELECT COUNT(*) FROM test")));
-  ASSERT_EQ(res, 6);
+  ASSERT_EQ(res, 2);
   ASSERT_EQ(CountIntents(cluster_.get()), 0);
 }
 
