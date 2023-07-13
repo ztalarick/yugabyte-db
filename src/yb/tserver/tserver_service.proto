@@ -38,6 +38,7 @@ option java_package = "org.yb.tserver";
 import "yb/common/common.proto";
 import "yb/common/common_types.proto";
 import "yb/common/transaction.proto";
+import "yb/common/wire_protocol.proto";
 import "yb/tablet/tablet_types.proto";
 import "yb/tablet/operations.proto";
 import "yb/tserver/tserver.proto";
@@ -228,6 +229,10 @@ message GetTransactionStatusResponsePB {
   repeated fixed64 coordinator_safe_time = 6;
 
   repeated SubtxnSetPB aborted_subtxn_set = 7;
+
+  // Status containing deadlock info if the transaction was aborted due to deadlock. Else, it is
+  // set to Status::OK().
+  repeated AppStatusPB deadlock_reason = 8;
 }
 
 message GetOldTransactionsRequestPB {

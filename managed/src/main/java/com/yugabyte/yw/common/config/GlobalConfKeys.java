@@ -323,6 +323,14 @@ public class GlobalConfKeys extends RuntimeConfigKeysModule {
           "Enable YBA's custom CA trust-store",
           ConfDataType.BooleanType,
           ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<Boolean> enforceCertVerificationBackupRestore =
+      new ConfKeyInfo<>(
+          "yb.certVerifyBackupRestore.is_enforced",
+          ScopeType.GLOBAL,
+          "Server certificate verification for S3 backup/restore",
+          "Enforce server certificate verification during S3 backup/restore",
+          ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
   public static final ConfKeyInfo<String> javaxNetSslTrustStore =
       new ConfKeyInfo<>(
           "yb.wellKnownCA.trustStore.path",
@@ -354,6 +362,14 @@ public class GlobalConfKeys extends RuntimeConfigKeysModule {
           "Enable Cert Reload",
           "Enable hot reload of TLS certificates without restart of the DB nodes",
           ConfDataType.BooleanType,
+          ImmutableList.of(ConfKeyTags.PUBLIC));
+  public static final ConfKeyInfo<String> orgNameSelfSignedCert =
+      new ConfKeyInfo<>(
+          "yb.tlsCertificate.organizationName",
+          ScopeType.GLOBAL,
+          "Organization name for self signed certificates",
+          "Specify an organization name for self signed certificates",
+          ConfDataType.StringType,
           ImmutableList.of(ConfKeyTags.PUBLIC));
   public static final ConfKeyInfo<Boolean> cmdOutputDelete =
       new ConfKeyInfo<>(
