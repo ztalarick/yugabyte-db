@@ -126,8 +126,8 @@ void RpcThrottleThresholdBytesValidator() {
   if (yb::std_util::cmp_greater_equal(
           FLAGS_rpc_throttle_threshold_bytes, FLAGS_consensus_max_batch_size_bytes)) {
     // If the rpc payload size exceeds max consensus batch size, disable the optimization which lets
-    // an insert into colocated table to go through fast path, so that if the exceeded payload size is
-    // because of the optimization, the subsequent retries would succeed.
+    // an insert into colocated table to go through fast path, so that if the exceeded payload size
+    // is because of the optimization, the subsequent retries would succeed.
     FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
     LOG(FATAL) << "Flag validation failed. rpc_throttle_threshold_bytes (value: "
                << FLAGS_rpc_throttle_threshold_bytes
