@@ -75,6 +75,10 @@ Status SerializeMessage(
 
   auto total_size = size + additional_size;
   if (total_size > FLAGS_rpc_max_message_size) {
+    // If the total message size exceeds max rpc message size, disable the optimization which
+    // forces inserts into colocated tables thorugh fast path if possible, to make sure that
+    // the exceeded message size is not because of the optimization and even if it is,
+    // subsequent retries would succeed.
     FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
     return STATUS_FORMAT(InvalidArgument, "Sending too long RPC message ($0 bytes)", total_size);
   }

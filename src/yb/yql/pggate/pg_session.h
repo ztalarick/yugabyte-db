@@ -434,7 +434,6 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   std::variant<TxnSerialNoPerformInfo> last_perform_on_txn_serial_no_;
 
   bool no_more_flushes_expected_ = false;
-  bool convert_to_single_shard_txn_ = false;
   uint32_t num_flushes_ = 0;
 };
 

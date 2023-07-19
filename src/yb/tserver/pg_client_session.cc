@@ -353,7 +353,6 @@ Result<PgClientSessionOperations> PrepareOperations(
       ops.push_back(write_op);
     }
   }
-
   finished = true;
   return ops;
 }
@@ -838,9 +837,8 @@ Status PgClientSession::SetActiveSubTransaction(
     if (req.options().ddl_mode()) {
       kind = PgClientSessionKind::kDdl;
     } else {
-      auto options = req.options();
       RETURN_NOT_OK(
-          BeginTransactionIfNecessary(&options, context->GetClientDeadline(), false));
+          BeginTransactionIfNecessary(req.options(), context->GetClientDeadline(), false));
       txn_serial_no_ = req.options().txn_serial_no();
     }
   }
@@ -1107,7 +1105,7 @@ Result<std::pair<PgClientSession::SessionData, PgClientSession::UsedReadTimePtr>
 PgClientSession::SetupSession(
     PgPerformRequestPB* req, CoarseTimePoint deadline, HybridTime in_txn_limit,
     bool only_writes_on_single_colocated_tablet) {
-  auto& options = *req->mutable_options();
+  const auto& options = req->options();
   PgClientSessionKind kind;
   if (options.use_catalog_session()) {
     SCHECK(!options.read_from_followers(),
@@ -1122,7 +1120,7 @@ PgClientSession::SetupSession(
   } else {
     kind = PgClientSessionKind::kPlain;
     RETURN_NOT_OK(
-        BeginTransactionIfNecessary(&options, deadline, only_writes_on_single_colocated_tablet));
+        BeginTransactionIfNecessary(options, deadline, only_writes_on_single_colocated_tablet));
   }
 
   auto session = Session(kind).get();
@@ -1222,19 +1220,19 @@ std::string PgClientSession::LogPrefix() {
 }
 
 Status PgClientSession::BeginTransactionIfNecessary(
-    PgPerformOptionsPB* options, CoarseTimePoint deadline,
+    const PgPerformOptionsPB& options, CoarseTimePoint deadline,
     const bool only_writes_on_single_colocated_tablet) {
-  const auto isolation = static_cast<IsolationLevel>(options->isolation());
+  const auto isolation = static_cast<IsolationLevel>(options.isolation());
 
-  auto priority = options->priority();
+  auto priority = options.priority();
   auto& session = EnsureSession(PgClientSessionKind::kPlain);
   auto& txn = Transaction(PgClientSessionKind::kPlain);
-  if (txn && txn_serial_no_ != options->txn_serial_no()) {
+  if (txn && txn_serial_no_ != options.txn_serial_no()) {
     VLOG_WITH_PREFIX(2)
-        << "Abort previous transaction, use existing priority: " << options->use_existing_priority()
+        << "Abort previous transaction, use existing priority: " << options.use_existing_priority()
         << ", new isolation: " << IsolationLevel_Name(isolation);
 
-    if (options->use_existing_priority()) {
+    if (options.use_existing_priority()) {
       saved_priority_ = txn->GetPriority();
     }
     txn->Abort();
@@ -1247,7 +1245,7 @@ Status PgClientSession::BeginTransactionIfNecessary(
   }
 
   if (!GetAtomicFlag(&FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes) &&
-      only_writes_on_single_colocated_tablet && options->last_perform_for_plain_txn_serial_no()) {
+      only_writes_on_single_colocated_tablet && options.last_perform_for_plain_txn()) {
     return Status::OK();
   }
 
@@ -1261,11 +1259,11 @@ Status PgClientSession::BeginTransactionIfNecessary(
   }
 
   txn = transaction_pool_provider_().Take(
-      client::ForceGlobalTransaction(options->force_global_transaction()), deadline);
+      client::ForceGlobalTransaction(options.force_global_transaction()), deadline);
   txn->SetLogPrefixTag(kTxnLogPrefixTag, id_);
   if ((isolation == IsolationLevel::SNAPSHOT_ISOLATION ||
            isolation == IsolationLevel::READ_COMMITTED) &&
-      txn_serial_no_ == options->txn_serial_no()) {
+      txn_serial_no_ == options.txn_serial_no()) {
     RETURN_NOT_OK(CheckPlainSessionReadTime());
     txn->InitWithReadPoint(isolation, std::move(*session->read_point()));
     VLOG_WITH_PREFIX(2) << "Start transaction " << IsolationLevel_Name(isolation)
@@ -1278,7 +1276,7 @@ Status PgClientSession::BeginTransactionIfNecessary(
     RETURN_NOT_OK(txn->Init(isolation));
   }
 
-  RETURN_NOT_OK(UpdateReadPointForXClusterConsistentReads(*options, deadline, &txn->read_point()));
+  RETURN_NOT_OK(UpdateReadPointForXClusterConsistentReads(options, deadline, &txn->read_point()));
 
   if (saved_priority_) {
     priority = *saved_priority_;

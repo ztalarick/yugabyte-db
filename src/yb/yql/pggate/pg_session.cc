@@ -614,7 +614,7 @@ Status PgSession::StopOperationsBuffering(bool is_explicit_txn) {
   buffering_enabled_ = false;
 
   if (!is_explicit_txn && pg_txn_manager_ && !pg_txn_manager_->IsDdlMode()) {
-    pg_txn_manager_->SetNoMoreOpsInCurrentTxnFlag();
+    pg_txn_manager_->SetNoMoreOpsInCurrentTxn();
   }
   return FlushBufferedOperations();
 }
@@ -681,7 +681,7 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     }
   }
 
-  options.set_last_perform_for_plain_txn_serial_no(false);
+  options.set_last_perform_for_plain_txn(false);
   if (ops_options.use_catalog_session) {
     if (catalog_read_time_) {
       catalog_read_time_.ToPB(options.mutable_read_time());
@@ -696,8 +696,8 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     if (!options.ddl_mode()) {
       (pg_txn_manager_->IsTxnInProgress() && pg_txn_manager_->NoMoreOpsInCurrentTxn() &&
        pg_txn_manager_->NumOfFlushes() == 0 && !contains_read_op)
-          ? options.set_last_perform_for_plain_txn_serial_no(true)
-          : options.set_last_perform_for_plain_txn_serial_no(false);
+          ? options.set_last_perform_for_plain_txn(true)
+          : options.set_last_perform_for_plain_txn(false);
       if (!pg_txn_manager_->NoMoreOpsInCurrentTxn()) {
         pg_txn_manager_->IncrementNumOfFlushes();
       }
@@ -712,7 +712,7 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
 
   if (pg_txn_manager_->NoMoreOpsInCurrentTxn()) {
     pg_txn_manager_->ResetNumOfFlushes();
-    pg_txn_manager_->ResetNoMoreOpsInCurrentTxnFlag();
+    pg_txn_manager_->ResetNoMoreOpsInCurrentTxn();
   }
 
   bool global_transaction = yb_force_global_transaction;

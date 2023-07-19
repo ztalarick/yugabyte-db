@@ -123,7 +123,7 @@ class PgClientSession : public std::enable_shared_from_this<PgClientSession> {
   Result<const TransactionMetadata*> GetDdlTransactionMetadata(
       bool use_transaction, CoarseTimePoint deadline);
   Status BeginTransactionIfNecessary(
-      PgPerformOptionsPB* options, CoarseTimePoint deadline,
+      const PgPerformOptionsPB& options, CoarseTimePoint deadline,
       const bool only_colocated_tables_involved);
   Result<client::YBTransactionPtr> RestartTransaction(
       client::YBSession* session, client::YBTransaction* transaction);

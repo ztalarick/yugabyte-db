@@ -1769,7 +1769,7 @@ TEST_F(PgMiniTest, ColocatedCompaction) {
   VerifyFileSizeAfterCompaction(&conn, kNumTables);
 }
 
-TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocatedTables)) {
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInserts)) {
   const std::string kDatabaseName = "testdb";
   const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
 
@@ -1820,7 +1820,7 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionForColocated
   ASSERT_EQ(res, 6);
 }
 
-TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithExplicitTxn)) {
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInsertsWithExplicitTxn)) {
   FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   const std::string kDatabaseName = "testdb";
   const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
@@ -1849,7 +1849,7 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithExplicit
   ASSERT_EQ(res, 1);
 }
 
-TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestSingleShardConversionWithForeignKey)) {
+TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInsertsWithForeignKey)) {
   const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
   const std::string kDatabaseName = "testdb";
   const std::string kDataTable = "data";

@@ -80,14 +80,14 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
   double GetTransactionPriority() const;
   TxnPriorityRequirement GetTransactionPriorityType() const;
 
-  void SetNoMoreOpsInCurrentTxnFlag() {
-    no_more_ops_in_current_plain_transaction_serial_num_ = true;
+  void SetNoMoreOpsInCurrentTxn() {
+    no_more_ops_in_current_plain_transaction_ = true;
   }
 
-  bool NoMoreOpsInCurrentTxn() { return no_more_ops_in_current_plain_transaction_serial_num_; }
+  bool NoMoreOpsInCurrentTxn() { return no_more_ops_in_current_plain_transaction_; }
 
-  void ResetNoMoreOpsInCurrentTxnFlag() {
-    no_more_ops_in_current_plain_transaction_serial_num_ = false;
+  void ResetNoMoreOpsInCurrentTxn() {
+    no_more_ops_in_current_plain_transaction_ = false;
   }
 
   void IncrementNumOfFlushes() { ++num_flushes_; }
@@ -121,7 +121,7 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
   bool need_restart_ = false;
   bool need_defer_read_point_ = false;
   tserver::ReadTimeManipulation read_time_manipulation_ = tserver::ReadTimeManipulation::NONE;
-  bool no_more_ops_in_current_plain_transaction_serial_num_ = false;
+  bool no_more_ops_in_current_plain_transaction_ = false;
   uint32_t num_flushes_ = 0;
 
   // Postgres transaction characteristics.
