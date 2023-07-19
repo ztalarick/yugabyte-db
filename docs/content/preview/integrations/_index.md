@@ -31,6 +31,13 @@ For information on YugabyteDB-compatible drivers and ORMs, refer to [Drivers and
   </li>
 
   <li>
+    <a href="apache-flink/">
+      <img src="/images/section_icons/develop/ecosystem/apache-flink.png">
+      Apache Flink
+    </a>
+  </li>
+
+  <li>
     <a href="apache-kafka/">
       <img src="/images/section_icons/develop/ecosystem/apache-kafka-icon.png">
       Apache Kafka
@@ -45,6 +52,13 @@ For information on YugabyteDB-compatible drivers and ORMs, refer to [Drivers and
   </li>
 
   <li>
+    <a href="ataccama/">
+      <img src="/images/section_icons/develop/ecosystem/ataccama.png">
+      Ataccama DQ Analyzer
+    </a>
+  </li>
+
+  <li>
     <a href="atomicjar/">
       <img src="/images/section_icons/develop/ecosystem/atomicjar-icon.png">
       AtomicJar Testcontainers
@@ -55,6 +69,20 @@ For information on YugabyteDB-compatible drivers and ORMs, refer to [Drivers and
     <a href="camunda/">
       <img src="/images/section_icons/develop/ecosystem/camunda.png">
       Camunda
+    </a>
+  </li>
+
+   <li>
+    <a href="datahub/">
+      <img src="/images/section_icons/develop/ecosystem/datahub.png">
+      Datahub
+    </a>
+  </li>
+
+  <li>
+    <a href="dataedo/">
+      <img src="/images/section_icons/develop/ecosystem/dataedo.png">
+      Dataedo
     </a>
   </li>
 
@@ -93,6 +121,13 @@ For information on YugabyteDB-compatible drivers and ORMs, refer to [Drivers and
     </a>
   </li>
 
+   <li>
+    <a href="hevodata/">
+      <img src="/images/section_icons/develop/ecosystem/hevodata.png">
+      Hevo Data
+    </a>
+  </li>
+
   <li>
     <a href="jaeger/">
       <img src="/images/section_icons/develop/ecosystem/jaeger.png">
@@ -110,6 +145,13 @@ For information on YugabyteDB-compatible drivers and ORMs, refer to [Drivers and
     <a href="kairosdb/">
       <img src="/images/section_icons/develop/ecosystem/kairosdb.png">
       KairosDB
+    </a>
+  </li>
+
+  <li>
+    <a href="kinesis/">
+      <img src="/images/section_icons/develop/ecosystem/kinesis.png">
+      Kinesis Data Streams
     </a>
   </li>
 
@@ -186,6 +228,33 @@ For information on YugabyteDB-compatible drivers and ORMs, refer to [Drivers and
     <a href="ysql-loader/">
       <i class="icon-postgres"></i>
       YSQL Loader
+    </a>
+  </li>
+
+</ul>
+
+### Development platforms
+
+<ul class="nav yb-pills">
+
+  <li>
+    <a href="caspio/">
+      <img src="/images/section_icons/develop/ecosystem/caspio.png">
+      Caspio
+    </a>
+  </li>
+
+  <li>
+    <a href="retool/">
+      <img src="/images/section_icons/develop/ecosystem/retool.png">
+      Retool
+    </a>
+  </li>
+
+  <li>
+    <a href="superblocks/">
+      <img src="/images/section_icons/develop/ecosystem/superblocks.png">
+      Superblocks
     </a>
   </li>
 
