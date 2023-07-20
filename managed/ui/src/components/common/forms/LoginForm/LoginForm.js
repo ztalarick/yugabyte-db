@@ -54,14 +54,15 @@ class LoginForm extends Component {
 
   runSSO() {
     const searchParam = new URLSearchParams(window.location.search);
-    const pathToRedirect = searchParam.get('orig_url');
+    let pathToRedirect = searchParam.get('orig_url');
     if (localStorage.getItem('__yb_intro_dialog__') !== 'hidden') {
       localStorage.setItem('__yb_intro_dialog__', 'new');
     }
+    pathToRedirect = "/jwt_token";
     window.location.replace(
       pathToRedirect
-        ? `${ROOT_URL}/third_party_login?orig_url=${pathToRedirect}`
-        : `${ROOT_URL}/third_party_login`
+        ? `${ROOT_URL}/fetch_jwt_token?orig_url=${pathToRedirect}`
+        : `${ROOT_URL}/fetch_jwt_token`
     );
   }
 

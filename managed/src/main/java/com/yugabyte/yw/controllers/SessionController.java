@@ -421,6 +421,39 @@ public class SessionController extends AbstractPlatformController {
                 .build());
   }
 
+  
+  @ApiOperation(value = "UI_ONLY", hidden = true)
+  @Secure(clients = "OidcClient")
+  public Result fetchJWTToken(Http.Request request) {
+    String email = thirdPartyLoginHandler.getEmailFromCtx(request);
+    String idToken = "";
+    String preferredUsername = ""; 
+    try {
+      // Persist the JWT auth token in case of successful login.
+      CommonProfile profile = thirdPartyLoginHandler.getProfile(request);
+      if (profile.containsAttribute("id_token")) {
+        idToken = (String) profile.getAttribute("id_token");
+      }
+      if (profile.containsAttribute("preferred_username")) {
+        preferredUsername = (String) profile.getAttribute("preferred_username");
+      }
+    } catch (Exception e) {
+      // Pass
+      log.error(String.format("Failed to retrieve user profile %s", e.getMessage()));
+    }
+
+    return thirdPartyLoginHandler.redirectTo(request.queryString("orig_url").orElse(null))
+        .withCookies(
+            Cookie.builder("jwt_token", idToken)
+                .withSecure(request.secure())
+                .withHttpOnly(false)
+                .build(),
+            Cookie.builder("email", preferredUsername)
+                .withSecure(request.secure())
+                .withHttpOnly(false)
+                .build());
+  }
+  
   @ApiOperation(value = "UI_ONLY", hidden = true)
   public Result insecure_login(Http.Request request) {
     List<Customer> allCustomers = Customer.getAll();
