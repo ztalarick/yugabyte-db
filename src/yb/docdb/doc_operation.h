@@ -96,11 +96,9 @@ class DocOperation {
 
   virtual std::string ToString() const = 0;
 
-  void SetIsolationLevel(IsolationLevel isolation_level) {
-    isolation_level_ = isolation_level;
-  }
+  void SetIsolationLevel(IsolationLevel isolation_level) { isolation_level_ = isolation_level; }
 
-  protected:
+ protected:
   IsolationLevel isolation_level_ = IsolationLevel::SERIALIZABLE_ISOLATION;
 };
 
