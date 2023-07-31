@@ -10,10 +10,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
@@ -33,11 +30,7 @@ import com.yugabyte.yw.models.Universe;
 import com.yugabyte.yw.models.helpers.NodeDetails;
 import com.yugabyte.yw.models.helpers.NodeDetails.NodeState;
 import com.yugabyte.yw.models.helpers.TaskType;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -134,6 +127,8 @@ public class RemoveNodeFromUniverseTest extends CommissionerBaseTest {
 
     when(mockYBClient.getClient(any(), any())).thenReturn(mockClient);
     mockWaits(mockClient, 3);
+    UniverseModifyBaseTest.mockGetMasterRegistrationResponse(
+        mockClient, ImmutableList.of("10.0.0.4", "10.0.0.6"), Collections.emptyList());
   }
 
   private TaskInfo submitTask(NodeTaskParams taskParams, String nodeName) {
