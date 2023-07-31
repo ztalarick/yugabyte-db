@@ -90,9 +90,9 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
     no_more_ops_in_current_plain_transaction_ = false;
   }
 
-  void IncrementNumOfFlushes() { ++num_flushes_; }
-  void ResetNumOfFlushes() { num_flushes_ = 0; }
-  uint32_t NumOfFlushes() { return num_flushes_; }
+  void IncrementNumOfFlushes() { ++num_perform_rpcs_; }
+  void ResetNumOfFlushes() { num_perform_rpcs_ = 0; }
+  uint32_t NumOfFlushes() { return num_perform_rpcs_; }
 
  private:
   YB_STRONGLY_TYPED_BOOL(NeedsHigherPriorityTxn);
@@ -122,7 +122,7 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
   bool need_defer_read_point_ = false;
   tserver::ReadTimeManipulation read_time_manipulation_ = tserver::ReadTimeManipulation::NONE;
   bool no_more_ops_in_current_plain_transaction_ = false;
-  uint32_t num_flushes_ = 0;
+  uint32_t num_perform_rpcs_ = 0;
 
   // Postgres transaction characteristics.
   PgIsolationLevel pg_isolation_level_ = PgIsolationLevel::REPEATABLE_READ;

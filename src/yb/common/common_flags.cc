@@ -104,8 +104,8 @@ DEFINE_UNKNOWN_int64(rpc_throttle_threshold_bytes, 1_MB,
 
 DEFINE_RUNTIME_bool(
     ysql_force_distributed_txn_for_colocated_tablet_writes, false,
-    "Disable the optimization of routing an insert operation on colocated tables through fast "
-    "path if possible, and force it to be a multi-shard txn.");
+    "Disable the optimization of routing insert operations on colocated tables through fast "
+    "path even if possible, and force it to be a multi-shard txn.");
 TAG_FLAG(ysql_force_distributed_txn_for_colocated_tablet_writes, advanced);
 
 namespace {

@@ -446,10 +446,13 @@ message PgPerformOptionsPB {
   bool read_from_followers = 18;
   bool trace_requested = 19;
 
-  // flag which indicates that this the first and last perform request as part of
-  // current txn and if there is a single tablet involved, this txn could be forced
-  // through fast path
-  bool last_perform_for_plain_txn = 20;
+  // flag which indicates that this the first and last perform request as part
+  // of current txn and if there is a single tablet involved, this txn could be
+  // forced through fast path. On the other hand, if this is false, it doesn't
+  // mean that this is not the first and last Perform. It could still be
+  // the one and only perform but owing to certain scenarios this flag could be
+  // set to false.
+  bool first_and_last_perform_for_plain_txn = 20;
 }
 
 message PgPerformRequestPB {

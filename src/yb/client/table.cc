@@ -129,7 +129,7 @@ std::string YBTable::GetTablegroupId() const {
   return tablegroup_id_;
 }
 
-void YBTable::SetTablegroupId(const std::string tablegroup_id) {
+void YBTable::SetTablegroupId(const std::string& tablegroup_id) {
   tablegroup_id_ = tablegroup_id;
 }
 

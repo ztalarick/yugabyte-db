@@ -432,9 +432,6 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   const YBCPgCallbacks& pg_callbacks_;
   bool has_write_ops_in_ddl_mode_ = false;
   std::variant<TxnSerialNoPerformInfo> last_perform_on_txn_serial_no_;
-
-  bool no_more_flushes_expected_ = false;
-  uint32_t num_flushes_ = 0;
 };
 
 }  // namespace pggate

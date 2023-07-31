@@ -124,7 +124,7 @@ class PgClientSession : public std::enable_shared_from_this<PgClientSession> {
       bool use_transaction, CoarseTimePoint deadline);
   Status BeginTransactionIfNecessary(
       const PgPerformOptionsPB& options, CoarseTimePoint deadline,
-      const bool only_colocated_tables_involved);
+      bool only_writes_on_single_colocated_tablet);
   Result<client::YBTransactionPtr> RestartTransaction(
       client::YBSession* session, client::YBTransaction* transaction);
 

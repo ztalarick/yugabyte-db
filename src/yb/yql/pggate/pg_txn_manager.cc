@@ -363,7 +363,7 @@ void PgTxnManager::ResetTxnAndSession() {
   priority_ = 0;
   ++txn_serial_no_;
   no_more_ops_in_current_plain_transaction_ = false;
-  num_flushes_ = 0;
+  num_perform_rpcs_ = 0;
   active_sub_transaction_id_ = 0;
 
   enable_follower_reads_ = false;
@@ -422,7 +422,7 @@ uint64_t PgTxnManager::SetupPerformOptions(tserver::PgPerformOptionsPB* options)
   if (!IsDdlMode() && !txn_in_progress_) {
     ++txn_serial_no_;
     no_more_ops_in_current_plain_transaction_ = false;
-    num_flushes_ = 0;
+    num_perform_rpcs_ = 0;
     active_sub_transaction_id_ = 0;
   }
   options->set_isolation(isolation_level_);

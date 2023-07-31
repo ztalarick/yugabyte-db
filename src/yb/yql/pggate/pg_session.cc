@@ -673,15 +673,8 @@ Result<PerformFuture> PgSession::FlushOperations(BufferableOperations ops, bool 
 Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOptions&& ops_options) {
   DCHECK(!ops.empty());
   tserver::PgPerformOptionsPB options;
-  bool contains_read_op = false;
-  for (auto op_iter = ops.operations.begin(); op_iter != ops.operations.end(); ++op_iter) {
-    if ((*op_iter)->is_read()) {
-      contains_read_op = true;
-      break;
-    }
-  }
 
-  options.set_last_perform_for_plain_txn(false);
+  options.set_first_and_last_perform_for_plain_txn(false);
   if (ops_options.use_catalog_session) {
     if (catalog_read_time_) {
       catalog_read_time_.ToPB(options.mutable_read_time());
@@ -693,11 +686,11 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
       options.mutable_in_txn_limit_ht()->set_value(ops_options.in_txn_limit.ToUint64());
     }
 
-    if (!options.ddl_mode()) {
+    if (!options.ddl_mode() && !options.use_catalog_session()) {
       (pg_txn_manager_->IsTxnInProgress() && pg_txn_manager_->NoMoreOpsInCurrentTxn() &&
-       pg_txn_manager_->NumOfFlushes() == 0 && !contains_read_op)
-          ? options.set_last_perform_for_plain_txn(true)
-          : options.set_last_perform_for_plain_txn(false);
+       pg_txn_manager_->NumOfFlushes() == 0)
+          ? options.set_first_and_last_perform_for_plain_txn(true)
+          : options.set_first_and_last_perform_for_plain_txn(false);
       if (!pg_txn_manager_->NoMoreOpsInCurrentTxn()) {
         pg_txn_manager_->IncrementNumOfFlushes();
       }

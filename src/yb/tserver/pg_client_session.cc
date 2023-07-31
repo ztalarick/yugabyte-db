@@ -332,6 +332,7 @@ Result<PgClientSessionOperations> PrepareOperations(
         read_op->set_yb_consistency_level(YBConsistencyLevel::CONSISTENT_PREFIX);
       }
       ops.push_back(read_op);
+      // session->Apply(std::move(read_op));
     } else {
       auto& write = *op.mutable_write();
       RETURN_NOT_OK(GetTable(write.table_id(), table_cache, &table));
@@ -351,6 +352,7 @@ Result<PgClientSessionOperations> PrepareOperations(
         write_time = HybridTime::kInvalid;
       }
       ops.push_back(write_op);
+      // session->Apply(std::move(write_op));
     }
   }
   finished = true;
@@ -968,6 +970,8 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
     only_writes_on_single_colocated_tablet = true;
     kind = PgClientSessionKind::kPlain;
   }
+
+  EnsureSession(kind);
   auto *session = Session(kind).get();
   const auto in_txn_limit = GetInTxnLimit(options, clock_.get());
   VLOG_WITH_PREFIX(5) << "using in_txn_limit_ht: " << in_txn_limit;
@@ -1222,7 +1226,7 @@ std::string PgClientSession::LogPrefix() {
 
 Status PgClientSession::BeginTransactionIfNecessary(
     const PgPerformOptionsPB& options, CoarseTimePoint deadline,
-    const bool only_writes_on_single_colocated_tablet) {
+    bool only_writes_on_single_colocated_tablet) {
   const auto isolation = static_cast<IsolationLevel>(options.isolation());
 
   auto priority = options.priority();
@@ -1246,7 +1250,7 @@ Status PgClientSession::BeginTransactionIfNecessary(
   }
 
   if (!GetAtomicFlag(&FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes) &&
-      only_writes_on_single_colocated_tablet && options.last_perform_for_plain_txn()) {
+      only_writes_on_single_colocated_tablet && options.first_and_last_perform_for_plain_txn()) {
     return Status::OK();
   }
 
