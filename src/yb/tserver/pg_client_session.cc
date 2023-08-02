@@ -307,19 +307,13 @@ Status GetTable(const TableId& table_id, PgTableCache* cache, client::YBTablePtr
 }
 
 Result<PgClientSessionOperations> PrepareOperations(
-    PgPerformRequestPB* req, client::YBSession* session, rpc::Sidecars* sidecars,
-    PgTableCache* table_cache, bool* only_writes_on_single_colocated_tablet) {
+    PgPerformRequestPB* req, rpc::Sidecars* sidecars, PgTableCache* table_cache,
+    bool* only_writes_on_single_colocated_tablet) {
   auto write_time = HybridTime::FromPB(req->write_time());
   std::vector<std::shared_ptr<client::YBPgsqlOp>> ops;
   ops.reserve(req->ops().size());
   client::YBTablePtr table;
-  bool finished = false;
   std::string prev_tablegroup_id;
-  auto se = ScopeExit([&finished, session] {
-    if (!finished) {
-      session->Abort();
-    }
-  });
   const auto read_from_followers = req->options().read_from_followers();
   for (auto& op : *req->mutable_ops()) {
     if (op.has_read()) {
@@ -332,7 +326,6 @@ Result<PgClientSessionOperations> PrepareOperations(
         read_op->set_yb_consistency_level(YBConsistencyLevel::CONSISTENT_PREFIX);
       }
       ops.push_back(read_op);
-      // session->Apply(std::move(read_op));
     } else {
       auto& write = *op.mutable_write();
       RETURN_NOT_OK(GetTable(write.table_id(), table_cache, &table));
@@ -352,10 +345,8 @@ Result<PgClientSessionOperations> PrepareOperations(
         write_time = HybridTime::kInvalid;
       }
       ops.push_back(write_op);
-      // session->Apply(std::move(write_op));
     }
   }
-  finished = true;
   return ops;
 }
 
@@ -960,30 +951,25 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
     }
   }
 
-  PgClientSessionKind kind;
+  bool finished = false;
   bool only_writes_on_single_colocated_tablet = false;
-  if (options.use_catalog_session()) {
-    kind = PgClientSessionKind::kCatalog;
-  } else if (options.ddl_mode()) {
-    kind = PgClientSessionKind::kDdl;
-  } else {
+  if (!options.use_catalog_session() && !options.ddl_mode()) {
     only_writes_on_single_colocated_tablet = true;
-    kind = PgClientSessionKind::kPlain;
   }
 
-  EnsureSession(kind);
-  auto *session = Session(kind).get();
   const auto in_txn_limit = GetInTxnLimit(options, clock_.get());
   VLOG_WITH_PREFIX(5) << "using in_txn_limit_ht: " << in_txn_limit;
   data->ops = VERIFY_RESULT(PrepareOperations(
-      &data->req, session, &data->sidecars, &table_cache_,
-      &only_writes_on_single_colocated_tablet));
+      &data->req, &data->sidecars, &table_cache_, &only_writes_on_single_colocated_tablet));
   auto session_info = VERIFY_RESULT(
       SetupSession(&data->req, deadline, in_txn_limit, only_writes_on_single_colocated_tablet));
-  if (!session) {
-    session = session_info.first.session.get();
-  }
+  auto *session = session_info.first.session.get();
   auto& transaction = session_info.first.transaction;
+  auto se = ScopeExit([&finished, session] {
+    if (!finished) {
+      session->Abort();
+    }
+  });
 
   if (context) {
     if (options.trace_requested()) {
@@ -1022,6 +1008,7 @@ Status PgClientSession::DoPerform(const DataPtr& data, CoarseTimePoint deadline,
     }
     VLOG_WITH_PREFIX(5) << "Perform resp: " << data->resp.ShortDebugString();
   });
+  finished = true;
 
   return Status::OK();
 }

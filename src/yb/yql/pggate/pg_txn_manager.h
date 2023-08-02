@@ -90,9 +90,9 @@ class PgTxnManager : public RefCountedThreadSafe<PgTxnManager> {
     no_more_ops_in_current_plain_transaction_ = false;
   }
 
-  void IncrementNumOfFlushes() { ++num_perform_rpcs_; }
-  void ResetNumOfFlushes() { num_perform_rpcs_ = 0; }
-  uint32_t NumOfFlushes() { return num_perform_rpcs_; }
+  void IncrementNumOfPerformRpcs() { ++num_perform_rpcs_; }
+  void ResetNumOfPerformRpcs() { num_perform_rpcs_ = 0; }
+  uint32_t NumOfPerformRpcs() { return num_perform_rpcs_; }
 
  private:
   YB_STRONGLY_TYPED_BOOL(NeedsHigherPriorityTxn);

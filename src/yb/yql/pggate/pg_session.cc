@@ -687,13 +687,10 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
     }
 
     if (!options.ddl_mode() && !options.use_catalog_session()) {
-      (pg_txn_manager_->IsTxnInProgress() && pg_txn_manager_->NoMoreOpsInCurrentTxn() &&
-       pg_txn_manager_->NumOfFlushes() == 0)
-          ? options.set_first_and_last_perform_for_plain_txn(true)
-          : options.set_first_and_last_perform_for_plain_txn(false);
-      if (!pg_txn_manager_->NoMoreOpsInCurrentTxn()) {
-        pg_txn_manager_->IncrementNumOfFlushes();
-      }
+      options.set_first_and_last_perform_for_plain_txn(
+          pg_txn_manager_->IsTxnInProgress() && pg_txn_manager_->NoMoreOpsInCurrentTxn() &&
+          pg_txn_manager_->NumOfPerformRpcs() == 0);
+      pg_txn_manager_->IncrementNumOfPerformRpcs();
     }
 
     auto ops_read_time = VERIFY_RESULT(GetReadTime(ops.operations));
@@ -704,7 +701,7 @@ Result<PerformFuture> PgSession::Perform(BufferableOperations&& ops, PerformOpti
   }
 
   if (pg_txn_manager_->NoMoreOpsInCurrentTxn()) {
-    pg_txn_manager_->ResetNumOfFlushes();
+    pg_txn_manager_->ResetNumOfPerformRpcs();
     pg_txn_manager_->ResetNoMoreOpsInCurrentTxn();
   }
 

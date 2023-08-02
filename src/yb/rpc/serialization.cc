@@ -44,6 +44,7 @@
 #include "yb/rpc/call_data.h"
 #include "yb/rpc/rpc_header.pb.h"
 
+#include "yb/util/atomic.h"
 #include "yb/util/faststring.h"
 #include "yb/util/flags.h"
 #include "yb/util/ref_cnt_buffer.h"
@@ -79,7 +80,7 @@ Status SerializeMessage(
     // forces inserts into colocated tables thorugh fast path if possible, to make sure that
     // the exceeded message size is not because of the optimization and even if it is,
     // subsequent retries would succeed.
-    FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
+    SetAtomicFlag(true, &FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes);
     return STATUS_FORMAT(InvalidArgument, "Sending too long RPC message ($0 bytes)", total_size);
   }
 
