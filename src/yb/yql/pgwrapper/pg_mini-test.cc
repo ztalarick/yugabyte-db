@@ -1860,7 +1860,7 @@ TEST_F(PgMiniTest, CompactionAfterDBDrop) {
   ASSERT_LE(new_file_size, base_file_size + 100_KB);
 }
 
-TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestDuplicateInsertSingleShardConversion)) {
+TEST_F(PgMiniTest, TestDuplicateInsertSingleShardConversion) {
   const std::string kDatabaseName = "testdb";
   const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
 
