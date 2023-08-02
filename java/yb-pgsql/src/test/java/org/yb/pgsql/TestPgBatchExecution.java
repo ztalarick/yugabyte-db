@@ -13,13 +13,12 @@
 
 package org.yb.pgsql;
 
-import static org.yb.AssertionWrappers.assertTrue;
-
 import java.sql.Statement;
 import java.sql.Connection;
+import static org.yb.AssertionWrappers.fail;
+
 import java.sql.BatchUpdateException;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -29,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import org.junit.runners.Parameterized;
 import org.yb.YBParameterizedTestRunner;
 
-import java.util.Map;
 import java.util.Arrays;
 import java.util.List;
 
@@ -37,24 +35,17 @@ import java.util.List;
 public class TestPgBatchExecution  extends BasePgSQLTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestPgBatchExecution.class);
   private static final String TABLE_NAME = "t";
-  private static String gucBatchExecutionsHandlingOptions;
+  private final String gucBatchExecutionsHandlingOptions;
 
   public TestPgBatchExecution(String batchExecutionsHandlingOptions) {
     gucBatchExecutionsHandlingOptions = batchExecutionsHandlingOptions;
   }
 
-  @Override
-  protected Map<String, String> getTServerFlags() {
-    Map<String, String> flagMap = super.getTServerFlags();
-    flagMap.put("ysql_pg_conf_csv",
-        "yb_pg_batch_detection_mechanism="+gucBatchExecutionsHandlingOptions);
-    return flagMap;
-  }
-
   // Run each test with peeking to detect batch execution and assuming all executions are batched.
   @Parameterized.Parameters
   public static List<String> batchExecutionHandlingOptions() {
-    return Arrays.asList("detect_by_peeking", "assume_all_batch_executions");
+    return Arrays.asList("detect_by_peeking",
+                         "assume_all_batch_executions");
   }
 
   private void insertValues(int count) throws Exception {
@@ -65,30 +56,42 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
     }
   }
 
-  private void expectRowCount(int expectation) throws Exception {
+  private void expectRowCount(String table_name, int expectation) throws Exception {
     try (Statement stmt = connection.createStatement()) {
-      assertOneRow(stmt, "SELECT COUNT(*) FROM " + TABLE_NAME, expectation);
+      assertOneRow(stmt, "SELECT COUNT(*) FROM " + table_name, expectation);
     }
+  }
+
+  private void expectRowCount(int expectation) throws Exception {
+    expectRowCount(TABLE_NAME, expectation);
   }
 
   private void expectRowCountWithinRange(int range_start,
                                          int range_end,
                                          int expectation)  throws Exception {
     try (Statement stmt = connection.createStatement()) {
-      assertOneRow(stmt, "SELECT COUNT(*) FROM " + TABLE_NAME + " WHERE i >= " + range_start +
-          " and i <= " + range_end, expectation);
+      assertOneRow(stmt,
+                   String.format("SELECT COUNT(*) FROM %s WHERE i >= %d and i <= %d",
+                                 TABLE_NAME, range_start, range_end),
+                   expectation);
     }
-  }
-
-  private static boolean isUniqueConstraintViolation(SQLException e) {
-    final String PSQL_ERRCODE_UNIQUE_VIOLATION = "23505";
-    return e.getSQLState().equals(PSQL_ERRCODE_UNIQUE_VIOLATION);
   }
 
   @Before
   public void setUp() throws Exception {
     try (Statement stmt = connection.createStatement()) {
+      stmt.execute(String.format("SET yb_pg_batch_detection_mechanism=%s",
+                                 gucBatchExecutionsHandlingOptions));
       stmt.execute(String.format("CREATE TABLE %s (i INT PRIMARY KEY)", TABLE_NAME));
+    }
+  }
+
+  @Test
+  public void testBatchDetectionMethod() throws Exception {
+    try (Statement stmt = connection.createStatement()) {
+      assertOneRow(stmt,
+                   "SHOW yb_pg_batch_detection_mechanism",
+                   gucBatchExecutionsHandlingOptions);
     }
   }
 
@@ -115,6 +118,7 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
     expectRowCount(10);
   }
 
+<<<<<<< HEAD
   @Test(expected = com.yugabyte.util.PSQLException.class)
   public void testMultiValueFastPathInsertWithError() throws Exception {
     try (Statement stmt = connection.createStatement()) {
@@ -137,6 +141,9 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
   }
 
   @Test(expected = BatchUpdateException.class)
+=======
+  @Test
+>>>>>>> master
   public void testBatchInsertWithError() throws Exception {
     // Batch insert leading to UniqueContraintViolation exception and rollback
     try (Statement stmt = connection.createStatement()) {
@@ -146,15 +153,14 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
         stmt.addBatch(String.format("INSERT INTO %s VALUES (%d)", TABLE_NAME, i));
       }
       stmt.executeBatch();
-    } catch(SQLException e) {
-      isUniqueConstraintViolation(e);
-      // Entire batch should be reverted.
-      expectRowCount(5);
-      throw e;
+      fail("Batch operation expected to fail");
+    } catch(BatchUpdateException e) {
     }
+    // Entire batch should be reverted.
+    expectRowCount(5);
   }
 
-  @Test(expected = BatchUpdateException.class)
+  @Test
   public void testBatchPreparedInsertWithError() throws Exception {
     // Batch insert using Prepared Statement leading to
     // UniqueContraintViolation exception and rollback
@@ -168,11 +174,11 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
         pstmt.addBatch();
       }
       pstmt.executeBatch();
-    } catch(SQLException e) {
-      isUniqueConstraintViolation(e);
-      expectRowCount(5);
-      throw e;
+      fail("Batch operation expected to fail");
+    } catch(BatchUpdateException e) {
     }
+    // Entire batch should be reverted.
+    expectRowCount(5);
   }
 
   @Test
@@ -199,7 +205,7 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
     expectRowCountWithinRange(10, 14, 5);
   }
 
-  @Test(expected = BatchUpdateException.class)
+  @Test
   public void testBatchUpdateWithError() throws Exception {
     // Batch update leading to UniqueContraintViolation exception and rollback
     try (Statement stmt = connection.createStatement()) {
@@ -209,15 +215,14 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
         stmt.addBatch(String.format("UPDATE %s SET i = i + 2 WHERE i = $d", TABLE_NAME, i));
       }
       stmt.executeBatch();
-    } catch(SQLException e) {
-      isUniqueConstraintViolation(e);
-      // Entire batch should be reverted.
-      expectRowCountWithinRange(0, 4, 5);
-      throw e;
+      fail("Batch operation expected to fail");
+    } catch(BatchUpdateException e) {
     }
+    // Entire batch should be reverted.
+    expectRowCountWithinRange(0, 4, 5);
   }
 
-  @Test(expected = BatchUpdateException.class)
+  @Test
   public void testBatchPreparedUpdateWithError() throws Exception {
     // Batch update using Prepared Statement leading to
     // UniqueContraintViolation exception and rollback
@@ -231,11 +236,11 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
         pstmt.addBatch();
       }
       pstmt.executeBatch();
-    } catch(SQLException e) {
-      isUniqueConstraintViolation(e);
-      expectRowCountWithinRange(0, 4, 5);
-      throw e;
+      fail("Batch operation expected to fail");
+    } catch(BatchUpdateException e) {
     }
+    // Entire batch should be reverted.
+    expectRowCountWithinRange(0, 4, 5);
   }
 
   @Test
@@ -282,11 +287,12 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
     expectRowCount(0);
   }
 
-  @Test(expected = BatchUpdateException.class)
+  @Test
   public void testBatchDeleteWithErrors() throws Exception {
     try (Statement stmt = connection.createStatement()) {
       stmt.execute("CREATE TABLE t1 (id int PRIMARY KEY)");
-      stmt.execute("CREATE TABLE t2 (id  int, t1_id int, PRIMARY KEY (id), FOREIGN KEY " +
+      stmt.execute(
+          "CREATE TABLE t2 (id  int, t1_id int, PRIMARY KEY (id), FOREIGN KEY " +
           "(t1_id) REFERENCES t1(id))");
       for (int i = 0; i < 5; ++i) {
         stmt.execute(String.format("INSERT INTO t1 VALUES (%d)", i));
@@ -296,23 +302,23 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
       }
     }
 
-    // Batch Delete from t1 causing Foreign Key Constraint Violation
+    // Batch Delete from t1 causing Foreiign Key Constraint Violation
     try (Statement stmt = connection.createStatement()) {
       for (int i = 0; i < 5; ++i) {
         stmt.addBatch(String.format("DELETE FROM t1 WHERE i=%d", i));
       }
       stmt.executeBatch();
-    } catch(SQLException e) {
-      isUniqueConstraintViolation(e);
-      try (Statement stmt = connection.createStatement()) {
-        assertOneRow(stmt, "SELECT COUNT(*) FROM t1", 5);
-        assertOneRow(stmt, "SELECT COUNT(*) FROM t2", 3);
-      }
-      throw e;
+      fail("Batch operation expected to fail");
+    } catch(BatchUpdateException e) {
+    }
+    // Entire batch should be reverted.
+    try (Statement stmt = connection.createStatement()) {
+      expectRowCount("t1", 5);
+      expectRowCount("t2", 3);
     }
   }
 
-  @Test(expected = BatchUpdateException.class)
+  @Test
   public void testBatchPreparedDeleteWithErrors() throws Exception {
     try (Statement stmt = connection.createStatement()) {
       stmt.execute("CREATE TABLE t1 (id int PRIMARY KEY)");
@@ -335,13 +341,12 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
         pstmt.addBatch();
       }
       pstmt.executeBatch();
-    } catch(SQLException e) {
-      isUniqueConstraintViolation(e);
-      try (Statement stmt = connection.createStatement()) {
-        assertOneRow(stmt, "SELECT COUNT(*) FROM t1", 5);
-        assertOneRow(stmt, "SELECT COUNT(*) FROM t2", 3);
-      }
-      throw e;
+      fail("Batch operation expected to fail");
+    } catch(BatchUpdateException e) {
+    }
+    try (Statement stmt = connection.createStatement()) {
+      expectRowCount("t1", 5);
+      expectRowCount("t2", 3);
     }
   }
 
