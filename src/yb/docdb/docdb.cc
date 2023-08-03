@@ -299,7 +299,9 @@ Status AssembleDocWriteBatch(const vector<unique_ptr<DocOperation>>& doc_write_o
   for (const unique_ptr<DocOperation>& doc_op : doc_write_ops) {
     RETURN_NOT_OK(doc_op->UpdateIterator(&data, prev_operation, single_operation, &iterator));
     prev_operation = doc_op.get();
-    doc_op->SetIsolationLevel(isolation_level);
+    if (isolation_level == IsolationLevel::NON_TRANSACTIONAL) {
+      doc_op->SetFailOnDuplicates(true);
+    }
     Status s = doc_op->Apply(data);
     if (s.IsQLError() && doc_op->OpType() == DocOperation::Type::QL_WRITE_OPERATION) {
       std::string error_msg;
@@ -317,7 +319,7 @@ Status AssembleDocWriteBatch(const vector<unique_ptr<DocOperation>>& doc_write_o
       continue;
     }
 
-    if (s.IsAlreadyPresent() && isolation_level == IsolationLevel::NON_TRANSACTIONAL) {
+    if (s.IsAlreadyPresent()) {
       write_batch->clear_write_pairs();
       write_batch->clear_ttl();
       return s;

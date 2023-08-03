@@ -96,10 +96,10 @@ class DocOperation {
 
   virtual std::string ToString() const = 0;
 
-  void SetIsolationLevel(IsolationLevel isolation_level) { isolation_level_ = isolation_level; }
+  void SetFailOnDuplicates(bool fail_on_duplicates) { fail_on_duplicates_ = fail_on_duplicates; }
 
  protected:
-  IsolationLevel isolation_level_ = IsolationLevel::SERIALIZABLE_ISOLATION;
+  bool fail_on_duplicates_ = false;
 };
 
 template <DocOperationType OperationType, class RequestPB>
