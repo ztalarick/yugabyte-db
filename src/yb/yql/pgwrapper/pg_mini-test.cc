@@ -163,6 +163,17 @@ class PgMiniTest : public PgMiniTestBase {
   void RunManyConcurrentReadersTest();
 
   void ValidateAbortedTxnMetric();
+
+  void ExecuteStmtAndCountIntents(
+      const std::function<void()>& stmt_executor,
+      bool zero_intent_count_expected) {
+    stmt_executor();
+
+    if (zero_intent_count_expected)
+      ASSERT_EQ(CountIntents(cluster_.get()), 0);
+    else
+      ASSERT_NE(CountIntents(cluster_.get()), 0);
+  }
 };
 
 class PgMiniTestSingleNode : public PgMiniTest {
@@ -1773,6 +1784,7 @@ TEST_F(PgMiniTest, ColocatedCompaction) {
 
 TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInserts)) {
   const std::string kDatabaseName = "testdb";
+  std::string table_name = "test";
   const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
 
   PGConn conn = ASSERT_RESULT(Connect());
@@ -1787,12 +1799,16 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInserts)) {
 
   FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1, 1, 1)", "test"));
-  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, table_name] {
+        ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1, 1, 1)", table_name));
+      }, true);
 
   FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(2, 2, 2, 2)", "test"));
-  ASSERT_NE(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, table_name] {
+        ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(2, 2, 2, 2)", table_name));
+      }, false);
 
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(cluster_->FlushTablets());
@@ -1805,12 +1821,16 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInserts)) {
 
   FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(3, 3, 3, 3), (4, 4, 4, 4)", "test"));
-  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, table_name] {
+        ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(3, 3, 3, 3), (4, 4, 4, 4)", table_name));
+      }, true);
 
   FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = true;
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(5, 5, 5, 5), (6, 6, 6, 6)", "test"));
-  ASSERT_NE(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, table_name] {
+        ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(5, 5, 5, 5), (6, 6, 6, 6)", table_name));
+      }, false);
 
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(cluster_->FlushTablets());
@@ -1825,6 +1845,7 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInserts)) {
 TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInsertsWithExplicitTxn)) {
   FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   const std::string kDatabaseName = "testdb";
+  std::string table_name = "test";
   const MonoDelta kIntentsCleanupTime = 6s * kTimeMultiplier;
 
   PGConn conn = ASSERT_RESULT(Connect());
@@ -1835,11 +1856,13 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInsertsWithEx
   ASSERT_OK(conn.Execute("CREATE INDEX test_index_value1 on test(value1)"));
 
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
-  ASSERT_OK(conn.Execute("BEGIN"));
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1)", "test"));
-  ASSERT_OK(conn.Execute("COMMIT"));
-
-  ASSERT_NE(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, table_name] {
+        ASSERT_OK(conn.Execute("BEGIN"));
+        ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES(1, 1)", "test"));
+        ASSERT_OK(conn.Execute("COMMIT"));
+      },
+      false);
 
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(cluster_->FlushTablets());
@@ -1875,11 +1898,17 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInsertsWithFo
   FLAGS_ysql_force_distributed_txn_for_colocated_tablet_writes = false;
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
 
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, 'reference_$1')", kReferenceTable, 1));
-  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, kReferenceTable] {
+        ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, 'reference_$1')", kReferenceTable, 1));
+      },
+      true);
 
-  ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, $2, 'data_$2')", kDataTable, 1, 1));
-  ASSERT_NE(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, kDataTable] {
+        ASSERT_OK(conn.ExecuteFormat("INSERT INTO $0 VALUES ($1, $2, 'data_$2')", kDataTable, 1, 1));
+      },
+      false);
 
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(cluster_->FlushTablets());
@@ -1895,13 +1924,20 @@ TEST_F(PgMiniTest, YB_DISABLE_TEST_IN_TSAN(TestFastPathForColocatedInsertsWithFo
   ASSERT_EQ(res, 1);
 
   SetAtomicFlag(1.0, &FLAGS_TEST_transaction_ignore_applying_probability);
-  ASSERT_OK(conn.ExecuteFormat(
-      "INSERT INTO $0 VALUES ($1, 'reference_$1'), ($2, 'reference_$2')", kReferenceTable, 2, 3));
-  ASSERT_EQ(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, kReferenceTable] {
+        ASSERT_OK(conn.ExecuteFormat(
+            "INSERT INTO $0 VALUES ($1, 'reference_$1'), ($2, 'reference_$2')", kReferenceTable, 2,
+            3));
+      },
+      true);
 
-  ASSERT_OK(conn.ExecuteFormat(
-      "INSERT INTO $0 VALUES ($1, $2, 'data_$2'), ($1, $3, 'data_$3')", kDataTable, 1, 2, 3));
-  ASSERT_NE(CountIntents(cluster_.get()), 0);
+  ExecuteStmtAndCountIntents(
+      [&conn, kDataTable] {
+        ASSERT_OK(conn.ExecuteFormat(
+            "INSERT INTO $0 VALUES ($1, $2, 'data_$2'), ($1, $3, 'data_$3')", kDataTable, 1, 2, 3));
+      },
+      false);
 
   SetAtomicFlag(0, &FLAGS_TEST_transaction_ignore_applying_probability);
   ASSERT_OK(cluster_->FlushTablets());

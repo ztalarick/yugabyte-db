@@ -15,6 +15,8 @@ package org.yb.pgsql;
 
 import java.sql.Statement;
 import java.sql.Connection;
+import java.sql.SQLException;
+import com.yugabyte.util.PSQLException;
 import static org.yb.AssertionWrappers.fail;
 
 import java.sql.BatchUpdateException;
@@ -77,6 +79,11 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
     }
   }
 
+  private static boolean isUniqueConstraintViolation(SQLException e) {
+    final String PSQL_ERRCODE_UNIQUE_VIOLATION = "23505";
+    return e.getSQLState().equals(PSQL_ERRCODE_UNIQUE_VIOLATION);
+  }
+
   @Before
   public void setUp() throws Exception {
     try (Statement stmt = connection.createStatement()) {
@@ -118,7 +125,6 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
     expectRowCount(10);
   }
 
-<<<<<<< HEAD
   @Test(expected = com.yugabyte.util.PSQLException.class)
   public void testMultiValueFastPathInsertWithError() throws Exception {
     try (Statement stmt = connection.createStatement()) {
@@ -140,10 +146,7 @@ public class TestPgBatchExecution  extends BasePgSQLTest {
     }
   }
 
-  @Test(expected = BatchUpdateException.class)
-=======
   @Test
->>>>>>> master
   public void testBatchInsertWithError() throws Exception {
     // Batch insert leading to UniqueContraintViolation exception and rollback
     try (Statement stmt = connection.createStatement()) {
