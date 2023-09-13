@@ -16,7 +16,7 @@ export default meta;
 // More on component templates: https://storybook.js.org/docs/react/writing-stories/introduction#using-args
 export const Tabs = (args: any) => {
   // More on args: https://storybook.js.org/docs/react/writing-stories/args
-  const [currentTab, setTab] = useState<string>('tab1');
+  const [currentTab, setTab] = useState<string>('tab11');
 
   const handleChange = (_: any, tab: string) => {
     setTab(tab);
@@ -31,12 +31,12 @@ export const Tabs = (args: any) => {
         aria-label="tab section example"
         {...args}
       >
-        <MUItab label="YugabyteDB Open Source" value="tab1" disabled={args.disabled} />
+        <MUItab label="YugabyteDB Open Source" value="tab11" disabled={args.disabled} />
         <MUItab label="Yugabyte Platform" value="tab2" disabled={args.disabled} />
         <MUItab label="YugabyteDB Managed" value="tab3" disabled={args.disabled} />
       </MUITabs>
       <Box>
-        {currentTab === 'tab1' && (
+        {currentTab === 'tab11' && (
           <Box m={2}>
             <Typography variant="h2">{'YugabyteDB Open Source'}</Typography>
             <Box mt={1}>
