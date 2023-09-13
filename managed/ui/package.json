@@ -18,7 +18,7 @@
     "test:debug": "react-scripts --inspect-brk test --runInBand --no-cache --env=jest-environment-jsdom-sixteen",
     "start": "craco start",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build -o docs-build"
+    "build-storybook": "storybook build -o ../../docs-build"
   },
   "engines": {
     "node": ">=16.10.x",
