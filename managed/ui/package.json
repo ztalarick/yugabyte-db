@@ -1,6 +1,7 @@
 {
   "name": "YB-Customer",
   "version": "0.0.0",
+  "homepage" : "https://yugabyte.github.io/yugabyte-db/",
   "private": true,
   "scripts": {
     "lint": "eslint --ext .js,.jsx,.ts,.tsx src/",
