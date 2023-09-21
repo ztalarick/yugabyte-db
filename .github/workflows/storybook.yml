@@ -1,6 +1,8 @@
 name: Build and Deploy please
 on:
   push:
+    branches:
+      - PLAT-10506
     paths: ["managed/ui/src/stories/**"] # Trigger the action only when files change in the folders defined here
 jobs:
   build-and-deploy:
