@@ -29,6 +29,7 @@
     "trailingComma": "none"
   },
   "devDependencies": {
+    "@babel/preset-react": "^7.22.15",
     "@craco/craco": "6.4.5",
     "@storybook/react": "^7.0.27",
     "@storybook/react-vite": "^7.0.27",
@@ -143,6 +144,7 @@
     "typy": "3.3.0",
     "vite-plugin-dynamic-import": "^1.4.1",
     "vite-plugin-svgr": "^3.2.0",
+    "yugabyte-test-integration": "1.0.2",
     "yup": "0.30.0"
   },
   "browserslist": {

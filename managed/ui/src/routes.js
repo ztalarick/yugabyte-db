@@ -26,6 +26,7 @@ import Backups from './pages/Backups';
 import UniverseConsole from './pages/UniverseConsole';
 import Metrics from './pages/Metrics';
 import { NodeAgent } from './pages/NodeAgent';
+import Test from './pages/Test';
 import TableDetail from './pages/TableDetail';
 import Help from './pages/Help';
 import Profile from './pages/Profile';
@@ -264,6 +265,7 @@ export default (store) => {
           <Route path=":tab/:section" component={DataCenterConfiguration} />
           <Route path=":tab/:section/:uuid" component={DataCenterConfiguration} />
         </Route>
+        <Route path="/test" component={Test} />
         <Route path="/nodeagent" component={NodeAgent} />
         <Route path="/alerts" component={Alerts} />
         <Route path="/backups" component={Backups} />
