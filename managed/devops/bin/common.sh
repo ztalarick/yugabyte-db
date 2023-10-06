@@ -48,7 +48,11 @@ regex_from_list() {
 }
 
 set_python_executable() {
-  PYTHON_EXECUTABLE=""
+
+  PYTHON_EXECUTABLE="python3.8"
+  export PYTHON_EXECUTABLE
+  return
+
   executables=( "${PYTHON3_EXECUTABLES[@]}" )
 
   for py_executable in "${executables[@]}"; do
@@ -289,6 +293,7 @@ activate_virtualenv() {
     (
       set -x
       cd "${virtualenv_dir%/*}"
+
       $PYTHON_EXECUTABLE -m venv "$YB_VIRTUALENV_BASENAME"
     )
   elif [[ ${is_linux} == "true" ]]; then
