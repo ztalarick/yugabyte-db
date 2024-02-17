@@ -135,6 +135,7 @@ ArenaBase<Traits>::ArenaBase(size_t initial_buffer_size, size_t max_buffer_size)
 
 template <class Traits>
 ArenaBase<Traits>::~ArenaBase() {
+  UntrackMemory(memory_footprint());
   AcquireLoadCurrent()->Destroy(buffer_allocator_);
 }
 
