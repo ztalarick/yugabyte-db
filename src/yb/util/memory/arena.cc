@@ -221,7 +221,9 @@ void ArenaBase<Traits>::AddComponentUnlocked(Buffer buffer, Component* component
   if (!second_ && component->next()) {
     second_ = component;
   }
+  size_t bytes_before = arena_footprint_;
   arena_footprint_ += component->full_size();
+  TrackMemoryDifference(bytes_before, arena_footprint_);
   if (PREDICT_FALSE(arena_footprint_ > FLAGS_arena_warn_threshold_bytes) && !warned_) {
     LOG(WARNING) << "Arena " << reinterpret_cast<const void *>(this)
                  << " footprint (" << arena_footprint_ << " bytes) exceeded warning threshold ("
@@ -253,13 +255,17 @@ void ArenaBase<Traits>::Reset(ResetMode mode) {
     // detection of memory-related bugs (invalid shallow copies, etc.).
     size_t last_size = current->full_size();
     current->Destroy(buffer_allocator_);
+    UntrackMemory(arena_footprint_);
     arena_footprint_ = 0;
     ReleaseStoreCurrent(nullptr);
     AddComponentUnlocked(NewBuffer(last_size, 0));
 #else
+    size_t bytes_before = arena_footprint_;
     arena_footprint_ = current->full_size();
+    TrackMemoryDifference(bytes_before, arena_footprint_);
 #endif
   } else {
+    UntrackMemory(arena_footprint_);
     arena_footprint_ = 0;
   }
 }
@@ -274,6 +280,45 @@ template <class Traits>
 size_t ArenaBase<Traits>::UsedBytes() {
   std::lock_guard lock(component_lock_);
   return arena_footprint_ - AcquireLoadCurrent()->free_bytes();
+}
+
+template <class Traits>
+void ArenaBase<Traits>::SetMemTracker(MemTrackerPtr new_mem_tracker){
+  if(mem_tracker_ && mem_tracker_->id() != new_mem_tracker->id()){
+    UntrackMemory(memory_footprint());
+    mem_tracker_ = nullptr;
+  }
+
+  if(!mem_tracker_){
+    mem_tracker_ = new_mem_tracker;
+    TrackMemory(memory_footprint());
+  }
+}
+
+template <class Traits>
+void ArenaBase<Traits>::TrackMemory(size_t bytes){
+  if(mem_tracker_){
+    mem_tracker_->Consume(bytes);
+  }
+}
+
+template <class Traits>
+void ArenaBase<Traits>::UntrackMemory(size_t bytes){
+  if(mem_tracker_){
+    mem_tracker_->Release(bytes);
+  }
+}
+
+template <class Traits>
+void ArenaBase<Traits>::TrackMemoryDifference(size_t bytes_before, size_t bytes_after){
+  if(bytes_before > bytes_after){
+    UntrackMemory(bytes_before - bytes_after);
+    return;
+  }
+  if (bytes_after > bytes_before){
+    TrackMemory(bytes_after - bytes_before);
+    return;
+  }
 }
 
 // Explicit instantiation.
