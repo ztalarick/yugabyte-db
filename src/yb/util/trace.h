@@ -266,6 +266,12 @@ class Trace : public RefCountedThreadSafe<Trace> {
   // Add the entry to the linked list of entries.
   void AddEntry(TraceEntry* entry);
 
+  //These functions manage the memory tracking with the use of Arenas
+  void init_mem_tracker();
+  void set_arena_memtracker();
+  void ConsumeMemory(int64_t bytes);
+  void ReleaseMemory(int64_t bytes);
+
   std::atomic<ThreadSafeArena*> arena_ = {nullptr};
 
   // Lock protecting the entries linked list.
@@ -286,10 +292,6 @@ class Trace : public RefCountedThreadSafe<Trace> {
   DISALLOW_COPY_AND_ASSIGN(Trace);
 
   MemTrackerPtr mem_tracker_ = nullptr;
-  void init_mem_tracker();
-  void set_arena_memtracker();
-  void track_tracer_memory(size_t bytes);
-  void untrack_tracer_memory(size_t bytes);
 };
 
 typedef scoped_refptr<Trace> TracePtr;

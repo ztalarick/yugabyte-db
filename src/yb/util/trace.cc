@@ -297,7 +297,7 @@ ThreadSafeObjectPool<ThreadSafeArena>& ArenaPool() {
   return result;
 }
 
-void Trace::track_tracer_memory(size_t bytes){
+void Trace::ConsumeMemory(int64_t bytes){
   if(mem_tracker_){
     mem_tracker_->Consume(bytes);
   }
@@ -305,7 +305,7 @@ void Trace::track_tracer_memory(size_t bytes){
 
 Trace::~Trace() {
   size_t children_memory = sizeof(TracePtr) * child_traces_.size();
-  untrack_tracer_memory(sizeof(*this) + children_memory);
+  ReleaseMemory(static_cast<int64_t>(sizeof(*this)) + static_cast<int64_t>(children_memory));
 
   auto* arena = arena_.load(std::memory_order_acquire);
   if (arena) {
@@ -314,7 +314,7 @@ Trace::~Trace() {
   }
 }
 
-void Trace::untrack_tracer_memory(size_t bytes){
+void Trace::ReleaseMemory(int64_t bytes){
   if(mem_tracker_){
     mem_tracker_->Release(bytes);
   }
@@ -519,7 +519,7 @@ void Trace::AddChildTrace(Trace* child_trace) {
     scoped_refptr<Trace> ptr(child_trace);
     child_traces_.push_back(ptr);
 
-    track_tracer_memory(sizeof(ptr));
+    ConsumeMemory(static_cast<int64_t>(sizeof(ptr)));
   }
   CHECK(!child_trace->HasOneRef());
 }

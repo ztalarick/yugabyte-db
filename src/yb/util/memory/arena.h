@@ -270,6 +270,9 @@ class ArenaBase {
     return current_.store(c, std::memory_order_release);
   }
 
+  void ConsumeMemory(int64_t bytes);
+  void ReleaseMemory(int64_t bytes);
+
   BufferAllocator* const buffer_allocator_;
 
   // The current component to allocate from.
@@ -289,9 +292,6 @@ class ArenaBase {
   mutable mutex_type component_lock_;
 
   MemTrackerPtr mem_tracker_ = nullptr;
-  void TrackMemory(size_t bytes);
-  void UntrackMemory(size_t bytes);
-  void TrackMemoryDifference(size_t bytes_before, size_t bytes_after);
 };
 
 // STL-compliant allocator, for use with hash_maps and other structures
